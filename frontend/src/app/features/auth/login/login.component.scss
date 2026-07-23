@@ -11,10 +11,10 @@
 .brand-panel {
   flex: 1;
   background:
-    radial-gradient(circle at 12% 18%, rgba(183, 232, 204, 0.42) 0, rgba(183, 232, 204, 0) 32%),
-    radial-gradient(circle at 88% 82%, rgba(217, 243, 228, 0.72) 0, rgba(217, 243, 228, 0) 36%),
-    linear-gradient(135deg, #ffffff 0%, #f5fcf8 44%, #e1f4e8 100%);
-  color: var(--green-deep);
+    radial-gradient(circle at 12% 18%, rgba(184, 221, 250, 0.42) 0, rgba(184, 221, 250, 0) 32%),
+    radial-gradient(circle at 88% 82%, rgba(220, 238, 255, 0.72) 0, rgba(220, 238, 255, 0) 36%),
+    linear-gradient(135deg, #ffffff 0%, #f0f7ff 44%, #d6eaff 100%);
+  color: #1769aa;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -35,7 +35,7 @@
     opacity: 0.42;
     background-image:
       radial-gradient(circle, rgba(31, 158, 100, 0.18) 1px, transparent 1.5px),
-      linear-gradient(120deg, transparent 0 42%, rgba(31, 158, 100, 0.08) 42.2% 42.5%, transparent 42.7% 100%);
+      linear-gradient(120deg, transparent 0 42%, rgba(59, 130, 246, 0.08) 42.2% 42.5%, transparent 42.7% 100%);
     background-size: 26px 26px, 180px 180px;
     transform: rotate(-7deg);
     animation: login-pattern-drift 16s ease-in-out infinite alternate;
@@ -47,12 +47,12 @@
     bottom: -22%;
     width: 70%;
     height: 58%;
-    border: 1px solid rgba(31, 158, 100, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.12);
     border-radius: 48% 52% 45% 55%;
     box-shadow:
-      0 0 0 24px rgba(31, 158, 100, 0.035),
-      0 0 0 48px rgba(31, 158, 100, 0.025),
-      0 0 0 72px rgba(31, 158, 100, 0.018);
+      0 0 0 24px rgba(59, 130, 246, 0.035),
+      0 0 0 48px rgba(59, 130, 246, 0.025),
+      0 0 0 72px rgba(59, 130, 246, 0.018);
     transform: rotate(-18deg);
     animation: login-orbit-drift 22s ease-in-out infinite alternate;
     will-change: transform;
@@ -74,7 +74,7 @@
     left: 8%;
     width: 170px;
     height: 170px;
-    background: rgba(128, 213, 163, 0.34);
+    background: rgba(128, 190, 240, 0.34);
     animation: login-orb-one 18s ease-in-out infinite alternate;
   }
 
@@ -83,7 +83,7 @@
     top: 28%;
     width: 230px;
     height: 230px;
-    background: rgba(190, 235, 210, 0.42);
+    background: rgba(190, 225, 250, 0.42);
     animation: login-orb-two 24s ease-in-out infinite alternate;
   }
 
@@ -92,7 +92,7 @@
     bottom: -8%;
     width: 280px;
     height: 280px;
-    background: rgba(107, 195, 143, 0.2);
+    background: rgba(107, 180, 235, 0.2);
     animation: login-orb-three 28s ease-in-out infinite alternate;
   }
 
@@ -114,7 +114,7 @@
       margin: 0;
       font-weight: 700;
       letter-spacing: -1px;
-      color: var(--green-deep);
+      color: #1769aa;
     }
     
     p {
@@ -135,13 +135,23 @@
       width: 200px;
       height: 200px;
 
+      .stamp-logo {
+        width: 200px;
+        height: 200px;
+        object-fit: contain;
+        display: block;
+      }
+
       .stamp-outer-ring {
+        display: none;
         border-color: var(--stamp);
       }
       .stamp-inner-ring {
+        display: none;
         border-color: rgba(200, 103, 44, 0.7);
       }
       .stamp-center {
+        display: none;
         .stamp-badge {
           background-color: var(--stamp);
           color: white;
@@ -159,7 +169,7 @@
       font-size: 2rem;
       font-family: var(--font-display);
       margin-bottom: 8px;
-      color: var(--green-deep);
+      color: #1769aa;
     }
     p {
       font-size: 1rem;
@@ -171,7 +181,7 @@
 
 .form-panel {
   flex: 1;
-  background: linear-gradient(145deg, #ffffff 0%, #f4fbf7 100%);
+  background: linear-gradient(145deg, #ffffff 0%, #eff6ff 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -265,7 +275,7 @@
   text-align: center;
   border-radius: 16px;
   border: 1px solid var(--mint-1);
-  box-shadow: 0 10px 30px rgba(19, 110, 70, 0.06);
+  box-shadow: 0 10px 30px rgba(30, 100, 170, 0.06);
 }
 
 .brand-header {
@@ -282,7 +292,7 @@
   h2 {
     font-size: 1.25rem;
     font-family: var(--font-display);
-    color: var(--green-deep);
+    color: #1769aa;
     margin: 0;
   }
 }
@@ -301,7 +311,7 @@
     label {
       font-size: 0.875rem;
       font-weight: 600;
-      color: var(--text-dark-lo);
+      color: #526f8c;
     }
 
     input {
@@ -343,7 +353,7 @@
     margin-top: -8px;
 
     a {
-      color: var(--green-deep);
+      color: #1769aa;
       font-size: 0.8125rem;
       font-weight: 600;
       text-decoration: none;
@@ -359,5 +369,10 @@
     width: 100%;
     padding: 14px;
     font-size: 1.0625rem;
+    background-color: #3b82f6;
+
+    &:hover:not(:disabled) {
+      background-color: #1769aa;
+    }
   }
 }
