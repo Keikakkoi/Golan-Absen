@@ -41,8 +41,15 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 	}
 
 	// Current month boundaries
-	now := time.Now()
-	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	now := attendanceNow()
+	schedule := getAttendanceSchedule()
+	_ = closeExpiredAttendanceRecords(now, schedule)
+	workDate := attendanceBusinessDate(now)
+	_, _, _, endTime, checkoutDeadline := attendanceWindow(now, schedule)
+	todayAtSeven := time.Date(now.Year(), now.Month(), now.Day(), attendanceResetHour, 0, 0, 0, jakartaLocation)
+	canCheckIn := !now.Before(todayAtSeven) && now.Before(endTime)
+	canCheckOut := !now.Before(endTime) && !now.After(checkoutDeadline)
+	startOfMonth := time.Date(workDate.Year(), workDate.Month(), 1, 0, 0, 0, 0, jakartaLocation)
 	endOfMonth := startOfMonth.AddDate(0, 1, -1)
 
 	var hadirCount int64
@@ -68,7 +75,7 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 	todayCheckInTime := ""
 	todayCheckOutTime := ""
 
-	err := config.DB.Where("employee_id = ? AND tanggal::date = ?", employee.ID, now.Format("2006-01-02")).First(&todayRecord).Error
+	err := config.DB.Where("employee_id = ? AND tanggal = ?", employee.ID, workDate.Format("2006-01-02")).First(&todayRecord).Error
 	if err == nil {
 		if todayRecord.JamPulang != nil {
 			todayStatus = "Sudah Check-out"
@@ -92,7 +99,26 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 		"today_status":        todayStatus,
 		"today_check_in":      todayCheckInTime,
 		"today_check_out":     todayCheckOutTime,
+		"can_check_in":        canCheckIn && todayStatus == "Belum Absen",
+		"can_check_out":       canCheckOut && (todayStatus == "Hadir" || todayStatus == "Terlambat"),
+		"attendance_message":  attendanceMessage(now, todayStatus, todayAtSeven, endTime, checkoutDeadline),
 	})
+}
+
+func attendanceMessage(now time.Time, status string, resetAt, checkoutStart, checkoutDeadline time.Time) string {
+	if now.Before(resetAt) {
+		return "Check-in dibuka pukul 07:00."
+	}
+	if now.After(checkoutDeadline) {
+		return "Batas absensi hari ini sudah lewat."
+	}
+	if status == "Belum Absen" && !now.Before(checkoutStart) {
+		return "Batas check-in hari ini sudah lewat."
+	}
+	if (status == "Hadir" || status == "Terlambat") && now.Before(checkoutStart) {
+		return "Check-out dapat dilakukan mulai pukul 17:00."
+	}
+	return ""
 }
 
 func GetAdminDashboardStats(c *fiber.Ctx) error {
@@ -104,16 +130,18 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 	var totalKaryawan int64
 	config.DB.Model(&models.Employee{}).Count(&totalKaryawan)
 
-	today := time.Now().Format("2006-01-02")
+	now := attendanceNow()
+	_ = closeExpiredAttendanceRecords(now, getAttendanceSchedule())
+	today := attendanceBusinessDate(now).Format("2006-01-02")
 
 	var hadirHariIni int64
 	config.DB.Model(&models.AttendanceRecord{}).
-		Where("tanggal::date = ? AND status = ?", today, models.StatusHadir).
+		Where("tanggal = ? AND status = ?", today, models.StatusHadir).
 		Count(&hadirHariIni)
 
 	var terlambatHariIni int64
 	config.DB.Model(&models.AttendanceRecord{}).
-		Where("tanggal::date = ? AND status = ?", today, models.StatusTerlambat).
+		Where("tanggal = ? AND status = ?", today, models.StatusTerlambat).
 		Count(&terlambatHariIni)
 
 	var izinCutiHariIni int64
@@ -249,14 +277,15 @@ type AlphaReportSummary struct {
 }
 
 func reportDateRange(c *fiber.Ctx) (time.Time, time.Time, error) {
-	now := time.Now()
+	now := attendanceNow()
+	workDate := attendanceBusinessDate(now)
 	startValue := c.Query("start_date")
 	endValue := c.Query("end_date")
 	if startValue == "" {
-		startValue = now.Format("2006-01-02")[:8] + "01"
+		startValue = workDate.Format("2006-01-02")[:8] + "01"
 	}
 	if endValue == "" {
-		endValue = now.Format("2006-01-02")
+		endValue = workDate.Format("2006-01-02")
 	}
 	start, err := time.ParseInLocation("2006-01-02", startValue, now.Location())
 	if err != nil {

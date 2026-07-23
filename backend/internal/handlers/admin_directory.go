@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"absensi-golan-backend/config"
@@ -52,6 +53,7 @@ type homeLocationInput struct {
 	LongitudeRumah float64 `json:"longitude_rumah"`
 	RadiusMeter    float64 `json:"radius_meter"`
 	AlamatRumah    string  `json:"alamat_rumah"`
+	GoogleMapsURL  string  `json:"google_maps_url"`
 }
 
 func UpdateHomeLocation(c *fiber.Ctx) error {
@@ -63,8 +65,20 @@ func UpdateHomeLocation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid employee id"})
 	}
 	var input homeLocationInput
-	if err := c.BodyParser(&input); err != nil || input.LatitudeRumah == 0 || input.LongitudeRumah == 0 || input.RadiusMeter <= 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Koordinat dan radius rumah wajib valid"})
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Data lokasi rumah tidak valid"})
+	}
+	input.GoogleMapsURL = strings.TrimSpace(input.GoogleMapsURL)
+	if strings.TrimSpace(input.GoogleMapsURL) != "" {
+		latitude, longitude, err := utils.ResolveGoogleMapsLocationURL(input.GoogleMapsURL)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		input.LatitudeRumah = latitude
+		input.LongitudeRumah = longitude
+	}
+	if input.LatitudeRumah == 0 || input.LongitudeRumah == 0 || input.RadiusMeter <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Link Google Maps dan radius rumah wajib valid"})
 	}
 	var employee models.Employee
 	if err := config.DB.First(&employee, uint(employeeID)).Error; err != nil {
@@ -79,6 +93,7 @@ func UpdateHomeLocation(c *fiber.Ctx) error {
 	location.LongitudeRumah = input.LongitudeRumah
 	location.RadiusMeter = input.RadiusMeter
 	location.AlamatRumah = input.AlamatRumah
+	location.GoogleMapsURL = input.GoogleMapsURL
 	if err := config.DB.Save(&location).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save home location"})
 	}

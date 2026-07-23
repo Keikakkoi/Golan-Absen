@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 
 @Component({
@@ -29,7 +30,7 @@ export class AdminManagementComponent implements OnInit {
 
   homeRows: any[] = [];
   selectedHome: any = null;
-  homeForm: any = { latitude_rumah: null, longitude_rumah: null, radius_meter: 100, alamat_rumah: '' };
+  homeForm: any = { latitude_rumah: null, longitude_rumah: null, radius_meter: 100, alamat_rumah: '', google_maps_url: '' };
 
   employees: any[] = [];
   quotas: any[] = [];
@@ -37,7 +38,7 @@ export class AdminManagementComponent implements OnInit {
 
   private readonly api = 'http://localhost:8080/api/v1';
 
-  constructor(private http: HttpClient, private auth: AuthService, route: ActivatedRoute) {
+  constructor(private http: HttpClient, private auth: AuthService, private alert: AlertService, route: ActivatedRoute) {
     this.section = route.snapshot.data['section'] || 'roles';
   }
 
@@ -71,10 +72,11 @@ export class AdminManagementComponent implements OnInit {
     else this.assignments.push({ Role: this.selectedRole, PermissionID: permissionId, Diizinkan: true });
   }
 
-  saveRoles(): void {
+  async saveRoles(): Promise<void> {
+    if (!await this.alert.confirm('Simpan permission?', 'Perubahan hak akses role akan langsung diterapkan.')) return;
     this.isSaving = true;
     this.http.put(`${this.api}/admin/roles`, this.assignments.map(a => ({ role: a.Role, permission_id: a.PermissionID, diizinkan: a.Diizinkan })), { headers: this.headers() }).subscribe({
-      next: () => { this.isSaving = false; alert('Permission berhasil disimpan.'); }, error: err => { this.isSaving = false; this.fail(err); }
+      next: () => { this.isSaving = false; this.alert.success('Permission berhasil disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan permission', err.error?.error || 'Gagal menyimpan permission'); }
     });
   }
 
@@ -89,16 +91,19 @@ export class AdminManagementComponent implements OnInit {
 
   resetSchedule(): void { this.editingScheduleId = null; this.scheduleForm = this.emptySchedule(); }
 
-  saveSchedule(): void {
+  async saveSchedule(): Promise<void> {
+    const wasEditing = !!this.editingScheduleId;
+    const action = wasEditing ? 'mengubah shift ini' : 'menyimpan shift baru';
+    if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.isSaving = true;
     const body = { ...this.scheduleForm, JamMulai: this.scheduleForm.JamMulai.length === 5 ? `${this.scheduleForm.JamMulai}:00` : this.scheduleForm.JamMulai, JamSelesai: this.scheduleForm.JamSelesai.length === 5 ? `${this.scheduleForm.JamSelesai}:00` : this.scheduleForm.JamSelesai, ToleransiTerlambatMenit: Number(this.scheduleForm.ToleransiTerlambatMenit) };
     const request = this.editingScheduleId ? this.http.put(`${this.api}/admin/schedules/${this.editingScheduleId}`, body, { headers: this.headers() }) : this.http.post(`${this.api}/admin/schedules`, body, { headers: this.headers() });
-    request.subscribe({ next: () => { this.isSaving = false; this.resetSchedule(); this.loadSchedules(); }, error: err => { this.isSaving = false; this.fail(err); } });
+    request.subscribe({ next: () => { this.isSaving = false; this.resetSchedule(); this.loadSchedules(); this.alert.success(wasEditing ? 'Shift diperbarui' : 'Shift disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan shift', err.error?.error || 'Gagal menyimpan shift'); } });
   }
 
-  deleteSchedule(id: number): void {
-    if (!confirm('Hapus shift ini?')) return;
-    this.http.delete(`${this.api}/admin/schedules/${id}`, { headers: this.headers() }).subscribe({ next: () => this.loadSchedules(), error: err => this.fail(err) });
+  async deleteSchedule(id: number): Promise<void> {
+    if (!await this.alert.confirm('Hapus shift?', 'Shift ini akan dihapus dari sistem.', 'Ya, hapus')) return;
+    this.http.delete(`${this.api}/admin/schedules/${id}`, { headers: this.headers() }).subscribe({ next: () => { this.loadSchedules(); this.alert.success('Shift dihapus'); }, error: err => { this.fail(err); this.alert.error('Gagal menghapus shift', err.error?.error || 'Gagal menghapus shift'); } });
   }
 
   loadHomeLocations(): void {
@@ -108,13 +113,14 @@ export class AdminManagementComponent implements OnInit {
   editHome(row: any): void {
     this.selectedHome = row.employee;
     const location = row.location || {};
-    this.homeForm = { latitude_rumah: location.LatitudeRumah || row.employee.HomeLatitude || null, longitude_rumah: location.LongitudeRumah || row.employee.HomeLongitude || null, radius_meter: location.RadiusMeter || 100, alamat_rumah: location.AlamatRumah || '' };
+    this.homeForm = { latitude_rumah: location.LatitudeRumah || row.employee.HomeLatitude || null, longitude_rumah: location.LongitudeRumah || row.employee.HomeLongitude || null, radius_meter: location.RadiusMeter || 100, alamat_rumah: location.AlamatRumah || '', google_maps_url: location.GoogleMapsURL || '' };
   }
 
-  saveHome(): void {
+  async saveHome(): Promise<void> {
     if (!this.selectedHome) return;
+    if (!await this.alert.confirm('Simpan lokasi rumah?', 'Koordinat geofence WFH karyawan akan diperbarui dari link Google Maps.')) return;
     this.isSaving = true;
-    this.http.put(`${this.api}/admin/home-locations/${this.selectedHome.ID}`, this.homeForm, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.selectedHome = null; this.loadHomeLocations(); }, error: err => { this.isSaving = false; this.fail(err); } });
+    this.http.put(`${this.api}/admin/home-locations/${this.selectedHome.ID}`, this.homeForm, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.selectedHome = null; this.loadHomeLocations(); this.alert.success('Lokasi rumah disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan lokasi rumah', err.error?.error || 'Gagal menyimpan lokasi rumah'); } });
   }
 
   loadQuotas(): void {
@@ -127,9 +133,10 @@ export class AdminManagementComponent implements OnInit {
 
   editQuota(quota: any): void { this.quotaForm = { employee_id: quota.EmployeeID, tahun: quota.Tahun, jenis_cuti: quota.JenisCuti, sisa_kuota: quota.SisaKuota }; }
 
-  saveQuota(): void {
+  async saveQuota(): Promise<void> {
+    if (!await this.alert.confirm('Simpan kuota?', 'Perubahan kuota izin/cuti akan disimpan.')) return;
     this.isSaving = true;
-    this.http.put(`${this.api}/admin/leave-quotas/${this.quotaForm.employee_id}`, this.quotaForm, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.loadQuotaRows(); }, error: err => { this.isSaving = false; this.fail(err); } });
+    this.http.put(`${this.api}/admin/leave-quotas/${this.quotaForm.employee_id}`, this.quotaForm, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.loadQuotaRows(); this.alert.success('Kuota berhasil disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan kuota', err.error?.error || 'Gagal menyimpan kuota'); } });
   }
 
   private emptySchedule(): any { return { NamaShift: '', JamMulai: '09:00', JamSelesai: '17:00', ToleransiTerlambatMenit: 10, HariKerja: '1,2,3,4,5' }; }

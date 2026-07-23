@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { RouterLink } from '@angular/router';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 
@@ -25,7 +26,8 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private alert: AlertService
   ) {}
 
   ngOnInit(): void {
@@ -68,17 +70,17 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     });
   }
 
-  updateStatus(id: number, status: string): void {
-    if (!confirm(`Apakah Anda yakin ingin melakukan ${status} pengajuan ini?`)) return;
+  async updateStatus(id: number, status: string): Promise<void> {
+    if (!await this.alert.confirm('Konfirmasi pengajuan', `Apakah Anda yakin ingin melakukan ${status} pengajuan ini?`, 'Ya, proses')) return;
 
     const headers = this.getHeaders();
     this.http.put<any>(`${this.baseUrl}/${id}/approve`, { status }, { headers }).subscribe({
       next: (res) => {
-        alert(`Pengajuan berhasil di-${status.toLowerCase()}`);
+        this.alert.success(`Pengajuan berhasil di-${status.toLowerCase()}`);
         this.loadLeaveRequests(); // Reload
       },
       error: (err) => {
-        alert('Gagal update status: ' + (err.error?.error || 'Unknown error'));
+        this.alert.error('Gagal memperbarui status', err.error?.error || 'Unknown error');
       }
     });
   }

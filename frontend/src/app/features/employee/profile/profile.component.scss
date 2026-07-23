@@ -59,7 +59,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 10px rgba(31, 158, 100, 0.2);
+    box-shadow: 0 4px 10px rgba(47, 128, 237, 0.2);
   }
 
   .summary-details {
@@ -100,7 +100,7 @@
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(19, 110, 70, 0.05);
+    box-shadow: 0 4px 12px rgba(23, 105, 170, 0.05);
   }
 
   .detail-label {
@@ -184,9 +184,9 @@
   margin-bottom: 1.5rem;
   
   &-success {
-    background-color: #d1fae5;
-    color: #065f46;
-    border: 1px solid #10b981;
+    background-color: #DBEAFE;
+    color: #1E5AA8;
+    border: 1px solid #3B82F6;
   }
   
   &-danger {

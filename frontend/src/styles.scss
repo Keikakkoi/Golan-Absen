@@ -26,17 +26,17 @@ $frontend-theme: mat.define-theme((
   --mint-0: #EAF4FF;         /* Latar gradasi biru lembut (sidebar, topbar, kartu statistik) */
   --mint-1: #D7EBFF;         /* Latar hover, badge, area input */
   --mint-2: #B9DDF8;         /* Aksen gradasi biru lanjutan (panel login) */
-  --green: #1F9E64;          /* Tombol utama, status "hadir", indikator aktif */
-  --green-deep: #136E46;     /* Teks aksen, logo mark, hover state */
+  --green: #2F80ED;          /* Tombol utama, status "hadir", indikator aktif */
+  --green-deep: #1769AA;     /* Teks aksen, logo mark, hover state */
   --stamp: #C8672C;          /* Elemen stempel - titik warna kontras yang disengaja */
   --late: #D99A2B;           /* Status "terlambat" */
   --absent: #D15C50;         /* Status "alpha/tidak hadir" */
-  --text-dark: #14201A;      /* Teks utama */
-  --text-dark-lo: #5D6E64;   /* Teks sekunder/meta */
+  --text-dark: #172B3A;      /* Teks utama */
+  --text-dark-lo: #526F8C;   /* Teks sekunder/meta */
   
   /* Additional Admin & UI Tokens */
   --blue-dark: #1e293b;
-  --border-color: #E3F5EA;
+  --border-color: #D7EBFF;
   --info: #3b82f6;
 
   /* 15.3 TIPOGRAFI */
@@ -101,7 +101,7 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--mint-1);
   border-radius: 14px;
   padding: 24px;
-  box-shadow: 0 4px 16px rgba(19, 110, 70, 0.04);
+  box-shadow: 0 4px 16px rgba(23, 105, 170, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -110,7 +110,7 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--mint-1);
   border-radius: 14px;
   padding: 20px 24px;
-  box-shadow: 0 4px 16px rgba(19, 110, 70, 0.04);
+  box-shadow: 0 4px 16px rgba(23, 105, 170, 0.04);
 
   h4 {
     font-size: 0.875rem;
@@ -199,7 +199,7 @@ h1, h2, h3, h4, h5, h6 {
 
   &:hover {
     background-color: var(--green-deep);
-    box-shadow: 0 4px 12px rgba(31, 158, 100, 0.25);
+    box-shadow: 0 4px 12px rgba(47, 128, 237, 0.25);
   }
   
   &:disabled {
@@ -479,7 +479,7 @@ h1, h2, h3, h4, h5, h6 {
       outline: none;
       border-color: var(--green);
       background-color: white;
-      box-shadow: 0 0 0 3px rgba(31, 158, 100, 0.15);
+      box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.15);
     }
   }
 }
@@ -576,7 +576,7 @@ h1, h2, h3, h4, h5, h6 {
     background: linear-gradient(135deg, var(--green) 0%, var(--green-deep) 100%);
     color: white;
     border: 6px solid var(--mint-1);
-    box-shadow: 0 10px 30px rgba(31, 158, 100, 0.35);
+    box-shadow: 0 10px 30px rgba(47, 128, 237, 0.35);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -648,7 +648,7 @@ h1, h2, h3, h4, h5, h6 {
   display: none;
   position: fixed;
   inset: 0;
-  background-color: rgba(20, 32, 26, 0.5);
+  background-color: rgba(23, 43, 58, 0.5);
   backdrop-filter: blur(2px);
   z-index: 100;
 }
@@ -702,7 +702,7 @@ h1, h2, h3, h4, h5, h6 {
   background: #ffffff;
   border: 1px solid var(--mint-1);
   border-radius: 20px;
-  box-shadow: 0 18px 50px rgba(19, 110, 70, 0.11);
+  box-shadow: 0 18px 50px rgba(23, 105, 170, 0.11);
   text-align: center;
 
   .auth-brand {

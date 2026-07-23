@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 
 @Component({
@@ -25,7 +26,7 @@ export class OrganizationComponent implements OnInit {
   showPosModal = false;
   errorMessage = '';
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
 
   ngOnInit(): void {
     this.loadDepartments();
@@ -57,33 +58,37 @@ export class OrganizationComponent implements OnInit {
     this.showDeptModal = false;
   }
 
-  saveDepartment() {
+  async saveDepartment(): Promise<void> {
     if (!this.deptForm.NamaDepartemen.trim()) return;
+    const action = this.deptForm.ID ? 'mengubah departemen ini' : 'menyimpan departemen baru';
+    if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.errorMessage = '';
     if (this.deptForm.ID) {
       this.http.put(`http://localhost:8080/api/v1/admin/organization/departments/${this.deptForm.ID}`, this.deptForm, { headers: this.getHeaders() }).subscribe({
         next: () => {
           this.loadDepartments();
           this.closeDeptModal();
+          this.alert.success(this.deptForm.ID ? 'Departemen diperbarui' : 'Departemen disimpan');
         },
-        error: (err) => this.errorMessage = err.error?.error || 'Gagal menyimpan departemen.'
+        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menyimpan departemen.'; this.alert.error('Gagal menyimpan departemen', this.errorMessage); }
       });
     } else {
       this.http.post(`http://localhost:8080/api/v1/admin/organization/departments`, this.deptForm, { headers: this.getHeaders() }).subscribe({
         next: () => {
           this.loadDepartments();
           this.closeDeptModal();
+          this.alert.success('Departemen disimpan');
         },
-        error: (err) => this.errorMessage = err.error?.error || 'Gagal menyimpan departemen.'
+        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menyimpan departemen.'; this.alert.error('Gagal menyimpan departemen', this.errorMessage); }
       });
     }
   }
 
-  deleteDepartment(id: number) {
-    if (confirm('Yakin ingin menghapus departemen ini?')) {
+  async deleteDepartment(id: number): Promise<void> {
+    if (await this.alert.confirm('Hapus departemen?', 'Departemen ini akan dihapus dari sistem.', 'Ya, hapus')) {
       this.http.delete(`http://localhost:8080/api/v1/admin/organization/departments/${id}`, { headers: this.getHeaders() }).subscribe({
-        next: () => this.loadDepartments(),
-        error: (err) => this.errorMessage = err.error?.error || 'Gagal menghapus departemen.'
+        next: () => { this.loadDepartments(); this.alert.success('Departemen dihapus'); },
+        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menghapus departemen.'; this.alert.error('Gagal menghapus departemen', this.errorMessage); }
       });
     }
   }
@@ -109,33 +114,37 @@ export class OrganizationComponent implements OnInit {
     this.showPosModal = false;
   }
 
-  savePosition() {
+  async savePosition(): Promise<void> {
     if (!this.posForm.NamaJabatan.trim()) return;
+    const action = this.posForm.ID ? 'mengubah jabatan ini' : 'menyimpan jabatan baru';
+    if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.errorMessage = '';
     if (this.posForm.ID) {
       this.http.put(`http://localhost:8080/api/v1/admin/organization/positions/${this.posForm.ID}`, this.posForm, { headers: this.getHeaders() }).subscribe({
         next: () => {
           this.loadPositions();
           this.closePosModal();
+          this.alert.success(this.posForm.ID ? 'Jabatan diperbarui' : 'Jabatan disimpan');
         },
-        error: (err) => this.errorMessage = err.error?.error || 'Gagal menyimpan jabatan.'
+        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menyimpan jabatan.'; this.alert.error('Gagal menyimpan jabatan', this.errorMessage); }
       });
     } else {
       this.http.post(`http://localhost:8080/api/v1/admin/organization/positions`, this.posForm, { headers: this.getHeaders() }).subscribe({
         next: () => {
           this.loadPositions();
           this.closePosModal();
+          this.alert.success('Jabatan disimpan');
         },
-        error: (err) => this.errorMessage = err.error?.error || 'Gagal menyimpan jabatan.'
+        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menyimpan jabatan.'; this.alert.error('Gagal menyimpan jabatan', this.errorMessage); }
       });
     }
   }
 
-  deletePosition(id: number) {
-    if (confirm('Yakin ingin menghapus jabatan ini?')) {
+  async deletePosition(id: number): Promise<void> {
+    if (await this.alert.confirm('Hapus jabatan?', 'Jabatan ini akan dihapus dari sistem.', 'Ya, hapus')) {
       this.http.delete(`http://localhost:8080/api/v1/admin/organization/positions/${id}`, { headers: this.getHeaders() }).subscribe({
-        next: () => this.loadPositions(),
-        error: (err) => this.errorMessage = err.error?.error || 'Gagal menghapus jabatan.'
+        next: () => { this.loadPositions(); this.alert.success('Jabatan dihapus'); },
+        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menghapus jabatan.'; this.alert.error('Gagal menghapus jabatan', this.errorMessage); }
       });
     }
   }

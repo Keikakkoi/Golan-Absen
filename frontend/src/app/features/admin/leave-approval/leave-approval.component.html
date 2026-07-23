@@ -43,15 +43,15 @@
                   'status-hadir': req.Status === 'Approved',
                   'status-alpha': req.Status === 'Rejected'
                 }" style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;"
-                [style.background-color]="req.Status === 'Pending' ? '#fef3c7' : (req.Status === 'Approved' ? '#d1fae5' : '#fee2e2')"
-                [style.color]="req.Status === 'Pending' ? '#d97706' : (req.Status === 'Approved' ? '#059669' : '#dc2626')">
+                [style.background-color]="req.Status === 'Pending' ? '#fef3c7' : (req.Status === 'Approved' ? '#dbeafe' : '#fee2e2')"
+                [style.color]="req.Status === 'Pending' ? '#d97706' : (req.Status === 'Approved' ? '#2563eb' : '#dc2626')">
                   {{ req.Status }}
                 </span>
               </td>
               <td style="padding: 0.75rem;">
                 <button class="btn-sm btn-info" (click)="openDetail(req)" style="margin-right: .35rem;">Detail</button>
                 <div *ngIf="req.Status === 'Pending'" style="display: flex; gap: 0.5rem;">
-                  <button (click)="updateStatus(req.ID, 'Approved')" style="background-color: #10b981; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Setuju</button>
+                  <button (click)="updateStatus(req.ID, 'Approved')" style="background-color: #3b82f6; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Setuju</button>
                   <button (click)="updateStatus(req.ID, 'Rejected')" style="background-color: #ef4444; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Tolak</button>
                 </div>
                 <span *ngIf="req.Status !== 'Pending'" style="color: #9ca3af; font-size: 0.875rem;">Selesai</span>

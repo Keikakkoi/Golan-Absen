@@ -15,20 +15,22 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type EmployeeRequest struct {
-	Nama             string      `json:"nama"`
-	Email            string      `json:"email"`
-	Password         string      `json:"password"`
-	Role             models.Role `json:"role"`
-	Status           string      `json:"status"`
-	NIK              string      `json:"nik"`
-	DepartmentID     uint        `json:"department_id"`
-	PositionID       uint        `json:"position_id"`
-	TanggalBergabung string      `json:"tanggal_bergabung"` // YYYY-MM-DD
-	HomeLatitude     float64     `json:"home_latitude"`
-	HomeLongitude    float64     `json:"home_longitude"`
+	Nama              string      `json:"nama"`
+	Email             string      `json:"email"`
+	Password          string      `json:"password"`
+	Role              models.Role `json:"role"`
+	Status            string      `json:"status"`
+	NIK               string      `json:"nik"`
+	DepartmentID      uint        `json:"department_id"`
+	PositionID        uint        `json:"position_id"`
+	TanggalBergabung  string      `json:"tanggal_bergabung"` // YYYY-MM-DD
+	HomeLatitude      float64     `json:"home_latitude"`
+	HomeLongitude     float64     `json:"home_longitude"`
+	HomeGoogleMapsURL string      `json:"home_google_maps_url"`
 }
 
 func SetupEmployeeRoutes(router fiber.Router) {
@@ -147,6 +149,9 @@ func CreateEmployee(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
+	if err := resolveEmployeeHomeLocation(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -184,6 +189,12 @@ func CreateEmployee(c *fiber.Ctx) error {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create employee"})
 	}
+	if hasHomeLocation(req.HomeLatitude, req.HomeLongitude) {
+		if err := saveEmployeeHomeLocation(tx, employee.ID, req.HomeLatitude, req.HomeLongitude, req.HomeGoogleMapsURL); err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save employee home location"})
+		}
+	}
 
 	if err := tx.Commit().Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to commit transaction"})
@@ -207,6 +218,9 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	var req EmployeeRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+	if err := resolveEmployeeHomeLocation(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	tx := config.DB.Begin()
@@ -245,6 +259,12 @@ func UpdateEmployee(c *fiber.Ctx) error {
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update employee"})
 		}
+		if hasHomeLocation(req.HomeLatitude, req.HomeLongitude) {
+			if err := saveEmployeeHomeLocation(tx, user.Employee.ID, req.HomeLatitude, req.HomeLongitude, req.HomeGoogleMapsURL); err != nil {
+				tx.Rollback()
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save employee home location"})
+			}
+		}
 	} else if req.NIK != "" {
 		// Create employee if it doesn't exist but NIK is provided
 		tglGabung, _ := time.Parse("2006-01-02", req.TanggalBergabung)
@@ -261,6 +281,12 @@ func UpdateEmployee(c *fiber.Ctx) error {
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create employee details"})
 		}
+		if hasHomeLocation(req.HomeLatitude, req.HomeLongitude) {
+			if err := saveEmployeeHomeLocation(tx, newEmp.ID, req.HomeLatitude, req.HomeLongitude, req.HomeGoogleMapsURL); err != nil {
+				tx.Rollback()
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save employee home location"})
+			}
+		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -271,6 +297,38 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	utils.LogAction(hrdID, "UPDATE", "Employee", user.ID, "Admin updated employee profile: "+user.Email)
 
 	return c.JSON(user)
+}
+
+func resolveEmployeeHomeLocation(req *EmployeeRequest) error {
+	req.HomeGoogleMapsURL = strings.TrimSpace(req.HomeGoogleMapsURL)
+	if req.HomeGoogleMapsURL == "" {
+		return nil
+	}
+	lat, lng, err := utils.ResolveGoogleMapsLocationURL(req.HomeGoogleMapsURL)
+	if err != nil {
+		return err
+	}
+	req.HomeLatitude = lat
+	req.HomeLongitude = lng
+	return nil
+}
+
+func hasHomeLocation(latitude, longitude float64) bool {
+	return latitude != 0 && longitude != 0
+}
+
+func saveEmployeeHomeLocation(tx *gorm.DB, employeeID uint, latitude, longitude float64, googleMapsURL string) error {
+	var location models.EmployeeHomeLocation
+	if err := tx.Where("employee_id = ?", employeeID).First(&location).Error; err != nil {
+		location = models.EmployeeHomeLocation{EmployeeID: employeeID, RadiusMeter: 100}
+	}
+	location.LatitudeRumah = latitude
+	location.LongitudeRumah = longitude
+	location.GoogleMapsURL = googleMapsURL
+	if location.RadiusMeter <= 0 {
+		location.RadiusMeter = 100
+	}
+	return tx.Save(&location).Error
 }
 
 func DeleteEmployee(c *fiber.Ctx) error {

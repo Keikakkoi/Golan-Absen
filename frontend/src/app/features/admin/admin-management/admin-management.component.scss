@@ -14,3 +14,8 @@
 .modal-content label { color: #475569; font-weight: 600; }
 .modal-content label .golan-input { display: block; width: 100%; margin-top: .3rem; }
 @media (max-width: 700px) { .toolbar { align-items: stretch; flex-direction: column; } }
+.form-help {
+  margin: 6px 0 12px;
+  color: #64748b;
+  font-size: 0.8rem;
+}

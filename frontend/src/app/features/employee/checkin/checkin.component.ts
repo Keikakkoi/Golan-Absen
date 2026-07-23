@@ -2,6 +2,7 @@ import { Component, ElementRef, OnInit, ViewChild, OnDestroy, AfterViewInit } fr
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AttendanceService } from '../../../core/services/attendance.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import * as L from 'leaflet';
@@ -9,7 +10,7 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 
 const greenPinSvg = `
   <svg width="30" height="42" viewBox="0 0 30 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M15 0C6.71573 0 0 6.71573 0 15C0 26.25 15 42 15 42C15 42 30 26.25 30 15C30 6.71573 23.2843 0 15 0ZM15 20.5C11.9624 20.5 9.5 18.0376 9.5 15C9.5 11.9624 11.9624 9.5 15 9.5C18.0376 9.5 20.5 11.9624 20.5 15C20.5 18.0376 18.0376 20.5 15 20.5Z" fill="#1F9E64"/>
+    <path d="M15 0C6.71573 0 0 6.71573 0 15C0 26.25 15 42 15 42C15 42 30 26.25 30 15C30 6.71573 23.2843 0 15 0ZM15 20.5C11.9624 20.5 9.5 18.0376 9.5 15C9.5 11.9624 11.9624 9.5 15 9.5C18.0376 9.5 20.5 11.9624 20.5 15C20.5 18.0376 18.0376 20.5 15 20.5Z" fill="#2F80ED"/>
   </svg>
 `;
 const redPinSvg = `
@@ -95,6 +96,9 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   hasCheckedIn: boolean = false;
   hasCheckedOut: boolean = false;
   isCheckoutPage = false;
+  canPunchBySchedule = false;
+  attendanceClosed = false;
+  scheduleMessage = '';
 
   // PRD 15 Clock & Confirmation Stamp variables
   currentTime = new Date();
@@ -106,7 +110,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private attendanceService: AttendanceService,
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    private alert: AlertService
   ) {}
 
   ngOnInit(): void {
@@ -117,11 +122,13 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadOfficeInfo();
     this.clockInterval = setInterval(() => {
       this.currentTime = new Date();
+      this.updateAttendanceWindow();
     }, 1000);
+    this.updateAttendanceWindow();
   }
 
   ngAfterViewInit(): void {
-    if (!this.hasCheckedOut) {
+    if (!this.hasCheckedOut && !this.attendanceClosed) {
       this.initMap();
       this.startLocationTracking();
       this.startCamera();
@@ -131,8 +138,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   private checkTodayAttendance(): void {
     this.attendanceService.getHistory().subscribe({
       next: (records) => {
-        const now = new Date();
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const todayStr = this.getAttendanceDateKey(new Date());
         const todayRecord = records.find(r => r.Tanggal.startsWith(todayStr));
         if (todayRecord) {
           this.todayRecord = todayRecord;
@@ -142,9 +148,50 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
             this.tipeKerja = todayRecord.TipeKerja;
           }
         }
+        this.updateAttendanceWindow();
       },
       error: (err) => console.error('Failed to load attendance history', err)
     });
+  }
+
+  private getAttendanceDateKey(now: Date): string {
+    const date = new Date(now);
+    if (date.getHours() < 7) date.setDate(date.getDate() - 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  private updateAttendanceWindow(): void {
+    const seconds = this.currentTime.getHours() * 3600 + this.currentTime.getMinutes() * 60 + this.currentTime.getSeconds();
+    const resetTime = 7 * 3600;
+    const checkoutTime = 17 * 3600;
+    const closeTime = 18 * 3600;
+
+    if (seconds < resetTime) {
+      this.canPunchBySchedule = false;
+      this.attendanceClosed = false;
+      this.scheduleMessage = 'Absensi hari ini dibuka pukul 07:00.';
+      return;
+    }
+
+    if (seconds > closeTime) {
+      this.canPunchBySchedule = false;
+      if (this.hasCheckedIn && !this.hasCheckedOut) this.hasCheckedOut = true;
+      this.attendanceClosed = !this.hasCheckedOut;
+      this.scheduleMessage = 'Batas absensi pukul 18:00 telah lewat. Check-out otomatis diterapkan.';
+      return;
+    }
+
+    this.attendanceClosed = false;
+    if (this.hasCheckedIn && !this.hasCheckedOut) {
+      this.canPunchBySchedule = seconds >= checkoutTime;
+      this.scheduleMessage = this.canPunchBySchedule ? '' : 'Check-out dapat dilakukan mulai pukul 17:00.';
+    } else if (!this.hasCheckedIn) {
+      this.canPunchBySchedule = !this.isCheckoutPage;
+      this.scheduleMessage = this.isCheckoutPage ? 'Belum ada check-in untuk hari ini.' : '';
+    } else {
+      this.canPunchBySchedule = false;
+      this.scheduleMessage = '';
+    }
   }
 
   private loadEmployeeProfile(): void {
@@ -228,8 +275,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.circle = L.circle([this.officeLat, this.officeLng], {
-      color: '#136E46',
-      fillColor: '#1F9E64',
+      color: '#1769AA',
+      fillColor: '#2F80ED',
       fillOpacity: 0.15,
       weight: 2,
       radius: this.radius
@@ -426,9 +473,11 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     this.capturedBlob = null;
   }
 
-  triggerPunch(): void {
-    if (!this.isGpsActive || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
+  async triggerPunch(): Promise<void> {
+    if (!this.canPunchBySchedule || !this.isGpsActive || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
     if (this.isCheckoutPage && !this.hasCheckedIn) return;
+    const isCheckout = this.hasCheckedIn;
+    if (!await this.alert.confirm(isCheckout ? 'Konfirmasi check-out' : 'Konfirmasi check-in', isCheckout ? 'Simpan waktu check-out sekarang?' : 'Simpan absensi check-in sekarang?', isCheckout ? 'Ya, check-out' : 'Ya, check-in')) return;
     if (!this.hasCheckedIn) {
       this.submitCheckin();
     } else {
@@ -463,7 +512,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       error: (err) => {
         this.isSubmitting = false;
         this.showStampModal = false;
-        alert('Check-in gagal: ' + (err.error?.error || 'Kesalahan sistem'));
+        this.alert.error('Check-in gagal', err.error?.error || 'Kesalahan sistem');
       }
     });
   }
@@ -494,7 +543,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       error: (err) => {
         this.isSubmitting = false;
         this.showStampModal = false;
-        alert('Check-out gagal: ' + (err.error?.error || 'Kesalahan sistem'));
+        this.alert.error('Check-out gagal', err.error?.error || 'Kesalahan sistem');
       }
     });
   }

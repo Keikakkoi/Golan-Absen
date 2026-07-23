@@ -129,15 +129,10 @@
           <input type="date" [(ngModel)]="formData.tanggal_bergabung" name="tanggal_bergabung" required class="form-control" />
         </div>
 
-        <div class="form-group-row">
-          <div class="form-group">
-            <label>Geofence Rumah (Latitude) - Untuk WFH</label>
-            <input type="number" step="any" [(ngModel)]="formData.home_latitude" name="home_latitude" class="form-control" placeholder="-6.12345" />
-          </div>
-          <div class="form-group">
-            <label>Geofence Rumah (Longitude) - Untuk WFH</label>
-            <input type="number" step="any" [(ngModel)]="formData.home_longitude" name="home_longitude" class="form-control" placeholder="106.12345" />
-          </div>
+        <div class="form-group">
+          <label>Link Google Maps Rumah - Untuk WFH</label>
+          <input type="url" [(ngModel)]="formData.home_google_maps_url" name="home_google_maps_url" class="form-control" placeholder="https://maps.app.goo.gl/..." />
+          <small class="form-help">Buka lokasi rumah di Google Maps, pilih Bagikan, lalu tempel link-nya di sini. Koordinat akan diambil otomatis.</small>
         </div>
 
         <div class="modal-footer">

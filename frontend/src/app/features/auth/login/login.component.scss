@@ -34,7 +34,7 @@
     inset: -18%;
     opacity: 0.42;
     background-image:
-      radial-gradient(circle, rgba(31, 158, 100, 0.18) 1px, transparent 1.5px),
+      radial-gradient(circle, rgba(47, 128, 237, 0.18) 1px, transparent 1.5px),
       linear-gradient(120deg, transparent 0 42%, rgba(59, 130, 246, 0.08) 42.2% 42.5%, transparent 42.7% 100%);
     background-size: 26px 26px, 180px 180px;
     transform: rotate(-7deg);
@@ -327,7 +327,7 @@
         outline: none;
         border-color: var(--green);
         background-color: white;
-        box-shadow: 0 0 0 3px rgba(31, 158, 100, 0.15);
+        box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.15);
       }
 
       &.is-invalid {

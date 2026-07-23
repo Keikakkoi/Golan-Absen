@@ -11,7 +11,7 @@
         <h4>Total Karyawan</h4>
         <div class="value">{{ stats.total_karyawan }} <span class="unit">Orang</span></div>
       </div>
-      <div class="golan-card stat-card" style="border-left: 4px solid #10b981;">
+      <div class="golan-card stat-card" style="border-left: 4px solid #3b82f6;">
         <h4>Hadir Hari Ini</h4>
         <div class="value">{{ stats.hadir_hari_ini }} <span class="unit">Orang</span></div>
       </div>
@@ -70,7 +70,7 @@
           <button class="btn-primary" (click)="exportCSV()" style="background-color: #4b5563; border: none; color: white; display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer;">
             📥 Export CSV
           </button>
-          <button class="btn-primary" (click)="exportExcel()" style="background-color: #10b981; border: none; color: white; display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer;">
+          <button class="btn-primary" (click)="exportExcel()" style="background-color: #3b82f6; border: none; color: white; display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer;">
             🟢 Export Excel
           </button>
           <button class="btn-primary" (click)="exportPDF()" style="background-color: #ef4444; border: none; color: white; display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer;">
@@ -106,8 +106,8 @@
                   'status-terlambat': req.Status === 'Terlambat',
                   'status-alpha': req.Status === 'Alpha' || req.Status === 'Izin' || req.Status === 'Cuti'
                 }" style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;"
-                [style.background-color]="req.Status === 'Hadir' ? '#d1fae5' : (req.Status === 'Terlambat' ? '#fef3c7' : '#fee2e2')"
-                [style.color]="req.Status === 'Hadir' ? '#059669' : (req.Status === 'Terlambat' ? '#d97706' : '#dc2626')">
+                [style.background-color]="req.Status === 'Hadir' ? '#dbeafe' : (req.Status === 'Terlambat' ? '#fef3c7' : '#fee2e2')"
+                [style.color]="req.Status === 'Hadir' ? '#2563eb' : (req.Status === 'Terlambat' ? '#d97706' : '#dc2626')">
                   {{ req.Status }}
                 </span>
               </td>

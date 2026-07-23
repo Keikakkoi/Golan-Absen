@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { RouterLink } from '@angular/router';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 
@@ -37,7 +38,8 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private alert: AlertService
   ) {}
 
   openDetail(leave: any): void {
@@ -93,7 +95,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     }
   }
 
-  submitRequest(): void {
+  async submitRequest(): Promise<void> {
     if (!this.formData.tanggal_mulai || !this.formData.tanggal_selesai || !this.formData.alasan.trim()) {
       this.errorMessage = 'Jenis, tanggal, dan alasan pengajuan wajib diisi.';
       return;
@@ -102,6 +104,8 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
       this.errorMessage = 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.';
       return;
     }
+
+    if (!await this.alert.confirm('Kirim pengajuan izin?', 'Pengajuan akan dikirim ke HRD untuk diproses.')) return;
 
     this.isSubmitting = true;
     this.errorMessage = '';
@@ -124,10 +128,12 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
         this.isSubmitting = false;
         this.resetForm();
         this.loadMyLeaves(); // Reload table
+        this.alert.success('Pengajuan izin berhasil dikirim');
       },
       error: (err) => {
         this.errorMessage = err.error?.error || 'Gagal mengirim pengajuan';
         this.isSubmitting = false;
+        this.alert.error('Gagal mengirim pengajuan', this.errorMessage);
       }
     });
   }

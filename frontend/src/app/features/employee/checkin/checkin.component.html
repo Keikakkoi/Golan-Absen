@@ -8,6 +8,7 @@
         <h2 *ngIf="!hasCheckedIn && !isCheckoutPage">Check-in Harian</h2>
         <h2 *ngIf="!hasCheckedIn && isCheckoutPage">Check-out Harian</h2>
         <h2 *ngIf="hasCheckedIn && !hasCheckedOut">Check-out Harian</h2>
+        <h2 *ngIf="attendanceClosed && !hasCheckedOut">Absensi Ditutup</h2>
         <h2 *ngIf="hasCheckedOut">Absensi Selesai</h2>
         <p class="subtitle text-dark-lo">Silakan verifikasi lokasi dan bukti foto Anda untuk memulai absensi.</p>
       </div>
@@ -18,14 +19,14 @@
           <button 
             class="punch-btn-large" 
             [class.checkout-mode]="hasCheckedIn"
-            [disabled]="!isGpsActive || !isLocationValid || !capturedBlob || isSubmitting || (isCheckoutPage && !hasCheckedIn)"
+            [disabled]="!canPunchBySchedule || !isGpsActive || !isLocationValid || !capturedBlob || isSubmitting || attendanceClosed || (isCheckoutPage && !hasCheckedIn)"
             (click)="triggerPunch()">
             <span class="punch-title">{{ hasCheckedIn ? 'PUNCH OUT' : (isCheckoutPage ? 'PUNCH OUT' : 'PUNCH IN') }}</span>
             <span class="punch-time">{{ currentTime | date:'HH:mm:ss' }}</span>
           </button>
         </div>
         <p class="punch-instructions text-center" [class.text-green]="isGpsActive && isLocationValid" [class.text-absent]="!isGpsActive || !isLocationValid">
-          {{ (!hasCheckedIn && isCheckoutPage) ? 'Belum ada check-in hari ini.' : ((isGpsActive && isLocationValid && capturedBlob) ? 'Klik tombol di atas untuk melakukan absensi' : (locationError || (!capturedBlob ? 'Ambil foto selfie sebagai bukti absensi.' : 'Aktifkan GPS & pastikan berada di radius absensi.'))) }}
+          {{ scheduleMessage || ((!hasCheckedIn && isCheckoutPage) ? 'Belum ada check-in hari ini.' : ((isGpsActive && isLocationValid && capturedBlob) ? 'Klik tombol di atas untuk melakukan absensi' : (locationError || (!capturedBlob ? 'Ambil foto selfie sebagai bukti absensi.' : 'Aktifkan GPS & pastikan berada di radius absensi.')))) }}
         </p>
       </div>
 
@@ -84,6 +85,12 @@
         </div>
         <h3 class="mt-4">Terima Kasih!</h3>
         <p class="text-dark-lo">Anda sudah menyelesaikan seluruh kewajiban absensi untuk hari ini.</p>
+        <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>
+      </div>
+
+      <div class="golan-card completed-card" *ngIf="attendanceClosed && !hasCheckedOut">
+        <h3 class="mt-4">Absensi Hari Ini Ditutup</h3>
+        <p class="text-dark-lo">Batas check-in/check-out hari ini sudah berakhir. Absensi berikutnya dapat dimulai kembali pukul 07:00.</p>
         <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>
       </div>
     </div>

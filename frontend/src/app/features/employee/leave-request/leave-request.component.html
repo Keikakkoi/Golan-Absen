@@ -9,7 +9,7 @@
   <div class="content-grid" style="grid-template-columns: 1fr;">
     <div class="golan-card">
       <h3>Buat Pengajuan Baru</h3>
-      <div *ngIf="successMessage" class="alert alert-success" style="color: green; margin-bottom: 1rem;">{{ successMessage }}</div>
+            <div *ngIf="successMessage" class="alert alert-success" style="color: #2F80ED; margin-bottom: 1rem;">{{ successMessage }}</div>
       <div *ngIf="errorMessage" class="alert alert-danger" style="color: red; margin-bottom: 1rem;">{{ errorMessage }}</div>
       
       <form (ngSubmit)="submitRequest()">
@@ -42,7 +42,7 @@
           <input type="file" (change)="onFileSelected($event)" accept="image/*,.pdf" />
         </div>
 
-        <button type="submit" class="btn-primary" [disabled]="isSubmitting" style="background-color: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                <button type="submit" class="btn-primary" [disabled]="isSubmitting" style="background-color: #2F80ED; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
           {{ isSubmitting ? 'Mengirim...' : 'Kirim Pengajuan' }}
         </button>
       </form>

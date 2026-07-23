@@ -284,7 +284,7 @@ export class AdminReportsComponent implements OnInit {
           td { border: 1px solid #cbd5e1; padding: 10px; font-size: 11px; }
           tr:nth-child(even) { background-color: #f8fafc; }
           .status-badge { padding: 3px 8px; border-radius: 9999px; font-size: 10px; font-weight: 500; display: inline-block; }
-          .status-hadir { background-color: #d1fae5; color: #065f46; }
+          .status-hadir { background-color: #dbeafe; color: #1e5aa8; }
           .status-terlambat { background-color: #fef3c7; color: #92400e; }
           .status-alpha { background-color: #fee2e2; color: #991b1b; }
           .status-izin { background-color: #e0f2fe; color: #075985; }

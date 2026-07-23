@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { FormsModule } from '@angular/forms';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 
@@ -37,6 +38,7 @@ export class EmployeeListComponent implements OnInit {
     ScheduleID: null,
     HomeLatitude: null,
     HomeLongitude: null,
+      HomeGoogleMapsURL: '',
     SisaCuti: 12,
     User: {
       ID: null,
@@ -51,7 +53,8 @@ export class EmployeeListComponent implements OnInit {
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private alert: AlertService
   ) {}
 
   ngOnInit(): void {
@@ -75,22 +78,23 @@ export class EmployeeListComponent implements OnInit {
       });
   }
 
-  importEmployees(): void {
+  async importEmployees(): Promise<void> {
     if (!this.selectedImportFile) {
-      alert('Pilih file CSV terlebih dahulu.');
+      this.alert.info('File belum dipilih', 'Pilih file CSV terlebih dahulu.');
       return;
     }
+    if (!await this.alert.confirm('Import data karyawan?', 'Data dari file CSV akan ditambahkan ke sistem.')) return;
     const body = new FormData();
     body.append('file', this.selectedImportFile);
     this.http.post<any>(`${this.baseUrl}/import`, body, { headers: this.getHeaders() })
       .subscribe({
         next: (res) => {
-          alert(`${res.message}. Berhasil: ${res.imported}. Gagal: ${(res.errors || []).length}`);
+          this.alert.success('Import selesai', `Berhasil: ${res.imported}. Gagal: ${(res.errors || []).length}`);
           this.selectedImportFile = null;
           this.loadEmployees();
         },
         error: (err) => {
-          alert('Gagal import: ' + (err.error?.error || 'Unknown error'));
+          this.alert.error('Import gagal', err.error?.error || 'Unknown error');
         }
       });
   }
@@ -120,7 +124,8 @@ export class EmployeeListComponent implements OnInit {
       position_id: emp.Employee?.PositionID,
       tanggal_bergabung: emp.Employee?.TanggalBergabung ? emp.Employee.TanggalBergabung.split('T')[0] : '',
       home_latitude: emp.Employee?.HomeLatitude,
-      home_longitude: emp.Employee?.HomeLongitude
+      home_longitude: emp.Employee?.HomeLongitude,
+      home_google_maps_url: emp.Employee?.HomeLocation?.GoogleMapsURL || ''
     };
     this.isModalOpen = true;
   }
@@ -139,7 +144,9 @@ export class EmployeeListComponent implements OnInit {
     this.isModalOpen = false;
   }
 
-  saveEmployee(): void {
+  async saveEmployee(): Promise<void> {
+    const action = this.isEditMode ? 'mengubah data karyawan ini' : 'menyimpan karyawan baru';
+    if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.isSaving = true;
     const headers = this.getHeaders();
     
@@ -150,9 +157,10 @@ export class EmployeeListComponent implements OnInit {
             this.isSaving = false;
             this.closeModal();
             this.loadEmployees();
+            this.alert.success('Data karyawan diperbarui');
           },
           error: (err) => {
-            alert('Gagal update: ' + (err.error?.error || 'Unknown error'));
+            this.alert.error('Gagal memperbarui data', err.error?.error || 'Unknown error');
             this.isSaving = false;
           }
         });
@@ -163,26 +171,28 @@ export class EmployeeListComponent implements OnInit {
             this.isSaving = false;
             this.closeModal();
             this.loadEmployees();
+            this.alert.success('Karyawan berhasil disimpan');
           },
           error: (err) => {
-            alert('Gagal simpan: ' + (err.error?.error || 'Unknown error'));
+            this.alert.error('Gagal menyimpan karyawan', err.error?.error || 'Unknown error');
             this.isSaving = false;
           }
         });
     }
   }
 
-  deleteEmployee(id: number): void {
-    if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
+  async deleteEmployee(id: number): Promise<void> {
+    if (!await this.alert.confirm('Hapus data karyawan?', 'Data karyawan yang dihapus tidak dapat dipulihkan.', 'Ya, hapus')) return;
 
     const headers = this.getHeaders();
     this.http.delete<any>(`${this.baseUrl}/${id}`, { headers })
       .subscribe({
         next: () => {
           this.loadEmployees();
+          this.alert.success('Data karyawan dihapus');
         },
         error: (err) => {
-          alert('Gagal hapus: ' + (err.error?.error || 'Unknown error'));
+          this.alert.error('Gagal menghapus data', err.error?.error || 'Unknown error');
         }
       });
   }
@@ -200,7 +210,8 @@ export class EmployeeListComponent implements OnInit {
       position_id: 1,
       tanggal_bergabung: '',
       home_latitude: 0,
-      home_longitude: 0
+      home_longitude: 0,
+      home_google_maps_url: ''
     };
   }
 

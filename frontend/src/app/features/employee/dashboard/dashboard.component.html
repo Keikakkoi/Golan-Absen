@@ -45,6 +45,9 @@
           Masuk: {{ stats.today_check_in }}
           <span *ngIf="stats.today_check_out"><br>Pulang: {{ stats.today_check_out }}</span>
         </div>
+        <div style="font-size: 0.8rem; color: var(--text-dark-lo); margin-top: 8px;" *ngIf="stats.attendance_message">
+          {{ stats.attendance_message }}
+        </div>
       </div>
       <div class="golan-card stat-card">
         <h4>Kehadiran Bulan Ini</h4>
@@ -61,8 +64,8 @@
     </div>
 
     <div class="quick-actions">
-      <button class="btn-primary" routerLink="/employee/checkin" *ngIf="stats.today_status === 'Belum Absen'">Mulai Check-in Harian</button>
-      <button class="btn-primary" style="background-color: var(--stamp);" routerLink="/employee/checkout" *ngIf="stats.today_status === 'Hadir' || stats.today_status === 'Terlambat'">Mulai Check-out Harian</button>
+      <button class="btn-primary" routerLink="/employee/checkin" *ngIf="stats.can_check_in">Mulai Check-in Harian</button>
+      <button class="btn-primary" style="background-color: var(--stamp);" routerLink="/employee/checkout" *ngIf="stats.can_check_out">Mulai Check-out Harian</button>
       <button class="btn-primary" style="background-color: var(--text-dark-lo);" routerLink="/employee/history" *ngIf="stats.today_status === 'Sudah Check-out'">Absensi Hari Ini Selesai</button>
     </div>
   </div>

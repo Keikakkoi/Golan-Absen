@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { RouterLink } from '@angular/router';
 import * as L from 'leaflet';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
@@ -41,7 +42,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private homeCircle!: L.Circle;
   private homeMarker!: L.Marker;
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
 
   ngOnInit(): void {
     this.loadProfile();
@@ -147,9 +148,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  updateProfile(): void {
+  async updateProfile(): Promise<void> {
     this.successMessage = '';
     this.errorMessage = '';
+
+    if (!await this.alert.confirm('Simpan perubahan profil?', 'Nama profil akan diperbarui.')) return;
 
     this.isSubmitting = true;
 
@@ -166,15 +169,17 @@ export class ProfileComponent implements OnInit, OnDestroy {
         localStorage.setItem('name', payload.nama);
         this.profileData.Nama = payload.nama;
         this.isSubmitting = false;
+        this.alert.success('Profil berhasil diperbarui');
       },
       error: (err) => {
         this.errorMessage = err.error?.error || 'Gagal memperbarui profil.';
         this.isSubmitting = false;
+        this.alert.error('Gagal memperbarui profil', this.errorMessage);
       }
     });
   }
 
-  updatePassword(): void {
+  async updatePassword(): Promise<void> {
     this.successMessage = '';
     this.errorMessage = '';
 
@@ -187,6 +192,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
       this.errorMessage = 'Password baru dan konfirmasi tidak cocok.';
       return;
     }
+
+    if (!await this.alert.confirm('Ubah password?', 'Anda akan menyimpan password baru untuk akun ini.')) return;
 
     this.isSubmitting = true;
 
@@ -206,17 +213,21 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.updateForm.password = '';
         this.updateForm.confirm_password = '';
         this.isSubmitting = false;
+        this.alert.success('Password berhasil diubah');
       },
       error: (err) => {
         this.errorMessage = err.error?.error || 'Gagal mengubah password. Pastikan password lama benar.';
         this.isSubmitting = false;
+        this.alert.error('Gagal mengubah password', this.errorMessage);
       }
     });
   }
 
-  savePreferences(): void {
+  async savePreferences(): Promise<void> {
     this.successMessage = '';
     this.errorMessage = '';
+
+    if (!await this.alert.confirm('Simpan preferensi?', 'Pengaturan tampilan dan notifikasi akan diperbarui.')) return;
     
     // Save theme local preference
     if (this.preferences.darkMode) {
@@ -230,5 +241,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
     localStorage.setItem('employee_preferences', JSON.stringify(this.preferences));
     
     this.successMessage = 'Pengaturan preferensi berhasil disimpan.';
+    this.alert.success('Preferensi berhasil disimpan');
   }
 }

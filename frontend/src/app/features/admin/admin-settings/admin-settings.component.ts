@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { FormsModule } from '@angular/forms';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 
@@ -32,7 +33,7 @@ export class AdminSettingsComponent implements OnInit {
 
   private baseUrl = 'http://localhost:8080/api/v1/admin';
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
 
   ngOnInit(): void {
     this.loadOffice();
@@ -68,7 +69,8 @@ export class AdminSettingsComponent implements OnInit {
     });
   }
 
-  saveOffice(): void {
+  async saveOffice(): Promise<void> {
+    if (!await this.alert.confirm('Simpan lokasi kantor?', 'Pengaturan geofence kantor akan diperbarui.')) return;
     this.isSavingOffice = true;
     this.office.Latitude = Number(this.office.Latitude);
     this.office.Longitude = Number(this.office.Longitude);
@@ -76,17 +78,18 @@ export class AdminSettingsComponent implements OnInit {
 
     this.http.put(`${this.baseUrl}/settings/office`, this.office, { headers: this.getHeaders() }).subscribe({
       next: () => {
-        alert('Pengaturan Lokasi Kantor berhasil disimpan!');
+        this.alert.success('Lokasi kantor berhasil disimpan');
         this.isSavingOffice = false;
       },
       error: (err) => {
-        alert(err.error?.error || 'Gagal menyimpan');
+        this.alert.error('Gagal menyimpan lokasi kantor', err.error?.error || 'Gagal menyimpan');
         this.isSavingOffice = false;
       }
     });
   }
 
-  saveSchedule(): void {
+  async saveSchedule(): Promise<void> {
+    if (!await this.alert.confirm('Simpan pengaturan jam kerja?', 'Perubahan jadwal kerja akan diterapkan ke sistem.')) return;
     this.isSavingSchedule = true;
     const body = {
       ...this.schedule,
@@ -97,11 +100,11 @@ export class AdminSettingsComponent implements OnInit {
 
     this.http.put(`${this.baseUrl}/settings/schedule`, body, { headers: this.getHeaders() }).subscribe({
       next: () => {
-        alert('Pengaturan Jam Kerja berhasil disimpan!');
+        this.alert.success('Pengaturan jam kerja disimpan');
         this.isSavingSchedule = false;
       },
       error: (err) => {
-        alert(err.error?.error || 'Gagal menyimpan');
+        this.alert.error('Gagal menyimpan jam kerja', err.error?.error || 'Gagal menyimpan');
         this.isSavingSchedule = false;
       }
     });
@@ -131,35 +134,39 @@ export class AdminSettingsComponent implements OnInit {
     this.showHolidayModal = false;
   }
 
-  saveHoliday() {
+  async saveHoliday(): Promise<void> {
     // Make sure we parse the date properly to save
     const tglParsed = new Date(this.holidayForm.tanggal).toISOString();
     const payload = { ID: this.holidayForm.id, tanggal: tglParsed, keterangan: this.holidayForm.keterangan };
+    const wasEdit = !!this.holidayForm.id;
+    if (!await this.alert.confirm('Simpan hari libur?', `Apakah Anda yakin ingin ${wasEdit ? 'mengubah' : 'menambahkan'} hari libur ini?`)) return;
 
     if (this.holidayForm.id) {
       this.http.put(`${this.baseUrl}/holidays/${this.holidayForm.id}`, payload, { headers: this.getHeaders() }).subscribe({
       next: () => {
         this.loadHolidays();
         this.closeHolidayModal();
+        this.alert.success(wasEdit ? 'Hari libur diperbarui' : 'Hari libur disimpan');
         },
-        error: (err) => alert(err.error?.error || 'Gagal menyimpan hari libur')
+        error: (err) => this.alert.error('Gagal menyimpan hari libur', err.error?.error || 'Gagal menyimpan hari libur')
       });
     } else {
       this.http.post(`${this.baseUrl}/holidays`, payload, { headers: this.getHeaders() }).subscribe({
         next: () => {
           this.loadHolidays();
           this.closeHolidayModal();
+          this.alert.success('Hari libur disimpan');
         },
-        error: (err) => alert(err.error?.error || 'Gagal menyimpan hari libur')
+        error: (err) => this.alert.error('Gagal menyimpan hari libur', err.error?.error || 'Gagal menyimpan hari libur')
       });
     }
   }
 
-  deleteHoliday(id: number) {
-    if (confirm('Yakin ingin menghapus hari libur ini?')) {
+  async deleteHoliday(id: number): Promise<void> {
+    if (await this.alert.confirm('Hapus hari libur?', 'Hari libur ini akan dihapus dari sistem.', 'Ya, hapus')) {
       this.http.delete(`${this.baseUrl}/holidays/${id}`, { headers: this.getHeaders() }).subscribe({
-        next: () => this.loadHolidays(),
-        error: (err) => alert(err.error?.error || 'Gagal menghapus hari libur')
+        next: () => { this.loadHolidays(); this.alert.success('Hari libur dihapus'); },
+        error: (err) => this.alert.error('Gagal menghapus hari libur', err.error?.error || 'Gagal menghapus hari libur')
       });
     }
   }

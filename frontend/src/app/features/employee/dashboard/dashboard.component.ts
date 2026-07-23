@@ -21,7 +21,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     sisa_cuti: 0,
     today_status: 'Belum Absen',
     today_check_in: '',
-    today_check_out: ''
+    today_check_out: '',
+    can_check_in: false,
+    can_check_out: false,
+    attendance_message: ''
   };
 
   notifications: any[] = [];

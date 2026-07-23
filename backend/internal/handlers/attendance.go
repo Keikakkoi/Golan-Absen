@@ -6,6 +6,8 @@ import (
 	"mime/multipart"
 	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"absensi-golan-backend/config"
@@ -24,7 +26,19 @@ func SetupAttendanceRoutes(router fiber.Router) {
 	attendance.Post("/checkout", CheckOut)
 	attendance.Get("/history", GetAttendanceHistory)
 	attendance.Get("/office", GetOfficeInfo)
+	startAttendanceAutoCheckout()
 }
+
+const (
+	attendanceResetHour = 7
+	defaultStartTime    = "09:00:00"
+	defaultEndTime      = "17:00:00"
+	defaultGraceMinutes = 10
+)
+
+var autoCheckoutOnce sync.Once
+
+var jakartaLocation = time.FixedZone("Asia/Jakarta", 7*60*60)
 
 func CheckIn(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
@@ -32,6 +46,26 @@ func CheckIn(c *fiber.Ctx) error {
 	var employee models.Employee
 	if err := config.DB.Where("user_id = ?", userID).First(&employee).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee profile not found"})
+	}
+
+	now := attendanceNow()
+	schedule := getAttendanceSchedule()
+	workDate, _, lateTime, endTime, checkoutDeadline := attendanceWindow(now, schedule)
+	resetAt := time.Date(now.Year(), now.Month(), now.Day(), attendanceResetHour, 0, 0, 0, jakartaLocation)
+	if now.Before(resetAt) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-in baru dapat dimulai pukul 07:00."})
+	}
+	if !now.Before(endTime) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas check-in hari ini adalah pukul " + endTime.Format("15:04") + "."})
+	}
+	_ = closeExpiredAttendanceRecords(now, schedule)
+	if now.After(checkoutDeadline) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Periode absensi hari ini sudah ditutup setelah pukul " + checkoutDeadline.Format("15:04") + "."})
+	}
+
+	var existingRecord models.AttendanceRecord
+	if err := config.DB.Where("employee_id = ? AND tanggal = ?", employee.ID, workDate.Format("2006-01-02")).First(&existingRecord).Error; err == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Anda sudah melakukan check-in 1 kali untuk hari ini."})
 	}
 
 	latStr := c.FormValue("latitude")
@@ -69,7 +103,7 @@ func CheckIn(c *fiber.Ctx) error {
 		// WFH accepts either the office radius or the employee's configured home radius.
 		officeDistance := utils.HaversineDistance(lat, lon, office.Latitude, office.Longitude)
 		officeValid := officeDistance <= office.RadiusMeter
-		homeConfigured := employee.HomeLatitude != 0 || employee.HomeLongitude != 0
+		homeConfigured := employee.HomeLatitude != 0 && employee.HomeLongitude != 0
 		homeDistance := 0.0
 		homeValid := false
 		if homeConfigured {
@@ -110,28 +144,17 @@ func CheckIn(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to upload image"})
 	}
 
-	// Determine Status (Hadir or Terlambat)
-	var schedule models.WorkSchedule
-	config.DB.First(&schedule) // Assuming 1 default schedule for now
-
-	now := time.Now()
+	// Determine Status (Hadir or Terlambat). Exactly at the grace limit is still on time.
 	nowStr := now.Format("15:04:05")
 
-	// Create parsed times for comparison, using today's date for accurate comparison
-	scheduleTimeStr := now.Format("2006-01-02") + " " + schedule.JamMulai
-	scheduleTime, _ := time.Parse("2006-01-02 15:04:05", scheduleTimeStr)
-
-	// Add tolerance
-	toleranceTime := scheduleTime.Add(time.Duration(schedule.ToleransiTerlambatMenit) * time.Minute)
-
 	status := models.StatusHadir
-	if now.After(toleranceTime) {
+	if now.After(lateTime) {
 		status = models.StatusTerlambat
 	}
 
 	record := models.AttendanceRecord{
 		EmployeeID:         employee.ID,
-		Tanggal:            now,
+		Tanggal:            workDate,
 		JamMasuk:           &now,
 		Status:             status,
 		LatitudeMasuk:      lat,
@@ -187,15 +210,28 @@ func CheckOut(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee profile not found"})
 	}
 
-	now := time.Now()
-	// Find today's record
+	now := attendanceNow()
+	schedule := getAttendanceSchedule()
+	workDate, _, _, checkoutStart, checkoutDeadline := attendanceWindow(now, schedule)
+	if now.Before(checkoutStart) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-out baru dapat dilakukan mulai pukul " + checkoutStart.Format("15:04") + "."})
+	}
+
+	// Find the current attendance-day record. The attendance day resets at 07:00.
 	var record models.AttendanceRecord
-	if err := config.DB.Where("employee_id = ? AND tanggal::date = ?", employee.ID, now.Format("2006-01-02")).First(&record).Error; err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "No check-in record found for today"})
+	if err := config.DB.Where("employee_id = ? AND tanggal = ?", employee.ID, workDate.Format("2006-01-02")).First(&record).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Anda belum melakukan check-in untuk hari ini."})
 	}
 
 	if record.JamPulang != nil {
+		if record.CheckOutOtomatis {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas check-out sudah lewat. Sistem telah melakukan check-out otomatis pada pukul " + record.JamPulang.Format("15:04") + "."})
+		}
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Already checked out today"})
+	}
+	if now.After(checkoutDeadline) {
+		_ = closeExpiredAttendanceRecords(now, schedule)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas check-out pukul " + checkoutDeadline.Format("15:04") + " sudah lewat. Sistem melakukan check-out otomatis."})
 	}
 
 	latStr := c.FormValue("latitude")
@@ -221,7 +257,7 @@ func CheckOut(c *fiber.Ctx) error {
 	if wt.IsHomeBase {
 		officeDistance := utils.HaversineDistance(lat, lon, office.Latitude, office.Longitude)
 		officeValid := officeDistance <= office.RadiusMeter
-		homeConfigured := employee.HomeLatitude != 0 || employee.HomeLongitude != 0
+		homeConfigured := employee.HomeLatitude != 0 && employee.HomeLongitude != 0
 		homeValid := false
 		if homeConfigured {
 			homeDistance := utils.HaversineDistance(lat, lon, employee.HomeLatitude, employee.HomeLongitude)
@@ -290,6 +326,8 @@ func CheckOut(c *fiber.Ctx) error {
 
 func GetAttendanceHistory(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
+	now := attendanceNow()
+	_ = closeExpiredAttendanceRecords(now, getAttendanceSchedule())
 
 	var employee models.Employee
 	if err := config.DB.Where("user_id = ?", userID).First(&employee).Error; err != nil {
@@ -335,4 +373,98 @@ func GetOfficeInfo(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Office location not configured"})
 	}
 	return c.JSON(office)
+}
+
+func startAttendanceAutoCheckout() {
+	autoCheckoutOnce.Do(func() {
+		go func() {
+			ticker := time.NewTicker(time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
+			}
+		}()
+	})
+}
+
+func attendanceNow() time.Time {
+	return time.Now().In(jakartaLocation)
+}
+
+func attendanceBusinessDate(now time.Time) time.Time {
+	now = now.In(jakartaLocation)
+	date := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, jakartaLocation)
+	if now.Hour() < attendanceResetHour {
+		return date.AddDate(0, 0, -1)
+	}
+	return date
+}
+
+func getAttendanceSchedule() models.WorkSchedule {
+	var schedule models.WorkSchedule
+	if config.DB == nil || config.DB.First(&schedule).Error != nil {
+		schedule.JamMulai = defaultStartTime
+		schedule.JamSelesai = defaultEndTime
+		schedule.ToleransiTerlambatMenit = defaultGraceMinutes
+	}
+	if strings.TrimSpace(schedule.JamMulai) == "" {
+		schedule.JamMulai = defaultStartTime
+	}
+	if strings.TrimSpace(schedule.JamSelesai) == "" {
+		schedule.JamSelesai = defaultEndTime
+	}
+	if schedule.ToleransiTerlambatMenit < 0 {
+		schedule.ToleransiTerlambatMenit = defaultGraceMinutes
+	}
+	return schedule
+}
+
+func scheduleMoment(date time.Time, raw, fallback string) time.Time {
+	value := strings.TrimSpace(raw)
+	if len(value) == 5 {
+		value += ":00"
+	}
+	parsed, err := time.Parse("15:04:05", value)
+	if err != nil {
+		parsed, _ = time.Parse("15:04:05", fallback)
+	}
+	return time.Date(date.Year(), date.Month(), date.Day(), parsed.Hour(), parsed.Minute(), parsed.Second(), 0, jakartaLocation)
+}
+
+func attendanceWindow(now time.Time, schedule models.WorkSchedule) (time.Time, time.Time, time.Time, time.Time, time.Time) {
+	workDate := attendanceBusinessDate(now)
+	start := scheduleMoment(workDate, schedule.JamMulai, defaultStartTime)
+	lateAt := start.Add(time.Duration(schedule.ToleransiTerlambatMenit) * time.Minute)
+	end := scheduleMoment(workDate, schedule.JamSelesai, defaultEndTime)
+	checkoutDeadline := end.Add(time.Hour)
+	return workDate, start, lateAt, end, checkoutDeadline
+}
+
+// closeExpiredAttendanceRecords makes the one-hour check-out limit effective
+// even when the employee never opens the app again after the deadline.
+func closeExpiredAttendanceRecords(now time.Time, schedule models.WorkSchedule) error {
+	if config.DB == nil {
+		return nil
+	}
+	currentDate := attendanceBusinessDate(now)
+	var records []models.AttendanceRecord
+	if err := config.DB.Where("jam_pulang IS NULL AND jam_masuk IS NOT NULL AND tanggal <= ?", currentDate.Format("2006-01-02")).Find(&records).Error; err != nil {
+		return err
+	}
+	for _, record := range records {
+		recordDate, err := time.ParseInLocation("2006-01-02", record.Tanggal.Format("2006-01-02"), jakartaLocation)
+		if err != nil {
+			continue
+		}
+		_, _, _, _, deadline := attendanceWindow(recordDate.Add(12*time.Hour), schedule)
+		if now.Before(deadline) {
+			continue
+		}
+		if err := config.DB.Model(&models.AttendanceRecord{}).
+			Where("id = ? AND jam_pulang IS NULL", record.ID).
+			Updates(map[string]any{"jam_pulang": deadline, "check_out_otomatis": true}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

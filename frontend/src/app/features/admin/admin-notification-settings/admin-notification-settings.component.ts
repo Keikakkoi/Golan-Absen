@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 
 @Component({
@@ -21,7 +22,7 @@ export class AdminNotificationSettingsComponent implements OnInit {
 
   private baseUrl = 'http://localhost:8080/api/v1/admin/settings/notifications';
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
 
   ngOnInit(): void {
     this.loadSettings();
@@ -52,13 +53,15 @@ export class AdminNotificationSettingsComponent implements OnInit {
     });
   }
 
-  saveSettings(): void {
+  async saveSettings(): Promise<void> {
     this.errorMessage = '';
     this.successMessage = '';
     if (this.settings.length === 0) {
       this.errorMessage = 'Tidak ada pengaturan yang dapat disimpan.';
+      this.alert.info('Tidak ada perubahan', this.errorMessage);
       return;
     }
+    if (!await this.alert.confirm('Simpan pengaturan notifikasi?', 'Perubahan pengaturan notifikasi akan diterapkan.')) return;
     this.isSaving = true;
     const headers = this.getHeaders();
     this.http.put<any[]>(this.baseUrl, this.settings, { headers }).subscribe({
@@ -66,11 +69,13 @@ export class AdminNotificationSettingsComponent implements OnInit {
         this.settings = data;
         this.isSaving = false;
         this.successMessage = 'Pengaturan notifikasi berhasil disimpan.';
+        this.alert.success('Pengaturan notifikasi disimpan');
       },
       error: (err) => {
         console.error('Failed to save settings', err);
         this.errorMessage = err.error?.error || 'Gagal menyimpan pengaturan.';
         this.isSaving = false;
+        this.alert.error('Gagal menyimpan pengaturan', this.errorMessage);
       }
     });
   }

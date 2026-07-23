@@ -114,7 +114,7 @@
       font-weight: 600;
       font-size: 0.875rem;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(31, 158, 100, 0.3);
+      box-shadow: 0 4px 12px rgba(47, 128, 237, 0.3);
       z-index: 20;
       transition: all 0.2s ease;
 
@@ -142,7 +142,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(19, 110, 70, 0.05);
+  box-shadow: 0 8px 24px rgba(23, 105, 170, 0.05);
 
   h3 {
     font-size: 1.75rem;
@@ -169,7 +169,7 @@
 
     &:focus {
       border-color: var(--green);
-      box-shadow: 0 0 0 3px rgba(31, 158, 100, 0.1);
+      box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.1);
     }
   }
 }
@@ -178,7 +178,7 @@
 .stamp-modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(20, 32, 26, 0.8);
+  background-color: rgba(23, 43, 58, 0.8);
   backdrop-filter: blur(4px);
   z-index: 2000;
   display: flex;

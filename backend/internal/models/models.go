@@ -90,6 +90,7 @@ type AttendanceRecord struct {
 	TipeKerja           string           `gorm:"size:20;default:'WFO'"`
 	JamMasuk            *time.Time       `gorm:"type:time"`
 	JamPulang           *time.Time       `gorm:"type:time"`
+	CheckOutOtomatis    bool             `gorm:"default:false"`
 	Status              AttendanceStatus `gorm:"type:varchar(20);not null"`
 	Latitude            float64          // General / Masuk Latitude
 	Longitude           float64          // General / Masuk Longitude
@@ -129,6 +130,7 @@ type EmployeeHomeLocation struct {
 	LongitudeRumah float64  `gorm:"not null"`
 	RadiusMeter    float64  `gorm:"default:100"`
 	AlamatRumah    string   `gorm:"type:text"`
+	GoogleMapsURL  string   `gorm:"type:text"`
 }
 
 type AuditLog struct {
