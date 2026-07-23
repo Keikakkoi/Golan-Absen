@@ -1,0 +1,85 @@
+<div class="dashboard-container admin-theme">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <div class="main-content">
+    <div class="header">
+      <h2>Laporan Ketidakhadiran (Alpha)</h2>
+    </div>
+
+    <div class="golan-card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <form (ngSubmit)="loadReports()" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+          <div class="form-group" style="margin: 0;">
+            <label>Dari Tanggal</label>
+            <input type="date" [(ngModel)]="filters.start_date" name="start_date" class="form-control" style="width: 150px; padding: 0.5rem;" />
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label>Sampai Tanggal</label>
+            <input type="date" [(ngModel)]="filters.end_date" name="end_date" class="form-control" style="width: 150px; padding: 0.5rem;" />
+          </div>
+          <div class="form-group" style="margin: 0;">
+            <label>Departemen</label>
+            <select [(ngModel)]="filters.department_id" name="department_id" class="form-control" style="width: 180px; padding: 0.5rem;">
+              <option value="">Semua departemen</option>
+              <option *ngFor="let department of departments" [value]="department.ID">{{ department.NamaDepartemen }}</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem;">Terapkan Filter</button>
+          <button type="button" class="btn-secondary" (click)="exportCsv()" style="padding: 0.5rem 1rem;">Export CSV</button>
+        </form>
+      </div>
+      <div class="summary-strip">
+        <div><span>Total hari Alpha</span><strong>{{ totalOccurrences() }}</strong></div>
+        <div><span>Karyawan terdampak</span><strong>{{ summaries.length }}</strong></div>
+        <div><span>Status</span><strong>Perlu tindak lanjut</strong></div>
+      </div>
+      <p *ngIf="errorMessage" class="error-state">{{ errorMessage }}</p>
+      
+      <div *ngIf="isLoading" class="loading-state">Memuat laporan...</div>
+
+      <div class="table-container" style="overflow-x: auto;">
+        <table *ngIf="!isLoading && summaries.length > 0" class="golan-table" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
+              <th style="padding: 1rem;">NIK</th>
+              <th style="padding: 1rem;">Nama Karyawan</th>
+              <th style="padding: 1rem;">Departemen</th>
+              <th style="padding: 1rem;">Total Alpha</th>
+              <th style="padding: 1rem;">Status</th>
+              <th style="padding: 1rem;">Detail</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let summary of summaries">
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 1rem; font-family: monospace;">{{ summary.nik }}</td>
+              <td style="padding: 1rem; font-weight: 500;">{{ summary.nama }}</td>
+              <td style="padding: 1rem;">{{ summary.departemen || '-' }}</td>
+              <td style="padding: 1rem;">
+                <strong>{{ summary.total }} hari</strong>
+              </td>
+              <td style="padding: 1rem;">
+                <span class="status-badge status-alpha" style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; background-color: #fee2e2; color: #dc2626;">
+                  Tindakan Lanjut
+                </span>
+              </td>
+              <td style="padding: 1rem;"><button type="button" class="link-button" (click)="toggleDetails(summary.employee_id)">{{ expandedEmployeeId === summary.employee_id ? 'Tutup' : 'Lihat' }}</button></td>
+            </tr>
+            <tr *ngIf="expandedEmployeeId === summary.employee_id" class="detail-row">
+              <td colspan="6">
+                <div class="detail-list">
+                  <div *ngFor="let detail of summary.details"><span>{{ detail.tanggal | date:'dd MMM yyyy' }}</span><span>{{ detail.keterangan }}</span></div>
+                </div>
+              </td>
+            </tr>
+            </ng-container>
+          </tbody>
+        </table>
+
+        <div *ngIf="!isLoading && summaries.length === 0" style="padding: 2rem; color: #6b7280; text-align: center;">
+          Tidak ada data ketidakhadiran (alpha) untuk periode ini.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

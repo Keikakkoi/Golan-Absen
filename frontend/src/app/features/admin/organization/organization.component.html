@@ -1,0 +1,111 @@
+<div class="dashboard-container admin-theme">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <div class="main-content">
+    <div class="header">
+      <h2>Organisasi & Jabatan</h2>
+    </div>
+    <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+
+    <div class="tabs">
+      <button class="tab-btn" [class.active]="activeTab === 'departments'" (click)="activeTab = 'departments'">Departemen</button>
+      <button class="tab-btn" [class.active]="activeTab === 'positions'" (click)="activeTab = 'positions'">Jabatan</button>
+    </div>
+
+    <!-- Departments Tab -->
+    <div class="golan-card" *ngIf="activeTab === 'departments'">
+      <div class="card-header">
+        <h3>Daftar Departemen</h3>
+        <button class="btn-primary" (click)="openDeptModal()">+ Tambah Departemen</button>
+      </div>
+      <div class="table-container">
+      <table class="golan-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama Departemen</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let d of departments">
+            <td>{{ d.ID }}</td>
+            <td>{{ d.NamaDepartemen }}</td>
+            <td class="actions">
+              <button class="btn-sm btn-edit" (click)="openDeptModal(d)">Edit</button>
+              <button class="btn-sm btn-danger" (click)="deleteDepartment(d.ID)">Hapus</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- Positions Tab -->
+    <div class="golan-card" *ngIf="activeTab === 'positions'">
+      <div class="card-header">
+        <h3>Daftar Jabatan</h3>
+        <button class="btn-primary" (click)="openPosModal()">+ Tambah Jabatan</button>
+      </div>
+      <div class="table-container">
+      <table class="golan-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama Jabatan</th>
+            <th>Level</th>
+            <th>Base Salary</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of positions">
+            <td>{{ p.ID }}</td>
+            <td>{{ p.NamaJabatan }}</td>
+            <td>-</td>
+            <td>-</td>
+            <td class="actions">
+              <button class="btn-sm btn-edit" (click)="openPosModal(p)">Edit</button>
+              <button class="btn-sm btn-danger" (click)="deletePosition(p.ID)">Hapus</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Department Modal -->
+<div class="modal-overlay" *ngIf="showDeptModal">
+  <div class="modal-content golan-card">
+    <h3>{{ deptForm.ID ? 'Edit' : 'Tambah' }} Departemen</h3>
+    <form (ngSubmit)="saveDepartment()">
+      <div class="form-group">
+        <label>Nama Departemen</label>
+      <input type="text" class="golan-input" name="nama_departemen" [(ngModel)]="deptForm.NamaDepartemen" required>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" (click)="closeDeptModal()">Batal</button>
+        <button type="submit" class="btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Position Modal -->
+<div class="modal-overlay" *ngIf="showPosModal">
+  <div class="modal-content golan-card">
+    <h3>{{ posForm.ID ? 'Edit' : 'Tambah' }} Jabatan</h3>
+    <form (ngSubmit)="savePosition()">
+      <div class="form-group">
+        <label>Nama Jabatan</label>
+      <input type="text" class="golan-input" name="nama_jabatan" [(ngModel)]="posForm.NamaJabatan" required>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" (click)="closePosModal()">Batal</button>
+        <button type="submit" class="btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>

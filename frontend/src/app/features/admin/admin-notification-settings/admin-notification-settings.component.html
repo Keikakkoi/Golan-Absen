@@ -1,0 +1,51 @@
+<div class="dashboard-container admin-theme">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <div class="main-content">
+    <div class="header">
+      <h2>Pengaturan Notifikasi Sistem</h2>
+    </div>
+
+    <div class="golan-card">
+      <div *ngIf="isLoading" class="loading-state">Memuat pengaturan...</div>
+      
+      <div *ngIf="!isLoading">
+        <p *ngIf="errorMessage" class="error-state">{{ errorMessage }}</p>
+        <p *ngIf="successMessage" class="success-state">{{ successMessage }}</p>
+        <p style="color: #6b7280; margin-bottom: 1.5rem;">Atur preferensi pengiriman notifikasi untuk berbagai modul dan role dalam sistem.</p>
+        
+        <div class="table-container" *ngIf="settings.length > 0">
+        <table class="golan-table" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
+              <th style="padding: 1rem;">Tipe Notifikasi</th>
+              <th style="padding: 1rem;">Target Role</th>
+              <th style="padding: 1rem; text-align: center;">Notifikasi Email</th>
+              <th style="padding: 1rem; text-align: center;">Notifikasi In-App</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let setting of settings" style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 1rem; font-weight: 500;">{{ setting.TipeNotifikasi }}</td>
+              <td style="padding: 1rem;">{{ setting.Role }}</td>
+              <td style="padding: 1rem; text-align: center;">
+                <input type="checkbox" [(ngModel)]="setting.IsEmailEnabled" style="width: 18px; height: 18px;" />
+              </td>
+              <td style="padding: 1rem; text-align: center;">
+                <input type="checkbox" [(ngModel)]="setting.IsInAppEnabled" style="width: 18px; height: 18px;" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        <div *ngIf="settings.length === 0" class="empty-state">Belum ada konfigurasi notifikasi.</div>
+
+        <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+          <button class="btn-primary" (click)="saveSettings()" [disabled]="isSaving">
+            {{ isSaving ? 'Menyimpan...' : 'Simpan Pengaturan' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

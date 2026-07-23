@@ -1,0 +1,109 @@
+<div class="dashboard-container">
+  <!-- Dynamic responsive sidebar with Role Switcher (15.4 PRD) -->
+  <app-shared-sidebar></app-shared-sidebar>
+
+  <div class="main-content">
+    <div class="checkin-container">
+      <div class="header">
+        <h2 *ngIf="!hasCheckedIn && !isCheckoutPage">Check-in Harian</h2>
+        <h2 *ngIf="!hasCheckedIn && isCheckoutPage">Check-out Harian</h2>
+        <h2 *ngIf="hasCheckedIn && !hasCheckedOut">Check-out Harian</h2>
+        <h2 *ngIf="hasCheckedOut">Absensi Selesai</h2>
+        <p class="subtitle text-dark-lo">Silakan verifikasi lokasi dan bukti foto Anda untuk memulai absensi.</p>
+      </div>
+
+      <!-- MAIN FOCUS: Large Circular Punch Button (15.4 PRD) -->
+      <div class="punch-focus-section golan-card" *ngIf="!hasCheckedOut">
+        <div class="punch-button-container">
+          <button 
+            class="punch-btn-large" 
+            [class.checkout-mode]="hasCheckedIn"
+            [disabled]="!isGpsActive || !isLocationValid || !capturedBlob || isSubmitting || (isCheckoutPage && !hasCheckedIn)"
+            (click)="triggerPunch()">
+            <span class="punch-title">{{ hasCheckedIn ? 'PUNCH OUT' : (isCheckoutPage ? 'PUNCH OUT' : 'PUNCH IN') }}</span>
+            <span class="punch-time">{{ currentTime | date:'HH:mm:ss' }}</span>
+          </button>
+        </div>
+        <p class="punch-instructions text-center" [class.text-green]="isGpsActive && isLocationValid" [class.text-absent]="!isGpsActive || !isLocationValid">
+          {{ (!hasCheckedIn && isCheckoutPage) ? 'Belum ada check-in hari ini.' : ((isGpsActive && isLocationValid && capturedBlob) ? 'Klik tombol di atas untuk melakukan absensi' : (locationError || (!capturedBlob ? 'Ambil foto selfie sebagai bukti absensi.' : 'Aktifkan GPS & pastikan berada di radius absensi.'))) }}
+        </p>
+      </div>
+
+      <div class="content-grid" *ngIf="!hasCheckedOut">
+        <!-- Geofencing Map Card -->
+        <div class="golan-card map-card">
+          <div class="card-header-flex">
+            <h3>Peta Lokasi Real-time</h3>
+            <div class="form-group-compact">
+              <select class="form-control-compact" [(ngModel)]="tipeKerja" (ngModelChange)="onTipeKerjaChange()" [disabled]="hasCheckedIn">
+                <option *ngFor="let wt of workTypes" [value]="wt.Nama">
+                  {{ wt.Nama }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div *ngIf="locationError" class="alert alert-danger">{{ locationError }}</div>
+          <div id="map" class="map-container"></div>
+          <div class="status-indicator-pill">
+            <span class="status-pill" [class.status-hadir]="isGpsActive && isLocationValid" [class.status-alpha]="!isGpsActive || !isLocationValid">
+              {{ statusText }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Camera Selfie Card -->
+        <div class="golan-card camera-card">
+          <h3>Bukti Kehadiran (Selfie)</h3>
+          <div *ngIf="cameraError" class="alert alert-danger">{{ cameraError }}</div>
+          
+          <div class="video-container" [hidden]="capturedImage">
+            <video #videoElement autoplay playsinline></video>
+            <button class="btn-capture" (click)="capture()" [disabled]="!isCameraReady">Ambil Foto</button>
+          </div>
+
+          <div class="preview-container" [hidden]="!capturedImage">
+            <img [src]="capturedImage" alt="Selfie Preview">
+            <button class="btn-retake" (click)="retake()">Ambil Ulang</button>
+          </div>
+          
+          <canvas #canvasElement style="display: none;"></canvas>
+        </div>
+      </div>
+      
+      <!-- Completed Screen -->
+      <div class="golan-card completed-card" *ngIf="hasCheckedOut">
+        <div class="stamp-seal-wrapper">
+          <div class="stamp-seal">
+            <div class="stamp-outer-ring" style="animation: none;"></div>
+            <div class="stamp-inner-ring" style="animation: none;"></div>
+            <div class="stamp-center">
+              <div class="stamp-badge">GOLAN DIGITAL KREATIF</div>
+              <div class="stamp-sub">ABSENSI SELESAI</div>
+            </div>
+          </div>
+        </div>
+        <h3 class="mt-4">Terima Kasih!</h3>
+        <p class="text-dark-lo">Anda sudah menyelesaikan seluruh kewajiban absensi untuk hari ini.</p>
+        <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SIGNATURE ELEMENT overlay confirmation modal (15.1 PRD) -->
+<div class="stamp-modal-overlay" *ngIf="showStampModal">
+  <div class="stamp-modal-card">
+    <div class="stamp-seal-wrapper">
+      <div class="stamp-seal">
+        <div class="stamp-outer-ring"></div>
+        <div class="stamp-inner-ring"></div>
+        <div class="stamp-center">
+          <div class="stamp-badge">GOLAN DIGITAL KREATIF</div>
+          <div class="stamp-sub">VERIFIED • ABSENSI</div>
+        </div>
+      </div>
+    </div>
+    <h3 class="modal-title mt-4">{{ stampSuccess ? 'Terverifikasi!' : 'Memverifikasi...' }}</h3>
+    <p class="modal-desc mono-text">{{ stampModalMessage }}</p>
+  </div>
+</div>

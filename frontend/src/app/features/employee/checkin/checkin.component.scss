@@ -1,0 +1,238 @@
+.checkin-container {
+  max-width: 1100px;
+  margin: 0 auto;
+
+  .header {
+    margin-bottom: 24px;
+
+    h2 {
+      font-size: 2rem;
+      margin: 0;
+      color: var(--green-deep);
+    }
+    .subtitle {
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+  }
+}
+
+.punch-focus-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, var(--mint-0) 0%, #FFFFFF 100%);
+  border: 1px solid var(--mint-1);
+
+  .punch-instructions {
+    margin-top: 14px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 40px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.map-card {
+  display: flex;
+  flex-direction: column;
+
+  .card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    h3 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+  }
+
+  .map-container {
+    height: 300px;
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--mint-2);
+    margin-bottom: 14px;
+    z-index: 10;
+  }
+
+  .status-indicator-pill {
+    display: flex;
+    justify-content: flex-start;
+  }
+}
+
+.camera-card {
+  h3 {
+    margin-bottom: 16px;
+    font-size: 1.15rem;
+  }
+
+  .video-container, .preview-container {
+    position: relative;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    video, img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .btn-capture, .btn-retake {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--green);
+      color: white;
+      border: none;
+      border-radius: 30px;
+      padding: 10px 24px;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(31, 158, 100, 0.3);
+      z-index: 20;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: var(--green-deep);
+      }
+    }
+
+    .btn-retake {
+      background-color: var(--stamp);
+      box-shadow: 0 4px 12px rgba(200, 103, 44, 0.3);
+
+      &:hover {
+        background-color: #b05520;
+      }
+    }
+  }
+}
+
+.completed-card {
+  text-align: center;
+  padding: 50px 30px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(19, 110, 70, 0.05);
+
+  h3 {
+    font-size: 1.75rem;
+    margin-bottom: 8px;
+  }
+}
+
+/* Compact Forms */
+.form-group-compact {
+  margin: 0;
+
+  .form-control-compact {
+    padding: 6px 12px;
+    border: 1px solid var(--mint-2);
+    border-radius: 6px;
+    background-color: white;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--green-deep);
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(31, 158, 100, 0.1);
+    }
+  }
+}
+
+/* Stamp Modal Overlay */
+.stamp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(20, 32, 26, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+
+  .stamp-modal-card {
+    background: white;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 400px;
+    padding: 40px 30px;
+    text-align: center;
+    border: 1px solid var(--mint-1);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    .stamp-seal-wrapper .stamp-seal {
+      width: 160px;
+      height: 160px;
+
+      .stamp-outer-ring {
+        border-color: var(--stamp);
+      }
+      .stamp-inner-ring {
+        border-color: rgba(200, 103, 44, 0.7);
+      }
+      .stamp-center {
+        .stamp-badge {
+          background-color: var(--stamp);
+          color: white;
+          border-color: white;
+        }
+        .stamp-sub {
+          color: var(--text-dark-lo);
+        }
+      }
+    }
+
+    .modal-title {
+      font-size: 1.5rem;
+      color: var(--green-deep);
+      font-family: var(--font-display);
+      margin-bottom: 6px;
+    }
+
+    .modal-desc {
+      font-size: 0.875rem;
+      color: var(--text-dark-lo);
+      margin: 0;
+    }
+  }
+}

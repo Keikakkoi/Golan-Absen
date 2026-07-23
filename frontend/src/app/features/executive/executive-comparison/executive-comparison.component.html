@@ -1,0 +1,61 @@
+<div class="dashboard-container admin-theme">
+  <app-executive-sidebar></app-executive-sidebar>
+
+  <div class="main-content">
+    <div class="header">
+      <h2>Perbandingan Kehadiran Antar Departemen</h2>
+      <p>Bandingkan performa kehadiran setiap departemen berdasarkan periode yang dipilih.</p>
+    </div>
+
+    <div class="golan-card filter-card">
+      <form (ngSubmit)="loadComparison()" class="filter-form">
+        <label>Dari tanggal <input type="date" [(ngModel)]="filters.start_date" name="start_date" required /></label>
+        <label>Sampai tanggal <input type="date" [(ngModel)]="filters.end_date" name="end_date" required /></label>
+        <button type="submit" class="btn-primary">Terapkan</button>
+      </form>
+      <div class="quick-actions">
+        <button type="button" class="btn-secondary" (click)="setTodayFilter()">Hari Ini</button>
+        <button type="button" class="btn-secondary" (click)="setMonthFilter()">Bulan Ini</button>
+      </div>
+    </div>
+
+    <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+    <div *ngIf="isLoading" class="loading-state">Memuat perbandingan...</div>
+
+    <div class="comparison-grid" *ngIf="!isLoading && comparisons.length > 0">
+      <div class="golan-card chart-card">
+        <h3>Peringkat Tingkat Kehadiran</h3>
+        <div class="bar-list">
+          <div class="bar-row" *ngFor="let item of comparisons; let i = index">
+            <div class="bar-label"><span>{{ i + 1 }}. {{ item.department_name }}</span><strong>{{ item.attendance_rate | number:'1.0-1' }}%</strong></div>
+            <div class="bar-track"><div class="bar-fill" [style.width.%]="item.attendance_rate / maxRate() * 100"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="golan-card summary-card">
+        <h3>Ringkasan Perbandingan</h3>
+        <p>Departemen dengan tingkat kehadiran tertinggi:</p>
+        <strong class="winner">{{ comparisons[0].department_name }}</strong>
+        <span class="winner-rate">{{ comparisons[0].attendance_rate | number:'1.0-1' }}%</span>
+        <p class="muted">Data diurutkan dari tingkat kehadiran tertinggi ke terendah.</p>
+      </div>
+    </div>
+
+    <div class="golan-card table-card" *ngIf="!isLoading">
+      <h3>Detail Perbandingan</h3>
+      <div class="table-container">
+        <table class="golan-table" *ngIf="comparisons.length > 0">
+          <thead><tr><th>Departemen</th><th>Total Karyawan</th><th>Hadir</th><th>Terlambat</th><th>Izin/Cuti/Alpha</th><th>Tingkat Kehadiran</th><th>Aksi</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let item of comparisons">
+              <td>{{ item.department_name }}</td><td>{{ item.total_employees }}</td><td class="present">{{ item.present_count }}</td><td class="late">{{ item.late_count }}</td><td class="absent">{{ item.absent_count }}</td><td><strong>{{ item.attendance_rate | number:'1.0-1' }}%</strong></td>
+              <td><a [routerLink]="['/executive/reports']" [queryParams]="{ department_id: item.department_id }">Lihat laporan</a></td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="comparisons.length === 0" class="empty-state">Tidak ada data departemen pada periode ini.</div>
+      </div>
+    </div>
+  </div>
+</div>

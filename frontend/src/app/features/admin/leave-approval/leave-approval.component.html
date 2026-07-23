@@ -1,0 +1,79 @@
+<div class="dashboard-container admin-theme">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <div class="main-content">
+    <div class="header">
+      <h2>Approval Izin & Cuti</h2>
+    </div>
+
+    <div class="golan-card">
+      <div *ngIf="errorMessage" class="alert alert-danger" style="color: red; margin-bottom: 1rem;">{{ errorMessage }}</div>
+      
+      <div class="table-container" style="overflow-x: auto;">
+        <table *ngIf="!isLoading && leaveRequests.length > 0" style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
+              <th style="padding: 0.75rem;">Nama Karyawan</th>
+              <th style="padding: 0.75rem;">Jenis</th>
+              <th style="padding: 0.75rem;">Tanggal Mulai</th>
+              <th style="padding: 0.75rem;">Tanggal Selesai</th>
+              <th style="padding: 0.75rem;">Alasan</th>
+              <th style="padding: 0.75rem;">Lampiran</th>
+              <th style="padding: 0.75rem;">Status</th>
+              <th style="padding: 0.75rem;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let req of leaveRequests" style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 0.75rem; font-weight: 500;">
+                {{ req.Employee?.User?.Nama }}
+                <div style="font-size: 0.75rem; color: #6b7280; font-family: monospace;">{{ req.Employee?.NIK }}</div>
+              </td>
+              <td style="padding: 0.75rem;">{{ req.JenisIzin }}</td>
+              <td style="padding: 0.75rem;">{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
+              <td style="padding: 0.75rem;">{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
+              <td style="padding: 0.75rem;">{{ req.Alasan }}</td>
+              <td style="padding: 0.75rem;">
+                <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" style="color: #3b82f6; text-decoration: none;">Lihat Dokumen</a>
+                <span *ngIf="!req.LampiranURL" style="color: #9ca3af;">Tidak ada</span>
+              </td>
+              <td style="padding: 0.75rem;">
+                <span class="status-badge" [ngClass]="{
+                  'status-pending': req.Status === 'Pending',
+                  'status-hadir': req.Status === 'Approved',
+                  'status-alpha': req.Status === 'Rejected'
+                }" style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;"
+                [style.background-color]="req.Status === 'Pending' ? '#fef3c7' : (req.Status === 'Approved' ? '#d1fae5' : '#fee2e2')"
+                [style.color]="req.Status === 'Pending' ? '#d97706' : (req.Status === 'Approved' ? '#059669' : '#dc2626')">
+                  {{ req.Status }}
+                </span>
+              </td>
+              <td style="padding: 0.75rem;">
+                <button class="btn-sm btn-info" (click)="openDetail(req)" style="margin-right: .35rem;">Detail</button>
+                <div *ngIf="req.Status === 'Pending'" style="display: flex; gap: 0.5rem;">
+                  <button (click)="updateStatus(req.ID, 'Approved')" style="background-color: #10b981; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Setuju</button>
+                  <button (click)="updateStatus(req.ID, 'Rejected')" style="background-color: #ef4444; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Tolak</button>
+                </div>
+                <span *ngIf="req.Status !== 'Pending'" style="color: #9ca3af; font-size: 0.875rem;">Selesai</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div *ngIf="isLoading" style="padding: 1rem; color: #6b7280;">Memuat pengajuan izin...</div>
+        <div *ngIf="!isLoading && leaveRequests.length === 0" style="padding: 1rem; color: #6b7280;">Tidak ada pengajuan izin/cuti.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="selectedRequest">
+  <div class="modal-content golan-card">
+    <div class="modal-header"><h3>Detail Pengajuan Izin / Cuti</h3><button class="btn-close" (click)="closeDetail()">×</button></div>
+    <p><strong>Karyawan:</strong> {{ selectedRequest.Employee?.User?.Nama }} ({{ selectedRequest.Employee?.NIK }})</p>
+    <p><strong>Jenis:</strong> {{ selectedRequest.JenisIzin }}</p>
+    <p><strong>Periode:</strong> {{ selectedRequest.TanggalMulai | date:'dd MMM yyyy' }} – {{ selectedRequest.TanggalSelesai | date:'dd MMM yyyy' }}</p>
+    <p><strong>Alasan:</strong> {{ selectedRequest.Alasan }}</p>
+    <a *ngIf="selectedRequest.LampiranURL" [href]="selectedRequest.LampiranURL" target="_blank">Buka lampiran</a>
+  </div>
+</div>

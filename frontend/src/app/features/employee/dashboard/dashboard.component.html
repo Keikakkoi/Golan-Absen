@@ -1,0 +1,69 @@
+<div class="dashboard-container">
+  <app-shared-sidebar></app-shared-sidebar>
+
+  <div class="main-content">
+    <div class="header">
+      <div class="welcome-text">
+        <h2>Halo, {{ userName }}!</h2>
+        <p>Selamat datang di sistem absensi.</p>
+      </div>
+      <div class="top-nav">
+        <div class="notification-wrapper">
+          <button class="notif-btn" (click)="toggleNotifications()">
+            🔔 <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+          </button>
+          <div class="notif-dropdown" *ngIf="showNotifications">
+            <div class="notif-header">Notifikasi</div>
+            <div class="notif-body">
+              <div class="notif-item" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca">
+                <strong>{{ notif.Judul }}</strong>
+                <p>{{ notif.Pesan }}</p>
+                <small>{{ notif.Waktu | date:'medium' }}</small>
+              </div>
+              <div class="notif-empty" *ngIf="notifications.length === 0">
+                Tidak ada notifikasi.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="golan-card stat-card">
+        <h4>Status Hari Ini</h4>
+        <div class="value" style="font-size: 1.8rem; line-height: 1.2; margin-bottom: 8px;"
+             [ngClass]="{
+               'text-green': stats.today_status === 'Hadir',
+               'text-late': stats.today_status === 'Terlambat',
+               'text-blue': stats.today_status === 'Sudah Check-out',
+               'text-muted': stats.today_status === 'Belum Absen'
+             }">
+          {{ stats.today_status }}
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-dark-lo);" *ngIf="stats.today_check_in">
+          Masuk: {{ stats.today_check_in }}
+          <span *ngIf="stats.today_check_out"><br>Pulang: {{ stats.today_check_out }}</span>
+        </div>
+      </div>
+      <div class="golan-card stat-card">
+        <h4>Kehadiran Bulan Ini</h4>
+        <div class="value">{{ stats.hadir_bulan_ini }} <span class="unit">Hari</span></div>
+      </div>
+      <div class="golan-card stat-card">
+        <h4>Keterlambatan</h4>
+        <div class="value">{{ stats.terlambat_bulan_ini }} <span class="unit">Kali</span></div>
+      </div>
+      <div class="golan-card stat-card">
+        <h4>Sisa Cuti</h4>
+        <div class="value">{{ stats.sisa_cuti }} <span class="unit">Hari</span></div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="btn-primary" routerLink="/employee/checkin" *ngIf="stats.today_status === 'Belum Absen'">Mulai Check-in Harian</button>
+      <button class="btn-primary" style="background-color: var(--stamp);" routerLink="/employee/checkout" *ngIf="stats.today_status === 'Hadir' || stats.today_status === 'Terlambat'">Mulai Check-out Harian</button>
+      <button class="btn-primary" style="background-color: var(--text-dark-lo);" routerLink="/employee/history" *ngIf="stats.today_status === 'Sudah Check-out'">Absensi Hari Ini Selesai</button>
+    </div>
+  </div>
+</div>

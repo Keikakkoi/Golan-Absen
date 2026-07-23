@@ -1,0 +1,138 @@
+<!-- Topbar Hamburger for mobile & tablet (900px breakpoint) -->
+<div class="topbar-header">
+  <button class="hamburger-btn" (click)="toggleDrawer()">☰ Menu</button>
+  <div class="topbar-brand">
+    <img src="assets/icon_golan.png" alt="Logo PT. Golan" class="topbar-logo" />
+    <span class="topbar-title">Golan Digital</span>
+  </div>
+</div>
+
+<!-- Backdrop overlay for mobile drawer -->
+<div class="sidebar-drawer-overlay" [class.active]="isDrawerOpen" (click)="closeDrawer()"></div>
+
+<!-- The Sidebar container -->
+<div class="sidebar" [class.drawer-open]="isDrawerOpen">
+  <div class="brand">
+    <img src="assets/icon_golan.png" alt="Logo PT. Golan" class="brand-logo" />
+    <div class="brand-info">
+      <h3>PT. GOLAN</h3>
+      <small>Digital Kreatif</small>
+    </div>
+  </div>
+
+  <div class="current-role-badge">
+    <span class="role-caption">Akses akun</span>
+    <strong>{{ userRole === 'HRD' ? 'HRD / Admin' : userRole }}</strong>
+  </div>
+
+  <!-- Navigation menus based on the active role -->
+  <nav class="sidebar-nav">
+    <!-- Karyawan (Employee) Menu -->
+    <ng-container *ngIf="userRole === 'Karyawan'">
+      <a routerLink="/employee/dashboard" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a routerLink="/employee/checkin" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">🕒</span> Check-in / Out
+      </a>
+      <a routerLink="/employee/history" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">📅</span> Riwayat Absensi
+      </a>
+      <a routerLink="/employee/statistics" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">📈</span> Statistik Kehadiran
+      </a>
+      <a routerLink="/employee/leaves" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">✉️</span> Pengajuan Izin
+      </a>
+      <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">🔔</span> Notifikasi
+      </a>
+      <a routerLink="/employee/profile" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">👤</span> Profil Saya
+      </a>
+      <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">❓</span> Bantuan & FAQ
+      </a>
+      <a routerLink="/about" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">ℹ️</span> Tentang Aplikasi
+      </a>
+    </ng-container>
+
+    <!-- HRD / Admin Menu -->
+    <ng-container *ngIf="userRole === 'HRD'">
+      <a routerLink="/admin/dashboard" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a routerLink="/admin/employees" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">👥</span> Karyawan
+      </a>
+      <a routerLink="/admin/organization" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">🏢</span> Organisasi & Jabatan
+      </a>
+      <a routerLink="/admin/roles" routerLinkActive="active" (click)="closeDrawer()"><span class="nav-icon">🔐</span> Role & Permission</a>
+      <a routerLink="/admin/leaves" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">✅</span> Persetujuan Cuti
+      </a>
+      <a routerLink="/admin/reports" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="closeDrawer()">
+        <span class="nav-icon">📋</span> Rekap Absensi
+      </a>
+      <a routerLink="/admin/reports/late" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">⚠️</span> Lap. Keterlambatan
+      </a>
+      <a routerLink="/admin/reports/alpha" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">❌</span> Lap. Ketidakhadiran
+      </a>
+      <a routerLink="/admin/leave-quotas" routerLinkActive="active" (click)="closeDrawer()"><span class="nav-icon">📋</span> Kuota Izin / Cuti</a>
+      <a routerLink="/admin/settings" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="closeDrawer()">
+        <span class="nav-icon">⚙️</span> Pengaturan Umum
+      </a>
+      <a routerLink="/admin/schedules" routerLinkActive="active" (click)="closeDrawer()"><span class="nav-icon">🕘</span> Jadwal / Shift</a>
+      <a routerLink="/admin/home-locations" routerLinkActive="active" (click)="closeDrawer()"><span class="nav-icon">📍</span> Lokasi Rumah WFH</a>
+      <a routerLink="/admin/settings/notifications" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">🔔</span> Notifikasi
+      </a>
+      <a routerLink="/admin/backup" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">💾</span> Backup Data
+      </a>
+      <a routerLink="/admin/audit" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">🔍</span> Audit Log
+      </a>
+      <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">❓</span> Bantuan & FAQ
+      </a>
+      <a routerLink="/about" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">ℹ️</span> Tentang Aplikasi
+      </a>
+    </ng-container>
+
+    <!-- Pimpinan / Executive Menu -->
+    <ng-container *ngIf="userRole === 'Pimpinan'">
+      <a routerLink="/executive/dashboard" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">📈</span> Executive Dashboard
+      </a>
+      <a routerLink="/executive/departments/stats" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">🏢</span> Statistik Departemen
+      </a>
+      <a routerLink="/executive/departments/comparison" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">📊</span> Perbandingan Departemen
+      </a>
+      <a routerLink="/executive/reports" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">👥</span> Laporan Karyawan
+      </a>
+      <a routerLink="/admin/backup" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">💾</span> Backup Data
+      </a>
+      <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">❓</span> Bantuan & FAQ
+      </a>
+      <a routerLink="/about" routerLinkActive="active" (click)="closeDrawer()">
+        <span class="nav-icon">ℹ️</span> Tentang Aplikasi
+      </a>
+    </ng-container>
+
+    <!-- Logout -->
+    <a href="#" (click)="logout($event)" class="logout-btn">
+      <span class="nav-icon">🚪</span> Logout
+    </a>
+  </nav>
+</div>

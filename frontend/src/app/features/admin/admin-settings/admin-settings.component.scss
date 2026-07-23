@@ -1,0 +1,98 @@
+.admin-theme {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-light);
+  
+  .main-content {
+    margin-left: 250px;
+    flex: 1;
+    padding: 32px 48px;
+    width: calc(100% - 250px);
+  }
+
+  .header {
+    margin-bottom: 24px;
+    h2 {
+      color: var(--blue-dark);
+    }
+  }
+
+  .tabs {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 8px;
+
+    .tab-btn {
+      background: none;
+      border: none;
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 8px 16px;
+      font-weight: 500;
+      position: relative;
+
+      &.active {
+        color: var(--blue-dark);
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: -10px;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background-color: var(--blue-dark);
+          border-radius: 4px;
+        }
+      }
+    }
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    
+    .btn-sm {
+      padding: 4px 12px;
+      font-size: 0.85rem;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      color: white;
+    }
+    
+    .btn-edit { background-color: var(--info); }
+    .btn-danger { background-color: var(--absent); }
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+
+    .modal-content {
+      width: 100%;
+      max-width: 500px;
+      padding: 32px;
+
+      h3 {
+        margin-top: 0;
+        margin-bottom: 24px;
+        color: var(--blue-dark);
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 16px;
+        margin-top: 32px;
+      }
+    }
+  }
+}

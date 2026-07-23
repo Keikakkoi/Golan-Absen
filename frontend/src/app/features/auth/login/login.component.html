@@ -1,0 +1,78 @@
+<div class="split-layout">
+  <!-- Left Panel: Brand & Info -->
+  <div class="brand-panel">
+    <span class="ambient-orb orb-one" aria-hidden="true"></span>
+    <span class="ambient-orb orb-two" aria-hidden="true"></span>
+    <span class="ambient-orb orb-three" aria-hidden="true"></span>
+
+    <div class="brand-content">
+      <div class="clock-display">
+        <h1 class="mono-text">{{ currentTime | date:'HH:mm:ss' }}</h1>
+        <p>{{ currentTime | date:'EEEE, dd MMMM yyyy' }}</p>
+      </div>
+
+      <!-- Signature Element: Stempel Bundar Berputar (15.1 PRD) -->
+      <div class="stamp-seal-wrapper">
+        <div class="stamp-seal">
+          <div class="stamp-outer-ring"></div>
+          <div class="stamp-inner-ring"></div>
+          <div class="stamp-center">
+            <div class="stamp-badge">GOLAN DIGITAL KREATIF</div>
+            <div class="stamp-sub">VERIFIED • ABSENSI</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="welcome-text">
+        <h2>Selamat Datang</h2>
+        <p>Sistem Manajemen Absensi Terpadu</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Login Form -->
+  <div class="form-panel">
+    <div class="login-card">
+      <div class="brand-header">
+        <img src="assets/icon_golan.png" alt="Logo PT. Golan" class="brand-logo" />
+        <h2>PT. Golan Digital Kreatif</h2>
+      </div>
+
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input 
+            type="email" 
+            id="email" 
+            formControlName="email" 
+            placeholder="Enter your email"
+            [class.is-invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input 
+            type="password" 
+            id="password" 
+            formControlName="password" 
+            placeholder="Enter your password"
+            [class.is-invalid]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+          />
+        </div>
+
+        <div class="form-options">
+          <a routerLink="/forgot-password">Lupa password?</a>
+        </div>
+
+        <div class="error-message" *ngIf="errorMessage">
+          {{ errorMessage }}
+        </div>
+
+        <button type="submit" class="btn-primary w-100" [disabled]="loginForm.invalid || isLoading">
+          {{ isLoading ? 'Authenticating...' : 'Sign In' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

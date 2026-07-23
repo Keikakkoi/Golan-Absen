@@ -1,0 +1,11 @@
+<main class="error-container" aria-labelledby="forbidden-title">
+  <section class="error-content">
+    <div class="error-code" aria-hidden="true">403</div>
+    <h1 id="forbidden-title">Akses Ditolak</h1>
+    <p>Akun Anda berhasil dikenali, tetapi role Anda tidak memiliki izin untuk membuka halaman ini. Hubungi HRD jika akses ini diperlukan.</p>
+    <div class="error-actions">
+      <a [routerLink]="homeLink" class="btn-primary">Kembali ke Beranda</a>
+      <a routerLink="/login" class="btn-outline-primary">Gunakan Akun Lain</a>
+    </div>
+  </section>
+</main>

@@ -1,0 +1,13 @@
+.filter-bar { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
+.filter-bar .form-control { width: auto; min-width: 145px; }
+.filter-bar .search-input { flex: 1 1 220px; }
+.form-control { padding: .55rem .7rem; border: 1px solid #d1d5db; border-radius: 6px; }
+.btn-primary, .btn-secondary { border: 0; border-radius: 6px; padding: .55rem .85rem; cursor: pointer; color: white; }
+.btn-primary { background: #1f9e64; }
+.btn-secondary { background: #64748b; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.table-container { overflow-x: auto; }
+.golan-table small { display: block; color: #6b7280; margin-top: .25rem; }
+.pagination { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1rem; }
+.error-state { color: #b91c1c; background: #fef2f2; padding: .75rem; border-radius: 6px; }
+@media (max-width: 700px) { .pagination { flex-direction: column; align-items: stretch; text-align: center; } }

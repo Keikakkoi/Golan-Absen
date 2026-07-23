@@ -1,0 +1,150 @@
+@import '../dashboard/dashboard.component.scss';
+
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--background);
+}
+
+.main-content {
+  flex: 1;
+  padding: 40px;
+
+  .header {
+    margin-bottom: 30px;
+    
+    h2 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+    
+    .view-toggle {
+      display: flex;
+      gap: 8px;
+      
+      button {
+        padding: 8px 16px;
+        border: 1px solid var(--mint-2);
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        
+        &.active {
+          background: var(--green-deep);
+          color: white;
+          border-color: var(--green-deep);
+        }
+      }
+    }
+  }
+
+  .table-container {
+    overflow-x: auto;
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      
+      th, td {
+        padding: 16px;
+        text-align: left;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      
+      th {
+        font-weight: 600;
+        color: var(--text-dark);
+        background-color: #fafafa;
+      }
+      
+      .mono-text {
+        font-family: 'JetBrains Mono', monospace;
+      }
+    }
+  }
+
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    
+    button {
+      padding: 8px 16px;
+      background: white;
+      border: 1px solid var(--mint-2);
+      border-radius: 8px;
+      cursor: pointer;
+      &:hover {
+        background: var(--mint-0);
+      }
+    }
+    h3 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+  }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    
+    .weekday {
+      text-align: center;
+      font-weight: bold;
+      padding: 8px;
+      color: var(--text-dark-lo);
+    }
+    
+    .day-cell {
+      min-height: 100px;
+      border: 1px solid var(--mint-1);
+      border-radius: 8px;
+      padding: 8px;
+      background: white;
+      
+      &.empty {
+        background: transparent;
+        border: none;
+      }
+      
+      .day-number {
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+      
+      .day-record {
+        padding: 4px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        text-align: center;
+        
+        &.status-hadir {
+          background-color: #e6f4ea;
+          color: #137333;
+        }
+        &.status-terlambat {
+          background-color: #fce8e6;
+          color: #c5221f;
+        }
+        &.status-izin {
+          background-color: #fef7e0;
+          color: #b06000;
+        }
+        &.status-cuti {
+          background-color: #f3e8fd;
+          color: #681da8;
+        }
+      }
+    }
+  }
+}
+
+.loading-state, .empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-dark-lo);
+  font-style: italic;
+}

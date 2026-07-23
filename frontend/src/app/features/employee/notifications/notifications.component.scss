@@ -1,0 +1,79 @@
+.notification-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.notification-header h2,
+.notification-header p {
+  margin-top: 0;
+}
+
+.notification-toolbar {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1rem;
+  padding: .5rem;
+}
+
+.notification-toolbar button {
+  border: 0;
+  border-radius: 999px;
+  padding: .55rem .9rem;
+  color: var(--text-dark-lo);
+  background: transparent;
+  cursor: pointer;
+}
+
+.notification-toolbar button.active {
+  color: #fff;
+  background: var(--green);
+}
+
+.notification-list {
+  padding: 0;
+  overflow: hidden;
+}
+
+.notification-item {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: .8rem;
+  padding: 1rem 1.2rem;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--mint-1);
+  background: #fff;
+  cursor: pointer;
+}
+
+.notification-item:last-child { border-bottom: 0; }
+.notification-item.unread { background: var(--mint-0); }
+
+.notification-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-top: .4rem;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.notification-dot.visible { background: var(--green); }
+
+.notification-copy {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.notification-copy strong { color: var(--text-dark); }
+.notification-copy span { color: var(--text-dark-lo); line-height: 1.45; }
+.notification-copy small { color: var(--text-dark-lo); }
+.state-message { padding: 2rem; color: var(--text-dark-lo); text-align: center; }
+
+@media (max-width: 640px) {
+  .notification-header { align-items: flex-start; flex-direction: column; }
+}

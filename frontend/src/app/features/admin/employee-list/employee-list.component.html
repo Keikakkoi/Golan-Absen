@@ -1,0 +1,150 @@
+<div class="dashboard-container admin-theme">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <div class="main-content">
+    <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>Manajemen Data Karyawan</h2>
+      <div>
+        <input #importInput type="file" accept=".csv,text/csv" hidden (change)="onImportFileChange($event)">
+        <button class="btn-secondary" (click)="importInput.click()" style="margin-right: 10px;">Pilih CSV</button>
+        <button class="btn-secondary" (click)="importEmployees()" style="margin-right: 10px;" [disabled]="!selectedImportFile">Import CSV</button>
+        <button class="btn-primary" (click)="openAddModal()">+ Tambah Karyawan</button>
+      </div>
+    </div>
+
+    <div class="golan-card">
+      <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+      
+      <div class="table-container">
+        <table class="golan-table" *ngIf="!isLoading && employees.length > 0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nama</th>
+              <th>Email</th>
+              <th>NIK</th>
+              <th>Tgl Bergabung</th>
+              <th>Departemen</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let emp of employees">
+              <td>{{ emp.ID }}</td>
+              <td>{{ emp.Nama }}</td>
+              <td>{{ emp.Email }}</td>
+              <td class="mono-text">{{ emp.Employee?.NIK || '-' }}</td>
+              <td>{{ emp.Employee?.TanggalBergabung ? (emp.Employee.TanggalBergabung | date:'dd MMM yyyy') : '-' }}</td>
+              <td>{{ emp.Employee?.Department?.NamaDepartemen || '-' }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="emp.Status === 'aktif' ? 'status-hadir' : 'status-alpha'">{{ emp.Status }}</span>
+              </td>
+              <td>
+                <button class="btn-sm btn-info" (click)="openDetailModal(emp)">Detail</button>
+                <button class="btn-edit" (click)="openEditModal(emp)">Edit</button>
+                <button class="btn-delete" (click)="deleteEmployee(emp.ID)">Hapus</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div *ngIf="isLoading" class="loading-state">
+          Memuat data karyawan...
+        </div>
+
+        <div *ngIf="!isLoading && employees.length === 0" class="empty-state">
+          Tidak ada data karyawan yang ditemukan.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="isDetailOpen">
+  <div class="modal-content golan-card detail-modal">
+    <div class="modal-header"><h3>Detail Karyawan</h3><button class="btn-close" (click)="closeDetailModal()">×</button></div>
+    <div *ngIf="selectedDetail" class="detail-grid">
+      <div><span>Nama</span><strong>{{ selectedDetail.Nama }}</strong></div>
+      <div><span>Email</span><strong>{{ selectedDetail.Email }}</strong></div>
+      <div><span>Role</span><strong>{{ selectedDetail.Role }}</strong></div>
+      <div><span>Status</span><strong>{{ selectedDetail.Status }}</strong></div>
+      <div><span>NIK</span><strong>{{ selectedDetail.Employee?.NIK || '-' }}</strong></div>
+      <div><span>Departemen</span><strong>{{ selectedDetail.Employee?.Department?.NamaDepartemen || '-' }}</strong></div>
+      <div><span>Jabatan</span><strong>{{ selectedDetail.Employee?.Position?.NamaJabatan || '-' }}</strong></div>
+      <div><span>Tanggal Bergabung</span><strong>{{ selectedDetail.Employee?.TanggalBergabung ? (selectedDetail.Employee.TanggalBergabung | date:'dd MMM yyyy') : '-' }}</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Dialog -->
+<div class="modal-overlay" *ngIf="isModalOpen">
+  <div class="modal-content golan-card">
+    <div class="modal-header">
+      <h3>{{ isEditMode ? 'Edit Karyawan' : 'Tambah Karyawan Baru' }}</h3>
+      <button class="btn-close" (click)="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <form (ngSubmit)="saveEmployee()">
+        <div class="form-group">
+          <label>Nama Lengkap</label>
+          <input type="text" [(ngModel)]="formData.nama" name="nama" required class="form-control" />
+        </div>
+        
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" [(ngModel)]="formData.email" name="email" required class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Password {{ isEditMode ? '(Kosongkan jika tidak ingin diubah)' : '' }}</label>
+          <input type="password" [(ngModel)]="formData.password" name="password" [required]="!isEditMode" class="form-control" />
+        </div>
+
+        <div class="form-group-row">
+          <div class="form-group">
+            <label>Role</label>
+            <select [(ngModel)]="formData.role" name="role" class="form-control">
+              <option value="Karyawan">Karyawan</option>
+              <option value="HRD">HRD</option>
+              <option value="Pimpinan">Pimpinan</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status Akun</label>
+            <select [(ngModel)]="formData.status" name="status" class="form-control">
+              <option value="aktif">Aktif</option>
+              <option value="nonaktif">Nonaktif</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>NIK</label>
+          <input type="text" [(ngModel)]="formData.nik" name="nik" required class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Tanggal Bergabung</label>
+          <input type="date" [(ngModel)]="formData.tanggal_bergabung" name="tanggal_bergabung" required class="form-control" />
+        </div>
+
+        <div class="form-group-row">
+          <div class="form-group">
+            <label>Geofence Rumah (Latitude) - Untuk WFH</label>
+            <input type="number" step="any" [(ngModel)]="formData.home_latitude" name="home_latitude" class="form-control" placeholder="-6.12345" />
+          </div>
+          <div class="form-group">
+            <label>Geofence Rumah (Longitude) - Untuk WFH</label>
+            <input type="number" step="any" [(ngModel)]="formData.home_longitude" name="home_longitude" class="form-control" placeholder="106.12345" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="closeModal()">Batal</button>
+          <button type="submit" class="btn-primary" [disabled]="isSaving">{{ isSaving ? 'Menyimpan...' : 'Simpan' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

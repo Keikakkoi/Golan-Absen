@@ -1,0 +1,130 @@
+<div class="dashboard-container admin-theme">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <div class="main-content">
+    <div class="header">
+      <h2 style="color: #0f172a; font-family: var(--font-display); font-size: 2rem;">Tentang Aplikasi</h2>
+      <p style="color: #64748b; margin-top: 0;">Informasi rilis, arsitektur teknologi, dan status sistem PT. Golan Digital Kreatif.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 1000px;">
+      
+      <!-- Hero Card -->
+      <div class="golan-card" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 2.5rem; border-radius: 12px; position: relative; overflow: hidden;">
+        <div style="display: flex; align-items: center; gap: 1.5rem;">
+          <div style="width: 72px; height: 72px; background: rgba(255,255,255,0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+            <img src="assets/icon_golan.png" alt="Logo Golan" style="width: 48px; height: 48px; object-fit: contain;" />
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <h3 style="margin: 0; font-size: 1.75rem; color: #ffffff;">{{ appInfo.shortName }}</h3>
+              <span style="background: #3b82f6; color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">
+                {{ appInfo.version }}
+              </span>
+            </div>
+            <p style="color: #94a3b8; margin: 0.5rem 0 0 0; font-size: 1rem; line-height: 1.5;">
+              {{ appInfo.description }}
+            </p>
+          </div>
+        </div>
+
+        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; font-size: 0.9rem; color: #cbd5e1;">
+          <div>
+            <i class="fa fa-building-o" style="margin-right: 0.4rem; color: #60a5fa;"></i>
+            <strong>Pengembang:</strong> {{ appInfo.company }}
+          </div>
+          <div>
+            <i class="fa fa-calendar-check-o" style="margin-right: 0.4rem; color: #34d399;"></i>
+            <strong>Tanggal Rilis:</strong> {{ appInfo.buildDate }}
+          </div>
+          <div>
+            <i class="fa fa-check-circle-o" style="margin-right: 0.4rem; color: #f43f5e;"></i>
+            <strong>Total Halaman Aktif:</strong> {{ systemStatus.activePagesCount }} Halaman (Target PRD Matched)
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Diagnostic & Tech Stack Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        
+        <!-- System Health Diagnostics -->
+        <div class="golan-card">
+          <h3 style="margin-top: 0; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa fa-heartbeat" style="color: #ef4444;"></i>
+            Status Diagnostics Sistem
+          </h3>
+          <hr style="border:0; border-top: 1px solid #e2e8f0; margin-bottom: 1.25rem;" />
+
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 6px;">
+              <span style="color: #475569; font-weight: 500;">Go Backend REST API</span>
+              <span style="color: #16a34a; font-weight: 600; display: flex; align-items: center; gap: 0.3rem;">
+                <i class="fa fa-circle" style="font-size: 0.6rem;"></i> {{ systemStatus.apiStatus }}
+              </span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 6px;">
+              <span style="color: #475569; font-weight: 500;">Database Engine</span>
+              <span style="color: #16a34a; font-weight: 600; display: flex; align-items: center; gap: 0.3rem;">
+                <i class="fa fa-circle" style="font-size: 0.6rem;"></i> {{ systemStatus.dbStatus }}
+              </span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 6px;">
+              <span style="color: #475569; font-weight: 500;">Object Storage Service</span>
+              <span style="color: #16a34a; font-weight: 600; display: flex; align-items: center; gap: 0.3rem;">
+                <i class="fa fa-circle" style="font-size: 0.6rem;"></i> {{ systemStatus.storageStatus }}
+              </span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 6px;">
+              <span style="color: #475569; font-weight: 500;">Target PRD Compliance</span>
+              <span style="color: #2563eb; font-weight: 600;">57 / 50 Halaman (114%)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tech Stack -->
+        <div class="golan-card">
+          <h3 style="margin-top: 0; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa fa-cubes" style="color: #3b82f6;"></i>
+            Teknologi & Framework Utama
+          </h3>
+          <hr style="border:0; border-top: 1px solid #e2e8f0; margin-bottom: 1.25rem;" />
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div *ngFor="let tech of techStack" style="padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; color: #0f172a; font-weight: 600; font-size: 0.95rem;">
+                <i [class]="tech.icon" style="color: #2563eb;"></i>
+                {{ tech.name }}
+              </div>
+              <span style="font-size: 0.75rem; color: #64748b; display: block; margin-top: 0.2rem;">{{ tech.category }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modules Overview -->
+      <div class="golan-card">
+        <h3 style="margin-top: 0; color: #0f172a;">Ringkasan Cakupan 57 Halaman Modul PRD</h3>
+        <hr style="border:0; border-top: 1px solid #e2e8f0; margin-bottom: 1.25rem;" />
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+          <div *ngFor="let mod of modules" style="padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #0f172a;">
+            <span style="font-size: 0.75rem; font-weight: 700; color: #2563eb; text-transform: uppercase;">{{ mod.code }}</span>
+            <h4 style="margin: 0.3rem 0; font-size: 0.95rem; color: #0f172a;">{{ mod.title }}</h4>
+            <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">{{ mod.pages }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Copyright -->
+      <div style="text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 1rem;">
+        {{ appInfo.copyright }}
+      </div>
+
+    </div>
+  </div>
+</div>
+

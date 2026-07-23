@@ -1,0 +1,49 @@
+<div class="dashboard-container admin-theme">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <div class="main-content">
+    <div class="header">
+      <div class="welcome-text">
+        <h2>Dashboard HRD</h2>
+        <p>Selamat datang, {{ adminName }}. Ringkasan diperbarui otomatis<span *ngIf="lastUpdated"> · {{ lastUpdated }}</span>.</p>
+      </div>
+    </div>
+
+    <div class="stats-grid" *ngIf="!isLoading">
+      <div class="golan-card stat-card admin-stat">
+        <h4>Total Karyawan</h4>
+        <div class="value">{{ stats.total_karyawan }} <span class="unit">Orang</span></div>
+      </div>
+      <div class="golan-card stat-card admin-stat">
+        <h4>Hadir Hari Ini</h4>
+        <div class="value">{{ stats.hadir_hari_ini }} <span class="unit">Karyawan</span></div>
+      </div>
+      <div class="golan-card stat-card admin-stat">
+        <h4>Terlambat Hari Ini</h4>
+        <div class="value" style="color: var(--absent);">{{ stats.terlambat_hari_ini }} <span class="unit">Karyawan</span></div>
+      </div>
+      <div class="golan-card stat-card admin-stat">
+        <h4>Izin / Cuti Hari Ini</h4>
+        <div class="value" style="color: var(--warning);">{{ stats.izin_cuti_hari_ini }} <span class="unit">Karyawan</span></div>
+      </div>
+    </div>
+
+    <div class="quick-actions-grid mt-4">
+      <div class="golan-card action-card">
+        <h3>Manajemen Karyawan</h3>
+        <p>Kelola data pegawai, jabatan, dan akses sistem.</p>
+        <button class="btn-primary mt-2" routerLink="/admin/employees">Lihat Data</button>
+      </div>
+      <div class="golan-card action-card">
+        <h3>Persetujuan Izin / Cuti</h3>
+        <p>Tinjau dan setujui pengajuan izin terbaru.</p>
+        <button class="btn-primary mt-2" routerLink="/admin/leaves">Review Cuti</button>
+      </div>
+      <div class="golan-card action-card">
+        <h3>Laporan Absensi</h3>
+        <p>Unduh rekap kehadiran harian hingga bulanan.</p>
+        <button class="btn-primary mt-2" routerLink="/admin/reports">Buka Laporan</button>
+      </div>
+    </div>
+  </div>
+</div>
