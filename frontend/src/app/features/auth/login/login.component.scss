@@ -186,6 +186,72 @@
   align-items: center;
   justify-content: center;
   padding: 40px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+
+  .login-grid-overlay,
+  .login-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .login-grid-overlay {
+    z-index: 0;
+    height: 70%;
+    background-image:
+      linear-gradient(to right, rgba(59, 130, 246, 0.105) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(59, 130, 246, 0.105) 1px, transparent 1px);
+    background-size: 76px 76px;
+    background-position: 0 0;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 56%, rgba(0, 0, 0, 0.72) 72%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 56%, rgba(0, 0, 0, 0.72) 72%, transparent 100%);
+  }
+
+  .login-particles {
+    z-index: 1;
+  }
+
+  .floating-particle {
+    position: absolute;
+    display: block;
+    width: var(--particle-size, 4px);
+    height: var(--particle-size, 4px);
+    border-radius: 50%;
+    background: var(--particle-color, rgba(191, 219, 254, 0.9));
+    box-shadow: 0 0 10px 2px var(--particle-glow, rgba(96, 165, 250, 0.42));
+    filter: blur(0.35px);
+    opacity: var(--particle-opacity, 0.32);
+    animation: login-particle-float var(--particle-duration, 12s) ease-in-out infinite alternate;
+    animation-delay: var(--particle-delay, 0s);
+    will-change: transform, opacity;
+  }
+
+  .particle-1 { left: 11%; top: 12%; --particle-size: 3px; --particle-duration: 13s; --particle-delay: -3s; }
+  .particle-2 { left: 26%; top: 24%; --particle-size: 5px; --particle-opacity: 0.38; --particle-color: rgba(219, 234, 254, 0.9); --particle-duration: 17s; --particle-delay: -8s; }
+  .particle-3 { left: 42%; top: 9%; --particle-size: 2px; --particle-opacity: 0.4; --particle-duration: 11s; --particle-delay: -5s; }
+  .particle-4 { left: 58%; top: 29%; --particle-size: 4px; --particle-color: rgba(147, 197, 253, 0.62); --particle-duration: 15s; --particle-delay: -11s; }
+  .particle-5 { left: 76%; top: 16%; --particle-size: 3px; --particle-duration: 19s; --particle-delay: -7s; }
+  .particle-6 { left: 88%; top: 38%; --particle-size: 5px; --particle-opacity: 0.36; --particle-color: rgba(219, 234, 254, 0.82); --particle-duration: 16s; --particle-delay: -13s; }
+  .particle-7 { left: 17%; top: 47%; --particle-size: 2px; --particle-opacity: 0.38; --particle-duration: 14s; --particle-delay: -2s; }
+  .particle-8 { left: 35%; top: 55%; --particle-size: 4px; --particle-color: rgba(191, 219, 254, 0.58); --particle-duration: 18s; --particle-delay: -10s; }
+  .particle-9 { left: 67%; top: 51%; --particle-size: 3px; --particle-duration: 12s; --particle-delay: -6s; }
+  .particle-10 { left: 94%; top: 63%; --particle-size: 2px; --particle-opacity: 0.38; --particle-duration: 15s; --particle-delay: -9s; }
+  .particle-11 { left: 49%; top: 68%; --particle-size: 3px; --particle-color: rgba(219, 234, 254, 0.5); --particle-duration: 20s; --particle-delay: -15s; }
+  .particle-12 { left: 8%; top: 72%; --particle-size: 4px; --particle-opacity: 0.24; --particle-duration: 17s; --particle-delay: -4s; }
+}
+
+@keyframes login-particle-float {
+  0% {
+    transform: translate3d(-8px, 5px, 0) scale(0.86);
+  }
+  50% {
+    opacity: calc(var(--particle-opacity, 0.32) + 0.05);
+  }
+  100% {
+    transform: translate3d(12px, -18px, 0) scale(1.12);
+  }
 }
 
 @keyframes login-pattern-drift {
@@ -265,9 +331,15 @@
   .brand-panel .stamp-inner-ring {
     animation: none;
   }
+
+  .form-panel .floating-particle {
+    animation: none;
+  }
 }
 
 .login-card {
+  position: relative;
+  z-index: 2;
   width: 100%;
   max-width: 400px;
   background: white;
@@ -446,5 +518,114 @@
     &:hover:not(:disabled) {
       background-color: #1769aa;
     }
+  }
+}
+
+/* Mobile login is intentionally compact so the brand panel reads as a
+   header instead of being squeezed by the taller form panel. */
+@media (max-width: 900px) {
+  .split-layout {
+    min-height: 100svh;
+  }
+
+  .brand-panel {
+    flex: 0 0 126px;
+    box-sizing: border-box;
+    min-height: 126px !important;
+    height: 126px;
+    padding: 18px 20px !important;
+
+    &::after {
+      display: none;
+    }
+
+    .ambient-orb {
+      opacity: 0.18;
+    }
+
+    .brand-content {
+      width: 100%;
+      max-width: none;
+      animation: none;
+    }
+
+    .clock-display,
+    .stamp-seal-wrapper {
+      display: none;
+    }
+
+    .welcome-text {
+      h2 {
+        margin: 0 0 5px;
+        font-size: 1.35rem;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .form-panel {
+    flex: 1 0 auto;
+    box-sizing: border-box;
+    min-height: calc(100svh - 126px);
+    align-items: flex-start;
+    padding: 28px 20px 34px !important;
+
+    .login-grid-overlay {
+      height: 42%;
+      background-size: 90px 90px;
+    }
+
+    .login-card {
+      box-sizing: border-box;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-panel {
+    flex-basis: 112px;
+    min-height: 112px !important;
+    height: 112px;
+    padding-inline: 16px !important;
+
+    .welcome-text h2 {
+      font-size: 1.2rem;
+    }
+
+    .welcome-text p {
+      font-size: 0.82rem;
+    }
+  }
+
+  .form-panel {
+    min-height: calc(100svh - 112px);
+    padding: 24px 16px 30px !important;
+  }
+
+  .login-card {
+    padding: 30px 20px 28px;
+    border-radius: 14px;
+  }
+
+  .brand-header {
+    margin-bottom: 24px;
+
+    .brand-logo {
+      width: 56px;
+      height: 56px;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: 1.15rem;
+    }
+  }
+
+  .login-form {
+    gap: 18px;
   }
 }

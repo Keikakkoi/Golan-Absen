@@ -33,6 +33,11 @@
 
   <!-- Right Panel: Login Form -->
   <div class="form-panel">
+    <div class="login-grid-overlay" aria-hidden="true"></div>
+    <div class="login-particles" aria-hidden="true">
+      <span *ngFor="let particle of particleIds" class="floating-particle particle-{{ particle }}"></span>
+    </div>
+
     <div class="login-card">
       <div class="brand-header">
         <img src="assets/icon_golan.png" alt="Logo PT. Golan" class="brand-logo" />

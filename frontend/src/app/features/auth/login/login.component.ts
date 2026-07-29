@@ -18,6 +18,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   currentTime: Date = new Date();
   mathQuestion = '';
   showPassword = false;
+  readonly particleIds = Array.from({ length: 12 }, (_, index) => index + 1);
   private mathExpectedAnswer = 0;
   private timerId: any;
 
