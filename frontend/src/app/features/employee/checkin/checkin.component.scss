@@ -150,6 +150,38 @@
   }
 }
 
+.completion-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 56px;
+  border-radius: 16px;
+  background: #e8f7ef;
+  color: #16834b;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.checkout-complete {
+  border-color: #a8dfbf;
+  box-shadow: 0 8px 24px rgba(22, 131, 75, 0.08);
+}
+
+/* Attendance state colors: not checked in = red, ready to check out = blue. */
+.punch-btn-large.checkin-pending {
+  background: linear-gradient(135deg, #d15c50 0%, #a83e35 100%);
+  border-color: #f4c2bd;
+  box-shadow: 0 10px 30px rgba(209, 92, 80, 0.3);
+}
+
+.punch-btn-large.checkout-mode {
+  background: linear-gradient(135deg, #3b82f6 0%, #1769aa 100%);
+  border-color: #b9d9fb;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+}
+
 /* Compact Forms */
 .form-group-compact {
   margin: 0;
@@ -170,69 +202,6 @@
     &:focus {
       border-color: var(--green);
       box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.1);
-    }
-  }
-}
-
-/* Stamp Modal Overlay */
-.stamp-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(23, 43, 58, 0.8);
-  backdrop-filter: blur(4px);
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-
-  .stamp-modal-card {
-    background: white;
-    border-radius: 20px;
-    width: 100%;
-    max-width: 400px;
-    padding: 40px 30px;
-    text-align: center;
-    border: 1px solid var(--mint-1);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    .stamp-seal-wrapper .stamp-seal {
-      width: 160px;
-      height: 160px;
-
-      .stamp-outer-ring {
-        border-color: var(--stamp);
-      }
-      .stamp-inner-ring {
-        border-color: rgba(200, 103, 44, 0.7);
-      }
-      .stamp-center {
-        .stamp-badge {
-          background-color: var(--stamp);
-          color: white;
-          border-color: white;
-        }
-        .stamp-sub {
-          color: var(--text-dark-lo);
-        }
-      }
-    }
-
-    .modal-title {
-      font-size: 1.5rem;
-      color: var(--green-deep);
-      font-family: var(--font-display);
-      margin-bottom: 6px;
-    }
-
-    .modal-desc {
-      font-size: 0.875rem;
-      color: var(--text-dark-lo);
-      margin: 0;
     }
   }
 }

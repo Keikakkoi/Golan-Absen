@@ -1,0 +1,3 @@
+.toolbar{display:flex;align-items:end;gap:12px;margin-bottom:20px}.toolbar label{display:flex;flex-direction:column;gap:6px}@media(max-width:600px){.toolbar{flex-direction:column;align-items:stretch}}
+.report-thumb { display: inline-block; margin: 2px; }
+.report-thumb img { width: 72px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }

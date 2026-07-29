@@ -1,0 +1,134 @@
+<div class="dashboard-container admin-theme">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <div class="main-content">
+    <div class="header page-header">
+      <div>
+        <span class="eyebrow">HRD / Admin</span>
+        <h2>Kalender & Event Perusahaan</h2>
+        <p>Atur agenda yang akan tampil di dashboard seluruh karyawan.</p>
+      </div>
+      <button class="btn-primary" type="button" (click)="openCreateModal()">+ Tambah Event</button>
+    </div>
+
+    <div *ngIf="errorMessage && !showModal" class="alert alert-danger">{{ errorMessage }}</div>
+
+    <div class="event-management-grid">
+      <section class="golan-card calendar-card">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Agenda</span>
+            <h3>Kalender kegiatan</h3>
+          </div>
+          <button class="today-btn" type="button" (click)="goToToday()">Hari ini</button>
+        </div>
+
+        <div class="calendar-toolbar">
+          <button type="button" class="month-nav" (click)="changeMonth(-1)" aria-label="Bulan sebelumnya">‹</button>
+          <strong>{{ currentMonth | date:'MMMM yyyy' }}</strong>
+          <button type="button" class="month-nav" (click)="changeMonth(1)" aria-label="Bulan berikutnya">›</button>
+        </div>
+
+        <div class="calendar-grid" role="grid" aria-label="Kalender event perusahaan">
+          <span class="weekday" *ngFor="let dayName of weekDays">{{ dayName }}</span>
+          <button *ngFor="let day of calendarDays" type="button" class="calendar-day"
+            [class.empty]="!day" [class.today]="day?.isToday" [class.selected]="day?.dateKey === selectedDate"
+            [class.has-event]="day?.hasEvents" [class.holiday]="day?.isHoliday" [disabled]="!day" (click)="selectDate(day)">
+            <ng-container *ngIf="day">
+              <span>{{ day.date }}</span>
+              <i *ngIf="day.hasEvents || day?.isHoliday" aria-label="Memiliki event atau hari libur"></i>
+            </ng-container>
+          </button>
+        </div>
+      </section>
+
+      <section class="golan-card selected-events-card">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Tanggal terpilih</span>
+            <h3>{{ selectedDateLabel }}</h3>
+          </div>
+          <button class="btn-primary btn-small" type="button" (click)="openCreateModal()">+ Event</button>
+        </div>
+
+        <div *ngIf="selectedDateEvents.length > 0; else noSelectedEvents" class="selected-event-list">
+          <article class="selected-event" *ngFor="let event of selectedDateEvents">
+            <div class="event-time">{{ event.JamMulai }}<span *ngIf="event.JamSelesai">–{{ event.JamSelesai }}</span></div>
+            <div class="event-copy">
+              <strong>{{ event.Judul }}</strong>
+              <span>{{ event.Tipe | titlecase }} · {{ event.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span>
+              <p>{{ event.Deskripsi || 'Tidak ada deskripsi.' }}</p>
+              <small *ngIf="event.Lokasi">Lokasi: {{ event.Lokasi }}</small>
+            </div>
+            <div class="event-actions">
+              <button type="button" class="icon-button edit" (click)="openEditModal(event)" aria-label="Edit event" title="Edit event"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>
+              <button type="button" class="icon-button delete" (click)="deleteEvent(event)" aria-label="Hapus event" title="Hapus event"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button>
+            </div>
+          </article>
+        </div>
+        <ng-template #noSelectedEvents>
+          <div class="empty-state">Belum ada event pada tanggal ini.</div>
+        </ng-template>
+      </section>
+    </div>
+
+    <section class="golan-card all-events-card">
+      <div class="card-header">
+        <div>
+          <span class="eyebrow">Daftar agenda</span>
+          <h3>Event bulan ini</h3>
+        </div>
+        <span *ngIf="isLoading" class="loading-label">Memuat...</span>
+      </div>
+      <div class="table-container">
+        <table class="golan-table" *ngIf="events.length > 0; else noEvents">
+          <thead><tr><th>Tanggal</th><th>Waktu</th><th>Judul</th><th>Tipe</th><th>Lokasi</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let event of events">
+              <td>{{ event.Tanggal | date:'dd MMM yyyy' }}</td>
+              <td class="mono-text">{{ event.JamMulai }}<span *ngIf="event.JamSelesai"> – {{ event.JamSelesai }}</span></td>
+              <td><strong>{{ event.Judul }}</strong><small class="table-description">{{ event.Deskripsi || '-' }}</small></td>
+              <td>{{ event.Tipe | titlecase }}</td>
+              <td>{{ event.Lokasi || '-' }}</td>
+              <td><span class="status-badge" [class.status-hadir]="event.StatusAktif" [class.status-alpha]="!event.StatusAktif">{{ event.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span></td>
+              <td class="actions"><button class="icon-button edit" type="button" (click)="openEditModal(event)" aria-label="Edit event" title="Edit event"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button><button class="icon-button delete" type="button" (click)="deleteEvent(event)" aria-label="Hapus event" title="Hapus event"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button></td>
+            </tr>
+          </tbody>
+        </table>
+        <ng-template #noEvents><div class="empty-state">Belum ada event pada bulan ini.</div></ng-template>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showModal">
+  <div class="modal-content golan-card event-modal">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <span class="eyebrow">Agenda perusahaan</span>
+        <h3>{{ form.ID ? 'Edit Event Perusahaan' : 'Tambah Event Perusahaan' }}</h3>
+        <p>Lengkapi informasi kegiatan yang akan dibagikan kepada karyawan.</p>
+      </div>
+      <button class="btn-close" type="button" (click)="closeModal()" aria-label="Tutup">&times;</button>
+    </div>
+    <form (ngSubmit)="saveEvent()">
+      <div class="form-grid">
+        <div class="form-group"><label for="event-date">Tanggal <b>*</b></label><input id="event-date" type="date" class="golan-input" name="tanggal" [(ngModel)]="form.tanggal" required></div>
+        <div class="form-group"><label for="event-type">Tipe Event <b>*</b></label><select id="event-type" class="golan-input" name="tipe" [(ngModel)]="form.tipe"><option value="rapat">Rapat</option><option value="meeting">Meeting</option><option value="info">Informasi</option><option value="lainnya">Lainnya</option></select></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label for="event-start">Jam Mulai <b>*</b></label><input id="event-start" type="time" class="golan-input" name="jam_mulai" [(ngModel)]="form.jam_mulai" required></div>
+        <div class="form-group"><label for="event-end">Jam Selesai <span>(opsional)</span></label><input id="event-end" type="time" class="golan-input" name="jam_selesai" [(ngModel)]="form.jam_selesai"></div>
+      </div>
+      <div class="form-group"><label for="event-title">Judul Event <b>*</b></label><input id="event-title" type="text" class="golan-input" name="judul" [(ngModel)]="form.judul" placeholder="Contoh: Meeting dengan investor" required></div>
+      <div class="form-group"><label for="event-location">Lokasi <span>(opsional)</span></label><input id="event-location" type="text" class="golan-input" name="lokasi" [(ngModel)]="form.lokasi" placeholder="Contoh: Ruang Meeting Utama / Online"></div>
+      <div class="form-group"><label for="event-description">Deskripsi / Catatan <span>(opsional)</span></label><textarea id="event-description" class="golan-input" name="deskripsi" [(ngModel)]="form.deskripsi" rows="3" placeholder="Tambahkan informasi event"></textarea></div>
+      <label class="active-toggle">
+        <span class="toggle-control"><input type="checkbox" name="status_aktif" [(ngModel)]="form.status_aktif"><span class="toggle-track"><span></span></span></span>
+        <span class="toggle-copy"><strong>Tampilkan event pada dashboard karyawan</strong><small>Event aktif dapat dilihat oleh seluruh karyawan.</small></span>
+      </label>
+      <div *ngIf="errorMessage && showModal" class="alert alert-danger modal-error">{{ errorMessage }}</div>
+      <div class="modal-actions"><button type="button" class="btn-secondary" (click)="closeModal()">Batal</button><button type="submit" class="btn-primary" [disabled]="isSaving">{{ isSaving ? 'Menyimpan...' : 'Simpan Event' }}</button></div>
+    </form>
+  </div>
+</div>

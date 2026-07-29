@@ -95,17 +95,16 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   todayRecord: any = null; // Store today's attendance record
   hasCheckedIn: boolean = false;
   hasCheckedOut: boolean = false;
+  hasLeaveToday: boolean = false;
+  leaveStatus = '';
   isCheckoutPage = false;
   canPunchBySchedule = false;
   attendanceClosed = false;
   scheduleMessage = '';
 
-  // PRD 15 Clock & Confirmation Stamp variables
+  // Clock state for the attendance screen.
   currentTime = new Date();
   private clockInterval: any;
-  showStampModal = false;
-  stampModalMessage = '';
-  stampSuccess = false;
 
   constructor(
     private attendanceService: AttendanceService,
@@ -144,6 +143,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
           this.todayRecord = todayRecord;
           this.hasCheckedIn = todayRecord.JamMasuk != null;
           this.hasCheckedOut = todayRecord.JamPulang != null;
+          this.hasLeaveToday = !this.hasCheckedIn && (todayRecord.Status === 'Izin' || todayRecord.Status === 'Cuti');
+          this.leaveStatus = this.hasLeaveToday ? todayRecord.Status : '';
           if (this.hasCheckedIn && !this.hasCheckedOut) {
             this.tipeKerja = todayRecord.TipeKerja;
           }
@@ -161,6 +162,13 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private updateAttendanceWindow(): void {
+    if (this.hasLeaveToday) {
+      this.canPunchBySchedule = false;
+      this.attendanceClosed = true;
+      this.scheduleMessage = `Status ${this.leaveStatus} sudah tercatat untuk hari ini.`;
+      return;
+    }
+
     const seconds = this.currentTime.getHours() * 3600 + this.currentTime.getMinutes() * 60 + this.currentTime.getSeconds();
     const resetTime = 7 * 3600;
     const checkoutTime = 17 * 3600;
@@ -220,8 +228,15 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         this.workTypes = data;
         if (this.workTypes.length > 0) {
           const wfo = this.workTypes.find(w => w.Nama === 'WFO');
-          this.tipeKerja = wfo ? wfo.Nama : this.workTypes[0].Nama;
+          // Jika sudah check-in hari ini, jangan timpa tipeKerja yang sudah diambil dari record hari ini
+          if (!this.hasCheckedIn) {
+            this.tipeKerja = wfo ? wfo.Nama : this.workTypes[0].Nama;
+          } else if (this.todayRecord?.TipeKerja) {
+            this.tipeKerja = this.todayRecord.TipeKerja;
+          }
         }
+        // Pastikan geofence diperbarui setelah workTypes/tipoKerja diset
+        this.updateMapGeofences();
       },
       error: (err) => console.error('Failed to load work types', err)
     });
@@ -489,9 +504,6 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.isGpsActive || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
 
     this.isSubmitting = true;
-    this.showStampModal = true;
-    this.stampSuccess = false;
-    this.stampModalMessage = 'Mengirim koordinat & verifikasi GPS...';
 
     this.attendanceService.checkIn(
       this.currentLat, 
@@ -500,18 +512,14 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       this.capturedBlob,
       this.tipeKerja
     ).subscribe({
-      next: (res) => {
-        this.stampSuccess = true;
-        this.stampModalMessage = 'Check-in Berhasil! Presensi Terdaftar.';
-        setTimeout(() => {
-          this.isSubmitting = false;
-          this.showStampModal = false;
-          this.router.navigate(['/employee/dashboard']);
-        }, 2500);
+      next: () => {
+        this.isSubmitting = false;
+        this.alert.success('Check-in berhasil', 'Presensi Anda telah tersimpan.').then(() => {
+          this.router.navigate([this.getPostAttendanceRoute()]);
+        });
       },
       error: (err) => {
         this.isSubmitting = false;
-        this.showStampModal = false;
         this.alert.error('Check-in gagal', err.error?.error || 'Kesalahan sistem');
       }
     });
@@ -521,9 +529,6 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.isGpsActive || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
 
     this.isSubmitting = true;
-    this.showStampModal = true;
-    this.stampSuccess = false;
-    this.stampModalMessage = 'Menghitung durasi kerja & verifikasi GPS...';
 
     this.attendanceService.checkOut(
       this.currentLat, 
@@ -531,20 +536,27 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       this.currentAccuracy, 
       this.capturedBlob
     ).subscribe({
-      next: (res) => {
-        this.stampSuccess = true;
-        this.stampModalMessage = 'Check-out Berhasil! Selamat beristirahat.';
-        setTimeout(() => {
-          this.isSubmitting = false;
-          this.showStampModal = false;
-          this.router.navigate(['/employee/dashboard']);
-        }, 2500);
+      next: () => {
+        this.isSubmitting = false;
+        this.alert.success('Check-out berhasil', 'Presensi pulang Anda telah tersimpan.').then(() => {
+          this.router.navigate([this.getPostAttendanceRoute()]);
+        });
       },
       error: (err) => {
         this.isSubmitting = false;
-        this.showStampModal = false;
         this.alert.error('Check-out gagal', err.error?.error || 'Kesalahan sistem');
       }
     });
+  }
+
+  private getPostAttendanceRoute(): string {
+    switch (localStorage.getItem('role')) {
+      case 'MANAJER':
+        return '/manager/dashboard';
+      case 'MAGANG':
+        return '/intern/dashboard';
+      default:
+        return '/employee/dashboard';
+    }
   }
 }

@@ -22,21 +22,27 @@ export class AdminReportsComponent implements OnInit {
     izin_cuti_hari_ini: 0
   };
   
+  allReports: any[] = [];
   reports: any[] = [];
-  departments: any[] = [];
+  divisions: any[] = [];
+  uniqueRoles: any[] = [];
   isLoadingStats = true;
   isLoadingReports = false;
+  isExportOpen = false;
 
   filters = {
     start_date: '',
     end_date: '',
     status: 'Semua',
-    department_id: '',
-    periode: 'Kustom'
+    division_id: '',
+    periode: 'Kustom',
+    search: '',
+    role: '',
+    sort_order: 'desc'
   };
 
   private baseReportUrl = 'http://localhost:8080/api/v1/admin/reports';
-  private baseDeptUrl = 'http://localhost:8080/api/v1/organization/departments';
+  private baseDeptUrl = 'http://localhost:8080/api/v1/organization/divisions';
 
   constructor(
     private http: HttpClient,
@@ -59,7 +65,7 @@ export class AdminReportsComponent implements OnInit {
     }
 
     this.loadStats();
-    this.loadDepartments();
+    this.loadDivisionsAndRoles();
     this.loadReports();
   }
 
@@ -77,21 +83,37 @@ export class AdminReportsComponent implements OnInit {
     });
   }
 
-  loadDepartments(): void {
+  loadDivisionsAndRoles(): void {
     const headers = this.getHeaders();
     this.http.get<any[]>(this.baseDeptUrl, { headers }).subscribe({
       next: (data) => {
-        this.departments = data || [];
+        this.divisions = data || [];
       },
       error: (err) => {
-        console.error('Failed to load departments', err);
+        console.error('Failed to load divisions', err);
       }
+    });
+
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/positions', { headers }).subscribe({
+      next: (data) => {
+        this.uniqueRoles = data.map(p => p.NamaJabatan).sort();
+      },
+      error: (err) => console.error('Failed to load roles', err)
     });
   }
 
   onPeriodeChange(): void {
     this.setPeriodDates(this.filters.periode);
     this.loadReports();
+  }
+
+  onFilterChange(): void {
+    // If backend filters change, we need to load from backend
+    this.loadReports();
+  }
+
+  onLocalFilterChange(): void {
+    this.applyFilters();
   }
 
   private setPeriodDates(period: string): void {
@@ -121,13 +143,14 @@ export class AdminReportsComponent implements OnInit {
     if (this.filters.status !== 'Semua') {
       queryParams += `&status=${this.filters.status}`;
     }
-    if (this.filters.department_id) {
-      queryParams += `&department_id=${this.filters.department_id}`;
+    if (this.filters.division_id) {
+      queryParams += `&division_id=${this.filters.division_id}`;
     }
 
     this.http.get<any[]>(`${this.baseReportUrl}${queryParams}`, { headers }).subscribe({
       next: (data) => {
-        this.reports = data;
+        this.allReports = data || [];
+        this.applyFilters();
         this.isLoadingReports = false;
       },
       error: (err) => {
@@ -137,32 +160,75 @@ export class AdminReportsComponent implements OnInit {
     });
   }
 
-  exportCSV(): void {
-    let queryParams = `?start_date=${this.filters.start_date}&end_date=${this.filters.end_date}`;
-    if (this.filters.status !== 'Semua') {
-      queryParams += `&status=${this.filters.status}`;
+  applyFilters(): void {
+    let temp = this.allReports;
+
+    if (this.filters.search) {
+      const q = this.filters.search.toLowerCase();
+      temp = temp.filter(r => 
+        (r.Employee?.User?.Nama && r.Employee.User.Nama.toLowerCase().includes(q)) ||
+        (r.Employee?.NIK && r.Employee.NIK.toLowerCase().includes(q)) ||
+        (r.Employee?.Position?.NamaJabatan && r.Employee.Position.NamaJabatan.toLowerCase().includes(q))
+      );
     }
-    if (this.filters.department_id) {
-      queryParams += `&department_id=${this.filters.department_id}`;
+
+    if (this.filters.role) {
+      temp = temp.filter(r => r.Employee?.Position?.NamaJabatan === this.filters.role);
+    }
+
+    if (this.filters.sort_order === 'desc') {
+      temp.sort((a, b) => new Date(b.Tanggal).getTime() - new Date(a.Tanggal).getTime());
+    } else if (this.filters.sort_order === 'asc') {
+      temp.sort((a, b) => new Date(a.Tanggal).getTime() - new Date(b.Tanggal).getTime());
+    } else if (this.filters.sort_order === 'name_asc') {
+      temp.sort((a, b) => (a.Employee?.User?.Nama || '').localeCompare(b.Employee?.User?.Nama || ''));
+    } else if (this.filters.sort_order === 'name_desc') {
+      temp.sort((a, b) => (b.Employee?.User?.Nama || '').localeCompare(a.Employee?.User?.Nama || ''));
+    }
+
+    this.reports = temp;
+  }
+
+  toggleExportDropdown(): void {
+    this.isExportOpen = !this.isExportOpen;
+  }
+
+  exportCSV(): void {
+    if (this.reports.length === 0) {
+      alert('Tidak ada data untuk diekspor.');
+      return;
     }
     
-    const headers = this.getHeaders();
-    this.http.get(`${this.baseReportUrl}/export${queryParams}`, { headers, responseType: 'blob' }).subscribe({
-      next: (blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `rekap_absensi_${this.filters.start_date}_to_${this.filters.end_date}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      },
-      error: (err) => {
-        console.error('Failed to export CSV', err);
-        alert('Gagal mengunduh laporan CSV.');
-      }
+    let csvContent = 'Tanggal,NIK,Nama Karyawan,Divisi,Jabatan,Tipe Kerja,Jam Masuk,Jam Pulang,Status\n';
+    
+    this.reports.forEach(r => {
+      const dateVal = r.Tanggal ? new Date(r.Tanggal).toLocaleDateString('id-ID') : '-';
+      const jamMasuk = r.JamMasuk ? new Date(r.JamMasuk).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+      const jamPulang = r.JamPulang ? new Date(r.JamPulang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+      
+      const row = [
+        dateVal,
+        `="${r.Employee?.NIK || ''}"`,
+        `"${(r.Employee?.User?.Nama || '').replace(/"/g, '""')}"`,
+        `"${(r.Employee?.Division?.NamaDivisi || '').replace(/"/g, '""')}"`,
+        `"${(r.Employee?.Position?.NamaJabatan || '').replace(/"/g, '""')}"`,
+        r.TipeKerja || 'WFO',
+        jamMasuk,
+        jamPulang,
+        r.Status
+      ];
+      csvContent += row.join(',') + '\n';
     });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rekap_absensi_${this.filters.start_date}_to_${this.filters.end_date}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   }
 
   exportExcel(): void {
@@ -188,6 +254,8 @@ export class AdminReportsComponent implements OnInit {
               <th>Tanggal</th>
               <th>NIK</th>
               <th>Nama Karyawan</th>
+              <th>Divisi</th>
+              <th>Jabatan</th>
               <th>Tipe Kerja</th>
               <th>Jam Masuk</th>
               <th>Jam Pulang</th>
@@ -206,6 +274,8 @@ export class AdminReportsComponent implements OnInit {
           <td>${dateVal}</td>
           <td>'${r.Employee?.NIK || ''}</td>
           <td>${r.Employee?.User?.Nama || ''}</td>
+          <td>${r.Employee?.Division?.NamaDivisi || ''}</td>
+          <td>${r.Employee?.Position?.NamaJabatan || ''}</td>
           <td>${r.TipeKerja || 'WFO'}</td>
           <td>${jamMasuk}</td>
           <td>${jamPulang}</td>
@@ -230,6 +300,21 @@ export class AdminReportsComponent implements OnInit {
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
+    document.body.removeChild(a);
+  }
+
+  exportJSON(): void {
+    if (this.reports.length === 0) {
+      alert('Tidak ada data untuk diekspor.');
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.reports, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `rekap_absensi_${this.filters.start_date}_to_${this.filters.end_date}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
   }
 
   exportPDF(): void {
@@ -243,6 +328,10 @@ export class AdminReportsComponent implements OnInit {
       alert('Gagal membuka jendela cetak. Mohon izinkan pop-up.');
       return;
     }
+
+    // Gunakan URL absolut agar logo tetap dapat dimuat pada dokumen print
+    // yang dibuka melalui jendela baru maupun saat aplikasi dideploy di subpath.
+    const logoUrl = new URL('assets/icon_golan.png', document.baseURI).href;
 
     let rowsHtml = '';
     this.reports.forEach(r => {
@@ -261,6 +350,8 @@ export class AdminReportsComponent implements OnInit {
           <td>${dateVal}</td>
           <td>${r.Employee?.NIK || ''}</td>
           <td>${r.Employee?.User?.Nama || ''}</td>
+          <td>${r.Employee?.Division?.NamaDivisi || ''}</td>
+          <td>${r.Employee?.Position?.NamaJabatan || ''}</td>
           <td>${r.TipeKerja || 'WFO'}</td>
           <td>${jamMasuk}</td>
           <td>${jamPulang}</td>
@@ -276,6 +367,7 @@ export class AdminReportsComponent implements OnInit {
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; color: #1e293b; }
           .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
+          .brand-logo { width: 64px; height: 64px; object-fit: contain; display: block; margin: 0 auto 8px; }
           .header h1 { margin: 0; color: #1e3a8a; font-size: 24px; }
           .header p { margin: 5px 0 0; color: #64748b; font-size: 14px; }
           .info { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 12px; color: #475569; }
@@ -293,6 +385,7 @@ export class AdminReportsComponent implements OnInit {
       </head>
       <body>
         <div class="header">
+          <img src="${logoUrl}" alt="Logo Golan Digital Kreatif" class="brand-logo">
           <h1>PT. GOLAN DIGITAL KREATIF</h1>
           <p>Laporan Rekap Absensi Kehadiran Karyawan</p>
         </div>
@@ -306,6 +399,8 @@ export class AdminReportsComponent implements OnInit {
               <th>Tanggal</th>
               <th>NIK</th>
               <th>Nama Karyawan</th>
+              <th>Divisi</th>
+              <th>Jabatan</th>
               <th>Tipe Kerja</th>
               <th>Jam Masuk</th>
               <th>Jam Pulang</th>

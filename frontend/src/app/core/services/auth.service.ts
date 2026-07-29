@@ -2,11 +2,14 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Router } from '@angular/router';
+import { ThemeService } from './theme.service';
 
 export interface LoginResponse {
   token: string;
   role: string;
   name: string;
+  divisi?: string;
+  jabatan?: string;
 }
 
 export interface ForgotPasswordResponse {
@@ -27,12 +30,14 @@ export class AuthService {
   private currentUserSubject = new BehaviorSubject<any>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
   
-  constructor(private http: HttpClient, private router: Router) {
+  constructor(private http: HttpClient, private router: Router, private themeService: ThemeService) {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     const name = localStorage.getItem('name');
+    const divisi = localStorage.getItem('divisi');
+    const jabatan = localStorage.getItem('jabatan');
     if (token) {
-      this.currentUserSubject.next({ token, role, name });
+      this.currentUserSubject.next({ token, role, name, divisi, jabatan });
     }
   }
 
@@ -46,7 +51,14 @@ export class AuthService {
           localStorage.setItem('token', response.token);
           localStorage.setItem('role', response.role);
           localStorage.setItem('name', response.name);
+          if (response.divisi) {
+            localStorage.setItem('divisi', response.divisi);
+          }
+          if (response.jabatan) {
+            localStorage.setItem('jabatan', response.jabatan);
+          }
           this.currentUserSubject.next(response);
+          this.themeService.applyStoredTheme();
         })
       );
   }
@@ -65,6 +77,8 @@ export class AuthService {
   }
 
   logout(): void {
+    // Do not let the authenticated dark palette leak into the login page.
+    this.themeService.clearActiveTheme();
     const token = this.getToken();
     if (token) {
       const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
@@ -78,9 +92,12 @@ export class AuthService {
   }
 
   private clearSession(): void {
+    this.themeService.clearActiveTheme();
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('name');
+    localStorage.removeItem('divisi');
+    localStorage.removeItem('jabatan');
     this.currentUserSubject.next(null);
     this.router.navigate(['/login']);
   }

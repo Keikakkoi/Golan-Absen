@@ -1,1 +1,94 @@
 @import '../employee-list/employee-list.component.scss';
+
+.leave-approval-page,
+.leave-card,
+.leave-table-container,
+.leave-table {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.leave-table-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+}
+
+.leave-table {
+  display: table;
+  width: 100% !important;
+  min-width: 920px !important;
+  max-width: none !important;
+  table-layout: auto;
+}
+
+.leave-table th,
+.leave-table td {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.action-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-action {
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.12);
+}
+
+.btn-detail {
+  background: #e0efff;
+  color: #2563eb;
+}
+
+.btn-approve {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-reject {
+  background: #ef4444;
+  color: white;
+}
+
+.action-finished {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .leave-card {
+    padding: 16px !important;
+  }
+
+  .leave-table-container {
+    margin: 0;
+  }
+}

@@ -1,9 +1,36 @@
 <!-- Topbar Hamburger for mobile & tablet (900px breakpoint) -->
 <div class="topbar-header">
-  <button class="hamburger-btn" (click)="toggleDrawer()">☰ Menu</button>
-  <div class="topbar-brand">
-    <img src="assets/icon_golan.png" alt="Logo PT. Golan" class="topbar-logo" />
-    <span class="topbar-title">Golan Digital</span>
+  <button
+    class="hamburger-btn"
+    type="button"
+    (click)="toggleDrawer()"
+    [attr.aria-expanded]="isDrawerOpen"
+    aria-controls="main-sidebar">
+    <span aria-hidden="true">&#9776;</span> Menu
+  </button>
+  <div class="topbar-actions">
+    <div class="topbar-brand">
+      <img src="assets/icon_golan.png" alt="Logo PT. Golan" class="topbar-logo" />
+      <span class="topbar-title">Golan Digital</span>
+    </div>
+    <div class="topbar-notification">
+      <button class="topbar-notification-btn" type="button" (click)="toggleNotifications()" aria-label="Buka notifikasi">
+        <svg class="topbar-notification-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
+        <span class="topbar-notification-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+      </button>
+      <div class="topbar-notification-dropdown" *ngIf="showNotifications">
+        <div class="topbar-notification-heading">Notifikasi</div>
+        <div class="topbar-notification-body">
+          <button class="topbar-notification-item" type="button" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca" (click)="markAsRead(notif)">
+            <strong>{{ notif.Judul }}</strong>
+            <span>{{ notif.Pesan }}</span>
+            <small>{{ notif.Waktu | date:'medium' }}</small>
+          </button>
+          <div class="topbar-notification-empty" *ngIf="notifications.length === 0">Tidak ada notifikasi.</div>
+        </div>
+        <a class="topbar-notification-footer" [routerLink]="notificationsLink" (click)="showNotifications = false">Lihat semua notifikasi</a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -11,7 +38,11 @@
 <div class="sidebar-drawer-overlay" [class.active]="isDrawerOpen" (click)="closeDrawer()"></div>
 
 <!-- The Sidebar container -->
-<div class="sidebar" [class.drawer-open]="isDrawerOpen">
+<div #sidebar id="main-sidebar" class="sidebar" [class.drawer-open]="isDrawerOpen">
+  <button class="sidebar-close-btn" type="button" (click)="closeDrawer()" aria-label="Tutup menu">
+    <span aria-hidden="true">&times;</span>
+  </button>
+
   <div class="brand">
     <img src="assets/icon_golan.png" alt="Logo PT. Golan" class="brand-logo" />
     <div class="brand-info">
@@ -25,114 +56,167 @@
     <strong>{{ userRole === 'HRD' ? 'HRD / Admin' : userRole }}</strong>
   </div>
 
+  <div class="theme-switcher" *ngIf="darkModeEnabled">
+    <button
+      type="button"
+      class="theme-toggle"
+      (click)="toggleTheme()"
+      [attr.aria-label]="isDarkMode ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'"
+      [title]="isDarkMode ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'">
+      <span class="theme-toggle-icon" aria-hidden="true">{{ isDarkMode ? '☀' : '☾' }}</span>
+      <span>{{ isDarkMode ? 'Mode terang' : 'Mode gelap' }}</span>
+    </button>
+  </div>
+
   <!-- Navigation menus based on the active role -->
   <nav class="sidebar-nav">
     <!-- Karyawan (Employee) Menu -->
     <ng-container *ngIf="userRole === 'Karyawan'">
       <a routerLink="/employee/dashboard" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">📊</span> Dashboard
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#dashboard"></use></svg> Dashboard
       </a>
       <a routerLink="/employee/checkin" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">🕒</span> Check-in / Out
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#time"></use></svg> Check-in / Out
       </a>
       <a routerLink="/employee/history" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">📅</span> Riwayat Absensi
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#calendar"></use></svg> Riwayat Absensi
+      </a>
+      <a routerLink="/employee/work-report" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Laporan Kerja
       </a>
       <a routerLink="/employee/statistics" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">📈</span> Statistik Kehadiran
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#chart"></use></svg> Statistik Kehadiran
       </a>
       <a routerLink="/employee/leaves" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">✉️</span> Pengajuan Izin
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#mail"></use></svg> Pengajuan Izin
       </a>
       <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">🔔</span> Notifikasi
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi
       </a>
-      <a routerLink="/employee/profile" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">👤</span> Profil Saya
+      <a routerLink="/employee/profile" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya
       </a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">❓</span> Bantuan & FAQ
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ
       </a>
-      <a routerLink="/about" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">ℹ️</span> Tentang Aplikasi
-      </a>
+    </ng-container>
+
+    <!-- Magang Menu -->
+    <ng-container *ngIf="userRole === 'MAGANG'">
+      <a routerLink="/intern/dashboard" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#dashboard"></use></svg> Dashboard</a>
+      <a routerLink="/employee/checkin" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#time"></use></svg> Check-in / Out</a>
+      <a routerLink="/employee/history" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#calendar"></use></svg> Riwayat Absensi</a>
+      <a routerLink="/intern/logbooks" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Logbook Harian</a>
+      <a routerLink="/intern/statistics" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#chart"></use></svg> Statistik Kehadiran</a>
+      <a routerLink="/employee/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#mail"></use></svg> Pengajuan Izin</a>
+      <a routerLink="/intern/mentor" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Info Pembimbing</a>
+      <a routerLink="/intern/certificate" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#save"></use></svg> Sertifikat Magang</a>
+      <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi</a>
+      <a routerLink="/employee/profile" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya</a>
+      <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ</a>
+    </ng-container>
+
+    <!-- Manajer Menu -->
+    <ng-container *ngIf="userRole === 'MANAJER'">
+      <a routerLink="/manager/dashboard" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#dashboard"></use></svg> Dashboard</a>
+      <a routerLink="/employee/checkin" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#time"></use></svg> Check-in / Out</a>
+      <a routerLink="/employee/history" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#calendar"></use></svg> Riwayat Absensi</a>
+      <a routerLink="/manager/team/attendance" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#users"></use></svg> Absensi Tim</a>
+      <a routerLink="/employee/work-report" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Laporan Kerja</a>
+      <a routerLink="/manager/team/reports" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#users"></use></svg> Laporan Tim</a>
+      <a routerLink="/employee/statistics" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#chart"></use></svg> Statistik Kehadiran</a>
+      <a routerLink="/manager/team/statistics" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#chart"></use></svg> Statistik Kehadiran Tim</a>
+      <a routerLink="/employee/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#mail"></use></svg> Pengajuan Izin</a>
+      <a routerLink="/manager/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#check"></use></svg> Persetujuan Izin <span class="sidebar-menu-badge" *ngIf="pendingApprovalCount > 0">{{ pendingApprovalCount }}</span></a>
+      <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi <span class="sidebar-menu-badge" *ngIf="pendingApprovalCount > 0">{{ pendingApprovalCount }}</span></a>
+      <a routerLink="/employee/profile" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya</a>
+      <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ</a>
     </ng-container>
 
     <!-- HRD / Admin Menu -->
     <ng-container *ngIf="userRole === 'HRD'">
       <a routerLink="/admin/dashboard" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">📊</span> Dashboard
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#dashboard"></use></svg> Dashboard
       </a>
       <a routerLink="/admin/employees" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">👥</span> Karyawan
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#users"></use></svg> Karyawan
       </a>
       <a routerLink="/admin/organization" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">🏢</span> Organisasi & Jabatan
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#building"></use></svg> Organisasi &amp; Jabatan
       </a>
-      <a routerLink="/admin/roles" routerLinkActive="active" (click)="closeDrawer()"><span class="nav-icon">🔐</span> Role & Permission</a>
+      <a routerLink="/admin/events" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#calendar"></use></svg> Kalender &amp; Event
+      </a>
+      <a routerLink="/admin/roles" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#lock"></use></svg> Role &amp; Permission</a>
       <a routerLink="/admin/leaves" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">✅</span> Persetujuan Cuti
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#check"></use></svg> Persetujuan Cuti
+      </a>
+      <a routerLink="/admin/role-operations" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#users"></use></svg> Operasional Magang &amp; Tim
+      </a>
+      <a routerLink="/admin/work-reports" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Laporan Kerja
       </a>
       <a routerLink="/admin/reports" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="closeDrawer()">
-        <span class="nav-icon">📋</span> Rekap Absensi
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Rekap Absensi
       </a>
       <a routerLink="/admin/reports/late" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">⚠️</span> Lap. Keterlambatan
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#warning"></use></svg> Lap. Keterlambatan
       </a>
       <a routerLink="/admin/reports/alpha" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">❌</span> Lap. Ketidakhadiran
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#x"></use></svg> Lap. Ketidakhadiran
       </a>
-      <a routerLink="/admin/leave-quotas" routerLinkActive="active" (click)="closeDrawer()"><span class="nav-icon">📋</span> Kuota Izin / Cuti</a>
+      <a routerLink="/admin/leave-quotas" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Kuota Izin / Cuti</a>
       <a routerLink="/admin/settings" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="closeDrawer()">
-        <span class="nav-icon">⚙️</span> Pengaturan Umum
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#settings"></use></svg> Pengaturan Umum
       </a>
-      <a routerLink="/admin/schedules" routerLinkActive="active" (click)="closeDrawer()"><span class="nav-icon">🕘</span> Jadwal / Shift</a>
-      <a routerLink="/admin/home-locations" routerLinkActive="active" (click)="closeDrawer()"><span class="nav-icon">📍</span> Lokasi Rumah WFH</a>
+      <a routerLink="/admin/schedules" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clock"></use></svg> Jadwal / Shift</a>
+      <a routerLink="/admin/home-locations" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#pin"></use></svg> Lokasi Rumah WFH</a>
       <a routerLink="/admin/settings/notifications" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">🔔</span> Notifikasi
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi
       </a>
       <a routerLink="/admin/backup" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">💾</span> Backup Data
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#save"></use></svg> Backup Data
       </a>
       <a routerLink="/admin/audit" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">🔍</span> Audit Log
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#search"></use></svg> Audit Log
       </a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">❓</span> Bantuan & FAQ
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ
       </a>
       <a routerLink="/about" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">ℹ️</span> Tentang Aplikasi
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#info"></use></svg> Tentang Aplikasi
       </a>
     </ng-container>
 
     <!-- Pimpinan / Executive Menu -->
     <ng-container *ngIf="userRole === 'Pimpinan'">
       <a routerLink="/executive/dashboard" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">📈</span> Executive Dashboard
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#chart"></use></svg> Executive Dashboard
       </a>
-      <a routerLink="/executive/departments/stats" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">🏢</span> Statistik Departemen
+      <a routerLink="/executive/divisions/stats" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#building"></use></svg> Statistik Divisi
       </a>
-      <a routerLink="/executive/departments/comparison" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">📊</span> Perbandingan Departemen
+      <a routerLink="/executive/divisions/comparison" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#dashboard"></use></svg> Perbandingan Divisi
       </a>
       <a routerLink="/executive/reports" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">👥</span> Laporan Karyawan
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#users"></use></svg> Laporan Karyawan
       </a>
       <a routerLink="/admin/backup" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">💾</span> Backup Data
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#save"></use></svg> Backup Data
       </a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">❓</span> Bantuan & FAQ
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ
       </a>
       <a routerLink="/about" routerLinkActive="active" (click)="closeDrawer()">
-        <span class="nav-icon">ℹ️</span> Tentang Aplikasi
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#info"></use></svg> Tentang Aplikasi
       </a>
     </ng-container>
 
     <!-- Logout -->
     <a href="#" (click)="logout($event)" class="logout-btn">
-      <span class="nav-icon">🚪</span> Logout
+      <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#logout"></use></svg> Logout
     </a>
   </nav>
 </div>

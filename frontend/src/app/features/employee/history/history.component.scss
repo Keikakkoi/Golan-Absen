@@ -10,6 +10,32 @@
   flex: 1;
   padding: 40px;
 
+  .history-card {
+    padding: 0;
+    overflow: hidden;
+    background: white;
+  }
+
+  .history-table {
+    .history-status-cell,
+    .history-action-cell {
+      vertical-align: middle;
+    }
+
+    .status-pill {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .history-detail-button {
+      min-width: 52px;
+      min-height: 30px;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+    }
+  }
+
   .header {
     margin-bottom: 30px;
     
@@ -120,6 +146,10 @@
         border-radius: 4px;
         font-size: 0.8rem;
         text-align: center;
+
+        .calendar-status-short {
+          display: none;
+        }
         
         &.status-hadir {
           background-color: #e8f2ff;
@@ -137,9 +167,126 @@
           background-color: #f3e8fd;
           color: #681da8;
         }
+        &.status-alpha, &.status-tidak-hadir {
+          background-color: #FBEEEE;
+          color: var(--absent);
+        }
       }
     }
   }
+}
+
+/* The history page owns this modal. Keeping the styling here prevents the
+   detail panel from falling into the document flow when it is opened. */
+.history-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 18px;
+  overflow-y: auto;
+  background: rgba(23, 43, 58, 0.44);
+  backdrop-filter: blur(4px);
+  animation: historyFadeIn 0.2s ease-out;
+}
+
+.history-detail-modal {
+  width: min(100%, 540px);
+  max-height: calc(100vh - 36px);
+  padding: 24px;
+  overflow-y: auto;
+  background: white;
+  box-sizing: border-box;
+}
+
+.history-modal-header {
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+
+  h3 {
+    margin: 0;
+    line-height: 1.25;
+  }
+}
+
+.modal-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--mint-0);
+  color: var(--green-deep);
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: var(--mint-1);
+}
+
+.history-modal-body {
+  color: var(--text-dark);
+
+  > p {
+    margin: 0 0 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  hr {
+    margin: 20px 0;
+    border: 0;
+    border-top: 1px solid var(--mint-1);
+  }
+}
+
+.attendance-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.attendance-detail-block {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--mint-1);
+  border-radius: 12px;
+  background: var(--mint-0);
+
+  h4 {
+    margin: 0 0 12px;
+    font-size: 0.95rem;
+  }
+
+  p {
+    margin: 0 0 10px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    max-height: 220px;
+    margin-top: 10px;
+    border-radius: 8px;
+    object-fit: cover;
+  }
+}
+
+@keyframes historyFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .loading-state, .empty-state {
@@ -147,4 +294,164 @@
   padding: 40px;
   color: var(--text-dark-lo);
   font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .main-content {
+    .history-card {
+      padding: 0 !important;
+    }
+
+    .golan-table-responsive > table.history-table {
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+
+    .history-table {
+      width: 100% !important;
+      min-width: 0 !important;
+      table-layout: fixed;
+
+      th,
+      td {
+        padding: 10px 6px;
+        font-size: 0.76rem;
+      }
+
+      th:nth-child(1),
+      td:nth-child(1) { width: 30%; }
+
+      .history-entry-column { width: 18%; }
+      .history-status-cell {
+        width: 30%;
+        overflow: hidden;
+      }
+      .history-action-cell {
+        width: 22%;
+        padding-left: 4px;
+        padding-right: 4px;
+      }
+
+      .history-secondary-column {
+        display: none;
+      }
+
+      .history-entry-column {
+        font-size: 0.7rem;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        max-width: 100%;
+        gap: 4px;
+        padding: 4px 6px;
+        font-size: 0.66rem;
+        line-height: 1.2;
+      }
+
+      .history-detail-button {
+        width: 100%;
+        min-width: 0;
+        padding: 5px 3px;
+        font-size: 0.7rem;
+      }
+    }
+
+    .history-calendar-card {
+      padding: 14px !important;
+    }
+
+    .calendar-header {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 5px;
+      margin-bottom: 16px;
+
+      button {
+        padding: 7px 6px;
+        font-size: 0.68rem;
+        white-space: nowrap;
+      }
+
+      h3 {
+        align-self: center;
+        font-size: 1rem;
+        text-align: center;
+        white-space: nowrap;
+      }
+    }
+
+    .calendar-grid {
+      gap: 4px;
+
+      .weekday {
+        padding: 4px 0;
+        font-size: 0.62rem;
+      }
+
+      .day-cell {
+        min-height: 66px;
+        padding: 5px 2px;
+        border-radius: 7px;
+
+        .day-number {
+          margin-bottom: 4px;
+          font-size: 0.78rem;
+          text-align: center;
+        }
+
+        .day-record {
+          padding: 4px 1px;
+          font-size: 0.68rem;
+          line-height: 1.15;
+
+          .calendar-status-full {
+            display: none;
+          }
+
+          .calendar-status-short {
+            display: inline;
+            font-weight: 700;
+          }
+
+          small {
+            font-size: 0.62rem;
+          }
+        }
+      }
+    }
+  }
+
+  .history-modal-backdrop {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .history-detail-modal {
+    max-height: calc(100vh - 24px);
+    padding: 16px !important;
+    border-radius: 14px;
+  }
+
+  .history-modal-header {
+    gap: 10px;
+    margin-bottom: 16px;
+
+    h3 {
+      font-size: 1.05rem;
+    }
+  }
+
+  .history-modal-body hr {
+    margin: 16px 0;
+  }
+
+  .attendance-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .attendance-detail-block {
+    padding: 13px;
+  }
 }

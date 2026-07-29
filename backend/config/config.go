@@ -30,6 +30,9 @@ type Config struct {
 	SMTPPassword      string
 	SMTPFrom          string
 	FrontendURL       string
+	VAPIDPublicKey    string
+	VAPIDPrivateKey   string
+	VAPIDSubject      string
 }
 
 func LoadConfig() *Config {
@@ -61,6 +64,9 @@ func LoadConfig() *Config {
 		SMTPPassword:      getEnv("SMTP_PASSWORD", ""),
 		SMTPFrom:          getEnv("SMTP_FROM", ""),
 		FrontendURL:       getEnv("FRONTEND_URL", "http://localhost:4200"),
+		VAPIDPublicKey:    getEnv("VAPID_PUBLIC_KEY", ""),
+		VAPIDPrivateKey:   getEnv("VAPID_PRIVATE_KEY", ""),
+		VAPIDSubject:      getEnv("VAPID_SUBJECT", "mailto:admin@example.com"),
 	}
 }
 

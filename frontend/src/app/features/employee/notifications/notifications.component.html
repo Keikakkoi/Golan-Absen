@@ -7,10 +7,20 @@
         <h2>Notifikasi</h2>
         <p class="subtitle">Informasi terbaru terkait absensi dan pengajuan Anda.</p>
       </div>
-      <button class="btn-secondary" type="button" (click)="markAllAsRead()" [disabled]="unreadCount === 0">
-        Tandai semua dibaca
-      </button>
+      <div class="notification-actions">
+        <button class="push-button" type="button" (click)="enablePush()" [class.enabled]="pushEnabled" [disabled]="pushEnabled || pushBusy">
+          <svg aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
+          <span>{{ pushBusy ? 'Mengaktifkan...' : (pushEnabled ? 'Push aktif' : 'Aktifkan push') }}</span>
+        </button>
+        <button class="btn-secondary" type="button" (click)="markAllAsRead()" [disabled]="unreadCount === 0">Tandai semua dibaca</button>
+      </div>
     </div>
+
+    <div class="push-hint" [class.active]="pushEnabled">
+      <span class="push-hint-icon" aria-hidden="true">{{ pushEnabled ? '✓' : '!' }}</span>
+      <span>{{ pushEnabled ? 'Push aktif. Anda akan menerima pengumuman meskipun halaman tidak sedang dibuka.' : 'Aktifkan push agar pengumuman penting tetap masuk ke perangkat Anda.' }}</span>
+    </div>
+    <div class="push-error" *ngIf="pushError">{{ pushError }}</div>
 
     <div class="notification-toolbar golan-card">
       <button type="button" [class.active]="filterMode === 'all'" (click)="filterMode = 'all'">Semua</button>

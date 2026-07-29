@@ -1,31 +1,80 @@
 <div class="dashboard-container admin-theme">
   <app-admin-sidebar></app-admin-sidebar>
 
-  <div class="main-content">
+<div class="dashboard-container admin-theme">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <div class="main-content admin-alpha-report-page">
     <div class="header">
       <h2>Laporan Ketidakhadiran (Alpha)</h2>
     </div>
 
     <div class="golan-card">
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-        <form (ngSubmit)="loadReports()" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
-          <div class="form-group" style="margin: 0;">
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+        <div class="export-dropdown" style="position: relative;" *ngIf="summaries.length > 0">
+          <button class="btn btn-secondary" (click)="toggleExportDropdown()">
+            <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
+          </button>
+          <div class="dropdown-menu-custom" *ngIf="isExportOpen">
+            <button class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button>
+            <button class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button>
+            <button class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button>
+            <button class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-card premium-filter">
+        <div class="filter-header">
+           <h5><i class="fas fa-filter text-primary"></i> Filter Ketidakhadiran (Alpha)</h5>
+        </div>
+        <form (ngSubmit)="loadReports()" class="filter-grid premium-grid" style="margin: 0;">
+          <div class="filter-group">
             <label>Dari Tanggal</label>
-            <input type="date" [(ngModel)]="filters.start_date" name="start_date" class="form-control" style="width: 150px; padding: 0.5rem;" />
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left"></i>
+              <input type="date" [(ngModel)]="filters.start_date" name="start_date" class="filter-input has-icon" />
+            </div>
           </div>
-          <div class="form-group" style="margin: 0;">
+          <div class="filter-group">
             <label>Sampai Tanggal</label>
-            <input type="date" [(ngModel)]="filters.end_date" name="end_date" class="form-control" style="width: 150px; padding: 0.5rem;" />
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left"></i>
+              <input type="date" [(ngModel)]="filters.end_date" name="end_date" class="filter-input has-icon" />
+            </div>
           </div>
-          <div class="form-group" style="margin: 0;">
-            <label>Departemen</label>
-            <select [(ngModel)]="filters.department_id" name="department_id" class="form-control" style="width: 180px; padding: 0.5rem;">
-              <option value="">Semua departemen</option>
-              <option *ngFor="let department of departments" [value]="department.ID">{{ department.NamaDepartemen }}</option>
-            </select>
+          <div class="filter-group">
+            <label>Divisi</label>
+            <div class="input-wrapper select-wrapper">
+              <select [(ngModel)]="filters.department_id" name="department_id" class="filter-input">
+                <option value="">Semua divisi</option>
+                <option *ngFor="let department of departments" [value]="department.ID">{{ department.NamaDepartemen || department.NamaDivisi }}</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right"></i>
+            </div>
           </div>
-          <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem;">Terapkan Filter</button>
-          <button type="button" class="btn-secondary" (click)="exportCsv()" style="padding: 0.5rem 1rem;">Export CSV</button>
+          <div class="filter-group">
+            <label>Nama Karyawan</label>
+            <div class="input-wrapper">
+              <i class="fas fa-search icon-left"></i>
+              <input type="text" [(ngModel)]="filters.name" name="name" class="filter-input has-icon" placeholder="Cari nama..." />
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Urutkan</label>
+            <div class="input-wrapper select-wrapper">
+              <select [(ngModel)]="filters.sort_order" name="sort_order" class="filter-input">
+                <option value="name_asc">Nama (A-Z)</option>
+                <option value="name_desc">Nama (Z-A)</option>
+                <option value="count_desc">Paling Sering Alpha</option>
+                <option value="count_asc">Paling Jarang Alpha</option>
+              </select>
+              <i class="fas fa-sort icon-right"></i>
+            </div>
+          </div>
+          <div class="filter-group reset-group">
+            <button type="submit" class="btn-primary" style="width: 100%; height: 39px; border-radius: 8px;">Terapkan Filter</button>
+          </div>
         </form>
       </div>
       <div class="summary-strip">
@@ -37,13 +86,13 @@
       
       <div *ngIf="isLoading" class="loading-state">Memuat laporan...</div>
 
-      <div class="table-container" style="overflow-x: auto;">
+      <div class="table-container report-table-container" style="overflow-x: auto;">
         <table *ngIf="!isLoading && summaries.length > 0" class="golan-table" style="width: 100%; border-collapse: collapse;">
           <thead>
             <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
               <th style="padding: 1rem;">NIK</th>
               <th style="padding: 1rem;">Nama Karyawan</th>
-              <th style="padding: 1rem;">Departemen</th>
+              <th style="padding: 1rem;">Divisi</th>
               <th style="padding: 1rem;">Total Alpha</th>
               <th style="padding: 1rem;">Status</th>
               <th style="padding: 1rem;">Detail</th>
@@ -54,7 +103,7 @@
             <tr style="border-bottom: 1px solid #e5e7eb;">
               <td style="padding: 1rem; font-family: monospace;">{{ summary.nik }}</td>
               <td style="padding: 1rem; font-weight: 500;">{{ summary.nama }}</td>
-              <td style="padding: 1rem;">{{ summary.departemen || '-' }}</td>
+              <td style="padding: 1rem;">{{ summary.divisi || '-' }}</td>
               <td style="padding: 1rem;">
                 <strong>{{ summary.total }} hari</strong>
               </td>

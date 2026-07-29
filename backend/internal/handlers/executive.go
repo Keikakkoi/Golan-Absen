@@ -62,14 +62,14 @@ func calculateRate(present, total int64) float64 {
 	return float64(present) / float64(total) * 100
 }
 
-// GetDepartmentStats returns attendance statistics grouped by department
-func GetDepartmentStats(c *fiber.Ctx) error {
+// GetDivisionStats returns attendance statistics grouped by division
+func GetDivisionStats(c *fiber.Ctx) error {
 	if !isExecutive(c) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	type DeptStat struct {
-		DepartmentID   uint    `json:"department_id"`
-		DepartmentName string  `json:"department_name"`
+		DivisionID     uint    `json:"division_id"`
+		DivisionName   string  `json:"division_name"`
 		TotalEmployees int     `json:"total_employees"`
 		PresentCount   int     `json:"present_count"`
 		LateCount      int     `json:"late_count"`
@@ -87,30 +87,30 @@ func GetDepartmentStats(c *fiber.Ctx) error {
 	}
 
 	// This is a simplified version. For a robust solution, we'd use raw SQL or GORM grouping.
-	var departments []models.Department
-	config.DB.Find(&departments)
+	var divisions []models.Division
+	config.DB.Find(&divisions)
 
 	var stats []DeptStat
-	for _, dept := range departments {
+	for _, dept := range divisions {
 		var totalEmp int64
-		config.DB.Model(&models.Employee{}).Where("department_id = ? AND status = ?", dept.ID, "aktif").Count(&totalEmp)
+		config.DB.Model(&models.Employee{}).Where("division_id = ? AND status = ?", dept.ID, "aktif").Count(&totalEmp)
 
 		var present, late, absent int64
 		config.DB.Table("attendance_records").
 			Joins("JOIN employees ON attendance_records.employee_id = employees.id").
-			Where("employees.department_id = ? AND attendance_records.tanggal BETWEEN ? AND ?", dept.ID, startDate, endDate).
+			Where("employees.division_id = ? AND attendance_records.tanggal BETWEEN ? AND ?", dept.ID, startDate, endDate).
 			Where("attendance_records.status = ?", "Hadir").
 			Count(&present)
 
 		config.DB.Table("attendance_records").
 			Joins("JOIN employees ON attendance_records.employee_id = employees.id").
-			Where("employees.department_id = ? AND attendance_records.tanggal BETWEEN ? AND ?", dept.ID, startDate, endDate).
+			Where("employees.division_id = ? AND attendance_records.tanggal BETWEEN ? AND ?", dept.ID, startDate, endDate).
 			Where("attendance_records.status = ?", "Terlambat").
 			Count(&late)
 
 		config.DB.Table("attendance_records").
 			Joins("JOIN employees ON attendance_records.employee_id = employees.id").
-			Where("employees.department_id = ? AND attendance_records.tanggal BETWEEN ? AND ?", dept.ID, startDate, endDate).
+			Where("employees.division_id = ? AND attendance_records.tanggal BETWEEN ? AND ?", dept.ID, startDate, endDate).
 			Where("attendance_records.status IN ?", []string{"Alpha", "Izin", "Cuti"}).
 			Count(&absent)
 
@@ -121,8 +121,8 @@ func GetDepartmentStats(c *fiber.Ctx) error {
 		}
 
 		stats = append(stats, DeptStat{
-			DepartmentID:   dept.ID,
-			DepartmentName: dept.NamaDepartemen,
+			DivisionID:     dept.ID,
+			DivisionName:   dept.NamaDivisi,
 			TotalEmployees: int(totalEmp),
 			PresentCount:   int(present),
 			LateCount:      int(late),
@@ -134,21 +134,21 @@ func GetDepartmentStats(c *fiber.Ctx) error {
 	return c.JSON(stats)
 }
 
-// GetDepartmentComparison is the dedicated comparison endpoint used by the
+// GetDivisionComparison is the dedicated comparison endpoint used by the
 // executive comparison page. It intentionally shares the same calculation as
 // the statistics endpoint so both screens always show identical figures.
-func GetDepartmentComparison(c *fiber.Ctx) error {
-	return GetDepartmentStats(c)
+func GetDivisionComparison(c *fiber.Ctx) error {
+	return GetDivisionStats(c)
 }
 
-// GetExecutiveReports returns attendance details for employees with department filtering
+// GetExecutiveReports returns attendance details for employees with division filtering
 func GetExecutiveReports(c *fiber.Ctx) error {
 	if !isExecutive(c) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
-	deptID := c.Query("department_id")
+	deptID := c.Query("division_id")
 
 	if startDate == "" || endDate == "" {
 		now := time.Now()
@@ -157,24 +157,24 @@ func GetExecutiveReports(c *fiber.Ctx) error {
 	}
 
 	type Result struct {
-		Tanggal        time.Time
-		NIK            string
-		Nama           string
-		NamaDepartemen string
-		JamMasuk       *time.Time
-		JamPulang      *time.Time
-		Status         string
+		Tanggal    time.Time
+		NIK        string
+		Nama       string
+		NamaDivisi string
+		JamMasuk   *time.Time
+		JamPulang  *time.Time
+		Status     string
 	}
 
 	query := config.DB.Table("attendance_records").
-		Select("attendance_records.tanggal, employees.nik, users.nama, departments.nama_departemen, attendance_records.jam_masuk, attendance_records.jam_pulang, attendance_records.status").
+		Select("attendance_records.tanggal, employees.nik, users.nama, divisions.nama_divisi, attendance_records.jam_masuk, attendance_records.jam_pulang, attendance_records.status").
 		Joins("JOIN employees ON attendance_records.employee_id = employees.id").
 		Joins("JOIN users ON employees.user_id = users.id").
-		Joins("JOIN departments ON employees.department_id = departments.id").
+		Joins("JOIN divisions ON employees.division_id = divisions.id").
 		Where("attendance_records.tanggal BETWEEN ? AND ?", startDate, endDate)
 
 	if deptID != "" {
-		query = query.Where("employees.department_id = ?", deptID)
+		query = query.Where("employees.division_id = ?", deptID)
 	}
 
 	search := c.Query("search")
@@ -189,13 +189,13 @@ func GetExecutiveReports(c *fiber.Ctx) error {
 
 	// Transform for frontend
 	type ReportRow struct {
-		Date           time.Time `json:"date"`
-		NIK            string    `json:"nik"`
-		Name           string    `json:"name"`
-		DepartmentName string    `json:"department_name"`
-		CheckIn        string    `json:"check_in"`
-		CheckOut       string    `json:"check_out"`
-		Status         string    `json:"status"`
+		Date         time.Time `json:"date"`
+		NIK          string    `json:"nik"`
+		Name         string    `json:"name"`
+		DivisionName string    `json:"division_name"`
+		CheckIn      string    `json:"check_in"`
+		CheckOut     string    `json:"check_out"`
+		Status       string    `json:"status"`
 	}
 
 	var results []ReportRow
@@ -209,13 +209,13 @@ func GetExecutiveReports(c *fiber.Ctx) error {
 		}
 
 		results = append(results, ReportRow{
-			Date:           r.Tanggal,
-			NIK:            r.NIK,
-			Name:           r.Nama,
-			DepartmentName: r.NamaDepartemen,
-			CheckIn:        checkIn,
-			CheckOut:       checkOut,
-			Status:         r.Status,
+			Date:         r.Tanggal,
+			NIK:          r.NIK,
+			Name:         r.Nama,
+			DivisionName: r.NamaDivisi,
+			CheckIn:      checkIn,
+			CheckOut:     checkOut,
+			Status:       r.Status,
 		})
 	}
 
@@ -239,23 +239,23 @@ func ExportExecutiveReportsCSV(c *fiber.Ctx) error {
 	}
 
 	type result struct {
-		Tanggal        time.Time
-		NIK            string
-		Nama           string
-		NamaDepartemen string
-		JamMasuk       *time.Time
-		JamPulang      *time.Time
-		Status         string
+		Tanggal    time.Time
+		NIK        string
+		Nama       string
+		NamaDivisi string
+		JamMasuk   *time.Time
+		JamPulang  *time.Time
+		Status     string
 	}
 	query := config.DB.Table("attendance_records").
-		Select("attendance_records.tanggal, employees.nik, users.nama, departments.nama_departemen, attendance_records.jam_masuk, attendance_records.jam_pulang, attendance_records.status").
+		Select("attendance_records.tanggal, employees.nik, users.nama, divisions.nama_divisi, attendance_records.jam_masuk, attendance_records.jam_pulang, attendance_records.status").
 		Joins("JOIN employees ON attendance_records.employee_id = employees.id").
 		Joins("JOIN users ON employees.user_id = users.id").
-		Joins("JOIN departments ON employees.department_id = departments.id").
+		Joins("JOIN divisions ON employees.division_id = divisions.id").
 		Where("attendance_records.tanggal BETWEEN ? AND ?", startDate, endDate)
 
-	if deptID := c.Query("department_id"); deptID != "" {
-		query = query.Where("employees.department_id = ?", deptID)
+	if deptID := c.Query("division_id"); deptID != "" {
+		query = query.Where("employees.division_id = ?", deptID)
 	}
 	if search := c.Query("search"); search != "" {
 		query = query.Where("LOWER(users.nama) LIKE ? OR employees.nik LIKE ?", "%"+strings.ToLower(search)+"%", "%"+search+"%")
@@ -270,7 +270,7 @@ func ExportExecutiveReportsCSV(c *fiber.Ctx) error {
 	c.Set("Content-Disposition", `attachment; filename="laporan-kehadiran-pimpinan.csv"`)
 	writer := csv.NewWriter(c.Response().BodyWriter())
 	defer writer.Flush()
-	_ = writer.Write([]string{"Tanggal", "NIK", "Nama Karyawan", "Departemen", "Check In", "Check Out", "Status"})
+	_ = writer.Write([]string{"Tanggal", "NIK", "Nama Karyawan", "Divisi", "Check In", "Check Out", "Status"})
 	for _, record := range records {
 		checkIn, checkOut := "", ""
 		if record.JamMasuk != nil {
@@ -281,7 +281,7 @@ func ExportExecutiveReportsCSV(c *fiber.Ctx) error {
 		}
 		_ = writer.Write([]string{
 			record.Tanggal.Format("2006-01-02"), record.NIK, record.Nama,
-			record.NamaDepartemen, checkIn, checkOut, record.Status,
+			record.NamaDivisi, checkIn, checkOut, record.Status,
 		})
 	}
 	return nil

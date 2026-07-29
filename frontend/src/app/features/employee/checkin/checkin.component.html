@@ -5,20 +5,22 @@
   <div class="main-content">
     <div class="checkin-container">
       <div class="header">
-        <h2 *ngIf="!hasCheckedIn && !isCheckoutPage">Check-in Harian</h2>
-        <h2 *ngIf="!hasCheckedIn && isCheckoutPage">Check-out Harian</h2>
-        <h2 *ngIf="hasCheckedIn && !hasCheckedOut">Check-out Harian</h2>
-        <h2 *ngIf="attendanceClosed && !hasCheckedOut">Absensi Ditutup</h2>
-        <h2 *ngIf="hasCheckedOut">Absensi Selesai</h2>
+        <h2 *ngIf="hasLeaveToday">Status {{ leaveStatus }} Hari Ini</h2>
+        <h2 *ngIf="!hasLeaveToday && !hasCheckedIn && !isCheckoutPage">Check-in Harian</h2>
+        <h2 *ngIf="!hasLeaveToday && !hasCheckedIn && isCheckoutPage">Check-out Harian</h2>
+        <h2 *ngIf="!hasLeaveToday && hasCheckedIn && !hasCheckedOut">Check-out Harian</h2>
+        <h2 *ngIf="!hasLeaveToday && attendanceClosed && !hasCheckedOut">Absensi Ditutup</h2>
+        <h2 *ngIf="!hasLeaveToday && hasCheckedOut">Absensi Selesai</h2>
         <p class="subtitle text-dark-lo">Silakan verifikasi lokasi dan bukti foto Anda untuk memulai absensi.</p>
       </div>
 
       <!-- MAIN FOCUS: Large Circular Punch Button (15.4 PRD) -->
-      <div class="punch-focus-section golan-card" *ngIf="!hasCheckedOut">
+      <div class="punch-focus-section golan-card" *ngIf="!hasCheckedOut && !hasLeaveToday">
         <div class="punch-button-container">
           <button 
             class="punch-btn-large" 
-            [class.checkout-mode]="hasCheckedIn"
+            [class.checkin-pending]="!hasCheckedIn"
+            [class.checkout-mode]="hasCheckedIn && !hasCheckedOut"
             [disabled]="!canPunchBySchedule || !isGpsActive || !isLocationValid || !capturedBlob || isSubmitting || attendanceClosed || (isCheckoutPage && !hasCheckedIn)"
             (click)="triggerPunch()">
             <span class="punch-title">{{ hasCheckedIn ? 'PUNCH OUT' : (isCheckoutPage ? 'PUNCH OUT' : 'PUNCH IN') }}</span>
@@ -30,7 +32,7 @@
         </p>
       </div>
 
-      <div class="content-grid" *ngIf="!hasCheckedOut">
+      <div class="content-grid" *ngIf="!hasCheckedOut && !hasLeaveToday">
         <!-- Geofencing Map Card -->
         <div class="golan-card map-card">
           <div class="card-header-flex">
@@ -72,19 +74,17 @@
       </div>
       
       <!-- Completed Screen -->
-      <div class="golan-card completed-card" *ngIf="hasCheckedOut">
-        <div class="stamp-seal-wrapper">
-          <div class="stamp-seal">
-            <div class="stamp-outer-ring" style="animation: none;"></div>
-            <div class="stamp-inner-ring" style="animation: none;"></div>
-            <div class="stamp-center">
-              <div class="stamp-badge">GOLAN DIGITAL KREATIF</div>
-              <div class="stamp-sub">ABSENSI SELESAI</div>
-            </div>
-          </div>
-        </div>
+      <div class="golan-card completed-card checkout-complete" *ngIf="hasCheckedOut">
+        <div class="completion-mark" aria-hidden="true">&#10003;</div>
         <h3 class="mt-4">Terima Kasih!</h3>
         <p class="text-dark-lo">Anda sudah menyelesaikan seluruh kewajiban absensi untuk hari ini.</p>
+        <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>
+      </div>
+
+      <div class="golan-card completed-card" *ngIf="hasLeaveToday">
+        <div class="completion-mark" aria-hidden="true">&#10003;</div>
+        <h3 class="mt-4">Status {{ leaveStatus }} Tercatat</h3>
+        <p class="text-dark-lo">Anda tidak perlu melakukan check-in karena status {{ leaveStatus }} sudah disetujui untuk hari ini.</p>
         <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>
       </div>
 
@@ -94,23 +94,5 @@
         <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- SIGNATURE ELEMENT overlay confirmation modal (15.1 PRD) -->
-<div class="stamp-modal-overlay" *ngIf="showStampModal">
-  <div class="stamp-modal-card">
-    <div class="stamp-seal-wrapper">
-      <div class="stamp-seal">
-        <div class="stamp-outer-ring"></div>
-        <div class="stamp-inner-ring"></div>
-        <div class="stamp-center">
-          <div class="stamp-badge">GOLAN DIGITAL KREATIF</div>
-          <div class="stamp-sub">VERIFIED • ABSENSI</div>
-        </div>
-      </div>
-    </div>
-    <h3 class="modal-title mt-4">{{ stampSuccess ? 'Terverifikasi!' : 'Memverifikasi...' }}</h3>
-    <p class="modal-desc mono-text">{{ stampModalMessage }}</p>
   </div>
 </div>

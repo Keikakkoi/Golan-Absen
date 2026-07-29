@@ -14,53 +14,53 @@ import (
 func SetupOrganizationRoutes(router fiber.Router) {
 	// Public (Authenticated) routes
 	orgs := router.Group("/organization", middleware.Protected())
-	orgs.Get("/departments", GetAllDepartments)
+	orgs.Get("/divisions", GetAllDivisions)
 	orgs.Get("/positions", GetAllPositions)
 
 	// Admin only routes
 	admin := router.Group("/admin/organization", middleware.Protected())
-	admin.Get("/departments", GetAllDepartments)
+	admin.Get("/divisions", GetAllDivisions)
 	admin.Get("/positions", GetAllPositions)
 
-	admin.Post("/departments", CreateDepartment)
-	admin.Put("/departments/:id", UpdateDepartment)
-	admin.Delete("/departments/:id", DeleteDepartment)
+	admin.Post("/divisions", CreateDivision)
+	admin.Put("/divisions/:id", UpdateDivision)
+	admin.Delete("/divisions/:id", DeleteDivision)
 
 	admin.Post("/positions", CreatePosition)
 	admin.Put("/positions/:id", UpdatePosition)
 	admin.Delete("/positions/:id", DeletePosition)
 }
 
-// --- DEPARTMENTS ---
+// --- DIVISIS ---
 
-func GetAllDepartments(c *fiber.Ctx) error {
-	var depts []models.Department
+func GetAllDivisions(c *fiber.Ctx) error {
+	var depts []models.Division
 	if err := config.DB.Find(&depts).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch departments"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch divisions"})
 	}
 	return c.JSON(depts)
 }
 
-func CreateDepartment(c *fiber.Ctx) error {
+func CreateDivision(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
 	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 
-	dept := new(models.Department)
+	dept := new(models.Division)
 	if err := c.BodyParser(dept); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
 
 	if err := config.DB.Create(&dept).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create department"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create division"})
 	}
-	utils.LogAction(c.Locals("user_id").(uint), "CREATE", "Department", dept.ID, "Created department: "+dept.NamaDepartemen)
+	utils.LogAction(c.Locals("user_id").(uint), "CREATE", "Division", dept.ID, "Created division: "+dept.NamaDivisi)
 
 	return c.Status(fiber.StatusCreated).JSON(dept)
 }
 
-func UpdateDepartment(c *fiber.Ctx) error {
+func UpdateDivision(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
 	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
@@ -69,9 +69,9 @@ func UpdateDepartment(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 
-	var dept models.Department
+	var dept models.Division
 	if err := config.DB.First(&dept, id).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Department not found"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Division not found"})
 	}
 
 	if err := c.BodyParser(&dept); err != nil {
@@ -79,14 +79,14 @@ func UpdateDepartment(c *fiber.Ctx) error {
 	}
 
 	if err := config.DB.Save(&dept).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update department"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update division"})
 	}
-	utils.LogAction(c.Locals("user_id").(uint), "UPDATE", "Department", dept.ID, "Updated department: "+dept.NamaDepartemen)
+	utils.LogAction(c.Locals("user_id").(uint), "UPDATE", "Division", dept.ID, "Updated division: "+dept.NamaDivisi)
 
 	return c.JSON(dept)
 }
 
-func DeleteDepartment(c *fiber.Ctx) error {
+func DeleteDivision(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
 	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
@@ -95,16 +95,16 @@ func DeleteDepartment(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 
-	var dept models.Department
+	var dept models.Division
 	if err := config.DB.First(&dept, id).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Department not found"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Division not found"})
 	}
 	if err := config.DB.Delete(&dept).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete department"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete division"})
 	}
-	utils.LogAction(c.Locals("user_id").(uint), "DELETE", "Department", dept.ID, "Deleted department: "+dept.NamaDepartemen)
+	utils.LogAction(c.Locals("user_id").(uint), "DELETE", "Division", dept.ID, "Deleted division: "+dept.NamaDivisi)
 
-	return c.JSON(fiber.Map{"message": "Department deleted successfully"})
+	return c.JSON(fiber.Map{"message": "Division deleted successfully"})
 }
 
 // --- POSITIONS ---

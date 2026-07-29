@@ -19,9 +19,10 @@ export class AdminAuditComponent implements OnInit {
   total = 0;
   page = 1;
   readonly pageSize = 25;
+  isExportOpen = false;
   filters = { q: '', action: 'Semua', table_name: 'Semua', start_date: '', end_date: '' };
   readonly actions = ['Semua', 'LOGIN', 'LOGOUT', 'CREATE', 'UPDATE', 'DELETE'];
-  readonly tables = ['Semua', 'User', 'Employee', 'Department', 'Position', 'AttendanceRecord', 'LeaveRequest', 'NotificationSetting', 'OfficeLocation', 'WorkSchedule', 'WorkType', 'Holiday', 'LeaveQuota', 'RolePermission', 'EmployeeHomeLocation'];
+  readonly tables = ['Semua', 'User', 'Employee', 'Division', 'Position', 'AttendanceRecord', 'LeaveRequest', 'NotificationSetting', 'OfficeLocation', 'WorkSchedule', 'WorkType', 'Holiday', 'LeaveQuota', 'RolePermission', 'EmployeeHomeLocation'];
   private readonly baseUrl = 'http://localhost:8080/api/v1/admin/settings/audit-logs';
 
   constructor(private http: HttpClient, private authService: AuthService) {}
@@ -75,7 +76,11 @@ export class AdminAuditComponent implements OnInit {
     }
   }
 
-  exportCsv(): void {
+  toggleExportDropdown(): void {
+    this.isExportOpen = !this.isExportOpen;
+  }
+
+  exportCSV(): void {
     const token = this.authService.getToken();
     if (!token) return;
     let params = new HttpParams();
@@ -96,6 +101,24 @@ export class AdminAuditComponent implements OnInit {
       },
       error: () => this.errorMessage = 'Gagal mengekspor audit log.'
     });
+  }
+
+  exportExcel(): void {
+    alert('Fitur Export Excel akan segera tersedia. Untuk sementara gunakan Export CSV.');
+  }
+
+  exportJSON(): void {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.logs));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `audit-log.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+  exportPDF(): void {
+    window.print();
   }
 
   logout(): void {

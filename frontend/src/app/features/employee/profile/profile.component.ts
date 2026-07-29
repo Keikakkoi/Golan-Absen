@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, Optional } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
-import { RouterLink } from '@angular/router';
+import { EmployeePreferences, ThemeService } from '../../../core/services/theme.service';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import * as L from 'leaflet';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 
@@ -18,22 +19,28 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 export class ProfileComponent implements OnInit, OnDestroy {
   profileData: any = null;
   isLoading = true;
-  activeTab = 'profile'; // 'profile' | 'settings' | 'security'
+  activeTab = 'profile'; // 'profile' | 'settings' | 'email' | 'security'
 
   updateForm = {
     nama: '',
+    email: '',
+    email_password: '',
     old_password: '',
     password: '',
     confirm_password: ''
   };
 
-  preferences = {
+  preferences: EmployeePreferences = {
     darkMode: false,
     emailNotification: true,
     inAppNotification: true
   };
 
   isSubmitting = false;
+  isUploadingPhoto = false;
+  selectedPhoto: File | null = null;
+  profilePhotoPreviewUrl = '';
+  photoError = '';
   successMessage = '';
   errorMessage = '';
 
@@ -42,23 +49,22 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private homeCircle!: L.Circle;
   private homeMarker!: L.Marker;
 
-  constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService,
+    private alert: AlertService,
+    private themeService: ThemeService,
+    @Optional() private route: ActivatedRoute | null
+  ) {}
 
   ngOnInit(): void {
     this.loadProfile();
-    // Load local preferences if any
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      this.preferences.darkMode = true;
-    }
-    const savedPreferences = localStorage.getItem('employee_preferences');
-    if (savedPreferences) {
-      try {
-        this.preferences = { ...this.preferences, ...JSON.parse(savedPreferences) };
-      } catch {
-        localStorage.removeItem('employee_preferences');
+    this.preferences = this.themeService.getPreferences();
+    this.route?.queryParamMap.subscribe(params => {
+      if (params.get('tab') === 'email') {
+        this.activeTab = 'email';
       }
-    }
+    });
   }
 
   ngOnDestroy(): void {
@@ -84,6 +90,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.profileData = data;
         this.updateForm.nama = data.Nama;
+        this.updateForm.email = data.Email;
         this.isLoading = false;
         
         if (this.activeTab === 'profile') {
@@ -223,22 +230,133 @@ export class ProfileComponent implements OnInit, OnDestroy {
     });
   }
 
+  onProfilePhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    this.photoError = '';
+
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+      this.photoError = 'Pilih file JPG, PNG, atau GIF.';
+      input.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.photoError = 'Ukuran pas foto maksimal 5 MB.';
+      input.value = '';
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const ratio = image.width / image.height;
+      if (Math.abs(ratio - 0.75) > 0.05) {
+        URL.revokeObjectURL(previewUrl);
+        this.photoError = 'Pas foto harus berorientasi portrait dengan rasio 3:4.';
+        this.selectedPhoto = null;
+        this.profilePhotoPreviewUrl = '';
+        input.value = '';
+        return;
+      }
+
+      if (this.profilePhotoPreviewUrl) URL.revokeObjectURL(this.profilePhotoPreviewUrl);
+      this.selectedPhoto = file;
+      this.profilePhotoPreviewUrl = previewUrl;
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(previewUrl);
+      this.photoError = 'Pas foto tidak dapat dibaca.';
+      input.value = '';
+    };
+    image.src = previewUrl;
+  }
+
+  async uploadProfilePhoto(): Promise<void> {
+    if (!this.selectedPhoto || this.isUploadingPhoto) return;
+    if (!await this.alert.confirm('Simpan pas foto?', 'Gunakan foto portrait 3:4 dengan background merah dan pakaian rapi.')) return;
+
+    this.isUploadingPhoto = true;
+    this.photoError = '';
+    const formData = new FormData();
+    formData.append('foto', this.selectedPhoto, this.selectedPhoto.name);
+    const token = this.authService.getToken();
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+
+    this.http.post<any>('http://localhost:8080/api/v1/employee/profile/photo', formData, { headers }).subscribe({
+      next: (res) => {
+        if (this.profilePhotoPreviewUrl) URL.revokeObjectURL(this.profilePhotoPreviewUrl);
+        if (this.profileData.Employee) {
+          this.profileData.Employee.FotoProfilURL = res.foto_profil_url;
+        }
+        this.selectedPhoto = null;
+        this.profilePhotoPreviewUrl = '';
+        this.isUploadingPhoto = false;
+        this.successMessage = 'Pas foto berhasil diperbarui.';
+        this.alert.success('Pas foto berhasil diperbarui');
+      },
+      error: (err) => {
+        this.isUploadingPhoto = false;
+        this.photoError = err.error?.error || 'Gagal mengunggah pas foto.';
+        this.alert.error('Gagal mengunggah pas foto', this.photoError);
+      }
+    });
+  }
+
+  async updateEmail(): Promise<void> {
+    this.successMessage = '';
+    this.errorMessage = '';
+
+    const email = this.updateForm.email.trim().toLowerCase();
+    if (!email) {
+      this.errorMessage = 'Email wajib diisi.';
+      return;
+    }
+
+    if (email === String(this.profileData?.Email || '').toLowerCase()) {
+      this.errorMessage = 'Email baru sama dengan email saat ini.';
+      return;
+    }
+
+    if (!this.updateForm.email_password) {
+      this.errorMessage = 'Password saat ini wajib diisi untuk mengganti email.';
+      return;
+    }
+
+    if (!await this.alert.confirm('Ganti alamat email?', 'Email baru akan digunakan untuk login berikutnya.')) return;
+
+    this.isSubmitting = true;
+    const token = this.authService.getToken();
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+
+    this.http.put<any>('http://localhost:8080/api/v1/employee/email', {
+      email,
+      current_password: this.updateForm.email_password
+    }, { headers }).subscribe({
+      next: (res) => {
+        this.profileData.Email = res.Email || email;
+        this.updateForm.email = this.profileData.Email;
+        this.updateForm.email_password = '';
+        this.isSubmitting = false;
+        this.successMessage = 'Alamat email berhasil diganti.';
+        this.alert.success('Email berhasil diganti');
+        this.loadProfile();
+      },
+      error: (err) => {
+        this.isSubmitting = false;
+        this.errorMessage = err.error?.error || 'Gagal mengganti alamat email.';
+        this.alert.error('Gagal mengganti email', this.errorMessage);
+      }
+    });
+  }
+
   async savePreferences(): Promise<void> {
     this.successMessage = '';
     this.errorMessage = '';
 
     if (!await this.alert.confirm('Simpan preferensi?', 'Pengaturan tampilan dan notifikasi akan diperbarui.')) return;
     
-    // Save theme local preference
-    if (this.preferences.darkMode) {
-      localStorage.setItem('theme', 'dark');
-      document.body.classList.add('dark-theme');
-    } else {
-      localStorage.setItem('theme', 'light');
-      document.body.classList.remove('dark-theme');
-    }
-
-    localStorage.setItem('employee_preferences', JSON.stringify(this.preferences));
+    this.themeService.savePreferences(this.preferences);
     
     this.successMessage = 'Pengaturan preferensi berhasil disimpan.';
     this.alert.success('Preferensi berhasil disimpan');

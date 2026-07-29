@@ -1,1 +1,47 @@
 @import '../employee-list/employee-list.component.scss';
+
+.admin-report-page,
+.admin-report-page > .golan-card,
+.admin-report-page .report-table-container {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.admin-report-page .report-table-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+}
+
+.admin-report-page .report-table {
+  display: table;
+  width: 100% !important;
+  min-width: 760px !important;
+  max-width: none !important;
+}
+
+@media (max-width: 640px) {
+  .admin-report-page .golan-card > div:first-child,
+  .admin-report-page .golan-card > div:first-child form {
+    width: 100%;
+  }
+
+  .admin-report-page .golan-card > div:first-child form {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: 12px !important;
+  }
+
+  .admin-report-page .golan-card > div:first-child form .form-group,
+  .admin-report-page .golan-card > div:first-child form .form-control,
+  .admin-report-page .golan-card > div:first-child form button {
+    width: 100% !important;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+

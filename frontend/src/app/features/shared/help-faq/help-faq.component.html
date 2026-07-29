@@ -1,33 +1,56 @@
 <div class="dashboard-container admin-theme">
-  <app-admin-sidebar></app-admin-sidebar>
+  <app-admin-sidebar *ngIf="userRole === 'HRD' || userRole === 'Pimpinan'"></app-admin-sidebar>
+  <app-shared-sidebar *ngIf="userRole !== 'HRD' && userRole !== 'Pimpinan'"></app-shared-sidebar>
 
-  <div class="main-content">
+  <div class="main-content help-page">
     <div class="header">
       <h2 style="color: #0f172a; font-family: var(--font-display); font-size: 2rem;">Pusat Bantuan & FAQ</h2>
       <p style="color: #64748b; margin-top: 0;">Panduan cepat dan penyelesaian kendala seputar aplikasi Absensi Golan.</p>
     </div>
 
-    <div class="golan-card" style="max-width: 900px;">
+    <div class="golan-card help-card" style="max-width: 900px;">
       <!-- Search & Filters -->
       <div class="search-filter-section" style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
         <input 
           type="text" 
           [(ngModel)]="searchTerm" 
-          placeholder="Cari kata kunci pertanyaan atau kata kunci (contoh: check-in, cuti, backup)..." 
+          placeholder="Cari kata kunci pertanyaan (contoh: check-in, cuti, backup)..." 
           class="golan-input" 
-          style="padding: 0.85rem 1.25rem; font-size: 1rem; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%;"
+          style="padding: 0.85rem 1.25rem; font-size: 1rem; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
         />
 
-        <div class="category-chips" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button 
-            *ngFor="let cat of categories" 
-            (click)="selectedCategory = cat"
-            [style.background-color]="selectedCategory === cat ? '#0f172a' : '#f1f5f9'"
-            [style.color]="selectedCategory === cat ? '#ffffff' : '#475569'"
-            style="border: none; padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;"
-          >
-            {{ cat }}
-          </button>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <!-- Target Role Filter -->
+          <div style="display: flex; align-items: center; gap: 0.5rem;" *ngIf="userRole !== 'Karyawan'">
+            <span style="font-size: 0.85rem; font-weight: 600; color: #64748b; min-width: 70px;">Peran:</span>
+            <div class="category-chips">
+              <button
+                *ngFor="let target of targets" 
+                (click)="selectedTarget = target"
+                class="category-chip"
+                [class.active]="selectedTarget === target"
+                type="button"
+              >
+                {{ target }}
+              </button>
+            </div>
+          </div>
+          
+          <!-- Category Filter -->
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: #64748b; min-width: 70px;">Kategori:</span>
+            <div class="category-chips">
+              <button
+                *ngFor="let cat of categories" 
+                (click)="selectedCategory = cat"
+                class="category-chip"
+                [class.active]="selectedCategory === cat"
+                type="button"
+              >
+                {{ cat }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -38,9 +61,16 @@
       <div class="faq-container" style="display: flex; flex-direction: column; gap: 0.75rem;">
         <div *ngFor="let faq of filteredFaqs" class="faq-item" style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
           <div class="faq-question" (click)="toggleFaq(faq)" style="padding: 1rem 1.25rem; background-color: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #1e293b; transition: background-color 0.2s;">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 12px; background: #e0f2fe; color: #0369a1; font-weight: 600;">{{ faq.category }}</span>
-              <span>{{ faq.question }}</span>
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+              <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                <span class="faq-category" style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 12px; background: #e0f2fe; color: #0369a1; font-weight: 600; white-space: nowrap;">
+                  <i class="fa" [ngClass]="{'fa-user': faq.target === 'Karyawan', 'fa-shield': faq.target === 'HRD/Admin', 'fa-globe': faq.target === 'Umum'}"></i> {{ faq.target }}
+                </span>
+                <span class="faq-category" style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 12px; background: #f1f5f9; color: #475569; font-weight: 600; white-space: nowrap;">
+                  {{ faq.category }}
+                </span>
+              </div>
+              <span style="display: inline-block;">{{ faq.question }}</span>
             </div>
             <i class="fa" [ngClass]="{'fa-chevron-down': !faq.isOpen, 'fa-chevron-up': faq.isOpen}" style="color: #64748b;"></i>
           </div>
@@ -51,12 +81,20 @@
 
         <div *ngIf="filteredFaqs.length === 0" style="text-align: center; padding: 3rem; color: #94a3b8;">
           <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">Tidak ditemukan FAQ yang sesuai dengan pencarian Anda.</p>
-          <p style="font-size: 0.9rem;">Coba gunakan kata kunci lain atau pilih kategori "Semua".</p>
+          <p style="font-size: 0.9rem;">Coba gunakan kata kunci lain atau periksa filter kategori & peran.</p>
         </div>
       </div>
 
       <!-- Support Card -->
-      <div style="margin-top: 2.5rem; padding: 2rem; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 12px; text-align: center; border: 1px solid #bfdbfe;">
+      <div class="support-card" *ngIf="userRole === 'Karyawan'" style="margin-top: 2.5rem; padding: 2rem; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 12px; text-align: center; border: 1px solid #bfdbfe;">
+        <h4 style="margin-top: 0; color: #1e3a8a; font-size: 1.2rem;">Masih Membutuhkan Bantuan?</h4>
+        <p style="color: #1e40af; margin-bottom: 1.25rem; font-size: 0.95rem;">Tim HRD PT. Golan Digital Kreatif siap membantu kendala operasional Anda.</p>
+        <button class="btn-primary" (click)="openContactModal()" style="background-color: #2563eb; padding: 0.75rem 1.75rem; border-radius: 6px; font-weight: 600;">
+          Hubungi Tim HRD
+        </button>
+      </div>
+
+      <div class="support-card" *ngIf="userRole !== 'Karyawan'" style="margin-top: 2.5rem; padding: 2rem; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 12px; text-align: center; border: 1px solid #bfdbfe;">
         <h4 style="margin-top: 0; color: #1e3a8a; font-size: 1.2rem;">Masih Membutuhkan Bantuan Teknis?</h4>
         <p style="color: #1e40af; margin-bottom: 1.25rem; font-size: 0.95rem;">Tim IT Support PT. Golan Digital Kreatif siap membantu kendala operasional Anda.</p>
         <button class="btn-primary" (click)="openContactModal()" style="background-color: #2563eb; padding: 0.75rem 1.75rem; border-radius: 6px; font-weight: 600;">
@@ -68,45 +106,83 @@
 </div>
 
 <!-- Support Contact Modal -->
-<div class="modal-overlay" *ngIf="showContactModal" style="position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-  <div class="modal-content golan-card" style="background: white; padding: 2rem; border-radius: 12px; max-width: 480px; width: 90%;">
-    <h3 style="margin-top: 0; color: #0f172a; display: flex; justify-content: space-between; align-items: center;">
-      Kontak Tim Support IT
-      <span (click)="closeContactModal()" style="cursor: pointer; color: #94a3b8; font-size: 1.2rem;">&times;</span>
-    </h3>
-    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 1rem;" />
+<div class="modal-overlay" *ngIf="showContactModal" style="position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: fadeIn 0.2s ease-out;">
+  <div class="modal-content" style="background: white; border-radius: 16px; width: 90%; max-width: 500px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
     
-    <div style="display: flex; flex-direction: column; gap: 1rem; color: #334155;">
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <i class="fa fa-envelope" style="font-size: 1.2rem; color: #2563eb; width: 24px;"></i>
+    <!-- Modal Header -->
+    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h3 style="margin: 0; color: #0f172a; font-size: 1.25rem; font-weight: 700;">
+          <ng-container *ngIf="userRole === 'Karyawan'">Kontak Tim HRD</ng-container>
+          <ng-container *ngIf="userRole !== 'Karyawan'">Kontak Tim Support IT</ng-container>
+        </h3>
+        <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.85rem;">Silakan hubungi kami untuk bantuan lebih lanjut.</p>
+      </div>
+      <button (click)="closeContactModal()" style="background: white; border: 1px solid #e2e8f0; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b; transition: all 0.2s;" onmouseover="this.style.background='#f1f5f9'; this.style.color='#0f172a'" onmouseout="this.style.background='white'; this.style.color='#64748b'">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    
+    <!-- Modal Body -->
+    <div style="padding: 2rem; display: flex; flex-direction: column; gap: 1rem;">
+      
+      <!-- Email Card -->
+      <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.05)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        <div style="background: #eff6ff; padding: 0.75rem; border-radius: 10px; color: #3b82f6;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+        </div>
         <div>
-          <strong style="display: block; font-size: 0.85rem; color: #64748b;">Email Helpdesk:</strong>
-          <span>support&#64;golan.co.id</span>
+          <span style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.25rem;">Email Helpdesk</span>
+          <span style="display: block; font-size: 1rem; font-weight: 500; color: #1e293b;">
+            <ng-container *ngIf="userRole === 'Karyawan'">{{ helpdesk?.EmailHelpdesk || 'hrd@golan.co.id' }}</ng-container>
+            <ng-container *ngIf="userRole !== 'Karyawan'">{{ helpdesk?.EmailIT || 'support@golan.co.id' }}</ng-container>
+          </span>
         </div>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <i class="fa fa-phone" style="font-size: 1.2rem; color: #16a34a; width: 24px;"></i>
+      <!-- WhatsApp Card -->
+      <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.05)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        <div style="background: #f0fdf4; padding: 0.75rem; border-radius: 10px; color: #22c55e;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+        </div>
         <div>
-          <strong style="display: block; font-size: 0.85rem; color: #64748b;">Hotline IT Support:</strong>
-          <span>+62 812-3456-7890 (Ext: 104)</span>
+          <span style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.25rem;">
+            <ng-container *ngIf="userRole === 'Karyawan'">WhatsApp HRD</ng-container>
+            <ng-container *ngIf="userRole !== 'Karyawan'">WhatsApp IT Support</ng-container>
+          </span>
+          <span style="display: block; font-size: 1rem; font-weight: 500; color: #1e293b;">
+            <ng-container *ngIf="userRole === 'Karyawan'">{{ helpdesk?.WhatsAppHRD || '+62 813-2493-7038' }}</ng-container>
+            <ng-container *ngIf="userRole !== 'Karyawan'">{{ helpdesk?.WhatsAppIT || '+62 895-3414-40181' }}</ng-container>
+          </span>
         </div>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 1rem;">
-        <i class="fa fa-clock-o" style="font-size: 1.2rem; color: #d97706; width: 24px;"></i>
+      <!-- Jam Layanan Card -->
+      <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.05)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+        <div style="background: #fffbeb; padding: 0.75rem; border-radius: 10px; color: #f59e0b;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
         <div>
-          <strong style="display: block; font-size: 0.85rem; color: #64748b;">Jam Layanan:</strong>
-          <span>Senin - Jumat: 08:00 - 17:00 WIB</span>
+          <span style="display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.25rem;">Jam Layanan</span>
+          <span style="display: block; font-size: 1rem; font-weight: 500; color: #1e293b;">{{ helpdesk?.JamLayanan || 'Senin - Jumat: 08:00 - 17:00 WIB' }}</span>
         </div>
       </div>
     </div>
 
-    <div style="margin-top: 1.5rem; text-align: right;">
-      <button class="btn-primary" (click)="closeContactModal()" style="background: #0f172a; padding: 0.5rem 1.25rem;">
+    <!-- Modal Footer -->
+    <div style="background: #f8fafc; padding: 1.25rem 2rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 0.75rem;">
+      <button class="btn-secondary" (click)="closeContactModal()" style="background: white; border: 1px solid #cbd5e1; color: #334155; padding: 0.6rem 1.25rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'">
         Tutup
       </button>
+      
+      <a *ngIf="userRole === 'Karyawan'" [href]="getWhatsappLink(helpdesk?.WhatsAppHRD || '+62 813-2493-7038')" target="_blank" style="background: #22c55e; color: white; border: none; padding: 0.6rem 1.25rem; border-radius: 8px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.2s; box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.2);" onmouseover="this.style.background='#16a34a'" onmouseout="this.style.background='#22c55e'">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+        Chat WA
+      </a>
+      <a *ngIf="userRole !== 'Karyawan'" [href]="getWhatsappLink(helpdesk?.WhatsAppIT || '+62 895-3414-40181')" target="_blank" style="background: #22c55e; color: white; border: none; padding: 0.6rem 1.25rem; border-radius: 8px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.2s; box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.2);" onmouseover="this.style.background='#16a34a'" onmouseout="this.style.background='#22c55e'">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+        Chat WA
+      </a>
     </div>
   </div>
 </div>
-

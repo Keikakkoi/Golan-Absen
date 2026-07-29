@@ -48,17 +48,6 @@
 
             <div class="status-item">
               <div class="status-header">
-                <span class="status-bullet status-terlambat"></span>
-                <span>Terlambat Masuk</span>
-                <span class="mono-text bold ml-auto">{{ countTerlambat }} Kali</span>
-              </div>
-              <div class="progress-bar-bg">
-                <div class="progress-bar-fill fill-terlambat" [style.width.%]="totalDays > 0 ? (countTerlambat/totalDays)*100 : 0"></div>
-              </div>
-            </div>
-
-            <div class="status-item">
-              <div class="status-header">
                 <span class="status-bullet status-izin"></span>
                 <span>Izin & Cuti</span>
                 <span class="mono-text bold ml-auto">{{ countIzin + countCuti }} Hari</span>

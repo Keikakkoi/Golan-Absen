@@ -23,11 +23,17 @@ func SetupSettingsRoutes(router fiber.Router) {
 	admin.Put("/office", UpdateOfficeLocation)
 	admin.Get("/schedule", GetWorkSchedule)
 	admin.Put("/schedule", UpdateWorkSchedule)
+	admin.Get("/general", GetGeneralSettings)
+	admin.Put("/general", UpdateGeneralSettings)
 	admin.Get("/audit-logs", GetAuditLogs)
 	admin.Get("/audit-logs/export", ExportAuditLogsCSV)
 	admin.Get("/notifications", GetNotificationSettings)
 	admin.Put("/notifications", UpdateNotificationSettings)
 	admin.Get("/backup", BackupDatabase)
+	admin.Put("/helpdesk", UpdateHelpdeskContact)
+
+	// General protected settings (accessible to all authenticated users)
+	router.Get("/settings/helpdesk", middleware.Protected(), GetHelpdeskContact)
 
 	// Shift management is separate from the default working-hours setting.
 	// The existing /schedule endpoint remains the default schedule used by attendance.
@@ -36,6 +42,43 @@ func SetupSettingsRoutes(router fiber.Router) {
 	shifts.Post("/", CreateSchedule)
 	shifts.Put("/:id", UpdateSchedule)
 	shifts.Delete("/:id", DeleteSchedule)
+}
+
+func GetGeneralSettings(c *fiber.Ctx) error {
+	if !isHRD(c) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
+	}
+	return c.JSON(getGeneralSetting())
+}
+
+func UpdateGeneralSettings(c *fiber.Ctx) error {
+	if !isHRD(c) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
+	}
+	var input struct {
+		MinimumMasaKerjaCutiBulan      int `json:"minimum_masa_kerja_cuti_bulan"`
+		BatasLaporanSetelahCheckoutJam int `json:"batas_laporan_setelah_checkout_jam"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+	if input.MinimumMasaKerjaCutiBulan < 0 || input.MinimumMasaKerjaCutiBulan > 120 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Minimum masa kerja harus antara 0 dan 120 bulan"})
+	}
+	if input.BatasLaporanSetelahCheckoutJam < 0 || input.BatasLaporanSetelahCheckoutJam > 24 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas laporan harus antara 0 dan 24 jam"})
+	}
+	var setting models.GeneralSetting
+	if err := config.DB.First(&setting).Error; err != nil {
+		setting = models.GeneralSetting{}
+	}
+	setting.MinimumMasaKerjaCutiBulan = input.MinimumMasaKerjaCutiBulan
+	setting.BatasLaporanSetelahCheckoutJam = input.BatasLaporanSetelahCheckoutJam
+	if err := config.DB.Save(&setting).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update general settings"})
+	}
+	utils.LogAction(c.Locals("user_id").(uint), "UPDATE", "GeneralSetting", setting.ID, "Admin updated general attendance and leave rules")
+	return c.JSON(setting)
 }
 
 func GetSchedules(c *fiber.Ctx) error {
@@ -114,7 +157,7 @@ func BackupDatabase(c *fiber.Ctx) error {
 	var (
 		users              []models.User
 		employees          []models.Employee
-		departments        []models.Department
+		divisions          []models.Division
 		positions          []models.Position
 		attendanceRecords  []models.AttendanceRecord
 		leaveRequests      []models.LeaveRequest
@@ -134,7 +177,7 @@ func BackupDatabase(c *fiber.Ctx) error {
 		name string
 		dest any
 	}{
-		{"users", &users}, {"employees", &employees}, {"departments", &departments},
+		{"users", &users}, {"employees", &employees}, {"divisions", &divisions},
 		{"positions", &positions}, {"attendance_records", &attendanceRecords},
 		{"leave_requests", &leaveRequests}, {"leave_quotas", &leaveQuotas},
 		{"work_types", &workTypes}, {"work_schedules", &workSchedules},
@@ -159,7 +202,7 @@ func BackupDatabase(c *fiber.Ctx) error {
 			"format":    "golan-json-snapshot",
 		},
 		"data": fiber.Map{
-			"users": users, "employees": employees, "departments": departments,
+			"users": users, "employees": employees, "divisions": divisions,
 			"positions": positions, "attendance_records": attendanceRecords,
 			"leave_requests": leaveRequests, "leave_quotas": leaveQuotas,
 			"work_types": workTypes, "work_schedules": workSchedules,
@@ -216,8 +259,23 @@ func UpdateOfficeLocation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Office location not found"})
 	}
 
-	if err := c.BodyParser(&office); err != nil {
+	var input models.OfficeLocation
+	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	office.NamaLokasi = input.NamaLokasi
+	office.GoogleMapsURL = input.GoogleMapsURL
+	office.RadiusMeter = input.RadiusMeter
+	office.Alamat = input.Alamat
+
+	if strings.TrimSpace(input.GoogleMapsURL) != "" {
+		lat, lng, err := utils.ResolveGoogleMapsLocationURL(input.GoogleMapsURL)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		office.Latitude = lat
+		office.Longitude = lng
 	}
 
 	if err := config.DB.Save(&office).Error; err != nil {
@@ -418,7 +476,7 @@ func UpdateNotificationSettings(c *fiber.Ctx) error {
 	}
 	for _, setting := range input {
 		setting.TipeNotifikasi = strings.TrimSpace(setting.TipeNotifikasi)
-		if setting.TipeNotifikasi == "" || (setting.Role != models.RoleHRD && setting.Role != models.RoleKaryawan && setting.Role != models.RolePimpinan) {
+		if setting.TipeNotifikasi == "" || (setting.Role != models.RoleHRD && setting.Role != models.RoleKaryawan && setting.Role != models.RolePimpinan && setting.Role != models.RoleMagang && setting.Role != models.RoleManajer) {
 			tx.Rollback()
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Tipe notifikasi dan role tidak valid"})
 		}
@@ -456,4 +514,44 @@ func UpdateNotificationSettings(c *fiber.Ctx) error {
 	var updatedSettings []models.NotificationSetting
 	config.DB.Order("role asc, tipe_notifikasi asc").Find(&updatedSettings)
 	return c.JSON(updatedSettings)
+}
+
+func GetHelpdeskContact(c *fiber.Ctx) error {
+	var contact models.HelpdeskContact
+	if err := config.DB.First(&contact).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Helpdesk contact not found"})
+	}
+	return c.JSON(contact)
+}
+
+func UpdateHelpdeskContact(c *fiber.Ctx) error {
+	role := c.Locals("role").(models.Role)
+	if role != models.RoleHRD {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
+	}
+
+	var contact models.HelpdeskContact
+	if err := config.DB.First(&contact).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Helpdesk contact not found"})
+	}
+
+	var input models.HelpdeskContact
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+
+	contact.EmailHelpdesk = input.EmailHelpdesk
+	contact.EmailIT = input.EmailIT
+	contact.WhatsAppHRD = input.WhatsAppHRD
+	contact.WhatsAppIT = input.WhatsAppIT
+	contact.JamLayanan = input.JamLayanan
+
+	if err := config.DB.Save(&contact).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update helpdesk contact"})
+	}
+
+	userID := c.Locals("user_id").(uint)
+	utils.LogAction(userID, "UPDATE", "HelpdeskContact", contact.ID, "Admin updated helpdesk contact settings")
+
+	return c.JSON(contact)
 }

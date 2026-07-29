@@ -34,7 +34,7 @@ export class AboutAppComponent {
     { code: 'Modul B', title: 'Presensi Karyawan (Check-in/Out, Geofence)', pages: '12 Halaman' },
     { code: 'Modul C', title: 'Manajemen Cuti & Izin', pages: '10 Halaman' },
     { code: 'Modul D', title: 'Laporan HRD & Audit Log', pages: '18 Halaman' },
-    { code: 'Modul E', title: 'Dashboard Manajer/Pimpinan', pages: '5 Halaman' },
+    { code: 'Modul E', title: 'Dashboard Manajer', pages: '5 Halaman' },
     { code: 'Modul F', title: 'Sistem, Backup, & Bantuan', pages: '4 Halaman' }
   ];
 

@@ -27,6 +27,15 @@ export class AdminManagementComponent implements OnInit {
   schedules: any[] = [];
   scheduleForm: any = this.emptySchedule();
   editingScheduleId: number | null = null;
+  readonly workDays = [
+    { id: '1', label: 'Sen' },
+    { id: '2', label: 'Sel' },
+    { id: '3', label: 'Rab' },
+    { id: '4', label: 'Kam' },
+    { id: '5', label: 'Jum' },
+    { id: '6', label: 'Sab' },
+    { id: '7', label: 'Min' }
+  ];
 
   homeRows: any[] = [];
   selectedHome: any = null;
@@ -106,6 +115,14 @@ export class AdminManagementComponent implements OnInit {
     this.http.delete(`${this.api}/admin/schedules/${id}`, { headers: this.headers() }).subscribe({ next: () => { this.loadSchedules(); this.alert.success('Shift dihapus'); }, error: err => { this.fail(err); this.alert.error('Gagal menghapus shift', err.error?.error || 'Gagal menghapus shift'); } });
   }
 
+  getWorkDays(schedule: any): string[] {
+    const selectedDays = String(schedule?.HariKerja || '')
+      .split(',')
+      .map(day => day.trim())
+      .filter(Boolean);
+    return this.workDays.filter(day => selectedDays.includes(day.id)).map(day => day.label);
+  }
+
   loadHomeLocations(): void {
     this.http.get<any[]>(`${this.api}/admin/home-locations`, { headers: this.headers() }).subscribe({ next: data => { this.homeRows = data || []; this.isLoading = false; }, error: err => this.fail(err) });
   }
@@ -125,6 +142,10 @@ export class AdminManagementComponent implements OnInit {
 
   loadQuotas(): void {
     this.http.get<any[]>(`${this.api}/admin/employees`, { headers: this.headers() }).subscribe({ next: employees => { this.employees = employees || []; this.loadQuotaRows(); }, error: err => this.fail(err) });
+  }
+
+  get quotaTypeCount(): number {
+    return new Set((this.quotas || []).map(q => q.JenisCuti)).size;
   }
 
   loadQuotaRows(): void {

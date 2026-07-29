@@ -23,6 +23,8 @@ export class ExecutiveDepartmentStatsComponent implements OnInit {
     end_date: ''
   };
 
+  isExportOpen = false;
+
   private baseUrl = 'http://localhost:8080/api/v1/executive/departments/stats';
 
   constructor(private http: HttpClient, private authService: AuthService) {}
@@ -71,5 +73,37 @@ export class ExecutiveDepartmentStatsComponent implements OnInit {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  toggleExportDropdown(): void {
+    this.isExportOpen = !this.isExportOpen;
+  }
+
+  exportCSV(): void {
+    const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent("Fitur CSV belum diimplementasikan untuk statistik divisi");
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `statistik-divisi.csv`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+  exportExcel(): void {
+    alert('Fitur Export Excel akan segera tersedia. Untuk sementara gunakan Export CSV.');
+  }
+
+  exportJSON(): void {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.stats));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `statistik-divisi.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+  exportPDF(): void {
+    window.print();
   }
 }

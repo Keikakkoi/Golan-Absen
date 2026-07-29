@@ -17,7 +17,7 @@ import (
 
 func SetupReportRoutes(router fiber.Router) {
 	employee := router.Group("/dashboard/employee", middleware.Protected())
-	employee.Get("/stats", GetEmployeeDashboardStats)
+	employee.Get("/stats", middleware.RequireRoles(models.RoleKaryawan, models.RoleMagang, models.RoleManajer), GetEmployeeDashboardStats)
 
 	admin := router.Group("/admin/reports", middleware.Protected())
 	admin.Get("/stats", GetAdminDashboardStats)
@@ -27,6 +27,7 @@ func SetupReportRoutes(router fiber.Router) {
 	admin.Get("/monthly", GetAdminReports)
 	admin.Get("/late", GetLateReportsSummary)
 	admin.Get("/late/export", ExportLateReportsCSV)
+	admin.Get("/missing-work-reports", GetMissingWorkReports)
 	admin.Get("/alpha", GetAlphaReportsSummary)
 	admin.Get("/alpha/export", ExportAlphaReportsCSV)
 	admin.Get("/export", ExportAdminReportsCSV)
@@ -84,7 +85,15 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 			if todayRecord.Status == models.StatusHadir {
 				todayStatus = "Hadir"
 			} else if todayRecord.Status == models.StatusTerlambat {
-				todayStatus = "Terlambat"
+				// Late status remains stored and is visible in management reports,
+				// but is intentionally not exposed as a personal badge.
+				todayStatus = "Hadir"
+			} else if todayRecord.Status == models.StatusIzin {
+				todayStatus = "Izin"
+			} else if todayRecord.Status == models.StatusCuti {
+				todayStatus = "Cuti"
+			} else if todayRecord.Status == models.StatusAlpha {
+				todayStatus = "Alpha"
 			}
 		}
 		if todayRecord.JamMasuk != nil {
@@ -93,15 +102,16 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"hadir_bulan_ini":     hadirCount,
-		"terlambat_bulan_ini": terlambatCount,
-		"sisa_cuti":           sisaCuti,
-		"today_status":        todayStatus,
-		"today_check_in":      todayCheckInTime,
-		"today_check_out":     todayCheckOutTime,
-		"can_check_in":        canCheckIn && todayStatus == "Belum Absen",
-		"can_check_out":       canCheckOut && (todayStatus == "Hadir" || todayStatus == "Terlambat"),
-		"attendance_message":  attendanceMessage(now, todayStatus, todayAtSeven, endTime, checkoutDeadline),
+		"hadir_bulan_ini":      hadirCount,
+		"terlambat_bulan_ini":  terlambatCount,
+		"sisa_cuti":            sisaCuti,
+		"today_status":         todayStatus,
+		"today_check_in":       todayCheckInTime,
+		"today_check_out":      todayCheckOutTime,
+		"can_check_in":         canCheckIn && todayStatus == "Belum Absen",
+		"can_check_out":        canCheckOut && (todayStatus == "Hadir" || todayStatus == "Terlambat"),
+		"attendance_message":   attendanceMessage(now, todayStatus, todayAtSeven, endTime, checkoutDeadline),
+		"missing_work_reports": missingWorkReportRowsForEmployee(employee.ID, now),
 	})
 }
 
@@ -117,6 +127,12 @@ func attendanceMessage(now time.Time, status string, resetAt, checkoutStart, che
 	}
 	if (status == "Hadir" || status == "Terlambat") && now.Before(checkoutStart) {
 		return "Check-out dapat dilakukan mulai pukul 17:00."
+	}
+	if status == "Izin" || status == "Cuti" {
+		return "Anda tidak perlu melakukan check-in karena status " + status + " sudah tercatat hari ini."
+	}
+	if status == "Alpha" {
+		return "Anda tidak melakukan absensi pada hari kerja ini."
 	}
 	return ""
 }
@@ -149,12 +165,37 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 		Where("? BETWEEN tanggal_mulai AND tanggal_selesai AND status = ?", today, models.LeaveStatusApproved).
 		Count(&izinCutiHariIni)
 
+	var totalMagang, magangAktif, logbookPending, sertifikatTerbit int64
+	config.DB.Model(&models.User{}).Where("role = ?", models.RoleMagang).Count(&totalMagang)
+	config.DB.Model(&models.User{}).Where("role = ? AND internship_end_date >= ?", models.RoleMagang, today).Count(&magangAktif)
+	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ? AND work_reports.status_logbook = ?", models.RoleMagang, "submitted").Count(&logbookPending)
+	config.DB.Model(&models.InternshipCertificate{}).Count(&sertifikatTerbit)
+	var employeeIDs []uint
+	config.DB.Model(&models.Employee{}).Pluck("id", &employeeIDs)
+	missingReports := missingWorkReportRows(employeeIDs, now)
+
 	return c.JSON(fiber.Map{
-		"total_karyawan":     totalKaryawan,
-		"hadir_hari_ini":     hadirHariIni,
-		"terlambat_hari_ini": terlambatHariIni,
-		"izin_cuti_hari_ini": izinCutiHariIni,
+		"total_karyawan":            totalKaryawan,
+		"hadir_hari_ini":            hadirHariIni,
+		"terlambat_hari_ini":        terlambatHariIni,
+		"izin_cuti_hari_ini":        izinCutiHariIni,
+		"total_magang":              totalMagang,
+		"magang_aktif":              magangAktif,
+		"logbook_pending":           logbookPending,
+		"sertifikat_terbit":         sertifikatTerbit,
+		"missing_work_reports":      missingReports,
+		"missing_work_report_count": len(missingReports),
 	})
+}
+
+func GetMissingWorkReports(c *fiber.Ctx) error {
+	role := c.Locals("role").(models.Role)
+	if role != models.RoleHRD && role != models.RolePimpinan {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
+	}
+	var employeeIDs []uint
+	config.DB.Model(&models.Employee{}).Pluck("id", &employeeIDs)
+	return c.JSON(missingWorkReportRows(employeeIDs, attendanceNow()))
 }
 
 func GetAdminReports(c *fiber.Ctx) error {
@@ -162,22 +203,27 @@ func GetAdminReports(c *fiber.Ctx) error {
 	if role != models.RoleHRD && role != models.RolePimpinan {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
+	_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
 
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 	status := c.Query("status")
-	deptID := c.Query("department_id")
+	deptID := c.Query("division_id")
 
-	query := config.DB.Preload("Employee.User").Order("tanggal desc")
+	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Order("tanggal desc")
 
 	if startDate != "" && endDate != "" {
 		query = query.Where("tanggal::date BETWEEN ? AND ?", startDate, endDate)
 	}
 	if status != "" && status != "Semua" {
-		query = query.Where("status = ?", status)
+		if status == "Belum Check-out" {
+			query = query.Where("is_checkout_missing = ?", true)
+		} else {
+			query = query.Where("status = ?", status)
+		}
 	}
 	if deptID != "" && deptID != "Semua" {
-		query = query.Where("employee_id IN (SELECT id FROM employees WHERE department_id = ?)", deptID)
+		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", deptID)
 	}
 
 	var records []models.AttendanceRecord
@@ -193,22 +239,27 @@ func ExportAdminReportsCSV(c *fiber.Ctx) error {
 	if role != models.RoleHRD && role != models.RolePimpinan {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
+	_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
 
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 	status := c.Query("status")
-	deptID := c.Query("department_id")
+	deptID := c.Query("division_id")
 
-	query := config.DB.Preload("Employee.User").Order("tanggal desc")
+	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Order("tanggal desc")
 
 	if startDate != "" && endDate != "" {
 		query = query.Where("tanggal::date BETWEEN ? AND ?", startDate, endDate)
 	}
 	if status != "" && status != "Semua" {
-		query = query.Where("status = ?", status)
+		if status == "Belum Check-out" {
+			query = query.Where("is_checkout_missing = ?", true)
+		} else {
+			query = query.Where("status = ?", status)
+		}
 	}
 	if deptID != "" && deptID != "Semua" {
-		query = query.Where("employee_id IN (SELECT id FROM employees WHERE department_id = ?)", deptID)
+		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", deptID)
 	}
 
 	var records []models.AttendanceRecord
@@ -253,7 +304,7 @@ type EmployeeReportSummary struct {
 	EmployeeID    uint                      `json:"employee_id"`
 	NIK           string                    `json:"nik"`
 	Nama          string                    `json:"nama"`
-	Departemen    string                    `json:"departemen"`
+	Divisi        string                    `json:"divisi"`
 	Jabatan       string                    `json:"jabatan"`
 	Total         int64                     `json:"total"`
 	TotalMenit    int64                     `json:"total_menit,omitempty"`
@@ -270,7 +321,7 @@ type AlphaReportSummary struct {
 	EmployeeID uint          `json:"employee_id"`
 	NIK        string        `json:"nik"`
 	Nama       string        `json:"nama"`
-	Departemen string        `json:"departemen"`
+	Divisi     string        `json:"divisi"`
 	Jabatan    string        `json:"jabatan"`
 	Total      int64         `json:"total"`
 	Details    []AlphaDetail `json:"details"`
@@ -317,6 +368,9 @@ func scheduleStartTime(schedule models.WorkSchedule, date time.Time) (time.Time,
 }
 
 func lateMinutes(record models.AttendanceRecord, schedule models.WorkSchedule) int64 {
+	if record.LateDurationMinutes > 0 {
+		return int64(record.LateDurationMinutes)
+	}
 	if record.JamMasuk == nil {
 		return 0
 	}
@@ -343,13 +397,16 @@ func GetLateReportsSummary(c *fiber.Ctx) error {
 	}
 
 	query := config.DB.Preload("Employee.User").
-		Preload("Employee.Department").
+		Preload("Employee.Division").
 		Preload("Employee.Position").
 		Where("status = ?", models.StatusTerlambat).
 		Order("tanggal desc")
 	query = query.Where("tanggal::date BETWEEN ? AND ?", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
-	if departmentID := c.Query("department_id"); departmentID != "" && departmentID != "Semua" {
-		query = query.Where("employee_id IN (SELECT id FROM employees WHERE department_id = ?)", departmentID)
+	if divisionID := c.Query("division_id"); divisionID != "" && divisionID != "Semua" {
+		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", divisionID)
+	}
+	if name := c.Query("name"); name != "" {
+		query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON employees.user_id = users.id WHERE users.nama ILIKE ?)", "%"+name+"%")
 	}
 
 	var records []models.AttendanceRecord
@@ -365,7 +422,7 @@ func GetLateReportsSummary(c *fiber.Ctx) error {
 	for _, rec := range records {
 		if _, exists := summaryMap[rec.EmployeeID]; !exists {
 			summaryMap[rec.EmployeeID] = &EmployeeReportSummary{
-				EmployeeID: rec.EmployeeID, NIK: rec.Employee.NIK, Departemen: rec.Employee.Department.NamaDepartemen,
+				EmployeeID: rec.EmployeeID, NIK: rec.Employee.NIK, Divisi: rec.Employee.Division.NamaDivisi,
 				Jabatan: rec.Employee.Position.NamaJabatan, Details: []models.AttendanceRecord{},
 			}
 		}
@@ -406,12 +463,15 @@ func ExportLateReportsCSV(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	query := config.DB.Preload("Employee.User").Preload("Employee.Department").Preload("Employee.Position").
+	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").
 		Where("status = ?", models.StatusTerlambat).
 		Where("tanggal::date BETWEEN ? AND ?", startDate.Format("2006-01-02"), endDate.Format("2006-01-02")).
 		Order("tanggal desc")
-	if departmentID := c.Query("department_id"); departmentID != "" && departmentID != "Semua" {
-		query = query.Where("employee_id IN (SELECT id FROM employees WHERE department_id = ?)", departmentID)
+	if divisionID := c.Query("division_id"); divisionID != "" && divisionID != "Semua" {
+		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", divisionID)
+	}
+	if name := c.Query("name"); name != "" {
+		query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON employees.user_id = users.id WHERE users.nama ILIKE ?)", "%"+name+"%")
 	}
 	var records []models.AttendanceRecord
 	if err := query.Find(&records).Error; err != nil {
@@ -425,7 +485,7 @@ func ExportLateReportsCSV(c *fiber.Ctx) error {
 	c.Set("Content-Disposition", `attachment; filename="laporan-keterlambatan.csv"`)
 	writer := csv.NewWriter(c.Response().BodyWriter())
 	defer writer.Flush()
-	_ = writer.Write([]string{"Tanggal", "NIK", "Nama", "Departemen", "Jabatan", "Jam Masuk", "Menit Terlambat", "Tipe Kerja"})
+	_ = writer.Write([]string{"Tanggal", "NIK", "Nama", "Divisi", "Jabatan", "Jam Masuk", "Menit Terlambat", "Tipe Kerja"})
 	for _, record := range records {
 		jamMasuk := "-"
 		if record.JamMasuk != nil {
@@ -433,7 +493,7 @@ func ExportLateReportsCSV(c *fiber.Ctx) error {
 		}
 		_ = writer.Write([]string{
 			record.Tanggal.Format("2006-01-02"), record.Employee.NIK, record.Employee.User.Nama,
-			record.Employee.Department.NamaDepartemen, record.Employee.Position.NamaJabatan,
+			record.Employee.Division.NamaDivisi, record.Employee.Position.NamaJabatan,
 			jamMasuk, strconv.FormatInt(lateMinutes(record, schedule), 10), record.TipeKerja,
 		})
 	}
@@ -445,6 +505,7 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	if role != models.RoleHRD && role != models.RolePimpinan {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
+	_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
 
 	startDate, endDate, err := reportDateRange(c)
 	if err != nil {
@@ -465,13 +526,23 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	}
 
 	var employees []models.Employee
-	if err := config.DB.Preload("User").Preload("Department").Preload("Position").Find(&employees).Error; err != nil {
+	if err := config.DB.Preload("User").Preload("Division").Preload("Position").Find(&employees).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch employees"})
 	}
-	if departmentID := c.Query("department_id"); departmentID != "" && departmentID != "Semua" {
+	if divisionID := c.Query("division_id"); divisionID != "" && divisionID != "Semua" {
 		filtered := employees[:0]
 		for _, employee := range employees {
-			if strconv.FormatUint(uint64(employee.DepartmentID), 10) == departmentID {
+			if strconv.FormatUint(uint64(employee.DivisionID), 10) == divisionID {
+				filtered = append(filtered, employee)
+			}
+		}
+		employees = filtered
+	}
+	if name := c.Query("name"); name != "" {
+		lowerName := strings.ToLower(name)
+		filtered := employees[:0]
+		for _, employee := range employees {
+			if employee.User != nil && strings.Contains(strings.ToLower(employee.User.Nama), lowerName) {
 				filtered = append(filtered, employee)
 			}
 		}
@@ -509,7 +580,7 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 			if employee.User != nil {
 				name = employee.User.Nama
 			}
-			resultMap[employee.ID] = &AlphaReportSummary{EmployeeID: employee.ID, NIK: employee.NIK, Nama: name, Departemen: employee.Department.NamaDepartemen, Jabatan: employee.Position.NamaJabatan, Details: []AlphaDetail{}}
+			resultMap[employee.ID] = &AlphaReportSummary{EmployeeID: employee.ID, NIK: employee.NIK, Nama: name, Divisi: employee.Division.NamaDivisi, Jabatan: employee.Position.NamaJabatan, Details: []AlphaDetail{}}
 		}
 		return resultMap[employee.ID]
 	}
@@ -578,6 +649,7 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	if role != models.RoleHRD && role != models.RolePimpinan {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
+	_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
 	// Reuse the report calculation through a small response-capturing context.
 	// Fiber handlers write JSON to the response; invoking the calculation again
 	// here would make the CSV diverge, so we calculate the compact CSV inputs
@@ -586,11 +658,14 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	departmentID := c.Query("department_id")
+	divisionID := c.Query("division_id")
 	var employees []models.Employee
-	query := config.DB.Preload("User").Preload("Department").Preload("Position")
-	if departmentID != "" && departmentID != "Semua" {
-		query = query.Where("department_id = ?", departmentID)
+	query := config.DB.Preload("User").Preload("Division").Preload("Position")
+	if divisionID != "" && divisionID != "Semua" {
+		query = query.Where("division_id = ?", divisionID)
+	}
+	if name := c.Query("name"); name != "" {
+		query = query.Where("user_id IN (SELECT id FROM users WHERE nama ILIKE ?)", "%"+name+"%")
 	}
 	if err := query.Find(&employees).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to export alpha reports"})
@@ -639,7 +714,7 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	c.Set("Content-Disposition", `attachment; filename="laporan-ketidakhadiran-alpha.csv"`)
 	writer := csv.NewWriter(c.Response().BodyWriter())
 	defer writer.Flush()
-	_ = writer.Write([]string{"Tanggal", "NIK", "Nama", "Departemen", "Jabatan", "Keterangan"})
+	_ = writer.Write([]string{"Tanggal", "NIK", "Nama", "Divisi", "Jabatan", "Keterangan"})
 	written := make(map[string]bool)
 	for _, record := range records {
 		if record.Status != models.StatusAlpha {
@@ -655,7 +730,7 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 			}
 			key := fmt.Sprintf("%d:%s", employee.ID, record.Tanggal.Format("2006-01-02"))
 			written[key] = true
-			_ = writer.Write([]string{record.Tanggal.Format("2006-01-02"), employee.NIK, name, employee.Department.NamaDepartemen, employee.Position.NamaJabatan, "Status Alpha tercatat"})
+			_ = writer.Write([]string{record.Tanggal.Format("2006-01-02"), employee.NIK, name, employee.Division.NamaDivisi, employee.Position.NamaJabatan, "Status Alpha tercatat"})
 		}
 	}
 	for _, employee := range employees {
@@ -677,7 +752,7 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 				if employee.User != nil {
 					name = employee.User.Nama
 				}
-				_ = writer.Write([]string{day.Format("2006-01-02"), employee.NIK, name, employee.Department.NamaDepartemen, employee.Position.NamaJabatan, keterangan})
+				_ = writer.Write([]string{day.Format("2006-01-02"), employee.NIK, name, employee.Division.NamaDivisi, employee.Position.NamaJabatan, keterangan})
 			}
 		}
 	}

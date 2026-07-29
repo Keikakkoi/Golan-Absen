@@ -3,7 +3,12 @@ package handlers
 import (
 	"encoding/csv"
 	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
+	"net/mail"
 	"strconv"
 	"strings"
 	"time"
@@ -19,24 +24,33 @@ import (
 )
 
 type EmployeeRequest struct {
-	Nama              string      `json:"nama"`
-	Email             string      `json:"email"`
-	Password          string      `json:"password"`
-	Role              models.Role `json:"role"`
-	Status            string      `json:"status"`
-	NIK               string      `json:"nik"`
-	DepartmentID      uint        `json:"department_id"`
-	PositionID        uint        `json:"position_id"`
-	TanggalBergabung  string      `json:"tanggal_bergabung"` // YYYY-MM-DD
-	HomeLatitude      float64     `json:"home_latitude"`
-	HomeLongitude     float64     `json:"home_longitude"`
-	HomeGoogleMapsURL string      `json:"home_google_maps_url"`
+	Nama                string      `json:"nama"`
+	Email               string      `json:"email"`
+	Password            string      `json:"password"`
+	Role                models.Role `json:"role"`
+	Status              string      `json:"status"`
+	NIK                 string      `json:"nik"`
+	DivisionID          uint        `json:"division_id"`
+	PositionID          uint        `json:"position_id"`
+	TanggalBergabung    string      `json:"tanggal_bergabung"` // YYYY-MM-DD
+	HomeLatitude        float64     `json:"home_latitude"`
+	HomeLongitude       float64     `json:"home_longitude"`
+	HomeGoogleMapsURL   string      `json:"home_google_maps_url"`
+	ManagerID           *uint       `json:"manager_id"`
+	TeamID              string      `json:"team_id"`
+	InternshipStartDate string      `json:"internship_start_date"`
+	InternshipEndDate   string      `json:"internship_end_date"`
+	MentorName          string      `json:"mentor_name"`
+	MentorContact       string      `json:"mentor_contact"`
+	InstitutionName     string      `json:"institution_name"`
 }
 
 func SetupEmployeeRoutes(router fiber.Router) {
 	employee := router.Group("/employee", middleware.Protected())
 	employee.Get("/profile", GetProfile)
 	employee.Put("/profile", UpdateMyProfile)
+	employee.Post("/profile/photo", UploadProfilePhoto)
+	employee.Put("/email", UpdateMyEmail)
 
 	// Admin only routes
 	admin := router.Group("/admin", middleware.Protected())
@@ -52,7 +66,7 @@ func GetProfile(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 
 	var user models.User
-	if err := config.DB.Preload("Employee").Preload("Employee.Department").Preload("Employee.Position").Preload("Employee.HomeLocation").First(&user, userID).Error; err != nil {
+	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").First(&user, userID).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
 	}
 
@@ -64,6 +78,7 @@ func UpdateMyProfile(c *fiber.Ctx) error {
 
 	var req struct {
 		Nama        string `json:"nama"`
+		Email       string `json:"email"`
 		Password    string `json:"password"`
 		OldPassword string `json:"old_password"`
 	}
@@ -71,7 +86,6 @@ func UpdateMyProfile(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
-
 	tx := config.DB.Begin()
 
 	var user models.User
@@ -82,6 +96,37 @@ func UpdateMyProfile(c *fiber.Ctx) error {
 
 	if req.Nama != "" {
 		user.Nama = req.Nama
+	}
+
+	if req.Email != "" {
+		req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+		parsedEmail, err := mail.ParseAddress(req.Email)
+		if err != nil || parsedEmail.Address != req.Email {
+			tx.Rollback()
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format email tidak valid"})
+		}
+
+		if !strings.EqualFold(user.Email, req.Email) {
+			if req.OldPassword == "" {
+				tx.Rollback()
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Password saat ini wajib diisi untuk mengganti email"})
+			}
+			if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
+				tx.Rollback()
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Password saat ini salah"})
+			}
+
+			var emailOwner models.User
+			if err := tx.Where("LOWER(email) = ? AND id <> ?", req.Email, user.ID).First(&emailOwner).Error; err == nil {
+				tx.Rollback()
+				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Email sudah digunakan oleh akun lain"})
+			} else if err != gorm.ErrRecordNotFound {
+				tx.Rollback()
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memeriksa ketersediaan email"})
+			}
+		}
+
+		user.Email = req.Email
 	}
 
 	if req.Password != "" {
@@ -106,6 +151,121 @@ func UpdateMyProfile(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Profile updated successfully"})
 }
 
+// UploadProfilePhoto stores the authenticated employee's formal 3x4 profile
+// photo. The red background and neat clothing are presentation requirements;
+// the API validates the image format, size, and 3:4 aspect ratio.
+func UploadProfilePhoto(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(uint)
+
+	file, err := c.FormFile("foto")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Pas foto wajib dipilih"})
+	}
+	if file.Size <= 0 || file.Size > 5*1024*1024 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Ukuran pas foto maksimal 5 MB"})
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Pas foto tidak dapat dibaca"})
+	}
+	imageConfig, _, decodeErr := image.DecodeConfig(src)
+	src.Close()
+	if decodeErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File harus berupa gambar JPG, PNG, atau GIF yang valid"})
+	}
+	if imageConfig.Width <= 0 || imageConfig.Height <= 0 || absFloat(float64(imageConfig.Width)/float64(imageConfig.Height)-0.75) > 0.05 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Rasio pas foto harus 3:4 (portrait)"})
+	}
+
+	var employee models.Employee
+	if err := config.DB.Where("user_id = ?", userID).First(&employee).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee profile not found"})
+	}
+
+	photoURL, err := uploadToMinIO(file, employee.NIK, "profile")
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengunggah pas foto"})
+	}
+	if err := config.DB.Model(&employee).Update("foto_profil_url", photoURL).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan pas foto"})
+	}
+
+	utils.LogAction(userID, "UPDATE", "Employee", employee.ID, "Employee updated profile photo")
+	return c.JSON(fiber.Map{"message": "Pas foto berhasil diperbarui", "foto_profil_url": photoURL})
+}
+
+func absFloat(value float64) float64 {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+// UpdateMyEmail changes the authenticated employee's login email directly on
+// the users table. The current password is required so an active session
+// alone cannot be used to silently change the account identifier.
+func UpdateMyEmail(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(uint)
+
+	var req struct {
+		Email           string `json:"email"`
+		CurrentPassword string `json:"current_password"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Input email tidak valid"})
+	}
+
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	parsedEmail, err := mail.ParseAddress(req.Email)
+	if req.Email == "" || err != nil || parsedEmail.Address != req.Email {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format email tidak valid"})
+	}
+	if req.CurrentPassword == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Password saat ini wajib diisi"})
+	}
+
+	tx := config.DB.Begin()
+	if tx.Error != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memulai perubahan email"})
+	}
+
+	var user models.User
+	if err := tx.First(&user, userID).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Password saat ini salah"})
+	}
+	if strings.EqualFold(user.Email, req.Email) {
+		tx.Rollback()
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Email baru sama dengan email saat ini"})
+	}
+
+	var emailOwner models.User
+	if err := tx.Where("LOWER(email) = ? AND id <> ?", req.Email, user.ID).First(&emailOwner).Error; err == nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Email sudah digunakan oleh akun lain"})
+	} else if err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memeriksa ketersediaan email"})
+	}
+
+	if err := tx.Model(&models.User{}).Where("id = ?", user.ID).Update("email", req.Email).Error; err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Email gagal disimpan"})
+	}
+	if err := tx.Commit().Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan perubahan email"})
+	}
+
+	utils.LogAction(userID, "UPDATE", "User", user.ID, "Employee changed login email from "+user.Email+" to "+req.Email)
+	user.Email = req.Email
+	return c.JSON(user)
+}
+
 func GetAllEmployees(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
 	if role != models.RoleHRD && role != models.RolePimpinan {
@@ -114,7 +274,7 @@ func GetAllEmployees(c *fiber.Ctx) error {
 
 	var users []models.User
 	// Also get the HRD/Pimpinan if needed, but for now we list all Karyawan
-	if err := config.DB.Preload("Employee").Preload("Employee.Department").Preload("Employee.Position").Preload("Employee.HomeLocation").Find(&users).Error; err != nil {
+	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Find(&users).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch employees"})
 	}
 
@@ -127,7 +287,7 @@ func GetEmployeeDetail(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var user models.User
-	if err := config.DB.Preload("Employee").Preload("Employee.Department").Preload("Employee.Position").Preload("Employee.HomeLocation").First(&user, c.Params("id")).Error; err != nil {
+	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").First(&user, c.Params("id")).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee not found"})
 	}
 	var quotas []models.LeaveQuota
@@ -149,6 +309,9 @@ func CreateEmployee(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
+	if !models.IsValidRole(req.Role) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid role"})
+	}
 	if err := resolveEmployeeHomeLocation(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -163,12 +326,19 @@ func CreateEmployee(c *fiber.Ctx) error {
 	tx := config.DB.Begin()
 
 	user := models.User{
-		Nama:         req.Nama,
-		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
-		Role:         req.Role,
-		Status:       req.Status,
+		Nama:            req.Nama,
+		Email:           req.Email,
+		PasswordHash:    string(hashedPassword),
+		Role:            req.Role,
+		Status:          req.Status,
+		ManagerID:       req.ManagerID,
+		TeamID:          req.TeamID,
+		MentorName:      req.MentorName,
+		MentorContact:   req.MentorContact,
+		InstitutionName: req.InstitutionName,
 	}
+	user.InternshipStartDate = parseOptionalDate(req.InternshipStartDate)
+	user.InternshipEndDate = parseOptionalDate(req.InternshipEndDate)
 
 	if err := tx.Create(&user).Error; err != nil {
 		tx.Rollback()
@@ -178,7 +348,7 @@ func CreateEmployee(c *fiber.Ctx) error {
 	employee := models.Employee{
 		UserID:           user.ID,
 		NIK:              req.NIK,
-		DepartmentID:     req.DepartmentID,
+		DivisionID:       req.DivisionID,
 		PositionID:       req.PositionID,
 		TanggalBergabung: tglGabung,
 		HomeLatitude:     req.HomeLatitude,
@@ -219,6 +389,9 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
+	if !models.IsValidRole(req.Role) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid role"})
+	}
 	if err := resolveEmployeeHomeLocation(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -235,6 +408,13 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	user.Email = req.Email
 	user.Role = req.Role
 	user.Status = req.Status
+	user.ManagerID = req.ManagerID
+	user.TeamID = req.TeamID
+	user.MentorName = req.MentorName
+	user.MentorContact = req.MentorContact
+	user.InstitutionName = req.InstitutionName
+	user.InternshipStartDate = parseOptionalDate(req.InternshipStartDate)
+	user.InternshipEndDate = parseOptionalDate(req.InternshipEndDate)
 
 	if req.Password != "" {
 		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -249,7 +429,7 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	if user.Employee.ID != 0 {
 		tglGabung, _ := time.Parse("2006-01-02", req.TanggalBergabung)
 		user.Employee.NIK = req.NIK
-		user.Employee.DepartmentID = req.DepartmentID
+		user.Employee.DivisionID = req.DivisionID
 		user.Employee.PositionID = req.PositionID
 		user.Employee.TanggalBergabung = tglGabung
 		user.Employee.HomeLatitude = req.HomeLatitude
@@ -257,7 +437,8 @@ func UpdateEmployee(c *fiber.Ctx) error {
 
 		if err := tx.Save(&user.Employee).Error; err != nil {
 			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update employee"})
+			fmt.Println("Error saving employee:", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 		if hasHomeLocation(req.HomeLatitude, req.HomeLongitude) {
 			if err := saveEmployeeHomeLocation(tx, user.Employee.ID, req.HomeLatitude, req.HomeLongitude, req.HomeGoogleMapsURL); err != nil {
@@ -271,7 +452,7 @@ func UpdateEmployee(c *fiber.Ctx) error {
 		newEmp := models.Employee{
 			UserID:           user.ID,
 			NIK:              req.NIK,
-			DepartmentID:     req.DepartmentID,
+			DivisionID:       req.DivisionID,
 			PositionID:       req.PositionID,
 			TanggalBergabung: tglGabung,
 			HomeLatitude:     req.HomeLatitude,
@@ -297,6 +478,17 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	utils.LogAction(hrdID, "UPDATE", "Employee", user.ID, "Admin updated employee profile: "+user.Email)
 
 	return c.JSON(user)
+}
+
+func parseOptionalDate(value string) *time.Time {
+	if value == "" {
+		return nil
+	}
+	date, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return nil
+	}
+	return &date
 }
 
 func resolveEmployeeHomeLocation(req *EmployeeRequest) error {
@@ -398,7 +590,7 @@ func ImportEmployees(c *fiber.Ctx) error {
 	for i, column := range header {
 		columns[strings.ToLower(strings.TrimSpace(column))] = i
 	}
-	required := []string{"nik", "nama", "email", "password", "department_id", "position_id", "tanggal_bergabung"}
+	required := []string{"nik", "nama", "email", "password", "division_id", "position_id", "tanggal_bergabung"}
 	for _, column := range required {
 		if _, ok := columns[column]; !ok {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("Kolom %s wajib ada", column)})
@@ -424,7 +616,7 @@ func ImportEmployees(c *fiber.Ctx) error {
 			}
 			return strings.TrimSpace(row[index])
 		}
-		departmentID, errDept := strconv.ParseUint(value("department_id"), 10, 32)
+		divisionID, errDept := strconv.ParseUint(value("division_id"), 10, 32)
 		positionID, errPosition := strconv.ParseUint(value("position_id"), 10, 32)
 		joined, errDate := time.Parse("2006-01-02", value("tanggal_bergabung"))
 		if value("nik") == "" || value("nama") == "" || value("email") == "" || value("password") == "" || errDept != nil || errPosition != nil || errDate != nil {
@@ -432,7 +624,7 @@ func ImportEmployees(c *fiber.Ctx) error {
 			continue
 		}
 		role := models.Role(value("role"))
-		if role == "" {
+		if !models.IsValidRole(role) {
 			role = models.RoleKaryawan
 		}
 		status := value("status")
@@ -453,10 +645,10 @@ func ImportEmployees(c *fiber.Ctx) error {
 			errors = append(errors, fmt.Sprintf("Baris %d: email sudah digunakan atau user gagal dibuat", rowNumber))
 			continue
 		}
-		employee := models.Employee{UserID: user.ID, NIK: value("nik"), DepartmentID: uint(departmentID), PositionID: uint(positionID), TanggalBergabung: joined, HomeLatitude: homeLat, HomeLongitude: homeLng}
+		employee := models.Employee{UserID: user.ID, NIK: value("nik"), DivisionID: uint(divisionID), PositionID: uint(positionID), TanggalBergabung: joined, HomeLatitude: homeLat, HomeLongitude: homeLng}
 		if err = tx.Create(&employee).Error; err != nil {
 			tx.Rollback()
-			errors = append(errors, fmt.Sprintf("Baris %d: NIK/departemen/jabatan tidak valid", rowNumber))
+			errors = append(errors, fmt.Sprintf("Baris %d: NIK/divisi/jabatan tidak valid", rowNumber))
 			continue
 		}
 		if err = tx.Commit().Error; err != nil {

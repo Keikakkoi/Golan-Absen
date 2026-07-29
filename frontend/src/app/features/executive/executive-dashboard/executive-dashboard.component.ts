@@ -28,7 +28,7 @@ export class ExecutiveDashboardComponent implements OnInit, OnDestroy {
   private socket?: WebSocket;
   private destroyed = false;
   private baseUrl = 'http://localhost:8080/api/v1/executive/dashboard';
-  private deptStatsUrl = 'http://localhost:8080/api/v1/executive/departments/stats';
+  private deptStatsUrl = 'http://localhost:8080/api/v1/executive/divisions/stats';
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 

@@ -10,8 +10,8 @@
     <div class="golan-card">
       <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
       
-      <div class="table-container">
-        <table *ngIf="!isLoading && workTypes.length > 0">
+      <div class="table-container" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+        <table *ngIf="!isLoading && workTypes.length > 0" style="min-width: 600px; width: 100%;">
           <thead>
             <tr>
               <th>ID</th>
@@ -30,8 +30,8 @@
                 </span>
               </td>
               <td>
-                <button class="btn-edit" (click)="openEditModal(wt)">Edit</button>
-                <button class="btn-delete" (click)="deleteWorkType(wt.ID)">Hapus</button>
+                <button class="icon-button edit" type="button" (click)="openEditModal(wt)" aria-label="Edit tipe kerja" title="Edit tipe kerja"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>
+                <button class="icon-button delete" type="button" (click)="deleteWorkType(wt.ID)" aria-label="Hapus tipe kerja" title="Hapus tipe kerja"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button>
               </td>
             </tr>
           </tbody>

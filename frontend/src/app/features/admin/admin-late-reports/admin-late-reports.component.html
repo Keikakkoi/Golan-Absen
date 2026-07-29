@@ -1,4 +1,4 @@
-<div class="dashboard-container admin-theme">
+<div class="dashboard-container admin-theme admin-late-report-page">
   <app-admin-sidebar></app-admin-sidebar>
 
   <div class="main-content">
@@ -7,25 +7,71 @@
     </div>
 
     <div class="golan-card">
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-        <form (ngSubmit)="loadReports()" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
-          <div class="form-group" style="margin: 0;">
+      <div class="export-toolbar" *ngIf="summaries.length > 0">
+        <div class="export-dropdown">
+          <button type="button" class="btn-secondary" (click)="toggleExportDropdown()" [attr.aria-expanded]="isExportOpen">
+            <i class="fas fa-file-export" aria-hidden="true"></i> Unduh / Cetak <i class="fas fa-chevron-down" aria-hidden="true"></i>
+          </button>
+          <div class="dropdown-menu-custom" *ngIf="isExportOpen">
+            <button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" aria-hidden="true"></i> Format CSV</button>
+            <button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" aria-hidden="true"></i> Format Excel (XLS)</button>
+            <button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" aria-hidden="true"></i> Format JSON</button>
+            <button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" aria-hidden="true"></i> Format PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-card premium-filter">
+        <div class="filter-header">
+           <h5><i class="fas fa-filter text-primary"></i> Filter Keterlambatan</h5>
+        </div>
+        <form (ngSubmit)="loadReports()" class="filter-grid premium-grid">
+          <div class="filter-group">
             <label>Dari Tanggal</label>
-            <input type="date" [(ngModel)]="filters.start_date" name="start_date" class="form-control" style="width: 150px; padding: 0.5rem;" />
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left"></i>
+              <input type="date" [(ngModel)]="filters.start_date" name="start_date" class="filter-input has-icon" />
+            </div>
           </div>
-          <div class="form-group" style="margin: 0;">
+          <div class="filter-group">
             <label>Sampai Tanggal</label>
-            <input type="date" [(ngModel)]="filters.end_date" name="end_date" class="form-control" style="width: 150px; padding: 0.5rem;" />
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left"></i>
+              <input type="date" [(ngModel)]="filters.end_date" name="end_date" class="filter-input has-icon" />
+            </div>
           </div>
-          <div class="form-group" style="margin: 0;">
-            <label>Departemen</label>
-            <select [(ngModel)]="filters.department_id" name="department_id" class="form-control" style="width: 180px; padding: 0.5rem;">
-              <option value="">Semua departemen</option>
-              <option *ngFor="let department of departments" [value]="department.ID">{{ department.NamaDepartemen }}</option>
-            </select>
+          <div class="filter-group">
+            <label>Divisi</label>
+            <div class="input-wrapper select-wrapper">
+              <select [(ngModel)]="filters.department_id" name="department_id" class="filter-input">
+                <option value="">Semua divisi</option>
+                <option *ngFor="let department of departments" [value]="department.ID">{{ department.NamaDepartemen || department.NamaDivisi }}</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right"></i>
+            </div>
           </div>
-          <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem;">Terapkan Filter</button>
-          <button type="button" class="btn-secondary" (click)="exportCsv()" style="padding: 0.5rem 1rem;">Export CSV</button>
+          <div class="filter-group">
+            <label>Nama Karyawan</label>
+            <div class="input-wrapper">
+              <i class="fas fa-search icon-left"></i>
+              <input type="text" [(ngModel)]="filters.name" name="name" class="filter-input has-icon" placeholder="Cari nama..." />
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Urutkan</label>
+            <div class="input-wrapper select-wrapper">
+              <select [(ngModel)]="filters.sort_order" name="sort_order" class="filter-input">
+                <option value="name_asc">Nama (A-Z)</option>
+                <option value="name_desc">Nama (Z-A)</option>
+                <option value="count_desc">Paling Sering Terlambat</option>
+                <option value="count_asc">Paling Jarang Terlambat</option>
+              </select>
+              <i class="fas fa-sort icon-right"></i>
+            </div>
+          </div>
+          <div class="filter-group reset-group">
+            <button type="submit" class="btn-primary">Terapkan Filter</button>
+          </div>
         </form>
       </div>
       <div class="summary-strip">
@@ -37,37 +83,29 @@
       
       <div *ngIf="isLoading" class="loading-state">Memuat laporan...</div>
 
-      <div class="table-container" style="overflow-x: auto;">
-        <table *ngIf="!isLoading && summaries.length > 0" class="golan-table" style="width: 100%; border-collapse: collapse;">
+      <div class="report-table-container table-container">
+        <table *ngIf="!isLoading && summaries.length > 0" class="golan-table report-table">
           <thead>
-            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
-              <th style="padding: 1rem;">NIK</th>
-              <th style="padding: 1rem;">Nama Karyawan</th>
-              <th style="padding: 1rem;">Departemen</th>
-              <th style="padding: 1rem;">Total Keterlambatan</th>
-              <th style="padding: 1rem;">Rata-rata</th>
-              <th style="padding: 1rem;">Status</th>
-              <th style="padding: 1rem;">Detail</th>
+            <tr>
+              <th>NIK</th>
+              <th>Nama Karyawan</th>
+              <th>Departemen</th>
+              <th>Total Keterlambatan</th>
+              <th>Rata-rata</th>
+              <th>Status</th>
+              <th>Detail</th>
             </tr>
           </thead>
           <tbody>
             <ng-container *ngFor="let summary of summaries">
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 1rem; font-family: monospace;">{{ summary.nik }}</td>
-              <td style="padding: 1rem; font-weight: 500;">{{ summary.nama }}</td>
-              <td style="padding: 1rem;">{{ summary.departemen || '-' }}</td>
-              <td style="padding: 1rem;">
-                {{ summary.rata_rata_menit || 0 }} menit
-              </td>
-              <td style="padding: 1rem;">
-                <strong>{{ summary.total }} kali</strong>
-              </td>
-              <td style="padding: 1rem;">
-                <span class="status-badge status-terlambat" style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; background-color: #fef3c7; color: #d97706;">
-                  Perlu Perhatian
-                </span>
-              </td>
-              <td style="padding: 1rem;"><button type="button" class="link-button" (click)="toggleDetails(summary.employee_id)">{{ expandedEmployeeId === summary.employee_id ? 'Tutup' : 'Lihat' }}</button></td>
+            <tr>
+              <td class="nik-cell">{{ summary.nik }}</td>
+              <td class="employee-cell">{{ summary.nama }}</td>
+              <td>{{ summary.departemen || '-' }}</td>
+              <td><strong>{{ summary.total }} kali</strong></td>
+              <td>{{ summary.rata_rata_menit || 0 }} menit</td>
+              <td><span class="status-badge status-terlambat">Perlu Perhatian</span></td>
+              <td><button type="button" class="link-button" (click)="toggleDetails(summary.employee_id)">{{ expandedEmployeeId === summary.employee_id ? 'Tutup' : 'Lihat' }}</button></td>
             </tr>
             <tr *ngIf="expandedEmployeeId === summary.employee_id" class="detail-row">
               <td colspan="7">
@@ -80,7 +118,7 @@
           </tbody>
         </table>
 
-        <div *ngIf="!isLoading && summaries.length === 0" style="padding: 2rem; color: #6b7280; text-align: center;">
+        <div *ngIf="!isLoading && summaries.length === 0" class="empty-report-state">
           Tidak ada data keterlambatan untuk periode ini.
         </div>
       </div>

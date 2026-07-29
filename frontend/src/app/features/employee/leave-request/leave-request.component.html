@@ -2,115 +2,147 @@
   <app-shared-sidebar></app-shared-sidebar>
 
   <div class="main-content">
-  <div class="header">
-    <h2>Pengajuan Izin / Cuti</h2>
-  </div>
-
-  <div class="content-grid" style="grid-template-columns: 1fr;">
-    <div class="golan-card">
-      <h3>Buat Pengajuan Baru</h3>
-            <div *ngIf="successMessage" class="alert alert-success" style="color: #2F80ED; margin-bottom: 1rem;">{{ successMessage }}</div>
-      <div *ngIf="errorMessage" class="alert alert-danger" style="color: red; margin-bottom: 1rem;">{{ errorMessage }}</div>
-      
-      <form (ngSubmit)="submitRequest()">
-        <div class="form-group-row" style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-          <div class="form-group" style="flex: 1;">
-            <label>Jenis Izin</label>
-            <select [(ngModel)]="formData.jenis_izin" name="jenis_izin" class="form-control" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;">
-              <option value="Sakit">Sakit</option>
-              <option value="Izin">Izin (Keperluan Pribadi)</option>
-              <option value="Cuti Tahunan">Cuti Tahunan</option>
-            </select>
-          </div>
-          <div class="form-group" style="flex: 1;">
-            <label>Tanggal Mulai</label>
-            <input type="date" [(ngModel)]="formData.tanggal_mulai" name="tanggal_mulai" required class="form-control" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;" />
-          </div>
-          <div class="form-group" style="flex: 1;">
-            <label>Tanggal Selesai</label>
-            <input type="date" [(ngModel)]="formData.tanggal_selesai" name="tanggal_selesai" required class="form-control" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;" />
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 1rem;">
-          <label>Alasan</label>
-          <textarea [(ngModel)]="formData.alasan" name="alasan" required rows="3" class="form-control" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;"></textarea>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 1rem;">
-          <label>Lampiran Dokumen (Surat Dokter, dll)</label><br>
-          <input type="file" (change)="onFileSelected($event)" accept="image/*,.pdf" />
-        </div>
-
-                <button type="submit" class="btn-primary" [disabled]="isSubmitting" style="background-color: #2F80ED; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
-          {{ isSubmitting ? 'Mengirim...' : 'Kirim Pengajuan' }}
-        </button>
-      </form>
+    <div class="header">
+      <h2>Pengajuan Izin / Cuti</h2>
+      <p class="page-subtitle">Ajukan izin atau cuti Anda dengan cepat dan pantau statusnya di bawah.</p>
     </div>
 
-    <div class="golan-card">
-      <h3>Riwayat Pengajuan Saya</h3>
-      <div class="golan-table-responsive" style="margin-top: 12px;">
-        <table class="golan-table" *ngIf="!isLoading && leaveRequests.length > 0">
-          <thead>
-            <tr>
-              <th>Jenis Izin</th>
-              <th>Mulai</th>
-              <th>Selesai</th>
-              <th>Status</th>
-              <th>Lampiran</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let req of leaveRequests">
-              <td>{{ req.JenisIzin }}</td>
-              <td>{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
-              <td>{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
-              <td>
-                <span class="status-pill" [class.status-menunggu]="req.Status === 'Pending'" [class.status-hadir]="req.Status === 'Approved'" [class.status-alpha]="req.Status === 'Rejected'">
-                  {{ req.Status }}
-                </span>
-              </td>
-              <td>
-                <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" style="color: var(--green); font-weight: 600; text-decoration: none;">Lihat</a>
-                <span *ngIf="!req.LampiranURL" style="color: var(--text-dark-lo);">-</span>
-              </td>
-              <td>
-                <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem; cursor: pointer;" (click)="openDetail(req)">Detail</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div *ngIf="isLoading" style="padding: 16px; color: var(--text-dark-lo);">Memuat riwayat pengajuan...</div>
-        <div *ngIf="!isLoading && leaveRequests.length === 0" style="padding: 16px; color: var(--text-dark-lo);">Belum ada riwayat pengajuan izin.</div>
-      </div>
+    <div class="content-grid leave-request-grid">
+      <section class="golan-card leave-form-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">BUAT PENGAJUAN BARU</p>
+            <h3>Form Pengajuan</h3>
+          </div>
+        </div>
+
+        <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>
+        <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+
+        <form (ngSubmit)="submitRequest()" class="leave-form">
+          <div class="field-row">
+            <label class="field-group">
+              <span>Jenis Izin</span>
+              <select [(ngModel)]="formData.jenis_izin" name="jenis_izin" class="golan-input" required>
+                <option *ngFor="let type of leaveTypes" [value]="type" [disabled]="type === 'Cuti' && !canRequestCuti">{{ type }}</option>
+              </select>
+              <small class="input-hint" *ngIf="!isIntern && !canRequestCuti">Cuti dapat diajukan setelah bekerja {{ minimumMasaKerjaCutiBulan }} bulan.</small>
+            </label>
+
+            <label class="field-group">
+              <span>Tanggal Mulai</span>
+              <input type="date" [(ngModel)]="formData.tanggal_mulai" name="tanggal_mulai" required class="golan-input" />
+            </label>
+
+            <label class="field-group">
+              <span>Tanggal Selesai</span>
+              <input type="date" [(ngModel)]="formData.tanggal_selesai" name="tanggal_selesai" required class="golan-input" />
+            </label>
+          </div>
+
+          <label class="field-group field-group-full">
+            <span>Keterangan / Alasan <span class="text-danger">*</span></span>
+            <textarea [(ngModel)]="formData.alasan" name="alasan" required rows="4" class="golan-input"></textarea>
+          </label>
+
+          <label class="field-group field-group-full file-field">
+            <span>Lampiran Dokumen (Surat Dokter, dll)</span>
+            <div class="file-input-wrapper">
+              <input type="file" id="leave-file" (change)="onFileSelected($event)" accept="image/*,.pdf" />
+              <label for="leave-file" class="file-button">Pilih File</label>
+              <span class="file-name">{{ selectedFile?.name || 'Belum ada file yang dipilih' }}</span>
+            </div>
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary btn-submit" [disabled]="isSubmitting">
+              {{ isSubmitting ? 'Mengirim...' : 'Kirim Pengajuan' }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="golan-card leave-history-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">RIWAYAT PENGAJUAN SAYA</p>
+            <h3>Daftar Pengajuan</h3>
+          </div>
+        </div>
+
+        <div class="history-body">
+          <div *ngIf="isLoading" class="history-empty">Memuat riwayat pengajuan...</div>
+          <div *ngIf="!isLoading && leaveRequests.length === 0" class="history-empty">Belum ada riwayat pengajuan izin.</div>
+
+          <div *ngIf="!isLoading && leaveRequests.length > 0" class="golan-table-responsive">
+            <table class="golan-table">
+              <thead>
+                <tr>
+                  <th>Jenis Izin</th>
+                  <th>Mulai</th>
+                  <th>Selesai</th>
+                  <th>Status</th>
+                  <th>Lampiran</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let req of leaveRequests">
+                  <td>{{ req.JenisIzin }}</td>
+                  <td>{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
+                  <td>{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
+                  <td>
+                    <span class="status-pill" [class.status-menunggu]="req.Status === 'Pending'" [class.status-hadir]="req.Status === 'Approved'" [class.status-alpha]="req.Status === 'Rejected'">
+                      {{ req.Status }}
+                    </span>
+                  </td>
+                  <td>
+                    <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="link-action">Lihat</a>
+                    <span *ngIf="!req.LampiranURL" class="text-muted">-</span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn-secondary btn-sm" (click)="openDetail(req)">Detail</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </div>
 
-<!-- Detail Modal -->
 <div class="modal-backdrop" *ngIf="selectedLeave">
-  <div class="modal-content golan-card" style="max-width: 500px; width: 100%;">
-    <div class="modal-header" style="display: flex; justify-content: space-between; margin-bottom: 20px; align-items: center;">
-      <h3 style="margin: 0;">Detail Pengajuan Izin</h3>
-      <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer;" (click)="closeDetail()">&times;</button>
+  <div class="modal-content golan-card leave-detail-modal">
+    <div class="modal-header">
+      <h3>Detail Pengajuan Izin</h3>
+      <button type="button" class="modal-close" (click)="closeDetail()">&times;</button>
     </div>
     <div class="modal-body">
-      <p style="margin-bottom: 8px;"><strong>Jenis Izin:</strong> {{ selectedLeave.JenisIzin }}</p>
-      <p style="margin-bottom: 8px;"><strong>Masa Izin:</strong> {{ selectedLeave.TanggalMulai | date:'dd MMM yyyy' }} s/d {{ selectedLeave.TanggalSelesai | date:'dd MMM yyyy' }}</p>
-      <p style="margin-bottom: 12px;"><strong>Status:</strong> 
-        <span class="status-pill" [class.status-menunggu]="selectedLeave.Status === 'Pending'" [class.status-hadir]="selectedLeave.Status === 'Approved'" [class.status-alpha]="selectedLeave.Status === 'Rejected'">
-          {{ selectedLeave.Status }}
-        </span>
-      </p>
-      <p style="margin-bottom: 4px;"><strong>Alasan Pengajuan:</strong></p>
-      <blockquote style="margin: 0; padding: 10px 15px; background: var(--mint-0); border-left: 4px solid var(--green); border-radius: 4px; font-style: italic; color: var(--text-dark); line-height: 1.4;">
-        {{ selectedLeave.Alasan }}
-      </blockquote>
-      <div *ngIf="selectedLeave.LampiranURL" style="margin-top: 15px;">
-        <p><strong>Dokumen Lampiran:</strong> <a [href]="selectedLeave.LampiranURL" target="_blank" style="color: var(--green); font-weight: 600;">Unduh Lampiran</a></p>
+      <div class="detail-row">
+        <span>Jenis Izin</span>
+        <strong>{{ selectedLeave.JenisIzin }}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Masa Izin</span>
+        <strong>{{ selectedLeave.TanggalMulai | date:'dd MMM yyyy' }} s/d {{ selectedLeave.TanggalSelesai | date:'dd MMM yyyy' }}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Status</span>
+        <strong>
+          <span class="status-pill" [class.status-menunggu]="selectedLeave.Status === 'Pending'" [class.status-hadir]="selectedLeave.Status === 'Approved'" [class.status-alpha]="selectedLeave.Status === 'Rejected'">
+            {{ selectedLeave.Status }}
+          </span>
+        </strong>
+      </div>
+      <div class="detail-block">
+        <span>Alasan Pengajuan</span>
+        <p>{{ selectedLeave.Alasan }}</p>
+      </div>
+      <div *ngIf="selectedLeave.LampiranURL" class="detail-block">
+        <span>Dokumen Lampiran</span>
+        <a [href]="selectedLeave.LampiranURL" target="_blank" class="link-action">Unduh Lampiran</a>
       </div>
     </div>
   </div>

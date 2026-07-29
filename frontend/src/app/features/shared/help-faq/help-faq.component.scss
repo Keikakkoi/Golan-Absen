@@ -10,3 +10,129 @@
     width: calc(100% - 250px);
   }
 }
+
+.help-page,
+.help-page .help-card,
+.help-page .search-filter-section,
+.help-page .faq-container {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.help-page .help-card {
+  width: min(100%, 900px);
+  max-width: 100% !important;
+}
+
+.help-page .search-filter-section > input.golan-input {
+  display: block;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.help-page .category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.help-page .category-chip {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: #52637a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
+  padding: 0.42rem 0.8rem;
+  white-space: nowrap;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.help-page .category-chip:hover {
+  background: #e8f0f7;
+  color: #1e293b;
+  transform: translateY(-1px);
+}
+
+.help-page .category-chip.active {
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.16);
+}
+
+.help-page .category-chip.active:hover {
+  background: #17233a;
+  color: #ffffff;
+}
+
+.help-page .category-chip:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.25);
+  outline-offset: 2px;
+}
+
+.help-page .category-chip:active {
+  transform: translateY(0);
+}
+
+.help-page .faq-question {
+  gap: 0.75rem;
+}
+
+.help-page .faq-question > div {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.help-page .faq-question > div > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.help-page .faq-question > i {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  .help-page .help-card {
+    padding: 16px !important;
+  }
+
+  .help-page .faq-question {
+    align-items: flex-start !important;
+    padding: 0.85rem !important;
+  }
+
+  .help-page .faq-question > div {
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .help-page .support-card {
+    padding: 1.25rem !important;
+  }
+
+  .help-page .support-card .btn-primary {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}

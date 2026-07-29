@@ -6,6 +6,7 @@ import (
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/handlers"
 	"absensi-golan-backend/internal/middleware"
+	"absensi-golan-backend/internal/models"
 	"absensi-golan-backend/pkg/minio"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -23,7 +24,7 @@ func main() {
 	minio.SetupMinIO(cfg)
 
 	app := fiber.New(fiber.Config{
-		BodyLimit: 10 * 1024 * 1024, // 10MB limit for image uploads
+		BodyLimit: 20 * 1024 * 1024, // up to three 5MB work-report screenshots plus form fields
 	})
 
 	app.Use(logger.New())
@@ -36,11 +37,10 @@ func main() {
 
 	// Pimpinan (Executive) routes
 	executiveGroup := api.Group("/executive")
-	executiveGroup.Use(middleware.Protected())
-	// Role check middleware for Pimpinan can be added here
+	executiveGroup.Use(middleware.Protected(), middleware.RequireRoles(models.RolePimpinan))
 	executiveGroup.Get("/dashboard", handlers.GetExecutiveDashboard)
-	executiveGroup.Get("/departments/stats", handlers.GetDepartmentStats)
-	executiveGroup.Get("/departments/comparison", handlers.GetDepartmentComparison)
+	executiveGroup.Get("/divisions/stats", handlers.GetDivisionStats)
+	executiveGroup.Get("/divisions/comparison", handlers.GetDivisionComparison)
 	executiveGroup.Get("/reports/employees", handlers.GetExecutiveReports)
 	executiveGroup.Get("/reports/export", handlers.ExportExecutiveReportsCSV)
 
@@ -53,8 +53,13 @@ func main() {
 	handlers.SetupSettingsRoutes(api)
 	handlers.SetupOrganizationRoutes(api)
 	handlers.SetupHolidayRoutes(api)
+	handlers.SetupEventRoutes(api)
 	handlers.SetupRBACRoutes(api)
 	handlers.SetupAdminDirectoryRoutes(api)
+	handlers.SetupWorkReportRoutes(api)
+	handlers.SetupInternshipRoutes(api)
+	handlers.SetupManagerRoutes(api)
+	handlers.SetupAdminRoleOperationRoutes(api)
 	handlers.SetupWebSocketRoutes(app) // Note: attaching to root app, not just /api/v1 if we want it outside, but let's keep it clean
 
 	log.Printf("Server listening on port %s", cfg.AppPort)

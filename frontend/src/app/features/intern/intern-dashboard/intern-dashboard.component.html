@@ -1,0 +1,15 @@
+<div class="dashboard-container"><app-shared-sidebar></app-shared-sidebar><main class="main-content">
+  <div class="header"><h2>Halo, {{ userName }}!</h2><p>Ringkasan periode magang dan logbook harian Anda.</p></div>
+  <div class="stats-grid">
+    <section class="golan-card stat-card"><h4>Sisa Hari Magang</h4><div class="value">{{ stats.days_remaining }} <span class="unit">hari</span></div><p class="muted">{{ stats.internship_start_date | date:'dd MMM yyyy' }} – {{ stats.internship_end_date | date:'dd MMM yyyy' }}</p></section>
+    <section class="golan-card stat-card"><h4>Progress Periode Magang</h4><div class="value">{{ stats.progress_percent }}<span class="unit">%</span></div><div class="progress-track"><div class="progress-value" [style.width.%]="stats.progress_percent"></div></div></section>
+    <section class="golan-card stat-card"><h4>Logbook Submitted</h4><div class="value">{{ stats.logbooks_submitted }} <span class="unit">hari</span></div></section>
+    <section class="golan-card stat-card"><h4>Logbook Approved</h4><div class="value">{{ stats.logbooks_approved }} <span class="unit">hari</span></div></section>
+  </div>
+  <section class="golan-card compliance-warning" *ngFor="let item of stats.missing_work_reports">
+    <strong>⚠ Laporan kerja belum diisi</strong>
+    <p>Anda belum mengisi laporan kerja untuk {{ item.tanggal }}. Batas pengisian {{ item.deadline_label }}.</p>
+    <a class="btn-secondary" routerLink="/intern/logbooks">Isi laporan sekarang</a>
+  </section>
+  <section class="golan-card callout"><h3>Logbook wajib diisi setiap hari</h3><p>Catat kegiatan sebelum hari kerja berakhir dan kirim untuk ditinjau pembimbing.</p><a class="btn-primary" routerLink="/intern/logbooks">Buka Logbook Harian</a></section>
+</main></div>

@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
@@ -9,7 +10,7 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
 @Component({
   selector: 'app-leave-approval',
   standalone: true,
-  imports: [CommonModule, DatePipe, RouterLink, AdminSidebarComponent],
+  imports: [CommonModule, DatePipe, FormsModule, RouterLink, AdminSidebarComponent],
   templateUrl: './leave-approval.component.html',
   styleUrls: ['./leave-approval.component.scss']
 })
@@ -18,6 +19,7 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   isLoading = true;
   errorMessage = '';
   selectedRequest: any = null;
+  selectedType = '';
   private refreshTimer?: ReturnType<typeof setInterval>;
   private socket?: WebSocket;
   private destroyed = false;
@@ -58,7 +60,8 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   loadLeaveRequests(): void {
     this.isLoading = true;
     const headers = this.getHeaders();
-    this.http.get<any[]>(this.baseUrl, { headers }).subscribe({
+    const params = this.selectedType ? { params: { jenis_izin: this.selectedType }, headers } : { headers };
+    this.http.get<any[]>(this.baseUrl, params).subscribe({
       next: (data) => {
         this.leaveRequests = data;
         this.isLoading = false;

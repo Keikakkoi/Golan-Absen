@@ -19,13 +19,40 @@ export class AdminNotificationSettingsComponent implements OnInit {
   isSaving = false;
   errorMessage = '';
   successMessage = '';
+  isSending = false;
+  broadcastError = '';
+  broadcast = { judul: '', pesan: '', target_role: 'Karyawan' };
 
   private baseUrl = 'http://localhost:8080/api/v1/admin/settings/notifications';
+  private broadcastUrl = 'http://localhost:8080/api/v1/admin/notifications/broadcast';
 
   constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
 
   ngOnInit(): void {
     this.loadSettings();
+  }
+
+  async sendBroadcast(): Promise<void> {
+    this.errorMessage = '';
+    this.broadcastError = '';
+    if (!this.broadcast.judul.trim() || !this.broadcast.pesan.trim()) {
+      this.broadcastError = 'Judul dan pesan wajib diisi.';
+      return;
+    }
+    if (!await this.alert.confirm('Kirim notifikasi?', 'Pesan akan muncul di dashboard penerima.')) return;
+    this.isSending = true;
+    this.http.post<any>(this.broadcastUrl, this.broadcast, { headers: this.getHeaders() }).subscribe({
+      next: (result) => {
+        this.isSending = false;
+        this.broadcast = { judul: '', pesan: '', target_role: 'Karyawan' };
+        this.alert.success(`Notifikasi terkirim ke ${result.recipient_count} penerima`);
+      },
+      error: (err) => {
+        this.isSending = false;
+        this.broadcastError = err.error?.error || `Gagal mengirim notifikasi (HTTP ${err.status || 'tidak diketahui'}).`;
+        this.alert.error('Gagal mengirim notifikasi', this.broadcastError);
+      }
+    });
   }
 
   loadSettings(): void {

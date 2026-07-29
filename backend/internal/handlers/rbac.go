@@ -27,7 +27,7 @@ func GetRolePermissions(c *fiber.Ctx) error {
 	if err := config.DB.Find(&assignments).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch role permissions"})
 	}
-	return c.JSON(fiber.Map{"permissions": permissions, "assignments": assignments, "roles": []models.Role{models.RoleHRD, models.RolePimpinan, models.RoleKaryawan}})
+	return c.JSON(fiber.Map{"permissions": permissions, "assignments": assignments, "roles": []models.Role{models.RoleHRD, models.RolePimpinan, models.RoleKaryawan, models.RoleMagang, models.RoleManajer}})
 }
 
 type rolePermissionInput struct {
@@ -46,7 +46,7 @@ func UpdateRolePermissions(c *fiber.Ctx) error {
 	}
 	tx := config.DB.Begin()
 	for _, input := range inputs {
-		if input.Role != models.RoleHRD && input.Role != models.RolePimpinan && input.Role != models.RoleKaryawan {
+		if input.Role != models.RoleHRD && input.Role != models.RolePimpinan && input.Role != models.RoleKaryawan && input.Role != models.RoleMagang && input.Role != models.RoleManajer {
 			tx.Rollback()
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid role"})
 		}

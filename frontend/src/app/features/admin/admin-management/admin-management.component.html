@@ -5,23 +5,243 @@
     <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
 
     <ng-container *ngIf="section === 'roles'">
-      <div class="toolbar"><label>Role yang diatur <select [(ngModel)]="selectedRole" class="golan-input"><option>HRD</option><option>Pimpinan</option><option>Karyawan</option></select></label><button class="btn-primary" (click)="saveRoles()" [disabled]="isSaving">Simpan Permission</button></div>
+      <div class="toolbar"><label>Role yang diatur <select [(ngModel)]="selectedRole" class="golan-input"><option>HRD</option><option>Karyawan</option><option>MAGANG</option><option>MANAJER</option><option>Pimpinan</option></select></label><button class="btn-primary" (click)="saveRoles()" [disabled]="isSaving">Simpan Permission</button></div>
       <div class="golan-card table-container" *ngIf="!isLoading"><table class="golan-table"><thead><tr><th>Permission</th><th>Deskripsi</th><th>Diizinkan</th></tr></thead><tbody><tr *ngFor="let permission of permissions"><td><strong>{{ permission.Nama }}</strong><div class="code">{{ permission.Kode }}</div></td><td>{{ permission.Deskripsi }}</td><td><input type="checkbox" [checked]="allowed(permission.ID)" (change)="togglePermission(permission.ID)"></td></tr></tbody></table></div>
     </ng-container>
 
     <ng-container *ngIf="section === 'schedules'">
-      <div class="golan-card form-card"><h3>{{ editingScheduleId ? 'Edit Shift' : 'Tambah Shift' }}</h3><form (ngSubmit)="saveSchedule()"><input class="golan-input" [(ngModel)]="scheduleForm.NamaShift" name="NamaShift" placeholder="Nama shift" required><input type="time" class="golan-input" [(ngModel)]="scheduleForm.JamMulai" name="JamMulai" required><input type="time" class="golan-input" [(ngModel)]="scheduleForm.JamSelesai" name="JamSelesai" required><input type="number" class="golan-input" [(ngModel)]="scheduleForm.ToleransiTerlambatMenit" name="Toleransi" min="0" required><input class="golan-input" [(ngModel)]="scheduleForm.HariKerja" name="HariKerja" placeholder="Hari kerja: 1,2,3,4,5"><button class="btn-primary" [disabled]="isSaving">Simpan Shift</button><button type="button" class="btn-secondary" *ngIf="editingScheduleId" (click)="resetSchedule()">Batal</button></form></div>
-      <div class="golan-card table-container"><table class="golan-table"><thead><tr><th>Nama Shift</th><th>Jam</th><th>Toleransi</th><th>Hari Kerja</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let schedule of schedules"><td>{{ schedule.NamaShift }}</td><td>{{ schedule.JamMulai | slice:0:5 }} – {{ schedule.JamSelesai | slice:0:5 }}</td><td>{{ schedule.ToleransiTerlambatMenit }} menit</td><td>{{ schedule.HariKerja }}</td><td><button class="btn-edit" (click)="editSchedule(schedule)">Edit</button><button class="btn-delete" (click)="deleteSchedule(schedule.ID)">Hapus</button></td></tr></tbody></table></div>
+      <section class="schedule-hero">
+        <div class="schedule-hero-copy">
+          <div class="schedule-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><path d="M12 7v5l3.25 2M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" /></svg>
+          </div>
+          <div>
+            <p class="eyebrow">PENGATURAN JAM KERJA</p>
+            <h3>Atur jadwal kerja tim</h3>
+            <p>Kelola jam masuk, jam pulang, toleransi keterlambatan, dan hari kerja dalam satu tempat.</p>
+          </div>
+        </div>
+        <div class="schedule-summary" aria-label="Ringkasan jadwal">
+          <div class="schedule-summary-item">
+            <span class="summary-label">SHIFT TERSIMPAN</span>
+            <strong>{{ schedules.length }}</strong>
+            <span>jenis jadwal</span>
+          </div>
+          <div class="schedule-summary-item schedule-summary-hours">
+            <span class="summary-label">JAM REGULER</span>
+            <strong>09:00 <small>–</small> 17:00</strong>
+            <span>referensi jam kerja</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="schedule-layout">
+        <section class="golan-card schedule-form-card">
+          <div class="schedule-card-heading">
+            <div>
+              <p class="eyebrow">{{ editingScheduleId ? 'PERBARUI DATA' : 'JADWAL BARU' }}</p>
+              <h3>{{ editingScheduleId ? 'Edit shift' : 'Tambah shift' }}</h3>
+            </div>
+            <span class="schedule-form-status" *ngIf="editingScheduleId">Mode edit</span>
+          </div>
+
+          <form class="schedule-form" (ngSubmit)="saveSchedule()">
+            <label class="schedule-field schedule-field-wide" for="schedule-name">
+              <span>Nama shift</span>
+              <input id="schedule-name" class="golan-input" [(ngModel)]="scheduleForm.NamaShift" name="NamaShift" placeholder="Contoh: Shift Pagi" required>
+            </label>
+
+            <div class="schedule-time-group">
+              <span class="schedule-field-label">Jam kerja</span>
+              <div class="schedule-time-fields">
+                <label class="schedule-field" for="schedule-start">
+                  <span>Mulai</span>
+                  <input id="schedule-start" type="time" class="golan-input" [(ngModel)]="scheduleForm.JamMulai" name="JamMulai" required>
+                </label>
+                <span class="schedule-time-separator" aria-hidden="true">–</span>
+                <label class="schedule-field" for="schedule-end">
+                  <span>Selesai</span>
+                  <input id="schedule-end" type="time" class="golan-input" [(ngModel)]="scheduleForm.JamSelesai" name="JamSelesai" required>
+                </label>
+              </div>
+            </div>
+
+            <label class="schedule-field" for="schedule-tolerance">
+              <span>Toleransi terlambat</span>
+              <div class="schedule-input-suffix">
+                <input id="schedule-tolerance" type="number" class="golan-input" [(ngModel)]="scheduleForm.ToleransiTerlambatMenit" name="Toleransi" min="0" required>
+                <span>menit</span>
+              </div>
+            </label>
+
+            <label class="schedule-field schedule-field-wide" for="schedule-days">
+              <span>Hari kerja</span>
+              <input id="schedule-days" class="golan-input" [(ngModel)]="scheduleForm.HariKerja" name="HariKerja" placeholder="1,2,3,4,5" required>
+              <small>Gunakan angka 1–7: Senin sampai Minggu.</small>
+            </label>
+
+            <div class="schedule-form-actions">
+              <button type="submit" class="btn-primary" [disabled]="isSaving">
+                {{ isSaving ? 'Menyimpan...' : (editingScheduleId ? 'Simpan perubahan' : 'Simpan shift') }}
+              </button>
+              <button type="button" class="btn-secondary" *ngIf="editingScheduleId" (click)="resetSchedule()">Batal</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="golan-card schedule-list-card">
+          <div class="schedule-card-heading schedule-list-heading">
+            <div>
+              <p class="eyebrow">DATA TERSIMPAN</p>
+              <h3>Daftar shift</h3>
+            </div>
+            <span class="schedule-count"><strong>{{ schedules.length }}</strong> shift</span>
+          </div>
+
+          <div class="schedule-loading" *ngIf="isLoading">Memuat data shift...</div>
+          <div class="schedule-empty" *ngIf="!isLoading && schedules.length === 0">
+            <div class="schedule-empty-icon" aria-hidden="true">⌚</div>
+            <strong>Belum ada shift</strong>
+            <span>Shift yang sudah disimpan akan tampil di sini.</span>
+          </div>
+
+          <div class="table-container schedule-table-container" *ngIf="!isLoading && schedules.length > 0">
+            <table class="golan-table schedule-table">
+              <thead><tr><th>Nama shift</th><th>Jam kerja</th><th>Toleransi</th><th>Hari kerja</th><th>Aksi</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let schedule of schedules">
+                  <td><div class="schedule-name-cell"><span class="schedule-row-icon" aria-hidden="true">⌁</span><strong>{{ schedule.NamaShift }}</strong></div></td>
+                  <td><span class="schedule-hours">{{ schedule.JamMulai | slice:0:5 }} <small>–</small> {{ schedule.JamSelesai | slice:0:5 }}</span></td>
+                  <td><span class="tolerance-pill">{{ schedule.ToleransiTerlambatMenit }} menit</span></td>
+                  <td>
+                    <div class="schedule-days" *ngIf="getWorkDays(schedule).length > 0">
+                      <span *ngFor="let day of getWorkDays(schedule)">{{ day }}</span>
+                    </div>
+                    <span class="schedule-days-raw" *ngIf="getWorkDays(schedule).length === 0">{{ schedule.HariKerja || '-' }}</span>
+                  </td>
+                  <td class="schedule-actions"><button class="icon-button edit" type="button" (click)="editSchedule(schedule)" aria-label="Edit shift" title="Edit shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button><button class="icon-button delete" type="button" (click)="deleteSchedule(schedule.ID)" aria-label="Hapus shift" title="Hapus shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </ng-container>
 
     <ng-container *ngIf="section === 'home'">
-      <div class="golan-card table-container"><table class="golan-table"><thead><tr><th>Karyawan</th><th>Link Google Maps</th><th>Radius</th><th>Alamat</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let row of homeRows"><td>{{ row.employee?.User?.Nama }}<div class="code">{{ row.employee?.NIK }}</div></td><td><a *ngIf="row.location?.GoogleMapsURL" [href]="row.location.GoogleMapsURL" target="_blank" rel="noopener">Buka lokasi</a><span *ngIf="!row.location?.GoogleMapsURL">-</span></td><td>{{ row.location?.RadiusMeter || '-' }} m</td><td>{{ row.location?.AlamatRumah || '-' }}</td><td><button class="btn-edit" (click)="editHome(row)">Atur Lokasi</button></td></tr></tbody></table></div>
-      <div class="modal-overlay" *ngIf="selectedHome"><div class="modal-content golan-card"><h3>Geofence Rumah — {{ selectedHome.User?.Nama }}</h3><form (ngSubmit)="saveHome()"><label>Link Google Maps Rumah<input type="url" class="golan-input" [(ngModel)]="homeForm.google_maps_url" name="google_maps_url" placeholder="https://maps.app.goo.gl/..." required></label><p class="form-help">Koordinat dan titik geofence akan diambil otomatis dari link Google Maps.</p><label>Radius (meter)<input type="number" class="golan-input" [(ngModel)]="homeForm.radius_meter" name="radius" min="1" required></label><label>Alamat / catatan<input class="golan-input" [(ngModel)]="homeForm.alamat_rumah" name="alamat"></label><button type="button" class="btn-secondary" (click)="selectedHome = null">Batal</button><button class="btn-primary" [disabled]="isSaving">Simpan Lokasi</button></form></div></div>
+      <div class="golan-card table-container"><table class="golan-table"><thead><tr><th>Karyawan</th><th>Link Google Maps</th><th>Radius</th><th>Alamat</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let row of homeRows"><td>{{ row.employee?.User?.Nama }}<div class="code">{{ row.employee?.NIK }}</div></td><td><a *ngIf="row.location?.GoogleMapsURL" [href]="row.location.GoogleMapsURL" target="_blank" rel="noopener">Buka lokasi</a><span *ngIf="!row.location?.GoogleMapsURL">-</span></td><td>{{ row.location?.RadiusMeter || '-' }} m</td><td>{{ row.location?.AlamatRumah || '-' }}</td><td><button class="icon-button edit" type="button" (click)="editHome(row)" aria-label="Atur lokasi rumah" title="Atur lokasi rumah"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button></td></tr></tbody></table></div>
+      <div class="modal-overlay" *ngIf="selectedHome">
+        <div class="modal-content golan-card" style="max-width: 420px; padding: 24px;">
+          <h3 style="margin-top: 0; margin-bottom: 22px; font-size: 1.3rem; color: #1769aa; line-height: 1.4;">Geofence Rumah — {{ selectedHome.User?.Nama }}</h3>
+          
+          <form class="home-form" (ngSubmit)="saveHome()">
+            <label class="home-field" for="home-url">
+              <span>Link Google Maps Rumah</span>
+              <input id="home-url" type="url" class="golan-input" [(ngModel)]="homeForm.google_maps_url" name="google_maps_url" placeholder="https://maps.app.goo.gl/..." required>
+              <small>Koordinat dan titik geofence akan diambil otomatis dari link Google Maps.</small>
+            </label>
+            
+            <label class="home-field" for="home-radius">
+              <span>Radius (meter)</span>
+              <input id="home-radius" type="number" class="golan-input" [(ngModel)]="homeForm.radius_meter" name="radius" min="1" required>
+            </label>
+            
+            <label class="home-field" for="home-alamat">
+              <span>Alamat / catatan</span>
+              <textarea id="home-alamat" class="golan-input" [(ngModel)]="homeForm.alamat_rumah" name="alamat" rows="2" placeholder="Contoh: Perumahan Indah Blok A..." style="resize: vertical;"></textarea>
+            </label>
+            
+            <div class="home-form-actions">
+              <button type="button" class="btn-secondary" (click)="selectedHome = null">Batal</button>
+              <button type="submit" class="btn-primary" [disabled]="isSaving">Simpan Lokasi</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </ng-container>
 
     <ng-container *ngIf="section === 'quotas'">
-      <div class="golan-card form-card"><h3>Atur Kuota</h3><form (ngSubmit)="saveQuota()"><select class="golan-input" [(ngModel)]="quotaForm.employee_id" name="employee" required><option value="">Pilih karyawan</option><option *ngFor="let employee of employees" [value]="employee.Employee?.ID">{{ employee.Nama }} — {{ employee.Employee?.NIK }}</option></select><input type="number" class="golan-input" [(ngModel)]="quotaForm.tahun" name="tahun" required><select class="golan-input" [(ngModel)]="quotaForm.jenis_cuti" name="jenis"><option>Cuti Tahunan</option><option>Izin Khusus</option><option>Cuti Sakit</option></select><input type="number" class="golan-input" [(ngModel)]="quotaForm.sisa_kuota" name="kuota" min="0" required><button class="btn-primary" [disabled]="isSaving || !quotaForm.employee_id">Simpan Kuota</button></form></div>
-      <div class="golan-card table-container"><table class="golan-table"><thead><tr><th>Karyawan</th><th>Tahun</th><th>Jenis</th><th>Sisa Kuota</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let quota of quotas"><td>{{ quota.Employee?.User?.Nama }}</td><td>{{ quota.Tahun }}</td><td>{{ quota.JenisCuti }}</td><td>{{ quota.SisaKuota }} hari</td><td><button class="btn-edit" (click)="editQuota(quota)">Edit</button></td></tr></tbody></table></div>
+      <section class="quota-intro">
+        <div class="quota-intro-icon" aria-hidden="true">◷</div>
+        <div>
+          <p class="eyebrow">PENGELOLAAN BENEFIT KARYAWAN</p>
+          <h3>Kelola kuota dengan lebih mudah</h3>
+          <p>Atur jatah cuti dan izin setiap karyawan untuk memastikan data tetap akurat dan mudah dipantau.</p>
+        </div>
+      </section>
+
+      <section class="golan-card quota-form-card">
+        <div class="quota-card-heading">
+          <div>
+            <p class="eyebrow">PENGATURAN KUOTA</p>
+            <h3>Atur Kuota</h3>
+          </div>
+          <span class="quota-year-chip">Tahun {{ quotaForm.tahun }}</span>
+        </div>
+        <form class="quota-form" (ngSubmit)="saveQuota()">
+          <label class="quota-field quota-field-wide" for="quota-employee">
+            <span>Karyawan</span>
+            <select id="quota-employee" class="golan-input" [(ngModel)]="quotaForm.employee_id" name="employee" required>
+              <option value="">Pilih karyawan</option>
+              <option *ngFor="let employee of employees" [value]="employee.Employee?.ID">{{ employee.Nama }} — {{ employee.Employee?.NIK }}</option>
+            </select>
+          </label>
+          <label class="quota-field" for="quota-year">
+            <span>Tahun kuota</span>
+            <input id="quota-year" type="number" class="golan-input" [(ngModel)]="quotaForm.tahun" name="tahun" required>
+          </label>
+          <label class="quota-field" for="quota-type">
+            <span>Jenis kuota</span>
+            <select id="quota-type" class="golan-input" [(ngModel)]="quotaForm.jenis_cuti" name="jenis">
+              <option>Cuti Tahunan</option>
+              <option>Izin Khusus</option>
+              <option>Cuti Sakit</option>
+            </select>
+          </label>
+          <label class="quota-field" for="quota-balance">
+            <span>Sisa kuota</span>
+            <div class="quota-number-input">
+              <input id="quota-balance" type="number" class="golan-input" [(ngModel)]="quotaForm.sisa_kuota" name="kuota" min="0" required>
+              <span>hari</span>
+            </div>
+          </label>
+          <button type="submit" class="btn-primary quota-submit" [disabled]="isSaving || !quotaForm.employee_id">
+            <span aria-hidden="true">＋</span>{{ isSaving ? 'Menyimpan...' : 'Simpan Kuota' }}
+          </button>
+        </form>
+        <p class="quota-form-note"><span aria-hidden="true">i</span> Perubahan kuota akan langsung digunakan saat karyawan mengajukan cuti atau izin.</p>
+      </section>
+
+      <section class="golan-card quota-list-card">
+        <div class="quota-card-heading quota-list-heading">
+          <div>
+            <p class="eyebrow">DATA TERSIMPAN</p>
+            <h3>Daftar Kuota</h3>
+          </div>
+          <span class="quota-count"><strong>{{ quotas.length }}</strong> data</span>
+        </div>
+
+        <div class="quota-loading" *ngIf="isLoading">Memuat data kuota...</div>
+        <div class="quota-empty" *ngIf="!isLoading && quotas.length === 0">
+          <div class="quota-empty-icon" aria-hidden="true">▱</div>
+          <strong>Belum ada data kuota</strong>
+          <span>Kuota yang sudah disimpan akan tampil di sini.</span>
+        </div>
+        <div class="table-container quota-table-container" *ngIf="!isLoading && quotas.length > 0">
+          <table class="golan-table quota-table">
+            <thead><tr><th>Karyawan</th><th>Tahun</th><th>Jenis</th><th>Sisa Kuota</th><th>Aksi</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let quota of quotas">
+                <td><div class="quota-employee-name">{{ quota.Employee?.User?.Nama || 'Nama belum tersedia' }}</div><div class="code">{{ quota.Employee?.NIK || '—' }}</div></td>
+                <td><span class="year-label">{{ quota.Tahun }}</span></td>
+                <td><span class="quota-type-pill">{{ quota.JenisCuti }}</span></td>
+                <td><strong class="quota-balance">{{ quota.SisaKuota }}</strong> <span class="quota-unit">hari</span></td>
+                <td><button class="icon-button edit quota-edit" type="button" (click)="editQuota(quota)" aria-label="Edit kuota" title="Edit kuota"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </ng-container>
   </div>
 </div>

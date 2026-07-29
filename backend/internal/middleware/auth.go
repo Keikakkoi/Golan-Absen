@@ -4,9 +4,10 @@ import (
 	"strings"
 
 	"absensi-golan-backend/config"
+	"absensi-golan-backend/internal/models"
 	"absensi-golan-backend/pkg/jwt"
-	gojwt "github.com/golang-jwt/jwt/v5"
 	"github.com/gofiber/fiber/v2"
+	gojwt "github.com/golang-jwt/jwt/v5"
 )
 
 func Protected() fiber.Handler {
@@ -39,5 +40,23 @@ func Protected() fiber.Handler {
 		c.Locals("user_id", claims.UserID)
 		c.Locals("role", claims.Role)
 		return c.Next()
+	}
+}
+
+// RequireRoles is the backend counterpart of the frontend role guard. It is
+// intentionally applied to every role-specific route so hiding a menu cannot
+// be mistaken for authorization.
+func RequireRoles(roles ...models.Role) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		current, ok := c.Locals("role").(models.Role)
+		if !ok {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Role is missing"})
+		}
+		for _, allowed := range roles {
+			if current == allowed {
+				return c.Next()
+			}
+		}
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied for this role"})
 	}
 }

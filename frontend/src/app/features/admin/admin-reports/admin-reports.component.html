@@ -1,7 +1,7 @@
 <div class="dashboard-container admin-theme">
   <app-admin-sidebar></app-admin-sidebar>
 
-  <div class="main-content">
+  <div class="main-content admin-report-page">
     <div class="header">
       <h2>Dashboard & Rekap Absensi</h2>
     </div>
@@ -26,66 +26,132 @@
     </div>
 
     <div class="golan-card" style="margin-top: 2rem;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-        <form (ngSubmit)="loadReports()" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
-          <div class="form-group" style="margin: 0;">
-            <label>Periode</label>
-            <select [(ngModel)]="filters.periode" name="periode" (change)="onPeriodeChange()" class="form-control" style="width: 120px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
-              <option value="Kustom">Kustom</option>
-              <option value="Harian">Harian</option>
-              <option value="Mingguan">Mingguan</option>
-              <option value="Bulanan">Bulanan</option>
-            </select>
+    <div class="golan-card" style="margin-top: 2rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <h3 style="margin: 0;">Daftar Rekap Absensi</h3>
+        
+        <div class="export-dropdown" style="position: relative;" *ngIf="reports.length > 0 || allReports.length > 0">
+          <button class="btn btn-secondary" (click)="toggleExportDropdown()">
+            <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
+          </button>
+          <div class="dropdown-menu-custom" *ngIf="isExportOpen">
+            <button class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button>
+            <button class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button>
+            <button class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button>
+            <button class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button>
           </div>
-          <div class="form-group" style="margin: 0;" *ngIf="filters.periode === 'Kustom'">
-            <label>Dari Tanggal</label>
-            <input type="date" [(ngModel)]="filters.start_date" name="start_date" class="form-control" style="width: 140px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;" />
-          </div>
-          <div class="form-group" style="margin: 0;" *ngIf="filters.periode === 'Kustom'">
-            <label>Sampai Tanggal</label>
-            <input type="date" [(ngModel)]="filters.end_date" name="end_date" class="form-control" style="width: 140px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;" />
-          </div>
-          <div class="form-group" style="margin: 0;">
-            <label>Departemen</label>
-            <select [(ngModel)]="filters.department_id" name="department_id" class="form-control" style="width: 160px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
-              <option value="">Semua Departemen</option>
-              <option *ngFor="let dept of departments" [value]="dept.ID">{{ dept.NamaDepartemen }}</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin: 0;">
-            <label>Status</label>
-            <select [(ngModel)]="filters.status" name="status" class="form-control" style="width: 120px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
-              <option value="Semua">Semua</option>
-              <option value="Hadir">Hadir</option>
-              <option value="Terlambat">Terlambat</option>
-              <option value="Alpha">Alpha</option>
-              <option value="Izin">Izin</option>
-              <option value="Cuti">Cuti</option>
-            </select>
-          </div>
-          <button type="submit" class="btn-primary" style="padding: 0.5rem 1rem; background-color: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer;">Terapkan Filter</button>
-        </form>
+        </div>
+      </div>
 
-        <div style="display: flex; gap: 0.5rem;">
-          <button class="btn-primary" (click)="exportCSV()" style="background-color: #4b5563; border: none; color: white; display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer;">
-            📥 Export CSV
-          </button>
-          <button class="btn-primary" (click)="exportExcel()" style="background-color: #3b82f6; border: none; color: white; display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer;">
-            🟢 Export Excel
-          </button>
-          <button class="btn-primary" (click)="exportPDF()" style="background-color: #ef4444; border: none; color: white; display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 4px; cursor: pointer;">
-            🔴 Cetak PDF
-          </button>
+      <!-- FILTER SECTION -->
+      <div class="filter-card premium-filter" *ngIf="allReports.length > 0 || filters.start_date">
+        <div class="filter-header">
+           <h5><i class="fas fa-filter text-primary"></i> Filter & Pencarian Rekap Absensi</h5>
+           <span class="filter-count">Menampilkan <strong>{{ reports.length }}</strong> dari <strong>{{ allReports.length }}</strong> data</span>
+        </div>
+        
+        <div class="filter-grid premium-grid" style="margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+          <!-- Row 1: Pencarian Umum & Periode -->
+          <div class="filter-group col-span-2" style="grid-column: span 2;">
+            <label>Pencarian Kata Kunci</label>
+            <div class="input-wrapper">
+               <i class="fas fa-search icon-left"></i>
+               <input type="text" class="filter-input has-icon" [(ngModel)]="filters.search" (ngModelChange)="onLocalFilterChange()" placeholder="Cari nama karyawan, NIK atau jabatan...">
+            </div>
+          </div>
+          
+          <div class="filter-group">
+            <label>Periode Waktu</label>
+            <div class="input-wrapper select-wrapper">
+              <select class="filter-input" [(ngModel)]="filters.periode" (change)="onPeriodeChange()">
+                <option value="Kustom">Kustom</option>
+                <option value="Harian">Harian</option>
+                <option value="Mingguan">Mingguan</option>
+                <option value="Bulanan">Bulanan</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right"></i>
+            </div>
+          </div>
+
+          <div class="filter-group" *ngIf="filters.periode === 'Kustom'">
+            <label>Dari Tanggal</label>
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left"></i>
+              <input type="date" class="filter-input has-icon" [(ngModel)]="filters.start_date" (change)="onFilterChange()">
+            </div>
+          </div>
+
+          <div class="filter-group" *ngIf="filters.periode === 'Kustom'">
+            <label>Sampai Tanggal</label>
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left"></i>
+              <input type="date" class="filter-input has-icon" [(ngModel)]="filters.end_date" (change)="onFilterChange()">
+            </div>
+          </div>
+
+          <!-- Row 2: Dropdowns (Divisi, Jabatan, Status) -->
+          <div class="filter-group">
+            <label>Divisi</label>
+            <div class="input-wrapper select-wrapper">
+              <select class="filter-input" [(ngModel)]="filters.division_id" (change)="onFilterChange()">
+                <option value="">Semua Divisi</option>
+                <option *ngFor="let dept of divisions" [value]="dept.ID">{{ dept.NamaDivisi }}</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right"></i>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label>Jabatan</label>
+            <div class="input-wrapper select-wrapper">
+              <select class="filter-input" [(ngModel)]="filters.role" (ngModelChange)="onLocalFilterChange()">
+                <option value="">Semua Jabatan</option>
+                <option *ngFor="let role of uniqueRoles" [value]="role">{{ role }}</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right"></i>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label>Status Kehadiran</label>
+            <div class="input-wrapper select-wrapper">
+              <select class="filter-input" [(ngModel)]="filters.status" (change)="onFilterChange()">
+                <option value="Semua">Semua Status</option>
+                <option value="Hadir">Hadir</option>
+                <option value="Terlambat">Terlambat</option>
+                <option value="Belum Check-out">⚠ Belum Check-out</option>
+                <option value="Alpha">Alpha</option>
+                <option value="Izin">Izin</option>
+                <option value="Cuti">Cuti</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right"></i>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label>Urutkan</label>
+            <div class="input-wrapper select-wrapper">
+              <select class="filter-input" [(ngModel)]="filters.sort_order" (change)="onLocalFilterChange()">
+                <option value="desc">Terbaru (Descending)</option>
+                <option value="asc">Terlama (Ascending)</option>
+                <option value="name_asc">Nama (A-Z)</option>
+                <option value="name_desc">Nama (Z-A)</option>
+              </select>
+              <i class="fas fa-sort icon-right"></i>
+            </div>
+          </div>
         </div>
       </div>
       
-      <div class="table-container" style="overflow-x: auto;">
-        <table *ngIf="!isLoadingReports && reports.length > 0" style="width: 100%; border-collapse: collapse;">
+      <div class="table-container report-table-container" style="overflow-x: auto;">
+        <table *ngIf="!isLoadingReports && reports.length > 0" class="golan-table report-table" style="width: 100%; border-collapse: collapse;">
           <thead>
             <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
               <th style="padding: 0.75rem;">Tanggal</th>
               <th style="padding: 0.75rem;">NIK</th>
               <th style="padding: 0.75rem;">Nama Karyawan</th>
+              <th style="padding: 0.75rem;">Divisi</th>
+              <th style="padding: 0.75rem;">Jabatan</th>
               <th style="padding: 0.75rem;">Tipe Kerja</th>
               <th style="padding: 0.75rem;">Jam Masuk</th>
               <th style="padding: 0.75rem;">Jam Pulang</th>
@@ -97,11 +163,13 @@
               <td style="padding: 0.75rem;">{{ req.Tanggal | date:'dd MMM yyyy' }}</td>
               <td style="padding: 0.75rem; font-family: monospace;">{{ req.Employee?.NIK }}</td>
               <td style="padding: 0.75rem; font-weight: 500;">{{ req.Employee?.User?.Nama }}</td>
+              <td style="padding: 0.75rem;">{{ req.Employee?.Division?.NamaDivisi || '-' }}</td>
+              <td style="padding: 0.75rem;">{{ req.Employee?.Position?.NamaJabatan || '-' }}</td>
               <td style="padding: 0.75rem;">{{ req.TipeKerja || 'WFO' }}</td>
               <td style="padding: 0.75rem;">{{ req.JamMasuk ? (req.JamMasuk | date:'HH:mm:ss') : '-' }}</td>
               <td style="padding: 0.75rem;">{{ req.JamPulang ? (req.JamPulang | date:'HH:mm:ss') : '-' }}</td>
               <td style="padding: 0.75rem;">
-                <span class="status-badge" [ngClass]="{
+                <span *ngIf="!req.IsCheckoutMissing" class="status-badge" [ngClass]="{
                   'status-hadir': req.Status === 'Hadir',
                   'status-terlambat': req.Status === 'Terlambat',
                   'status-alpha': req.Status === 'Alpha' || req.Status === 'Izin' || req.Status === 'Cuti'
@@ -110,6 +178,7 @@
                 [style.color]="req.Status === 'Hadir' ? '#2563eb' : (req.Status === 'Terlambat' ? '#d97706' : '#dc2626')">
                   {{ req.Status }}
                 </span>
+                <span *ngIf="req.IsCheckoutMissing" class="status-badge status-warning">⚠ Belum Check-out</span>
               </td>
             </tr>
           </tbody>

@@ -15,7 +15,7 @@ import { ActivatedRoute } from '@angular/router';
 })
 export class ExecutiveReportsComponent implements OnInit {
   reports: any[] = [];
-  departments: any[] = [];
+  divisions: any[] = [];
   isLoading = false;
   isExporting = false;
   errorMessage = '';
@@ -23,13 +23,14 @@ export class ExecutiveReportsComponent implements OnInit {
   filters = {
     start_date: '',
     end_date: '',
-    department_id: '',
+    division_id: '',
     search: ''
   };
+  isExportOpen = false;
 
   private baseUrl = 'http://localhost:8080/api/v1/executive/reports/employees';
   private exportUrl = 'http://localhost:8080/api/v1/executive/reports/export';
-  private depsUrl = 'http://localhost:8080/api/v1/organization/departments';
+  private depsUrl = 'http://localhost:8080/api/v1/organization/divisions';
 
   constructor(
     private http: HttpClient, 
@@ -44,21 +45,21 @@ export class ExecutiveReportsComponent implements OnInit {
     this.filters.start_date = this.toDateInput(firstDay);
     this.filters.end_date = this.toDateInput(today);
 
-    this.loadDepartments();
+    this.loadDivisions();
 
     this.route.queryParams.subscribe(params => {
-      if (params['department_id']) {
-        this.filters.department_id = params['department_id'];
+      if (params['division_id']) {
+        this.filters.division_id = params['division_id'];
       }
       this.loadReports();
     });
   }
 
-  loadDepartments(): void {
+  loadDivisions(): void {
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
     this.http.get<any[]>(this.depsUrl, { headers }).subscribe({
-      next: (data) => this.departments = data || [],
-      error: (err) => console.error('Gagal memuat departemen', err)
+      next: (data) => this.divisions = data || [],
+      error: (err) => console.error('Gagal memuat divisi', err)
     });
   }
 
@@ -68,8 +69,8 @@ export class ExecutiveReportsComponent implements OnInit {
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
     
     let queryParams = `?start_date=${this.filters.start_date}&end_date=${this.filters.end_date}`;
-    if (this.filters.department_id) {
-      queryParams += `&department_id=${this.filters.department_id}`;
+    if (this.filters.division_id) {
+      queryParams += `&division_id=${this.filters.division_id}`;
     }
     if (this.filters.search) {
       queryParams += `&search=${encodeURIComponent(this.filters.search)}`;
@@ -87,11 +88,15 @@ export class ExecutiveReportsComponent implements OnInit {
     });
   }
 
-  exportToCSV(): void {
+  toggleExportDropdown(): void {
+    this.isExportOpen = !this.isExportOpen;
+  }
+
+  exportCSV(): void {
     this.isExporting = true;
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
     let query = `?start_date=${this.filters.start_date}&end_date=${this.filters.end_date}`;
-    if (this.filters.department_id) query += `&department_id=${this.filters.department_id}`;
+    if (this.filters.division_id) query += `&division_id=${this.filters.division_id}`;
     if (this.filters.search) query += `&search=${encodeURIComponent(this.filters.search)}`;
 
     this.http.get(`${this.exportUrl}${query}`, { headers, observe: 'response', responseType: 'blob' }).subscribe({
@@ -115,6 +120,24 @@ export class ExecutiveReportsComponent implements OnInit {
         alert(err.error?.error || 'Gagal mengekspor laporan.');
       }
     });
+  }
+
+  exportExcel(): void {
+    alert('Fitur Export Excel akan segera tersedia. Untuk sementara gunakan Export CSV.');
+  }
+
+  exportJSON(): void {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.reports));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `laporan-kehadiran.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+  exportPDF(): void {
+    window.print();
   }
 
   private toDateInput(date: Date): string {

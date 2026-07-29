@@ -22,8 +22,12 @@ export class AdminAlphaReportsComponent implements OnInit {
   filters = {
     start_date: '',
     end_date: '',
-    department_id: ''
+    department_id: '',
+    name: '',
+    sort_order: 'name_asc'
   };
+
+  isExportOpen = false;
 
   private baseUrl = 'http://localhost:8080/api/v1/admin/reports/alpha';
 
@@ -47,11 +51,13 @@ export class AdminAlphaReportsComponent implements OnInit {
     let params = new HttpParams()
       .set('start_date', this.filters.start_date)
       .set('end_date', this.filters.end_date);
-    if (this.filters.department_id) params = params.set('department_id', this.filters.department_id);
+    if (this.filters.department_id) params = params.set('division_id', this.filters.department_id);
+    if (this.filters.name) params = params.set('name', this.filters.name);
 
     this.http.get<any[]>(this.baseUrl, { headers, params }).subscribe({
       next: (data) => {
         this.summaries = data || [];
+        this.applySorting();
         this.isLoading = false;
       },
       error: (err) => {
@@ -62,8 +68,22 @@ export class AdminAlphaReportsComponent implements OnInit {
     });
   }
 
+  applySorting(): void {
+    if (!this.summaries) return;
+    
+    if (this.filters.sort_order === 'name_asc') {
+      this.summaries.sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+    } else if (this.filters.sort_order === 'name_desc') {
+      this.summaries.sort((a, b) => (b.nama || '').localeCompare(a.nama || ''));
+    } else if (this.filters.sort_order === 'count_desc') {
+      this.summaries.sort((a, b) => (b.total || 0) - (a.total || 0));
+    } else if (this.filters.sort_order === 'count_asc') {
+      this.summaries.sort((a, b) => (a.total || 0) - (b.total || 0));
+    }
+  }
+
   loadDepartments(): void {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/departments', { headers: this.getHeaders() }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/divisions', { headers: this.getHeaders() }).subscribe({
       next: data => this.departments = data || [],
       error: () => this.departments = []
     });
@@ -75,13 +95,36 @@ export class AdminAlphaReportsComponent implements OnInit {
 
   totalOccurrences(): number { return this.summaries.reduce((sum, item) => sum + Number(item.total || 0), 0); }
 
-  exportCsv(): void {
+  toggleExportDropdown(): void {
+    this.isExportOpen = !this.isExportOpen;
+  }
+
+  exportCSV(): void {
     let params = new HttpParams().set('start_date', this.filters.start_date).set('end_date', this.filters.end_date);
-    if (this.filters.department_id) params = params.set('department_id', this.filters.department_id);
+    if (this.filters.department_id) params = params.set('division_id', this.filters.department_id);
+    if (this.filters.name) params = params.set('name', this.filters.name);
     this.http.get(`${this.baseUrl}/export`, { headers: this.getHeaders(), params, responseType: 'blob' }).subscribe({
       next: blob => this.download(blob, `laporan-alpha_${this.filters.start_date}_${this.filters.end_date}.csv`),
       error: err => this.errorMessage = err.error?.error || 'Gagal mengekspor laporan ketidakhadiran.'
     });
+  }
+
+  exportExcel(): void {
+    alert('Fitur Export Excel akan segera tersedia. Untuk sementara gunakan Export CSV.');
+  }
+
+  exportJSON(): void {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.summaries));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `laporan-alpha.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+  exportPDF(): void {
+    window.print();
   }
 
   private download(blob: Blob, fileName: string): void {

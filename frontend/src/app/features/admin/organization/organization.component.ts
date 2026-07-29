@@ -14,13 +14,13 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
   styleUrls: ['./organization.component.scss']
 })
 export class OrganizationComponent implements OnInit {
-  departments: any[] = [];
+  divisions: any[] = [];
   positions: any[] = [];
   
-  activeTab: 'departments' | 'positions' = 'departments';
+  activeTab: 'divisions' | 'positions' = 'divisions';
 
-  deptForm = { ID: 0, NamaDepartemen: '' };
-  posForm = { ID: 0, NamaJabatan: '' };
+  deptForm = { ID: 0, NamaDivisi: '', Deskripsi: '' };
+  posForm = { ID: 0, NamaJabatan: '', Deskripsi: '' };
   
   showDeptModal = false;
   showPosModal = false;
@@ -29,7 +29,7 @@ export class OrganizationComponent implements OnInit {
   constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
 
   ngOnInit(): void {
-    this.loadDepartments();
+    this.loadDivisions();
     this.loadPositions();
   }
 
@@ -37,10 +37,10 @@ export class OrganizationComponent implements OnInit {
     return new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
   }
 
-  // DEPARTMENTS
-  loadDepartments() {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/departments', { headers: this.getHeaders() }).subscribe({
-      next: (data) => this.departments = data,
+  // DIVISIS
+  loadDivisions() {
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/divisions', { headers: this.getHeaders() }).subscribe({
+      next: (data) => this.divisions = data,
       error: (err) => console.error(err)
     });
   }
@@ -49,7 +49,7 @@ export class OrganizationComponent implements OnInit {
     if (dept) {
       this.deptForm = { ...dept };
     } else {
-      this.deptForm = { ID: 0, NamaDepartemen: '' };
+      this.deptForm = { ID: 0, NamaDivisi: '', Deskripsi: '' };
     }
     this.showDeptModal = true;
   }
@@ -58,37 +58,37 @@ export class OrganizationComponent implements OnInit {
     this.showDeptModal = false;
   }
 
-  async saveDepartment(): Promise<void> {
-    if (!this.deptForm.NamaDepartemen.trim()) return;
-    const action = this.deptForm.ID ? 'mengubah departemen ini' : 'menyimpan departemen baru';
+  async saveDivision(): Promise<void> {
+    if (!this.deptForm.NamaDivisi.trim()) return;
+    const action = this.deptForm.ID ? 'mengubah divisi ini' : 'menyimpan divisi baru';
     if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.errorMessage = '';
     if (this.deptForm.ID) {
-      this.http.put(`http://localhost:8080/api/v1/admin/organization/departments/${this.deptForm.ID}`, this.deptForm, { headers: this.getHeaders() }).subscribe({
+      this.http.put(`http://localhost:8080/api/v1/admin/organization/divisions/${this.deptForm.ID}`, this.deptForm, { headers: this.getHeaders() }).subscribe({
         next: () => {
-          this.loadDepartments();
+          this.loadDivisions();
           this.closeDeptModal();
-          this.alert.success(this.deptForm.ID ? 'Departemen diperbarui' : 'Departemen disimpan');
+          this.alert.success(this.deptForm.ID ? 'Divisi diperbarui' : 'Divisi disimpan');
         },
-        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menyimpan departemen.'; this.alert.error('Gagal menyimpan departemen', this.errorMessage); }
+        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menyimpan divisi.'; this.alert.error('Gagal menyimpan divisi', this.errorMessage); }
       });
     } else {
-      this.http.post(`http://localhost:8080/api/v1/admin/organization/departments`, this.deptForm, { headers: this.getHeaders() }).subscribe({
+      this.http.post(`http://localhost:8080/api/v1/admin/organization/divisions`, this.deptForm, { headers: this.getHeaders() }).subscribe({
         next: () => {
-          this.loadDepartments();
+          this.loadDivisions();
           this.closeDeptModal();
-          this.alert.success('Departemen disimpan');
+          this.alert.success('Divisi disimpan');
         },
-        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menyimpan departemen.'; this.alert.error('Gagal menyimpan departemen', this.errorMessage); }
+        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menyimpan divisi.'; this.alert.error('Gagal menyimpan divisi', this.errorMessage); }
       });
     }
   }
 
-  async deleteDepartment(id: number): Promise<void> {
-    if (await this.alert.confirm('Hapus departemen?', 'Departemen ini akan dihapus dari sistem.', 'Ya, hapus')) {
-      this.http.delete(`http://localhost:8080/api/v1/admin/organization/departments/${id}`, { headers: this.getHeaders() }).subscribe({
-        next: () => { this.loadDepartments(); this.alert.success('Departemen dihapus'); },
-        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menghapus departemen.'; this.alert.error('Gagal menghapus departemen', this.errorMessage); }
+  async deleteDivision(id: number): Promise<void> {
+    if (await this.alert.confirm('Hapus divisi?', 'Divisi ini akan dihapus dari sistem.', 'Ya, hapus')) {
+      this.http.delete(`http://localhost:8080/api/v1/admin/organization/divisions/${id}`, { headers: this.getHeaders() }).subscribe({
+        next: () => { this.loadDivisions(); this.alert.success('Divisi dihapus'); },
+        error: (err) => { this.errorMessage = err.error?.error || 'Gagal menghapus divisi.'; this.alert.error('Gagal menghapus divisi', this.errorMessage); }
       });
     }
   }
@@ -105,7 +105,7 @@ export class OrganizationComponent implements OnInit {
     if (pos) {
       this.posForm = { ...pos };
     } else {
-      this.posForm = { ID: 0, NamaJabatan: '' };
+      this.posForm = { ID: 0, NamaJabatan: '', Deskripsi: '' };
     }
     this.showPosModal = true;
   }

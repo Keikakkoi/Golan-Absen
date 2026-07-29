@@ -10,15 +10,15 @@
       </div>
     </div>
 
-    <div class="golan-card" *ngIf="viewMode === 'table'" style="padding: 0; overflow: hidden; background: white;">
-      <div class="golan-table-responsive">
-        <table class="golan-table" *ngIf="!isLoading && records.length > 0">
+    <div class="golan-card history-card" *ngIf="viewMode === 'table'">
+      <div class="golan-table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+        <table class="golan-table history-table" *ngIf="!isLoading && records.length > 0" style="min-width: 600px;">
           <thead>
             <tr>
               <th>Tanggal</th>
-              <th>Jam Masuk</th>
-              <th>Jam Pulang</th>
-              <th>Durasi Kerja</th>
+              <th class="history-entry-column">Jam Masuk</th>
+              <th class="history-secondary-column">Jam Pulang</th>
+              <th class="history-secondary-column">Durasi Kerja</th>
               <th>Status</th>
               <th>Bukti (Masuk)</th>
             </tr>
@@ -26,16 +26,19 @@
           <tbody>
             <tr *ngFor="let rec of records">
               <td>{{ rec.Tanggal | date:'dd MMM yyyy' }}</td>
-              <td class="mono-text">{{ rec.JamMasuk ? (rec.JamMasuk | date:'HH:mm:ss') : '-' }}</td>
-              <td class="mono-text">{{ rec.JamPulang ? (rec.JamPulang | date:'HH:mm:ss') : '-' }}</td>
-              <td class="mono-text">{{ getWorkDuration(rec) }}</td>
-              <td>
-                <span class="status-pill status-{{ rec.Status | lowercase }}">
+              <td class="mono-text history-entry-column">{{ rec.JamMasuk ? (rec.JamMasuk | date:'HH:mm:ss') : '-' }}</td>
+              <td class="mono-text history-secondary-column">{{ rec.JamPulang ? (rec.JamPulang | date:'HH:mm:ss') : '-' }}</td>
+              <td class="mono-text history-secondary-column">{{ getWorkDuration(rec) }}</td>
+              <td class="history-status-cell">
+                <span *ngIf="!rec.IsCheckoutMissing" class="status-pill status-{{ rec.Status | lowercase }}">
                   {{ rec.Status }}
                 </span>
+                <span *ngIf="rec.IsCheckoutMissing" class="status-pill status-warning">⚠ Belum Check-out</span>
               </td>
-              <td>
-                <button class="btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" (click)="openDetail(rec)">Detail</button>
+              <td class="history-action-cell">
+                <button type="button" class="icon-button view history-detail-button" aria-label="Lihat detail" title="Lihat detail" (click)="openDetail(rec)">
+                  <svg aria-hidden="true" style="width: 20px; height: 20px;"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+                </button>
               </td>
             </tr>
           </tbody>
@@ -52,59 +55,66 @@
     </div>
 
     <!-- Calendar View -->
-    <div class="golan-card" *ngIf="viewMode === 'calendar'">
+    <div class="golan-card history-calendar-card" *ngIf="viewMode === 'calendar'">
       <div class="calendar-header">
         <button (click)="prevMonth()">&lt; Sebelumnya</button>
         <h3>{{ currentMonth | date:'MMMM yyyy' }}</h3>
         <button (click)="nextMonth()">Selanjutnya &gt;</button>
       </div>
       
-      <div class="calendar-grid">
+      <div class="calendar-wrapper" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+        <div class="calendar-grid" style="min-width: 600px;">
         <div class="weekday" *ngFor="let d of weekDays">{{ d }}</div>
         
         <div class="day-cell" *ngFor="let day of calendarDays" [class.empty]="!day" (click)="day?.record ? openDetail(day.record) : null" [style.cursor]="day?.record ? 'pointer' : 'default'">
           <ng-container *ngIf="day">
             <div class="day-number">{{ day.date }}</div>
             <div *ngIf="day.record" class="day-record status-{{ day.record.Status | lowercase }}">
-              {{ day.record.Status }}<br>
+              <span class="calendar-status-full">{{ day.record.IsCheckoutMissing ? '⚠ Belum Check-out' : day.record.Status }}</span>
+              <span class="calendar-status-short">{{ getStatusShort(day.record.Status) }}</span>
+              <br>
               <small *ngIf="day.record.JamMasuk">{{ day.record.JamMasuk | date:'HH:mm' }}</small>
             </div>
           </ng-container>
         </div>
+    </div>
       </div>
     </div>
   </div>
   
   <!-- Detail Modal -->
-  <div class="modal-backdrop" *ngIf="selectedRecord">
-    <div class="modal-content golan-card" style="max-width: 500px; width: 100%;">
-      <div class="modal-header" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-        <h3 style="margin: 0;">Detail Absensi: {{ selectedRecord.Tanggal | date:'dd MMM yyyy' }}</h3>
-        <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer;" (click)="closeDetail()">&times;</button>
+  <div class="modal-backdrop history-modal-backdrop" *ngIf="selectedRecord" (click)="closeDetail()">
+    <div class="modal-content golan-card history-detail-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal-header history-modal-header">
+        <h3>Detail Absensi: {{ selectedRecord.Tanggal | date:'dd MMM yyyy' }}</h3>
+        <button type="button" class="modal-close" aria-label="Tutup detail" (click)="closeDetail()">&times;</button>
       </div>
-      <div class="modal-body">
-        <p><strong>Status:</strong> <span class="status-badge status-{{ selectedRecord.Status | lowercase }}">{{ selectedRecord.Status }}</span></p>
+      <div class="modal-body history-modal-body">
+        <p><strong>Status:</strong>
+          <span *ngIf="!selectedRecord.IsCheckoutMissing" class="status-badge status-{{ selectedRecord.Status | lowercase }}">{{ selectedRecord.Status }}</span>
+          <span *ngIf="selectedRecord.IsCheckoutMissing" class="status-badge status-warning">⚠ Belum Check-out</span>
+        </p>
         <p><strong>Tipe Kerja:</strong> {{ selectedRecord.TipeKerja || 'WFO' }}</p>
         <p><strong>Durasi Kerja:</strong> {{ getWorkDuration(selectedRecord) }}</p>
-        <hr style="border-top: 1px solid var(--mint-1); margin: 15px 0;">
-        <div style="display: flex; gap: 20px;">
-          <div style="flex: 1;">
+        <hr>
+        <div class="attendance-detail-grid">
+          <div class="attendance-detail-block">
             <h4>Check-in</h4>
             <p><strong>Waktu:</strong> {{ selectedRecord.JamMasuk ? (selectedRecord.JamMasuk | date:'HH:mm:ss') : '-' }}</p>
             <p><strong>Koordinat:</strong> {{ selectedRecord.LatitudeMasuk }}, {{ selectedRecord.LongitudeMasuk }}</p>
             <div *ngIf="selectedRecord.FotoSelfieMasukURL">
               <a [href]="selectedRecord.FotoSelfieMasukURL" target="_blank">
-                <img [src]="selectedRecord.FotoSelfieMasukURL" style="width: 100%; border-radius: 8px; margin-top: 8px;" alt="Selfie Masuk">
+                <img [src]="selectedRecord.FotoSelfieMasukURL" alt="Selfie Masuk">
               </a>
             </div>
           </div>
-          <div style="flex: 1;">
+          <div class="attendance-detail-block">
             <h4>Check-out</h4>
             <p><strong>Waktu:</strong> {{ selectedRecord.JamPulang ? (selectedRecord.JamPulang | date:'HH:mm:ss') : '-' }}</p>
             <p><strong>Koordinat:</strong> {{ selectedRecord.LatitudePulang || '-' }}, {{ selectedRecord.LongitudePulang || '-' }}</p>
             <div *ngIf="selectedRecord.FotoSelfiePulangURL">
               <a [href]="selectedRecord.FotoSelfiePulangURL" target="_blank">
-                <img [src]="selectedRecord.FotoSelfiePulangURL" style="width: 100%; border-radius: 8px; margin-top: 8px;" alt="Selfie Pulang">
+                <img [src]="selectedRecord.FotoSelfiePulangURL" alt="Selfie Pulang">
               </a>
             </div>
           </div>

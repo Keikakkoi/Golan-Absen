@@ -7,24 +7,74 @@
     </div>
 
     <div class="golan-card">
-      <form class="filter-bar" (ngSubmit)="applyFilters()">
-        <input class="form-control search-input" type="search" [(ngModel)]="filters.q" name="q" placeholder="Cari aktor atau detail..." />
-        <select class="form-control" [(ngModel)]="filters.action" name="action">
-          <option *ngFor="let action of actions" [value]="action">{{ action === 'Semua' ? 'Semua aksi' : action }}</option>
-        </select>
-        <select class="form-control" [(ngModel)]="filters.table_name" name="table_name">
-          <option *ngFor="let table of tables" [value]="table">{{ table === 'Semua' ? 'Semua entitas' : table }}</option>
-        </select>
-        <input class="form-control" type="date" [(ngModel)]="filters.start_date" name="start_date" aria-label="Dari tanggal" />
-        <input class="form-control" type="date" [(ngModel)]="filters.end_date" name="end_date" aria-label="Sampai tanggal" />
-        <button class="btn-primary" type="submit">Terapkan</button>
-        <button class="btn-secondary" type="button" (click)="exportCsv()">Export CSV</button>
-      </form>
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+        <div class="export-dropdown" style="position: relative;">
+          <button class="btn btn-secondary" (click)="toggleExportDropdown()">
+            <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
+          </button>
+          <div class="dropdown-menu-custom" *ngIf="isExportOpen">
+            <button class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button>
+            <button class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button>
+            <button class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button>
+            <button class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-card premium-filter">
+        <div class="filter-header">
+           <h5><i class="fas fa-filter text-primary"></i> Filter Audit Log</h5>
+        </div>
+        <form (ngSubmit)="applyFilters()" class="filter-grid premium-grid" style="margin: 0; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+          <div class="filter-group">
+            <label>Pencarian</label>
+            <div class="input-wrapper">
+              <i class="fas fa-search icon-left"></i>
+              <input type="search" [(ngModel)]="filters.q" name="q" class="filter-input with-icon" placeholder="Cari aktor..." />
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Aksi</label>
+            <div class="input-wrapper select-wrapper">
+              <select [(ngModel)]="filters.action" name="action" class="filter-input">
+                <option *ngFor="let action of actions" [value]="action">{{ action === 'Semua' ? 'Semua aksi' : action }}</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right"></i>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Entitas</label>
+            <div class="input-wrapper select-wrapper">
+              <select [(ngModel)]="filters.table_name" name="table_name" class="filter-input">
+                <option *ngFor="let table of tables" [value]="table">{{ table === 'Semua' ? 'Semua entitas' : table }}</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right"></i>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Dari Tanggal</label>
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left"></i>
+              <input type="date" [(ngModel)]="filters.start_date" name="start_date" class="filter-input has-icon" />
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Sampai Tanggal</label>
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left"></i>
+              <input type="date" [(ngModel)]="filters.end_date" name="end_date" class="filter-input has-icon" />
+            </div>
+          </div>
+          <div class="filter-group reset-group">
+            <button type="submit" class="btn-primary" style="width: 100%; height: 39px; border-radius: 8px;">Terapkan Filter</button>
+          </div>
+        </form>
+      </div>
       <p *ngIf="errorMessage" class="error-state">{{ errorMessage }}</p>
       <div *ngIf="isLoading" class="loading-state">Memuat...</div>
 
-      <div class="table-container" *ngIf="!isLoading">
-      <table class="golan-table">
+      <div class="table-container" *ngIf="!isLoading" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+      <table class="golan-table" style="min-width: 800px;">
         <thead>
           <tr>
             <th>Waktu</th>

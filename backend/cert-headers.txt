@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+Date: Wed, 29 Jul 2026 03:54:17 GMT
+Content-Type: image/png
+Content-Length: 9003
+Vary: Origin
+Access-Control-Allow-Origin: *
+Content-Disposition: attachment; filename="icon_golan.png"
+

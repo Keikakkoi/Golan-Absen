@@ -55,6 +55,18 @@ export class HistoryComponent implements OnInit {
     this.selectedRecord = null;
   }
 
+  getStatusShort(status: string): string {
+    const labels: Record<string, string> = {
+      Hadir: 'H',
+      Terlambat: 'TL',
+      Izin: 'I',
+      Cuti: 'C',
+      Alpha: 'A',
+      'Tidak Hadir': 'A'
+    };
+    return labels[status] || status.slice(0, 2).toUpperCase();
+  }
+
   getWorkDuration(rec: any): string {
     if (!rec.JamMasuk || !rec.JamPulang) return '-';
     const entry = new Date(rec.JamMasuk);

@@ -1,8 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
+import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-notifications',
@@ -12,28 +11,32 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
   styleUrls: ['./notifications.component.scss']
 })
 export class NotificationsComponent implements OnInit, OnDestroy {
-  notifications: any[] = [];
+  notifications: AppNotification[] = [];
   isLoading = true;
   filterMode: 'all' | 'unread' = 'all';
   private refreshTimer?: ReturnType<typeof setInterval>;
+  private disconnectRealtime?: () => void;
+  pushEnabled = false;
+  pushBusy = false;
+  pushError = '';
 
-  private baseUrl = 'http://localhost:8080/api/v1/notifications';
-
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(private notificationService: NotificationService) {}
 
   ngOnInit(): void {
     this.fetchNotifications();
     this.refreshTimer = setInterval(() => this.fetchNotifications(), 15_000);
+    this.notificationService.enablePush(false).then(enabled => this.pushEnabled = enabled).catch(() => undefined);
+    this.disconnectRealtime = this.notificationService.connectRealtime(() => this.fetchNotifications());
   }
 
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.disconnectRealtime?.();
   }
 
   fetchNotifications(): void {
     this.isLoading = true;
-    const headers = this.getHeaders();
-    this.http.get<any[]>(this.baseUrl, { headers }).subscribe({
+    this.notificationService.getAll().subscribe({
       next: (data) => {
         this.notifications = data || [];
         this.isLoading = false;
@@ -59,8 +62,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   markAsRead(notif: any): void {
     if (notif.StatusBaca) return;
 
-    const headers = this.getHeaders();
-    this.http.put(`${this.baseUrl}/${notif.ID}/read`, {}, { headers }).subscribe({
+    this.notificationService.markAsRead(notif.ID).subscribe({
       next: () => {
         notif.StatusBaca = true;
       },
@@ -72,8 +74,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     const unreadCount = this.notifications.filter(n => !n.StatusBaca).length;
     if (unreadCount === 0) return;
 
-    const headers = this.getHeaders();
-    this.http.put(`${this.baseUrl}/read-all`, {}, { headers }).subscribe({
+    this.notificationService.markAllAsRead().subscribe({
       next: () => {
         this.notifications.forEach(n => n.StatusBaca = true);
       },
@@ -81,8 +82,16 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     });
   }
 
-  private getHeaders(): HttpHeaders {
-    const token = this.authService.getToken();
-    return new HttpHeaders().set('Authorization', `Bearer ${token}`);
+  enablePush(): void {
+    this.pushError = '';
+    this.pushBusy = true;
+    this.notificationService.enablePush(true).then(enabled => {
+      this.pushEnabled = enabled;
+      if (!enabled) this.pushError = 'Push belum aktif. Izinkan notifikasi browser lalu coba lagi.';
+      this.pushBusy = false;
+    }).catch(() => {
+      this.pushBusy = false;
+      this.pushError = 'Push tidak dapat diaktifkan. Pastikan backend sudah direstart dan browser memakai localhost atau HTTPS.';
+    });
   }
 }

@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ExecutiveDepartmentStatsComponent } from './executive-department-stats.component';
+import { ExecutiveDivisionStatsComponent } from './executive-division-stats.component';
 
-describe('ExecutiveDepartmentStatsComponent', () => {
-  let component: ExecutiveDepartmentStatsComponent;
-  let fixture: ComponentFixture<ExecutiveDepartmentStatsComponent>;
+describe('ExecutiveDivisionStatsComponent', () => {
+  let component: ExecutiveDivisionStatsComponent;
+  let fixture: ComponentFixture<ExecutiveDivisionStatsComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ExecutiveDepartmentStatsComponent]
+      imports: [ExecutiveDivisionStatsComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(ExecutiveDepartmentStatsComponent);
+    fixture = TestBed.createComponent(ExecutiveDivisionStatsComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

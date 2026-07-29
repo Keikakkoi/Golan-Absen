@@ -6,9 +6,9 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ExecutiveSidebarComponent } from '../executive-sidebar/executive-sidebar.component';
 
-interface DepartmentComparison {
-  department_id: number;
-  department_name: string;
+interface DivisionComparison {
+  division_id: number;
+  division_name: string;
   total_employees: number;
   present_count: number;
   late_count: number;
@@ -24,12 +24,13 @@ interface DepartmentComparison {
   styleUrls: ['./executive-comparison.component.scss']
 })
 export class ExecutiveComparisonComponent implements OnInit {
-  comparisons: DepartmentComparison[] = [];
+  comparisons: DivisionComparison[] = [];
   filters = { start_date: '', end_date: '' };
+  isExportOpen = false;
   isLoading = false;
   errorMessage = '';
 
-  private readonly baseUrl = 'http://localhost:8080/api/v1/executive/departments/comparison';
+  private readonly baseUrl = 'http://localhost:8080/api/v1/executive/divisions/comparison';
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
@@ -57,13 +58,13 @@ export class ExecutiveComparisonComponent implements OnInit {
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
     const params = `?start_date=${this.filters.start_date}&end_date=${this.filters.end_date}`;
 
-    this.http.get<DepartmentComparison[]>(`${this.baseUrl}${params}`, { headers }).subscribe({
+    this.http.get<DivisionComparison[]>(`${this.baseUrl}${params}`, { headers }).subscribe({
       next: (data) => {
         this.comparisons = [...(data || [])].sort((a, b) => b.attendance_rate - a.attendance_rate);
         this.isLoading = false;
       },
       error: (err) => {
-        this.errorMessage = err.error?.error || 'Gagal memuat perbandingan departemen.';
+        this.errorMessage = err.error?.error || 'Gagal memuat perbandingan divisi.';
         this.isLoading = false;
       }
     });
@@ -78,5 +79,37 @@ export class ExecutiveComparisonComponent implements OnInit {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  toggleExportDropdown(): void {
+    this.isExportOpen = !this.isExportOpen;
+  }
+
+  exportCSV(): void {
+    const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent("Fitur CSV belum diimplementasikan untuk perbandingan divisi");
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `perbandingan-divisi.csv`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+  exportExcel(): void {
+    alert('Fitur Export Excel akan segera tersedia. Untuk sementara gunakan Export CSV.');
+  }
+
+  exportJSON(): void {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.comparisons));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", `perbandingan-divisi.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+  exportPDF(): void {
+    window.print();
   }
 }

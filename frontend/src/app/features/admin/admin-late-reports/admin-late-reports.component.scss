@@ -1,4 +1,15 @@
 .summary-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-bottom: 1rem; }
+.admin-late-report-page,
+.admin-late-report-page > .golan-card,
+.admin-late-report-page .report-table-container { min-width: 0; box-sizing: border-box; }
+.admin-late-report-page .report-table-container { width: 100%; max-width: 100%; overflow-x: auto !important; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-inline: contain; }
+.admin-late-report-page .report-table { display: table; width: 100% !important; min-width: 760px !important; max-width: none !important; }
+.admin-late-report-page .export-toolbar { margin-bottom: 20px; }
+.admin-late-report-page .export-dropdown > button { display: inline-flex; align-items: center; gap: .55rem; }
+.admin-late-report-page .export-dropdown > button .fa-chevron-down { font-size: .75rem; margin-left: .1rem; }
+.admin-late-report-page .dropdown-item i { width: 18px; margin-right: .55rem; color: var(--green-deep); text-align: center; }
+.admin-late-report-page .filter-grid { margin: 0; }
+.admin-late-report-page .filter-grid .btn-primary { width: 100%; min-height: 42px; }
 .summary-strip div { padding: .8rem 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; }
 .summary-strip span, .summary-strip strong { display: block; }
 .summary-strip span { color: #64748b; font-size: .8rem; }
@@ -6,6 +17,11 @@
 .error-state { color: #991b1b; background: #fef2f2; padding: .75rem 1rem; border-radius: 8px; }
 .link-button { border: 0; background: transparent; color: #2563eb; cursor: pointer; }
 .detail-row td { background: #f8fafc; }
+.nik-cell { color: var(--text-dark-lo); font-family: var(--font-mono); font-size: .82rem !important; }
+.employee-cell { font-weight: 700; }
+.empty-report-state { padding: 2rem; color: var(--text-dark-lo); text-align: center; }
 .detail-list { display: grid; gap: .35rem; }
 .detail-list div { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 1rem; color: #475569; font-size: .9rem; }
-@media (max-width: 700px) { .summary-strip { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .summary-strip { grid-template-columns: 1fr; }
+}

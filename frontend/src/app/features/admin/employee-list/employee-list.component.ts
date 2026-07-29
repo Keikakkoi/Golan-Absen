@@ -16,6 +16,14 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
 })
 export class EmployeeListComponent implements OnInit {
   employees: any[] = [];
+  filteredEmployees: any[] = [];
+  
+  filters = {
+    search: '',
+    division_id: '',
+    position_id: '',
+    sort_order: 'asc'
+  };
   isLoading = true;
   errorMessage = '';
   
@@ -23,6 +31,9 @@ export class EmployeeListComponent implements OnInit {
   isEditMode = false;
   isSaving = false;
   selectedImportFile: File | null = null;
+  
+  divisions: any[] = [];
+  positions: any[] = [];
   
   // Detail Modal
   isDetailOpen = false;
@@ -32,7 +43,7 @@ export class EmployeeListComponent implements OnInit {
     ID: null,
     NIK: '',
     UserID: null,
-    DepartmentID: null,
+    DivisionID: null,
     PositionID: null,
     WorkTypeID: null,
     ScheduleID: null,
@@ -59,6 +70,24 @@ export class EmployeeListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadEmployees();
+    this.loadDivisions();
+    this.loadPositions();
+  }
+
+  loadDivisions(): void {
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/divisions', { headers: this.getHeaders() })
+      .subscribe({
+        next: (data) => this.divisions = data,
+        error: (err) => console.error('Gagal memuat divisi:', err)
+      });
+  }
+
+  loadPositions(): void {
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/positions', { headers: this.getHeaders() })
+      .subscribe({
+        next: (data) => this.positions = data,
+        error: (err) => console.error('Gagal memuat jabatan:', err)
+      });
   }
 
   loadEmployees(): void {
@@ -69,6 +98,7 @@ export class EmployeeListComponent implements OnInit {
       .subscribe({
         next: (data) => {
           this.employees = data;
+          this.applyFilters();
           this.isLoading = false;
         },
         error: (err) => {
@@ -76,6 +106,34 @@ export class EmployeeListComponent implements OnInit {
           this.isLoading = false;
         }
       });
+  }
+
+  applyFilters(): void {
+    let result = [...this.employees];
+
+    if (this.filters.search) {
+      const searchLower = this.filters.search.toLowerCase();
+      result = result.filter(emp => 
+        (emp.Nama && emp.Nama.toLowerCase().includes(searchLower)) ||
+        (emp.Employee?.NIK && emp.Employee.NIK.toLowerCase().includes(searchLower))
+      );
+    }
+
+    if (this.filters.division_id) {
+      result = result.filter(emp => emp.Employee?.DivisionID == this.filters.division_id);
+    }
+
+    if (this.filters.position_id) {
+      result = result.filter(emp => emp.Employee?.PositionID == this.filters.position_id);
+    }
+
+    if (this.filters.sort_order === 'asc') {
+      result.sort((a, b) => (a.Nama || '').localeCompare(b.Nama || ''));
+    } else {
+      result.sort((a, b) => (b.Nama || '').localeCompare(a.Nama || ''));
+    }
+
+    this.filteredEmployees = result;
   }
 
   async importEmployees(): Promise<void> {
@@ -104,6 +162,13 @@ export class EmployeeListComponent implements OnInit {
     this.selectedImportFile = input.files?.[0] || null;
   }
 
+  onNikInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const nik = input.value.replace(/\D/g, '').slice(0, 16);
+    input.value = nik;
+    this.formData.nik = nik;
+  }
+
   openAddModal(): void {
     this.isEditMode = false;
     this.resetForm();
@@ -120,12 +185,19 @@ export class EmployeeListComponent implements OnInit {
       role: emp.Role || 'Karyawan',
       status: emp.Status || 'aktif',
       nik: emp.Employee?.NIK,
-      department_id: emp.Employee?.DepartmentID,
-      position_id: emp.Employee?.PositionID,
+      division_id: emp.Employee?.DivisionID || 0,
+      position_id: emp.Employee?.PositionID || 0,
       tanggal_bergabung: emp.Employee?.TanggalBergabung ? emp.Employee.TanggalBergabung.split('T')[0] : '',
       home_latitude: emp.Employee?.HomeLatitude,
       home_longitude: emp.Employee?.HomeLongitude,
-      home_google_maps_url: emp.Employee?.HomeLocation?.GoogleMapsURL || ''
+      home_google_maps_url: emp.Employee?.HomeLocation?.GoogleMapsURL || '',
+      manager_id: emp.ManagerID || null,
+      team_id: emp.TeamID || '',
+      internship_start_date: emp.InternshipStartDate ? emp.InternshipStartDate.split('T')[0] : '',
+      internship_end_date: emp.InternshipEndDate ? emp.InternshipEndDate.split('T')[0] : '',
+      mentor_name: emp.MentorName || '',
+      mentor_contact: emp.MentorContact || '',
+      institution_name: emp.InstitutionName || ''
     };
     this.isModalOpen = true;
   }
@@ -140,11 +212,46 @@ export class EmployeeListComponent implements OnInit {
     this.selectedDetail = null;
   }
 
+  getEmployeeInitials(name: string | null | undefined): string {
+    const words = String(name || 'Karyawan').trim().split(/\s+/).filter(Boolean);
+    return words.slice(0, 2).map(word => word.charAt(0).toUpperCase()).join('') || 'K';
+  }
+
+  formatJoinDate(value: string | null | undefined): string {
+    if (!value || String(value).startsWith('0001-01-01')) return 'Belum diatur';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Belum diatur';
+    return new Intl.DateTimeFormat('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).format(date);
+  }
+
   closeModal(): void {
     this.isModalOpen = false;
   }
 
   async saveEmployee(): Promise<void> {
+    if (!this.formData.division_id || this.formData.division_id === 0) {
+      await this.alert.error('Divisi belum dipilih', 'Silakan pilih divisi karyawan terlebih dahulu.');
+      return;
+    }
+    if (!this.formData.position_id || this.formData.position_id === 0) {
+      await this.alert.error('Jabatan belum dipilih', 'Silakan pilih jabatan karyawan terlebih dahulu.');
+      return;
+    }
+
+    const nik = String(this.formData.nik || '');
+    if (nik.length < 16) {
+      await this.alert.error('NIK belum lengkap', `NIK harus terdiri dari 16 digit angka. Saat ini baru ${nik.length} digit.`);
+      return;
+    }
+    if (!/^\d{16}$/.test(nik)) {
+      await this.alert.error('NIK tidak valid', 'NIK harus terdiri dari 16 digit angka.');
+      return;
+    }
+
     const action = this.isEditMode ? 'mengubah data karyawan ini' : 'menyimpan karyawan baru';
     if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.isSaving = true;
@@ -206,12 +313,19 @@ export class EmployeeListComponent implements OnInit {
       role: 'Karyawan',
       status: 'aktif',
       nik: '',
-      department_id: 1,
-      position_id: 1,
+      division_id: 0,
+      position_id: 0,
       tanggal_bergabung: '',
       home_latitude: 0,
       home_longitude: 0,
-      home_google_maps_url: ''
+      home_google_maps_url: '',
+      manager_id: null,
+      team_id: '',
+      internship_start_date: '',
+      internship_end_date: '',
+      mentor_name: '',
+      mentor_contact: '',
+      institution_name: ''
     };
   }
 

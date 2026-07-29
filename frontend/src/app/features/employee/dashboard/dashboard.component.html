@@ -7,23 +7,32 @@
         <h2>Halo, {{ userName }}!</h2>
         <p>Selamat datang di sistem absensi.</p>
       </div>
+      <div class="account-email" *ngIf="userEmail">
+        <svg class="account-email-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#mail"></use></svg>
+        <div>
+          <span>Email</span>
+          <strong>{{ userEmail }}</strong>
+        </div>
+      </div>
       <div class="top-nav">
         <div class="notification-wrapper">
-          <button class="notif-btn" (click)="toggleNotifications()">
-            🔔 <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+          <button class="notif-btn" type="button" (click)="toggleNotifications()" aria-label="Buka notifikasi">
+            <svg class="notif-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
+            <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
           </button>
           <div class="notif-dropdown" *ngIf="showNotifications">
             <div class="notif-header">Notifikasi</div>
             <div class="notif-body">
-              <div class="notif-item" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca">
+              <button class="notif-item" type="button" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca" (click)="markAsRead(notif)">
                 <strong>{{ notif.Judul }}</strong>
                 <p>{{ notif.Pesan }}</p>
                 <small>{{ notif.Waktu | date:'medium' }}</small>
-              </div>
+              </button>
               <div class="notif-empty" *ngIf="notifications.length === 0">
                 Tidak ada notifikasi.
               </div>
             </div>
+            <a class="notif-footer" routerLink="/employee/notifications" (click)="showNotifications = false">Lihat semua notifikasi</a>
           </div>
         </div>
       </div>
@@ -37,6 +46,7 @@
                'text-green': stats.today_status === 'Hadir',
                'text-late': stats.today_status === 'Terlambat',
                'text-blue': stats.today_status === 'Sudah Check-out',
+               'text-absent': stats.today_status === 'Alpha',
                'text-muted': stats.today_status === 'Belum Absen'
              }">
           {{ stats.today_status }}
@@ -54,13 +64,91 @@
         <div class="value">{{ stats.hadir_bulan_ini }} <span class="unit">Hari</span></div>
       </div>
       <div class="golan-card stat-card">
-        <h4>Keterlambatan</h4>
-        <div class="value">{{ stats.terlambat_bulan_ini }} <span class="unit">Kali</span></div>
-      </div>
-      <div class="golan-card stat-card">
         <h4>Sisa Cuti</h4>
         <div class="value">{{ stats.sisa_cuti }} <span class="unit">Hari</span></div>
       </div>
+    </div>
+
+    <section class="golan-card compliance-warning" *ngFor="let item of stats.missing_work_reports">
+      <strong>⚠ Laporan kerja belum diisi</strong>
+      <p>Anda belum mengisi laporan kerja untuk {{ item.tanggal }}. Batas pengisian {{ item.deadline_label }}.</p>
+      <a class="btn-secondary" routerLink="/employee/work-report">Isi laporan sekarang</a>
+    </section>
+
+    <div class="dashboard-lower-grid content-grid">
+      <section class="golan-card calendar-card" aria-labelledby="calendar-title">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Agenda</span>
+            <h3 id="calendar-title">Kalender perusahaan</h3>
+          </div>
+          <button class="today-btn" type="button" (click)="goToToday()">Hari ini</button>
+        </div>
+
+        <div class="calendar-toolbar">
+          <button type="button" class="month-nav" (click)="changeMonth(-1)" aria-label="Bulan sebelumnya">‹</button>
+          <strong>{{ currentMonth | date:'MMMM yyyy' }}</strong>
+          <button type="button" class="month-nav" (click)="changeMonth(1)" aria-label="Bulan berikutnya">›</button>
+        </div>
+
+        <div class="calendar-grid" role="grid" aria-label="Kalender agenda perusahaan">
+          <span class="weekday" *ngFor="let dayName of weekDays">{{ dayName }}</span>
+          <button
+            *ngFor="let day of calendarDays"
+            type="button"
+            class="calendar-day"
+            [class.empty]="!day"
+            [class.today]="day?.isToday"
+            [class.selected]="day?.dateKey === selectedDate"
+            [class.has-event]="day?.hasEvents"
+            [class.holiday]="day?.isHoliday"
+            [disabled]="!day"
+            (click)="selectDate(day)">
+            <ng-container *ngIf="day">
+              <span>{{ day.date }}</span>
+              <i *ngIf="day.hasEvents" aria-label="Memiliki event"></i>
+            </ng-container>
+          </button>
+        </div>
+
+        <div class="calendar-legend">
+          <span><i class="legend-dot"></i> Ada event</span>
+          <span><i class="legend-today"></i> Hari ini</span>
+        </div>
+      </section>
+
+      <section class="golan-card events-card" aria-labelledby="events-title">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Catatan</span>
+            <h3 id="events-title">Event perusahaan</h3>
+          </div>
+          <svg class="event-heading-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#calendar"></use></svg>
+        </div>
+
+        <p class="selected-date-label">{{ selectedDateLabel }}</p>
+        <div class="event-list" *ngIf="selectedDateEvents.length > 0 || selectedDateHolidays.length > 0; else noEvents">
+          <ng-container *ngFor="let holiday of selectedDateHolidays">
+            <article class="event-item event-holiday">
+              <div class="event-time">--</div>
+              <div class="event-copy">
+                <strong>Hari Libur</strong>
+                <p>{{ holiday.description }}</p>
+              </div>
+            </article>
+          </ng-container>
+          <article class="event-item" *ngFor="let event of selectedDateEvents" [ngClass]="'event-' + event.type">
+            <div class="event-time">{{ event.time }}<span *ngIf="event.endTime">–{{ event.endTime }}</span></div>
+            <div class="event-copy">
+              <strong>{{ event.title }}</strong>
+              <p>{{ event.description }}</p>
+            </div>
+          </article>
+        </div>
+        <ng-template #noEvents>
+          <div class="event-empty">Tidak ada event pada tanggal ini.</div>
+        </ng-template>
+      </section>
     </div>
 
     <div class="quick-actions">

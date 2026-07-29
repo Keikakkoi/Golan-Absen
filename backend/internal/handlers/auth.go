@@ -25,9 +25,11 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Token string      `json:"token"`
-	Role  models.Role `json:"role"`
-	Name  string      `json:"name"`
+	Token   string      `json:"token"`
+	Role    models.Role `json:"role"`
+	Name    string      `json:"name"`
+	Divisi  string      `json:"divisi"`
+	Jabatan string      `json:"jabatan"`
 }
 
 func SetupAuthRoutes(router fiber.Router) {
@@ -50,7 +52,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	var user models.User
-	if err := config.DB.Where("LOWER(email) = ?", req.Email).First(&user).Error; err != nil {
+	if err := config.DB.Preload("Employee.Division").Preload("Employee.Position").Where("LOWER(email) = ?", req.Email).First(&user).Error; err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid credentials"})
 	}
 
@@ -64,10 +66,22 @@ func Login(c *fiber.Ctx) error {
 	}
 	auditutils.LogAction(user.ID, "LOGIN", "User", user.ID, "User berhasil login")
 
+	divisi := "Belum Ditentukan"
+	if user.Employee.Division.NamaDivisi != "" {
+		divisi = user.Employee.Division.NamaDivisi
+	}
+
+	jabatan := "Belum Ditentukan"
+	if user.Employee.Position.NamaJabatan != "" {
+		jabatan = user.Employee.Position.NamaJabatan
+	}
+
 	return c.JSON(LoginResponse{
-		Token: token,
-		Role:  user.Role,
-		Name:  user.Nama,
+		Token:   token,
+		Role:    user.Role,
+		Name:    user.Nama,
+		Divisi:  divisi,
+		Jabatan: jabatan,
 	})
 }
 

@@ -29,6 +29,20 @@ import { AboutAppComponent } from './features/shared/about-app/about-app.compone
 import { NotificationsComponent } from './features/employee/notifications/notifications.component';
 import { StatisticsComponent } from './features/employee/statistics/statistics.component';
 import { AdminManagementComponent } from './features/admin/admin-management/admin-management.component';
+import { AdminEventsComponent } from './features/admin/admin-events/admin-events.component';
+import { WorkReportComponent } from './features/employee/work-report/work-report.component';
+import { WorkReportAdminComponent } from './features/admin/work-report-admin/work-report-admin.component';
+import { RoleOperationsComponent } from './features/admin/role-operations/role-operations.component';
+import { InternDashboardComponent } from './features/intern/intern-dashboard/intern-dashboard.component';
+import { InternLogbookComponent } from './features/intern/intern-logbook/intern-logbook.component';
+import { InternMentorComponent } from './features/intern/intern-mentor/intern-mentor.component';
+import { InternCertificateComponent } from './features/intern/intern-certificate/intern-certificate.component';
+import { InternStatisticsComponent } from './features/intern/intern-statistics/intern-statistics.component';
+import { ManagerDashboardComponent } from './features/manager/manager-dashboard/manager-dashboard.component';
+import { TeamAttendanceComponent } from './features/manager/team-attendance/team-attendance.component';
+import { TeamReportsComponent } from './features/manager/team-reports/team-reports.component';
+import { TeamStatisticsComponent } from './features/manager/team-statistics/team-statistics.component';
+import { ManagerLeaveApprovalComponent } from './features/manager/leave-approval/manager-leave-approval.component';
 import { authGuard, roleGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -38,13 +52,24 @@ export const routes: Routes = [
   { path: 'reset-password', component: ResetPasswordComponent },
   
   { path: 'employee/dashboard', component: DashboardComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
-  { path: 'employee/checkin', component: CheckinComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
-  { path: 'employee/checkout', component: CheckinComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
-  { path: 'employee/history', component: HistoryComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
-  { path: 'employee/leaves', component: LeaveRequestComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
-  { path: 'employee/statistics', component: StatisticsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
-  { path: 'employee/notifications', component: NotificationsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
-  { path: 'employee/profile', component: ProfileComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
+  { path: 'employee/checkin', component: CheckinComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
+  { path: 'employee/checkout', component: CheckinComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
+  { path: 'employee/history', component: HistoryComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
+  { path: 'employee/leaves', component: LeaveRequestComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
+  { path: 'employee/work-report', component: WorkReportComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MANAJER'] } },
+  { path: 'employee/statistics', component: StatisticsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
+  { path: 'employee/notifications', component: NotificationsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
+  { path: 'employee/profile', component: ProfileComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
+  { path: 'intern/dashboard', component: InternDashboardComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
+  { path: 'intern/logbooks', component: InternLogbookComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
+  { path: 'intern/statistics', component: InternStatisticsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
+  { path: 'intern/mentor', component: InternMentorComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
+  { path: 'intern/certificate', component: InternCertificateComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
+  { path: 'manager/dashboard', component: ManagerDashboardComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MANAJER'] } },
+  { path: 'manager/team/attendance', component: TeamAttendanceComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MANAJER'] } },
+  { path: 'manager/team/reports', component: TeamReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MANAJER'] } },
+  { path: 'manager/team/statistics', component: TeamStatisticsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MANAJER'] } },
+  { path: 'manager/leaves', component: ManagerLeaveApprovalComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MANAJER'] } },
   // Executive / Pimpinan module routes
   {
     path: 'executive/dashboard',
@@ -59,26 +84,30 @@ export const routes: Routes = [
     loadComponent: () => import('./features/executive/executive-reports/executive-reports.component').then(m => m.ExecutiveReportsComponent)
   },
   {
-    path: 'executive/departments/stats',
+    path: 'executive/divisions/stats',
     component: ExecutiveDepartmentStatsComponent,
     canActivate: [authGuard, roleGuard],
     data: { roles: ['Pimpinan'] }
   },
   {
-    path: 'executive/departments/comparison',
+    path: 'executive/divisions/comparison',
     component: ExecutiveComparisonComponent,
     canActivate: [authGuard, roleGuard],
     data: { roles: ['Pimpinan'] }
   },
   { path: 'admin/dashboard', component: AdminDashboardComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
+  { path: 'admin/notifications', component: NotificationsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/employees', component: EmployeeListComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/roles', component: AdminManagementComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], section: 'roles' } },
   { path: 'admin/schedules', component: AdminManagementComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], section: 'schedules' } },
   { path: 'admin/home-locations', component: AdminManagementComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], section: 'home' } },
   { path: 'admin/leave-quotas', component: AdminManagementComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], section: 'quotas' } },
   { path: 'admin/organization', component: OrganizationComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
+  { path: 'admin/events', component: AdminEventsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/worktypes', component: WorktypeListComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/leaves', component: LeaveApprovalComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
+  { path: 'admin/work-reports', component: WorkReportAdminComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
+  { path: 'admin/role-operations', component: RoleOperationsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/reports', component: AdminReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/reports/daily', component: AdminReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], periode: 'Harian' } },
   { path: 'admin/reports/weekly', component: AdminReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], periode: 'Mingguan' } },

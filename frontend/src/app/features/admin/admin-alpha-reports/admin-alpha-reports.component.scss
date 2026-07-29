@@ -1,4 +1,9 @@
 .summary-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-bottom: 1rem; }
+.admin-alpha-report-page,
+.admin-alpha-report-page > .golan-card,
+.admin-alpha-report-page .report-table-container { min-width: 0; box-sizing: border-box; }
+.admin-alpha-report-page .report-table-container { width: 100%; max-width: 100%; overflow-x: auto !important; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-inline: contain; }
+.admin-alpha-report-page .golan-table { display: table; width: 100% !important; min-width: 700px !important; max-width: none !important; }
 .summary-strip div { padding: .8rem 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; }
 .summary-strip span, .summary-strip strong { display: block; }
 .summary-strip span { color: #64748b; font-size: .8rem; }
@@ -8,4 +13,15 @@
 .detail-row td { background: #f8fafc; }
 .detail-list { display: grid; gap: .35rem; }
 .detail-list div { display: grid; grid-template-columns: 1.2fr 3fr; gap: 1rem; color: #475569; font-size: .9rem; }
-@media (max-width: 700px) { .summary-strip { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .summary-strip { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .admin-alpha-report-page .golan-card > div:first-child,
+  .admin-alpha-report-page .golan-card > div:first-child form { width: 100%; }
+  .admin-alpha-report-page .golan-card > div:first-child form { align-items: stretch !important; flex-direction: column; gap: 12px !important; }
+  .admin-alpha-report-page .golan-card > div:first-child form .form-group,
+  .admin-alpha-report-page .golan-card > div:first-child form .form-control,
+  .admin-alpha-report-page .golan-card > div:first-child form button { width: 100% !important; max-width: 100%; box-sizing: border-box; }
+}

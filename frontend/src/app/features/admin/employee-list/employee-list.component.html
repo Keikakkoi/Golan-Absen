@@ -1,10 +1,10 @@
 <div class="dashboard-container admin-theme">
   <app-admin-sidebar></app-admin-sidebar>
 
-  <div class="main-content">
-    <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+  <div class="main-content employee-list-page">
+    <div class="header employee-page-header" style="display: flex; justify-content: space-between; align-items: center;">
       <h2>Manajemen Data Karyawan</h2>
-      <div>
+      <div class="employee-actions">
         <input #importInput type="file" accept=".csv,text/csv" hidden (change)="onImportFileChange($event)">
         <button class="btn-secondary" (click)="importInput.click()" style="margin-right: 10px;">Pilih CSV</button>
         <button class="btn-secondary" (click)="importEmployees()" style="margin-right: 10px;" [disabled]="!selectedImportFile">Import CSV</button>
@@ -12,38 +12,93 @@
       </div>
     </div>
 
-    <div class="golan-card">
+    <div class="filter-card premium-filter">
+      <div class="filter-header">
+         <h5><i class="fas fa-filter text-primary"></i> Filter Karyawan</h5>
+      </div>
+      <div class="filter-grid premium-grid" style="margin: 0;">
+        <div class="filter-group">
+          <label>Pencarian Kata Kunci</label>
+          <div class="input-wrapper">
+             <i class="fas fa-search icon-left"></i>
+             <input type="text" class="filter-input has-icon" [(ngModel)]="filters.search" (ngModelChange)="applyFilters()" placeholder="Cari nama karyawan atau NIK...">
+          </div>
+        </div>
+        
+        <div class="filter-group">
+          <label>Divisi</label>
+          <div class="input-wrapper select-wrapper">
+            <select class="filter-input" [(ngModel)]="filters.division_id" (change)="applyFilters()">
+              <option value="">Semua Divisi</option>
+              <option *ngFor="let div of divisions" [value]="div.ID">{{ div.NamaDivisi }}</option>
+            </select>
+            <i class="fas fa-chevron-down icon-right"></i>
+          </div>
+        </div>
+        
+        <div class="filter-group">
+          <label>Jabatan</label>
+          <div class="input-wrapper select-wrapper">
+            <select class="filter-input" [(ngModel)]="filters.position_id" (change)="applyFilters()">
+              <option value="">Semua Jabatan</option>
+              <option *ngFor="let pos of positions" [value]="pos.ID">{{ pos.NamaJabatan }}</option>
+            </select>
+            <i class="fas fa-chevron-down icon-right"></i>
+          </div>
+        </div>
+        
+        <div class="filter-group">
+          <label>Urutkan (Nama)</label>
+          <div class="input-wrapper select-wrapper">
+            <select class="filter-input" [(ngModel)]="filters.sort_order" (change)="applyFilters()">
+              <option value="asc">A - Z (Menaik)</option>
+              <option value="desc">Z - A (Menurun)</option>
+            </select>
+            <i class="fas fa-sort icon-right"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="golan-card employee-card">
       <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
       
-      <div class="table-container">
-        <table class="golan-table" *ngIf="!isLoading && employees.length > 0">
+      <div class="table-container employee-table-container" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+        <table class="golan-table employee-table" *ngIf="!isLoading && filteredEmployees.length > 0" style="min-width: 800px;">
           <thead>
             <tr>
               <th>ID</th>
+              <th>Foto</th>
               <th>Nama</th>
               <th>Email</th>
               <th>NIK</th>
               <th>Tgl Bergabung</th>
-              <th>Departemen</th>
+              <th>Divisi</th>
+              <th>Jabatan</th>
               <th>Status</th>
               <th>Aksi</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let emp of employees">
+            <tr *ngFor="let emp of filteredEmployees">
               <td>{{ emp.ID }}</td>
+              <td>
+                <img *ngIf="emp.Employee?.FotoProfilURL" class="employee-photo-thumb" [src]="emp.Employee.FotoProfilURL" [alt]="'Pas foto ' + emp.Nama" />
+                <span *ngIf="!emp.Employee?.FotoProfilURL" class="photo-placeholder">-</span>
+              </td>
               <td>{{ emp.Nama }}</td>
               <td>{{ emp.Email }}</td>
               <td class="mono-text">{{ emp.Employee?.NIK || '-' }}</td>
               <td>{{ emp.Employee?.TanggalBergabung ? (emp.Employee.TanggalBergabung | date:'dd MMM yyyy') : '-' }}</td>
-              <td>{{ emp.Employee?.Department?.NamaDepartemen || '-' }}</td>
+              <td>{{ emp.Employee?.Division?.NamaDivisi || '-' }}</td>
+              <td>{{ emp.Employee?.Position?.NamaJabatan || '-' }}</td>
               <td>
                 <span class="status-badge" [ngClass]="emp.Status === 'aktif' ? 'status-hadir' : 'status-alpha'">{{ emp.Status }}</span>
               </td>
               <td>
-                <button class="btn-sm btn-info" (click)="openDetailModal(emp)">Detail</button>
-                <button class="btn-edit" (click)="openEditModal(emp)">Edit</button>
-                <button class="btn-delete" (click)="deleteEmployee(emp.ID)">Hapus</button>
+                <button class="icon-button view" type="button" (click)="openDetailModal(emp)" aria-label="Lihat detail karyawan" title="Lihat detail"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
+                <button class="icon-button edit" type="button" (click)="openEditModal(emp)" aria-label="Edit karyawan" title="Edit karyawan"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>
+                <button class="icon-button delete" type="button" (click)="deleteEmployee(emp.ID)" aria-label="Hapus karyawan" title="Hapus karyawan"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button>
               </td>
             </tr>
           </tbody>
@@ -62,24 +117,64 @@
 </div>
 
 <div class="modal-overlay" *ngIf="isDetailOpen">
-  <div class="modal-content golan-card detail-modal">
-    <div class="modal-header"><h3>Detail Karyawan</h3><button class="btn-close" (click)="closeDetailModal()">×</button></div>
-    <div *ngIf="selectedDetail" class="detail-grid">
-      <div><span>Nama</span><strong>{{ selectedDetail.Nama }}</strong></div>
-      <div><span>Email</span><strong>{{ selectedDetail.Email }}</strong></div>
-      <div><span>Role</span><strong>{{ selectedDetail.Role }}</strong></div>
-      <div><span>Status</span><strong>{{ selectedDetail.Status }}</strong></div>
-      <div><span>NIK</span><strong>{{ selectedDetail.Employee?.NIK || '-' }}</strong></div>
-      <div><span>Departemen</span><strong>{{ selectedDetail.Employee?.Department?.NamaDepartemen || '-' }}</strong></div>
-      <div><span>Jabatan</span><strong>{{ selectedDetail.Employee?.Position?.NamaJabatan || '-' }}</strong></div>
-      <div><span>Tanggal Bergabung</span><strong>{{ selectedDetail.Employee?.TanggalBergabung ? (selectedDetail.Employee.TanggalBergabung | date:'dd MMM yyyy') : '-' }}</strong></div>
+  <div class="modal-content golan-card detail-modal employee-modal">
+    <div class="modal-header detail-modal-header">
+      <div>
+        <span class="detail-modal-kicker">DATA KARYAWAN</span>
+        <h3>Detail Karyawan</h3>
+      </div>
+      <button class="btn-close" type="button" aria-label="Tutup detail karyawan" (click)="closeDetailModal()">&times;</button>
+    </div>
+    <div *ngIf="selectedDetail" class="detail-modal-body">
+      <section class="detail-profile-summary">
+        <div class="detail-avatar">
+          <img *ngIf="selectedDetail.Employee?.FotoProfilURL" [src]="selectedDetail.Employee.FotoProfilURL" [alt]="'Pas foto ' + selectedDetail.Nama" />
+          <span *ngIf="!selectedDetail.Employee?.FotoProfilURL">{{ getEmployeeInitials(selectedDetail.Nama) }}</span>
+        </div>
+        <div class="detail-profile-copy">
+          <span class="detail-profile-label">Profil karyawan</span>
+          <h4>{{ selectedDetail.Nama || 'Nama belum tersedia' }}</h4>
+          <p>{{ selectedDetail.Email || 'Email belum tersedia' }}</p>
+        </div>
+        <span class="detail-status" [class.detail-status-active]="selectedDetail.Status === 'aktif'" [class.detail-status-inactive]="selectedDetail.Status !== 'aktif'">
+          {{ selectedDetail.Status || 'Tidak diketahui' }}
+        </span>
+      </section>
+
+      <div class="detail-section-title">Informasi akun dan pekerjaan</div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="detail-label">ID Karyawan</span>
+          <strong class="detail-value detail-value-mono">#{{ selectedDetail.ID || '-' }}</strong>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Role</span>
+          <strong class="detail-value">{{ selectedDetail.Role || '-' }}</strong>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">NIK</span>
+          <strong class="detail-value detail-value-mono">{{ selectedDetail.Employee?.NIK || '-' }}</strong>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Tanggal Bergabung</span>
+          <strong class="detail-value">{{ formatJoinDate(selectedDetail.Employee?.TanggalBergabung) }}</strong>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Divisi</span>
+          <strong class="detail-value">{{ selectedDetail.Employee?.Division?.NamaDivisi || 'Belum ditentukan' }}</strong>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Jabatan</span>
+          <strong class="detail-value">{{ selectedDetail.Employee?.Position?.NamaJabatan || 'Belum ditentukan' }}</strong>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- Modal Dialog -->
 <div class="modal-overlay" *ngIf="isModalOpen">
-  <div class="modal-content golan-card">
+  <div class="modal-content golan-card employee-modal employee-form-modal">
     <div class="modal-header">
       <h3>{{ isEditMode ? 'Edit Karyawan' : 'Tambah Karyawan Baru' }}</h3>
       <button class="btn-close" (click)="closeModal()">×</button>
@@ -108,6 +203,8 @@
               <option value="Karyawan">Karyawan</option>
               <option value="HRD">HRD</option>
               <option value="Pimpinan">Pimpinan</option>
+              <option value="MAGANG">MAGANG</option>
+              <option value="MANAJER">MANAJER</option>
             </select>
           </div>
           <div class="form-group">
@@ -119,14 +216,45 @@
           </div>
         </div>
 
+        <div class="form-group-row">
+          <div class="form-group">
+            <label>Divisi</label>
+            <select [(ngModel)]="formData.division_id" name="division_id" class="form-control" required>
+              <option [ngValue]="0" disabled>Pilih Divisi</option>
+              <option *ngFor="let div of divisions" [ngValue]="div.ID">{{ div.NamaDivisi }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Jabatan</label>
+            <select [(ngModel)]="formData.position_id" name="position_id" class="form-control" required>
+              <option [ngValue]="0" disabled>Pilih Jabatan</option>
+              <option *ngFor="let pos of positions" [ngValue]="pos.ID">{{ pos.NamaJabatan }}</option>
+            </select>
+          </div>
+        </div>
+
         <div class="form-group">
           <label>NIK</label>
-          <input type="text" [(ngModel)]="formData.nik" name="nik" required class="form-control" />
+          <input type="text" [(ngModel)]="formData.nik" (input)="onNikInput($event)" name="nik" required minlength="16" maxlength="16" pattern="[0-9]{16}" inputmode="numeric" class="form-control" title="NIK harus terdiri dari 16 digit angka" />
+          <small class="form-help">NIK harus terdiri dari 16 digit angka.</small>
         </div>
 
         <div class="form-group">
           <label>Tanggal Bergabung</label>
           <input type="date" [(ngModel)]="formData.tanggal_bergabung" name="tanggal_bergabung" required class="form-control" />
+        </div>
+
+        <div class="form-group-row">
+          <div class="form-group"><label>Manager ID (opsional)</label><input type="number" [(ngModel)]="formData.manager_id" name="manager_id" class="form-control" /></div>
+          <div class="form-group"><label>Team ID</label><input type="text" [(ngModel)]="formData.team_id" name="team_id" class="form-control" placeholder="mis. team-web" /></div>
+        </div>
+        <div class="form-group-row" *ngIf="formData.role === 'MAGANG'">
+          <div class="form-group"><label>Institusi Pendidikan</label><input [(ngModel)]="formData.institution_name" name="institution_name" class="form-control" /></div>
+          <div class="form-group"><label>Nama Pembimbing</label><input [(ngModel)]="formData.mentor_name" name="mentor_name" class="form-control" /></div>
+        </div>
+        <div class="form-group-row" *ngIf="formData.role === 'MAGANG'">
+          <div class="form-group"><label>Kontak Pembimbing</label><input [(ngModel)]="formData.mentor_contact" name="mentor_contact" class="form-control" /></div>
+          <div class="form-group"><label>Periode Magang</label><div class="form-group-row"><input type="date" [(ngModel)]="formData.internship_start_date" name="internship_start_date" class="form-control" /><input type="date" [(ngModel)]="formData.internship_end_date" name="internship_end_date" class="form-control" /></div></div>
         </div>
 
         <div class="form-group">

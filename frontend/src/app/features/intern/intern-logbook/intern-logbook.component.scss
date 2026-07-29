@@ -1,0 +1,4 @@
+.form-card,.table-card{margin-bottom:24px}.field-group{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;color:var(--text-dark);font-weight:600}.field-group .golan-input{font-weight:400}.field-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.toolbar{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}.toolbar .golan-input{min-width:120px}.muted{color:var(--text-dark-lo)}@media(max-width:700px){.field-row{grid-template-columns:1fr}.panel-heading{align-items:stretch;flex-direction:column}.toolbar{align-items:stretch}}
+.screenshot-preview-grid { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .75rem; }
+.screenshot-preview-grid img, .report-thumb img { width: 72px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
+.report-thumb { display: inline-block; margin: 2px; }

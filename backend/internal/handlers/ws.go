@@ -4,6 +4,8 @@ import (
 	"log"
 	"sync"
 
+	"absensi-golan-backend/internal/utils"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
 )
@@ -45,6 +47,19 @@ func (h *Hub) Run() {
 				err := client.WriteJSON(message)
 				if err != nil {
 					log.Printf("WS Error: %v", err)
+					client.Close()
+					delete(h.clients, client)
+				}
+			}
+			h.mu.Unlock()
+		case notification := <-utils.NotificationEvents:
+			// The payload only signals a refresh. Each browser fetches its own
+			// user-scoped notifications, so no user's message leaks to another.
+			h.mu.Lock()
+			for client := range h.clients {
+				if err := client.WriteJSON(map[string]interface{}{
+					"event": "notification_created", "user_id": notification.UserID,
+				}); err != nil {
 					client.Close()
 					delete(h.clients, client)
 				}

@@ -14,8 +14,8 @@
         <p *ngIf="successMessage" class="success-state">{{ successMessage }}</p>
         <p style="color: #6b7280; margin-bottom: 1.5rem;">Atur preferensi pengiriman notifikasi untuk berbagai modul dan role dalam sistem.</p>
         
-        <div class="table-container" *ngIf="settings.length > 0">
-        <table class="golan-table" style="width: 100%; border-collapse: collapse;">
+        <div class="table-container" *ngIf="settings.length > 0" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
+        <table class="golan-table" style="width: 100%; border-collapse: collapse; min-width: 600px;">
           <thead>
             <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
               <th style="padding: 1rem;">Tipe Notifikasi</th>
@@ -46,6 +46,22 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <div class="golan-card broadcast-card">
+      <div class="broadcast-heading">
+        <div class="broadcast-heading-icon"><svg aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg></div>
+        <div><span class="eyebrow">Pengumuman</span><h3>Kirim informasi baru</h3><p class="broadcast-help">Sampaikan informasi penting langsung ke dashboard penerima.</p></div>
+      </div>
+      <form (ngSubmit)="sendBroadcast()">
+        <div class="broadcast-grid">
+          <div class="form-group"><label for="broadcast-target">Kirim kepada</label><div class="select-control"><svg aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#users"></use></svg><select id="broadcast-target" name="target_role" [(ngModel)]="broadcast.target_role"><option value="Karyawan">Karyawan</option><option value="MAGANG">Peserta MAGANG</option><option value="MANAJER">MANAJER</option><option value="Semua">Semua Role</option><option value="HRD">HRD / Admin</option><option value="Pimpinan">Pimpinan</option></select></div></div>
+          <div class="form-group"><label for="broadcast-title">Judul pengumuman</label><input id="broadcast-title" class="broadcast-input" name="judul" [(ngModel)]="broadcast.judul" maxlength="100" placeholder="Contoh: Pengumuman penting"></div>
+        </div>
+        <div class="form-group"><label for="broadcast-message">Isi informasi</label><textarea id="broadcast-message" class="broadcast-input" name="pesan" [(ngModel)]="broadcast.pesan" maxlength="2000" rows="5" placeholder="Tulis informasi yang ingin dibagikan..."></textarea><small class="field-hint">Maksimal 2.000 karakter.</small></div>
+        <div *ngIf="broadcastError" class="broadcast-error">{{ broadcastError }}</div>
+        <div class="broadcast-actions"><span class="broadcast-note">Penerima akan melihatnya sebagai notifikasi baru.</span><button class="btn-primary broadcast-submit" type="submit" [disabled]="isSending">{{ isSending ? 'Mengirim...' : 'Kirim Notifikasi' }}<span aria-hidden="true">→</span></button></div>
+      </form>
     </div>
   </div>
 </div>

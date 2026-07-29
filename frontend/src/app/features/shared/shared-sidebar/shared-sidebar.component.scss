@@ -13,6 +13,10 @@
   box-sizing: border-box;
   z-index: 100;
 
+  .sidebar-close-btn {
+    display: none;
+  }
+
   .brand {
     display: flex;
     align-items: center;
@@ -73,6 +77,40 @@
     }
   }
 
+  .theme-switcher {
+    margin-bottom: 16px;
+
+    .theme-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border: 1px solid var(--mint-2);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-dark-lo);
+      font: 500 0.875rem var(--font-body);
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: var(--mint-1);
+        color: var(--green-deep);
+      }
+    }
+
+    .theme-toggle-icon {
+      display: inline-flex;
+      width: 24px;
+      justify-content: center;
+      color: var(--green-deep);
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+  }
+
   .select-wrapper {
       position: relative;
       width: 100%;
@@ -126,8 +164,7 @@
       font-family: var(--font-body);
 
       .nav-icon {
-        font-size: 1.1rem;
-        display: inline-flex;
+        display: inline-block;
         align-items: center;
         justify-content: center;
         flex: 0 0 32px;
@@ -137,6 +174,24 @@
         text-align: center;
         line-height: 1;
         white-space: nowrap;
+        overflow: visible;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .sidebar-menu-badge {
+        margin-left: auto;
+        min-width: 20px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: var(--absent);
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-align: center;
       }
 
       &:hover {
@@ -199,21 +254,158 @@
     }
   }
 
-  .topbar-brand {
+  .topbar-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 
-    .topbar-logo {
-      width: 28px;
-      height: 28px;
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .topbar-logo {
+        width: 28px;
+        height: 28px;
+      }
+
+      .topbar-title {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--green-deep);
+      }
     }
 
-    .topbar-title {
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--green-deep);
+    .topbar-notification {
+      position: relative;
+
+      .topbar-notification-btn {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        padding: 7px;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--green-deep);
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+          background: var(--mint-1);
+          outline: none;
+        }
+      }
+
+      .topbar-notification-icon {
+        width: 23px;
+        height: 23px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .topbar-notification-badge {
+        position: absolute;
+        top: 0;
+        right: -2px;
+        min-width: 17px;
+        padding: 1px 5px;
+        box-sizing: border-box;
+        border-radius: 10px;
+        background: var(--absent);
+        color: #fff;
+        font-size: 0.68rem;
+        font-weight: 700;
+        line-height: 1.35;
+        text-align: center;
+      }
+
+      .topbar-notification-dropdown {
+        position: fixed;
+        top: 70px;
+        right: 16px;
+        width: min(320px, calc(100vw - 32px));
+        overflow: hidden;
+        box-sizing: border-box;
+        z-index: 110;
+        background: #fff;
+        border: 1px solid var(--mint-2);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+      }
+
+      .topbar-notification-heading,
+      .topbar-notification-footer {
+        padding: 12px 16px;
+        color: var(--green-deep);
+        font-weight: 700;
+      }
+
+      .topbar-notification-heading {
+        background: var(--mint-0);
+        border-bottom: 1px solid var(--mint-2);
+      }
+
+      .topbar-notification-body {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .topbar-notification-item {
+        display: block;
+        width: 100%;
+        padding: 12px 16px;
+        border: 0;
+        border-bottom: 1px solid var(--mint-0);
+        background: #fff;
+        text-align: left;
+        cursor: pointer;
+
+        &.unread {
+          background: #f8fbff;
+        }
+
+        strong,
+        span,
+        small {
+          display: block;
+        }
+
+        strong {
+          margin-bottom: 4px;
+        }
+
+        span {
+          color: var(--text-dark-lo);
+          font-size: 0.85rem;
+        }
+
+        small {
+          margin-top: 6px;
+          color: #94a3b8;
+          font-size: 0.72rem;
+        }
+      }
+
+      .topbar-notification-empty {
+        padding: 20px 16px;
+        color: var(--text-dark-lo);
+        text-align: center;
+      }
+
+      .topbar-notification-footer {
+        display: block;
+        border-top: 1px solid var(--mint-1);
+        font-size: 0.8rem;
+        text-decoration: none;
+      }
     }
   }
 }
@@ -252,6 +444,35 @@
     left: -280px;
     transition: left 0.3s ease-in-out;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+
+    .sidebar-close-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--green-deep);
+      font: 600 1.5rem/1 var(--font-body);
+      cursor: pointer;
+      z-index: 1;
+
+      span {
+        line-height: 1;
+      }
+
+      &:hover,
+      &:focus-visible {
+        background: var(--mint-1);
+        outline: none;
+      }
+    }
 
     &.drawer-open {
       left: 0;

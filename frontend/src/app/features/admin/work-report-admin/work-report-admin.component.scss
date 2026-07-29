@@ -1,0 +1,67 @@
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--text-dark-lo);
+  background-color: var(--mint-0);
+  border-radius: 8px;
+  border: 1px dashed var(--border-color);
+  margin-top: 1rem;
+  font-family: var(--font-body);
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Sembunyikan elemen yang tidak perlu dicetak */
+  .header, .no-print, .golan-dropdown, .btn, .sidebar, .topbar {
+    display: none !important;
+  }
+  
+  .dashboard-container, .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-height: auto !important;
+  }
+  
+  .golan-card {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  /* Pastikan tabel mengambil lebar penuh dan teks terlihat jelas */
+  .golan-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .golan-table th, .golan-table td {
+    border: 1px solid #000 !important;
+    white-space: pre-wrap !important; /* Biarkan teks membungkus agar muat di kertas */
+    word-break: break-word !important;
+    padding: 4px !important;
+    font-size: 10px !important;
+  }
+
+  th.th-yellow {
+    background-color: #FFFF00 !important;
+    color: #000 !important;
+  }
+
+  th.th-teal {
+    background-color: #C6E0B4 !important;
+    color: #000 !important;
+  }
+}
+
+
+.report-thumb { display: inline-block; margin: 2px; }
+.report-thumb img { width: 72px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }

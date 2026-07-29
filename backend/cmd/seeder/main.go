@@ -66,9 +66,22 @@ func main() {
 		}
 		db.Create(&karyawanUser)
 		
-		// Seed Department
-		dept := models.Department{NamaDepartemen: "Engineering"}
-		db.Create(&dept)
+		// Seed Division
+		divisions := []models.Division{
+			{NamaDivisi: "Golan Education", Deskripsi: "Platform Edukasi dan Pelatihan Online"},
+			{NamaDivisi: "Golan Website", Deskripsi: "Pembuatan Website Profesional & Content Writer / SEO Writer"},
+			{NamaDivisi: "Golan Nusantara", Deskripsi: "Portal Berita Online dan Media Promosi Digital"},
+			{NamaDivisi: "Golan Sertifikasi", Deskripsi: "Lembaga Pelatihan dan Sertifikasi Kompetensi"},
+			{NamaDivisi: "Golan Properti", Deskripsi: "Platform Iklan dan Layanan Properti"},
+			{NamaDivisi: "Golan Event", Deskripsi: "Event Organizer Digital"},
+			{NamaDivisi: "Golan Jurnal", Deskripsi: "Layanan Publikasi Jurnal Ilmiah"},
+			{NamaDivisi: "Golan SDM", Deskripsi: "Layanan Perekrutan Tenaga Kerja"},
+		}
+		
+		for i, d := range divisions {
+			db.Create(&d)
+			divisions[i] = d // update with ID
+		}
 		
 		pos := models.Position{NamaJabatan: "Software Engineer"}
 		db.Create(&pos)
@@ -76,12 +89,36 @@ func main() {
 		db.Create(&models.Employee{
 			UserID:           karyawanUser.ID,
 			NIK:              "EMP-001",
-			DepartmentID:     dept.ID,
+			DivisionID:       divisions[0].ID,
 			PositionID:       pos.ID,
 			TanggalBergabung: time.Now(),
 		})
 
 		log.Println("Seeded users and employee")
+	}
+
+	// Always ensure these divisions exist
+	var expectedDivisions = []models.Division{
+		{NamaDivisi: "Golan Education", Deskripsi: "Platform Edukasi dan Pelatihan Online"},
+		{NamaDivisi: "Golan Website", Deskripsi: "Pembuatan Website Profesional & Content Writer / SEO Writer"},
+		{NamaDivisi: "Golan Nusantara", Deskripsi: "Portal Berita Online dan Media Promosi Digital"},
+		{NamaDivisi: "Golan Sertifikasi", Deskripsi: "Lembaga Pelatihan dan Sertifikasi Kompetensi"},
+		{NamaDivisi: "Golan Properti", Deskripsi: "Platform Iklan dan Layanan Properti"},
+		{NamaDivisi: "Golan Event", Deskripsi: "Event Organizer Digital"},
+		{NamaDivisi: "Golan Jurnal", Deskripsi: "Layanan Publikasi Jurnal Ilmiah"},
+		{NamaDivisi: "Golan SDM", Deskripsi: "Layanan Perekrutan Tenaga Kerja"},
+	}
+
+	for _, div := range expectedDivisions {
+		var count int64
+		db.Model(&models.Division{}).Where("nama_divisi = ?", div.NamaDivisi).Count(&count)
+		if count == 0 {
+			db.Create(&models.Division{NamaDivisi: div.NamaDivisi, Deskripsi: div.Deskripsi})
+			log.Println("Added division:", div.NamaDivisi)
+		} else {
+			// Update existing division
+			db.Model(&models.Division{}).Where("nama_divisi = ?", div.NamaDivisi).Update("deskripsi", div.Deskripsi)
+		}
 	}
 
 	log.Println("Seeding completed successfully")

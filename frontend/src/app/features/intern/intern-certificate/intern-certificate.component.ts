@@ -1,0 +1,7 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { AuthService } from '../../../core/services/auth.service';
+import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
+@Component({ selector: 'app-intern-certificate', standalone: true, imports: [CommonModule, SharedSidebarComponent], templateUrl: './intern-certificate.component.html', styleUrls: ['./intern-certificate.component.scss'] })
+export class InternCertificateComponent implements OnInit { certificate: any = null; error = ''; constructor(private http: HttpClient, private auth: AuthService) {} ngOnInit(): void { this.http.get<any>('http://localhost:8080/api/v1/internship/certificate', { headers: this.headers() }).subscribe({ next: data => this.certificate = data, error: e => this.error = e.error?.error || 'Sertifikat belum tersedia' }); } download(): void { this.http.get('http://localhost:8080/api/v1/internship/certificate/download', { headers: this.headers(), responseType: 'blob' }).subscribe(blob => { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'sertifikat-magang.pdf'; link.click(); URL.revokeObjectURL(url); }); } private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); } }

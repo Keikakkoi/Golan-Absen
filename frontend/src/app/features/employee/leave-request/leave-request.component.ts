@@ -15,6 +15,10 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
   styleUrls: ['./leave-request.component.scss']
 })
 export class LeaveRequestComponent implements OnInit, OnDestroy {
+  isIntern = false;
+  leaveTypes: string[] = ['Sakit', 'Lainnya'];
+  canRequestCuti = false;
+  minimumMasaKerjaCutiBulan = 3;
   leaveRequests: any[] = [];
   isLoading = true;
   isSubmitting = false;
@@ -51,9 +55,22 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.isIntern = this.authService.getRole() === 'MAGANG';
+    this.loadLeavePolicy();
     this.loadMyLeaves();
     this.refreshTimer = setInterval(() => this.loadMyLeaves(), 30_000);
     this.connectLiveUpdates();
+  }
+
+  private loadLeavePolicy(): void {
+    this.http.get<any>(`${this.baseUrl}/policy`, { headers: this.getHeaders() }).subscribe({
+      next: policy => {
+        this.leaveTypes = policy.leave_types || ['Sakit', 'Lainnya'];
+        this.canRequestCuti = !!policy.can_request_cuti;
+        this.minimumMasaKerjaCutiBulan = policy.minimum_masa_kerja_cuti_bulan || 3;
+        if (!this.leaveTypes.includes(this.formData.jenis_izin)) this.formData.jenis_izin = this.leaveTypes[0] || 'Sakit';
+      }
+    });
   }
 
   ngOnDestroy(): void {

@@ -26,7 +26,7 @@ func GetHomeLocations(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var employees []models.Employee
-	if err := config.DB.Preload("User").Preload("Department").Preload("Position").Order("id asc").Find(&employees).Error; err != nil {
+	if err := config.DB.Preload("User").Preload("Division").Preload("Position").Order("id asc").Find(&employees).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch employees"})
 	}
 	var locations []models.EmployeeHomeLocation

@@ -8,32 +8,34 @@
     <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
 
     <div class="tabs">
-      <button class="tab-btn" [class.active]="activeTab === 'departments'" (click)="activeTab = 'departments'">Departemen</button>
+      <button class="tab-btn" [class.active]="activeTab === 'divisions'" (click)="activeTab = 'divisions'">Divisi</button>
       <button class="tab-btn" [class.active]="activeTab === 'positions'" (click)="activeTab = 'positions'">Jabatan</button>
     </div>
 
-    <!-- Departments Tab -->
-    <div class="golan-card" *ngIf="activeTab === 'departments'">
+    <!-- Divisions Tab -->
+    <div class="golan-card" *ngIf="activeTab === 'divisions'">
       <div class="card-header">
-        <h3>Daftar Departemen</h3>
-        <button class="btn-primary" (click)="openDeptModal()">+ Tambah Departemen</button>
+        <h3>Daftar Divisi</h3>
+        <button class="btn-primary" (click)="openDeptModal()">+ Tambah Divisi</button>
       </div>
       <div class="table-container">
       <table class="golan-table">
         <thead>
           <tr>
             <th>ID</th>
-            <th>Nama Departemen</th>
+            <th>Nama Divisi</th>
+            <th class="w-100">Deskripsi</th>
             <th>Aksi</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let d of departments">
+          <tr *ngFor="let d of divisions">
             <td>{{ d.ID }}</td>
-            <td>{{ d.NamaDepartemen }}</td>
+            <td>{{ d.NamaDivisi }}</td>
+            <td>{{ d.Deskripsi }}</td>
             <td class="actions">
               <button class="btn-sm btn-edit" (click)="openDeptModal(d)">Edit</button>
-              <button class="btn-sm btn-danger" (click)="deleteDepartment(d.ID)">Hapus</button>
+              <button class="btn-sm btn-danger" (click)="deleteDivision(d.ID)">Hapus</button>
             </td>
           </tr>
         </tbody>
@@ -53,8 +55,7 @@
           <tr>
             <th>ID</th>
             <th>Nama Jabatan</th>
-            <th>Level</th>
-            <th>Base Salary</th>
+            <th class="w-100">Deskripsi</th>
             <th>Aksi</th>
           </tr>
         </thead>
@@ -62,8 +63,7 @@
           <tr *ngFor="let p of positions">
             <td>{{ p.ID }}</td>
             <td>{{ p.NamaJabatan }}</td>
-            <td>-</td>
-            <td>-</td>
+            <td>{{ p.Deskripsi }}</td>
             <td class="actions">
               <button class="btn-sm btn-edit" (click)="openPosModal(p)">Edit</button>
               <button class="btn-sm btn-danger" (click)="deletePosition(p.ID)">Hapus</button>
@@ -76,14 +76,18 @@
   </div>
 </div>
 
-<!-- Department Modal -->
+<!-- Division Modal -->
 <div class="modal-overlay" *ngIf="showDeptModal">
   <div class="modal-content golan-card">
-    <h3>{{ deptForm.ID ? 'Edit' : 'Tambah' }} Departemen</h3>
-    <form (ngSubmit)="saveDepartment()">
+    <h3>{{ deptForm.ID ? 'Edit' : 'Tambah' }} Divisi</h3>
+    <form (ngSubmit)="saveDivision()">
       <div class="form-group">
-        <label>Nama Departemen</label>
-      <input type="text" class="golan-input" name="nama_departemen" [(ngModel)]="deptForm.NamaDepartemen" required>
+        <label>Nama Divisi</label>
+      <input type="text" class="form-control" name="nama_divisi" [(ngModel)]="deptForm.NamaDivisi" required>
+      </div>
+      <div class="form-group">
+        <label>Deskripsi</label>
+        <textarea class="form-control" name="deskripsi_divisi" [(ngModel)]="deptForm.Deskripsi" rows="3"></textarea>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-secondary" (click)="closeDeptModal()">Batal</button>
@@ -100,7 +104,11 @@
     <form (ngSubmit)="savePosition()">
       <div class="form-group">
         <label>Nama Jabatan</label>
-      <input type="text" class="golan-input" name="nama_jabatan" [(ngModel)]="posForm.NamaJabatan" required>
+      <input type="text" class="form-control" name="nama_jabatan" [(ngModel)]="posForm.NamaJabatan" required>
+      </div>
+      <div class="form-group">
+        <label>Deskripsi</label>
+        <textarea class="form-control" name="deskripsi_jabatan" [(ngModel)]="posForm.Deskripsi" rows="3"></textarea>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-secondary" (click)="closePosModal()">Batal</button>
