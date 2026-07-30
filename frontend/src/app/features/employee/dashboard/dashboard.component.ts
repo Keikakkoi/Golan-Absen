@@ -42,7 +42,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   
   stats: any = {
     hadir_bulan_ini: 0,
-    terlambat_bulan_ini: 0,
     sisa_cuti: 0,
     today_status: 'Belum Absen',
     today_check_in: '',

@@ -16,7 +16,6 @@ export class ExecutiveDashboardComponent implements OnInit, OnDestroy {
   kpi: any = {
     total_employees: 0,
     present_today: 0,
-    late_today: 0,
     absent_today: 0,
     attendance_rate: 0
   };

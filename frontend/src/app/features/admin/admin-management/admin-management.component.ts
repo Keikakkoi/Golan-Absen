@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
@@ -15,10 +15,15 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
   styleUrls: ['./admin-management.component.scss']
 })
 export class AdminManagementComponent implements OnInit {
-  section = 'roles';
-  isLoading = true;
+  section: string;
+  isLoading = false;
   isSaving = false;
   errorMessage = '';
+
+  employeeSearchTerm: string = '';
+  scheduleSearch: string = '';
+  scheduleStartDate: string = '';
+  scheduleEndDate: string = '';
 
   permissions: any[] = [];
   assignments: any[] = [];
@@ -43,7 +48,7 @@ export class AdminManagementComponent implements OnInit {
 
   employees: any[] = [];
   quotas: any[] = [];
-  quotaForm: any = { employee_id: '', tahun: new Date().getFullYear(), jenis_cuti: 'Cuti Tahunan', sisa_kuota: 12 };
+  quotaForm: any = { employee_id: '', tahun: new Date().getFullYear(), jenis_cuti: 'Cuti', sisa_kuota: 12 };
 
   private readonly api = 'http://localhost:8080/api/v1';
 
@@ -89,13 +94,32 @@ export class AdminManagementComponent implements OnInit {
     });
   }
 
+  loadEmployees(): void {
+    this.http.get<any[]>(`${this.api}/admin/employees`, { headers: this.headers() }).subscribe({ next: employees => { this.employees = employees || []; }, error: err => this.fail(err) });
+  }
+
+  get filteredEmployees(): any[] {
+    if (!this.employeeSearchTerm) return this.employees;
+    const term = this.employeeSearchTerm.toLowerCase();
+    return this.employees.filter(emp => emp.Nama?.toLowerCase().includes(term) || emp.Employee?.NIK?.toLowerCase().includes(term));
+  }
+
   loadSchedules(): void {
-    this.http.get<any[]>(`${this.api}/admin/schedules`, { headers: this.headers() }).subscribe({ next: data => { this.schedules = data || []; this.isLoading = false; }, error: err => this.fail(err) });
+    if (this.employees.length === 0) {
+      this.loadEmployees();
+    }
+    
+    let params = new HttpParams();
+    if (this.scheduleSearch) params = params.set('search', this.scheduleSearch);
+    if (this.scheduleStartDate) params = params.set('start_date', this.scheduleStartDate);
+    if (this.scheduleEndDate) params = params.set('end_date', this.scheduleEndDate);
+
+    this.http.get<any[]>(`${this.api}/admin/schedules`, { headers: this.headers(), params: params }).subscribe({ next: data => { this.schedules = data || []; this.isLoading = false; }, error: err => this.fail(err) });
   }
 
   editSchedule(schedule: any): void {
     this.editingScheduleId = schedule.ID;
-    this.scheduleForm = { ...schedule, JamMulai: (schedule.JamMulai || '').substring(0, 5), JamSelesai: (schedule.JamSelesai || '').substring(0, 5) };
+    this.scheduleForm = { ...schedule, EmployeeID: schedule.EmployeeID, Tanggal: schedule.Tanggal ? schedule.Tanggal.substring(0, 10) : '', JamMulai: (schedule.JamMulai || '').substring(0, 5), JamSelesai: (schedule.JamSelesai || '').substring(0, 5) };
   }
 
   resetSchedule(): void { this.editingScheduleId = null; this.scheduleForm = this.emptySchedule(); }
@@ -105,7 +129,11 @@ export class AdminManagementComponent implements OnInit {
     const action = wasEditing ? 'mengubah shift ini' : 'menyimpan shift baru';
     if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.isSaving = true;
-    const body = { ...this.scheduleForm, JamMulai: this.scheduleForm.JamMulai.length === 5 ? `${this.scheduleForm.JamMulai}:00` : this.scheduleForm.JamMulai, JamSelesai: this.scheduleForm.JamSelesai.length === 5 ? `${this.scheduleForm.JamSelesai}:00` : this.scheduleForm.JamSelesai, ToleransiTerlambatMenit: Number(this.scheduleForm.ToleransiTerlambatMenit) };
+    
+    // Pastikan format tanggal berupa RFC3339 agar backend Go bisa parsing time.Time dengan benar
+    const formattedDate = this.scheduleForm.Tanggal ? (this.scheduleForm.Tanggal.includes('T') ? this.scheduleForm.Tanggal : `${this.scheduleForm.Tanggal}T00:00:00Z`) : '';
+    
+    const body = { ...this.scheduleForm, EmployeeID: Number(this.scheduleForm.EmployeeID), Tanggal: formattedDate, JamMulai: this.scheduleForm.JamMulai.length === 5 ? `${this.scheduleForm.JamMulai}:00` : this.scheduleForm.JamMulai, JamSelesai: this.scheduleForm.JamSelesai.length === 5 ? `${this.scheduleForm.JamSelesai}:00` : this.scheduleForm.JamSelesai, ToleransiTerlambatMenit: Number(this.scheduleForm.ToleransiTerlambatMenit) };
     const request = this.editingScheduleId ? this.http.put(`${this.api}/admin/schedules/${this.editingScheduleId}`, body, { headers: this.headers() }) : this.http.post(`${this.api}/admin/schedules`, body, { headers: this.headers() });
     request.subscribe({ next: () => { this.isSaving = false; this.resetSchedule(); this.loadSchedules(); this.alert.success(wasEditing ? 'Shift diperbarui' : 'Shift disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan shift', err.error?.error || 'Gagal menyimpan shift'); } });
   }
@@ -113,14 +141,6 @@ export class AdminManagementComponent implements OnInit {
   async deleteSchedule(id: number): Promise<void> {
     if (!await this.alert.confirm('Hapus shift?', 'Shift ini akan dihapus dari sistem.', 'Ya, hapus')) return;
     this.http.delete(`${this.api}/admin/schedules/${id}`, { headers: this.headers() }).subscribe({ next: () => { this.loadSchedules(); this.alert.success('Shift dihapus'); }, error: err => { this.fail(err); this.alert.error('Gagal menghapus shift', err.error?.error || 'Gagal menghapus shift'); } });
-  }
-
-  getWorkDays(schedule: any): string[] {
-    const selectedDays = String(schedule?.HariKerja || '')
-      .split(',')
-      .map(day => day.trim())
-      .filter(Boolean);
-    return this.workDays.filter(day => selectedDays.includes(day.id)).map(day => day.label);
   }
 
   loadHomeLocations(): void {
@@ -160,6 +180,6 @@ export class AdminManagementComponent implements OnInit {
     this.http.put(`${this.api}/admin/leave-quotas/${this.quotaForm.employee_id}`, this.quotaForm, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.loadQuotaRows(); this.alert.success('Kuota berhasil disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan kuota', err.error?.error || 'Gagal menyimpan kuota'); } });
   }
 
-  private emptySchedule(): any { return { NamaShift: '', JamMulai: '09:00', JamSelesai: '17:00', ToleransiTerlambatMenit: 10, HariKerja: '1,2,3,4,5' }; }
+  private emptySchedule(): any { return { EmployeeID: '', Tanggal: new Date().toISOString().substring(0, 10), NamaShift: 'Reguler', JamMulai: '09:00', JamSelesai: '17:00', ToleransiTerlambatMenit: 10 }; }
   private fail(err: any): void { this.isLoading = false; this.errorMessage = err?.error?.error || 'Gagal memuat data.'; }
 }

@@ -16,7 +16,6 @@ export class PimpinanDashboardComponent implements OnInit, OnDestroy {
     totalEmployees: 0,
     presentWFO: 0,
     presentWFH: 0,
-    late: 0,
     onLeave: 0
   };
 
@@ -57,9 +56,11 @@ export class PimpinanDashboardComponent implements OnInit, OnDestroy {
   }
 
   private processStats(records: any[]): void {
+    records.forEach(r => {
+      if (r.Status === 'Terlambat') r.Status = 'Hadir';
+    });
     this.stats.presentWFO = records.filter(r => r.Status === 'Hadir' && r.TipeKerja === 'WFO').length;
     this.stats.presentWFH = records.filter(r => r.Status === 'Hadir' && r.TipeKerja === 'WFH').length;
-    this.stats.late = records.filter(r => r.Status === 'Terlambat').length;
     // Assuming onLeave is calculated elsewhere or we just show 0 for now if not in this list
   }
 
@@ -71,10 +72,9 @@ export class PimpinanDashboardComponent implements OnInit, OnDestroy {
       if (message.event === 'new_checkin') {
         const record = message.data;
         
-        // Add visual blink effect or just update
+        if (record.Status === 'Terlambat') record.Status = 'Hadir';
         if (record.Status === 'Hadir' && record.TipeKerja === 'WFO') this.stats.presentWFO++;
         if (record.Status === 'Hadir' && record.TipeKerja === 'WFH') this.stats.presentWFH++;
-        if (record.Status === 'Terlambat') this.stats.late++;
 
         // Unshift to recent checkins
         this.recentCheckins.unshift(record);

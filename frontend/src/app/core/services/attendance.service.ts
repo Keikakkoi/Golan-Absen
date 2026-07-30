@@ -57,6 +57,12 @@ export class AttendanceService {
     });
   }
 
+  getDashboardStats(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl.replace('/attendance', '/dashboard/employee/stats')}`, {
+      headers: this.getHeaders()
+    });
+  }
+
   getHistory(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/history`, {
       headers: this.getHeaders()

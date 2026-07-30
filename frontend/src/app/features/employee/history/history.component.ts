@@ -58,7 +58,6 @@ export class HistoryComponent implements OnInit {
   getStatusShort(status: string): string {
     const labels: Record<string, string> = {
       Hadir: 'H',
-      Terlambat: 'TL',
       Izin: 'I',
       Cuti: 'C',
       Alpha: 'A',

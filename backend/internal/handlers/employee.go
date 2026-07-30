@@ -318,7 +318,21 @@ func CreateEmployee(c *fiber.Ctx) error {
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to hash password"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memproses password. Silakan coba lagi."})
+	}
+
+	// Cek ketersediaan Email
+	var existingUser models.User
+	if err := config.DB.Where("LOWER(email) = ?", strings.ToLower(req.Email)).First(&existingUser).Error; err == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Email '" + req.Email + "' sudah memiliki akun. Silakan gunakan email lain untuk melanjutkan."})
+	}
+
+	// Cek ketersediaan NIK
+	if req.NIK != "" {
+		var existingEmp models.Employee
+		if err := config.DB.Where("nik = ?", req.NIK).First(&existingEmp).Error; err == nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "NIK '" + req.NIK + "' sudah memiliki akun. Pastikan NIK yang dimasukkan benar."})
+		}
 	}
 
 	tglGabung, _ := time.Parse("2006-01-02", req.TanggalBergabung)
@@ -402,6 +416,30 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	if err := tx.Preload("Employee").First(&user, id).Error; err != nil {
 		tx.Rollback()
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
+	}
+
+	// Cek ketersediaan Email
+	var emailOwner models.User
+	if err := tx.Where("LOWER(email) = ? AND id <> ?", strings.ToLower(req.Email), id).First(&emailOwner).Error; err == nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Email '" + req.Email + "' sudah memiliki akun. Silakan gunakan email lain untuk melanjutkan."})
+	}
+
+	// Cek ketersediaan NIK
+	if req.NIK != "" {
+		var nikOwner models.Employee
+		empIDToCheck := user.Employee.ID
+		if empIDToCheck != 0 {
+			if err := tx.Where("nik = ? AND id <> ?", req.NIK, empIDToCheck).First(&nikOwner).Error; err == nil {
+				tx.Rollback()
+				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "NIK '" + req.NIK + "' sudah memiliki akun. Pastikan NIK benar."})
+			}
+		} else {
+			if err := tx.Where("nik = ?", req.NIK).First(&nikOwner).Error; err == nil {
+				tx.Rollback()
+				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "NIK '" + req.NIK + "' sudah memiliki akun. Pastikan NIK benar."})
+			}
+		}
 	}
 
 	user.Nama = req.Nama

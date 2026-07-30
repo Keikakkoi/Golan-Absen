@@ -8,17 +8,7 @@
 
     <div class="golan-card">
       <div class="export-toolbar" *ngIf="summaries.length > 0">
-        <div class="export-dropdown">
-          <button type="button" class="btn-secondary" (click)="toggleExportDropdown()" [attr.aria-expanded]="isExportOpen">
-            <i class="fas fa-file-export" aria-hidden="true"></i> Unduh / Cetak <i class="fas fa-chevron-down" aria-hidden="true"></i>
-          </button>
-          <div class="dropdown-menu-custom" *ngIf="isExportOpen">
-            <button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" aria-hidden="true"></i> Format CSV</button>
-            <button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" aria-hidden="true"></i> Format Excel (XLS)</button>
-            <button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" aria-hidden="true"></i> Format JSON</button>
-            <button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" aria-hidden="true"></i> Format PDF</button>
-          </div>
-        </div>
+        <div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="isExportOpen"><button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div>
       </div>
 
       <div class="filter-card premium-filter">

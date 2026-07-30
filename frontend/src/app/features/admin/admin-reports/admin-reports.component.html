@@ -15,10 +15,7 @@
         <h4>Hadir Hari Ini</h4>
         <div class="value">{{ stats.hadir_hari_ini }} <span class="unit">Orang</span></div>
       </div>
-      <div class="golan-card stat-card" style="border-left: 4px solid #f59e0b;">
-        <h4>Terlambat Hari Ini</h4>
-        <div class="value">{{ stats.terlambat_hari_ini }} <span class="unit">Orang</span></div>
-      </div>
+
       <div class="golan-card stat-card" style="border-left: 4px solid #8b5cf6;">
         <h4>Izin/Cuti Hari Ini</h4>
         <div class="value">{{ stats.izin_cuti_hari_ini }} <span class="unit">Orang</span></div>
@@ -118,7 +115,6 @@
               <select class="filter-input" [(ngModel)]="filters.status" (change)="onFilterChange()">
                 <option value="Semua">Semua Status</option>
                 <option value="Hadir">Hadir</option>
-                <option value="Terlambat">Terlambat</option>
                 <option value="Belum Check-out">⚠ Belum Check-out</option>
                 <option value="Alpha">Alpha</option>
                 <option value="Izin">Izin</option>
@@ -171,11 +167,10 @@
               <td style="padding: 0.75rem;">
                 <span *ngIf="!req.IsCheckoutMissing" class="status-badge" [ngClass]="{
                   'status-hadir': req.Status === 'Hadir',
-                  'status-terlambat': req.Status === 'Terlambat',
                   'status-alpha': req.Status === 'Alpha' || req.Status === 'Izin' || req.Status === 'Cuti'
                 }" style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;"
-                [style.background-color]="req.Status === 'Hadir' ? '#dbeafe' : (req.Status === 'Terlambat' ? '#fef3c7' : '#fee2e2')"
-                [style.color]="req.Status === 'Hadir' ? '#2563eb' : (req.Status === 'Terlambat' ? '#d97706' : '#dc2626')">
+                [style.background-color]="req.Status === 'Hadir' ? '#dbeafe' : '#fee2e2'"
+                [style.color]="req.Status === 'Hadir' ? '#2563eb' : '#dc2626'">
                   {{ req.Status }}
                 </span>
                 <span *ngIf="req.IsCheckoutMissing" class="status-badge status-warning">⚠ Belum Check-out</span>

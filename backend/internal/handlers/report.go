@@ -25,8 +25,6 @@ func SetupReportRoutes(router fiber.Router) {
 	admin.Get("/daily", GetAdminReports)
 	admin.Get("/weekly", GetAdminReports)
 	admin.Get("/monthly", GetAdminReports)
-	admin.Get("/late", GetLateReportsSummary)
-	admin.Get("/late/export", ExportLateReportsCSV)
 	admin.Get("/missing-work-reports", GetMissingWorkReports)
 	admin.Get("/alpha", GetAlphaReportsSummary)
 	admin.Get("/alpha/export", ExportAlphaReportsCSV)
@@ -43,9 +41,9 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 
 	// Current month boundaries
 	now := attendanceNow()
-	schedule := getAttendanceSchedule()
-	_ = closeExpiredAttendanceRecords(now, schedule)
 	workDate := attendanceBusinessDate(now)
+	schedule := getAttendanceSchedule(employee.ID, workDate)
+	_ = closeExpiredAttendanceRecords(now)
 	_, _, _, endTime, checkoutDeadline := attendanceWindow(now, schedule)
 	todayAtSeven := time.Date(now.Year(), now.Month(), now.Day(), attendanceResetHour, 0, 0, 0, jakartaLocation)
 	canCheckIn := !now.Before(todayAtSeven) && now.Before(endTime)
@@ -55,13 +53,8 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 
 	var hadirCount int64
 	config.DB.Model(&models.AttendanceRecord{}).
-		Where("employee_id = ? AND tanggal BETWEEN ? AND ? AND status = ?", employee.ID, startOfMonth, endOfMonth, models.StatusHadir).
+		Where("employee_id = ? AND tanggal BETWEEN ? AND ? AND status IN ?", employee.ID, startOfMonth, endOfMonth, []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat}).
 		Count(&hadirCount)
-
-	var terlambatCount int64
-	config.DB.Model(&models.AttendanceRecord{}).
-		Where("employee_id = ? AND tanggal BETWEEN ? AND ? AND status = ?", employee.ID, startOfMonth, endOfMonth, models.StatusTerlambat).
-		Count(&terlambatCount)
 
 	// Leave Quota for this year
 	var quota models.LeaveQuota
@@ -82,17 +75,14 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 			todayStatus = "Sudah Check-out"
 			todayCheckOutTime = todayRecord.JamPulang.Format("15:04:05")
 		} else {
-			if todayRecord.Status == models.StatusHadir {
+			switch todayRecord.Status {
+			case models.StatusHadir, models.StatusTerlambat:
 				todayStatus = "Hadir"
-			} else if todayRecord.Status == models.StatusTerlambat {
-				// Late status remains stored and is visible in management reports,
-				// but is intentionally not exposed as a personal badge.
-				todayStatus = "Hadir"
-			} else if todayRecord.Status == models.StatusIzin {
+			case models.StatusIzin:
 				todayStatus = "Izin"
-			} else if todayRecord.Status == models.StatusCuti {
+			case models.StatusCuti:
 				todayStatus = "Cuti"
-			} else if todayRecord.Status == models.StatusAlpha {
+			case models.StatusAlpha:
 				todayStatus = "Alpha"
 			}
 		}
@@ -103,21 +93,25 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"hadir_bulan_ini":      hadirCount,
-		"terlambat_bulan_ini":  terlambatCount,
 		"sisa_cuti":            sisaCuti,
 		"today_status":         todayStatus,
 		"today_check_in":       todayCheckInTime,
 		"today_check_out":      todayCheckOutTime,
 		"can_check_in":         canCheckIn && todayStatus == "Belum Absen",
-		"can_check_out":        canCheckOut && (todayStatus == "Hadir" || todayStatus == "Terlambat"),
+		"can_check_out":        canCheckOut && todayStatus == "Hadir",
 		"attendance_message":   attendanceMessage(now, todayStatus, todayAtSeven, endTime, checkoutDeadline),
+		"todayMessage":         attendanceMessage(now, todayStatus, todayAtSeven, endTime, checkoutDeadline),
+		"schedule": fiber.Map{
+			"end":      schedule.JamSelesai,
+			"deadline": checkoutDeadline.Format("15:04"),
+		},
 		"missing_work_reports": missingWorkReportRowsForEmployee(employee.ID, now),
 	})
 }
 
 func attendanceMessage(now time.Time, status string, resetAt, checkoutStart, checkoutDeadline time.Time) string {
 	if now.Before(resetAt) {
-		return "Check-in dibuka pukul 07:00."
+		return "Check-in dibuka pukul " + resetAt.Format("15:04") + "."
 	}
 	if now.After(checkoutDeadline) {
 		return "Batas absensi hari ini sudah lewat."
@@ -125,8 +119,8 @@ func attendanceMessage(now time.Time, status string, resetAt, checkoutStart, che
 	if status == "Belum Absen" && !now.Before(checkoutStart) {
 		return "Batas check-in hari ini sudah lewat."
 	}
-	if (status == "Hadir" || status == "Terlambat") && now.Before(checkoutStart) {
-		return "Check-out dapat dilakukan mulai pukul 17:00."
+	if status == "Hadir" && now.Before(checkoutStart) {
+		return "Check-out dapat dilakukan mulai pukul " + checkoutStart.Format("15:04") + "."
 	}
 	if status == "Izin" || status == "Cuti" {
 		return "Anda tidak perlu melakukan check-in karena status " + status + " sudah tercatat hari ini."
@@ -147,18 +141,13 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 	config.DB.Model(&models.Employee{}).Count(&totalKaryawan)
 
 	now := attendanceNow()
-	_ = closeExpiredAttendanceRecords(now, getAttendanceSchedule())
+	_ = closeExpiredAttendanceRecords(now)
 	today := attendanceBusinessDate(now).Format("2006-01-02")
 
 	var hadirHariIni int64
 	config.DB.Model(&models.AttendanceRecord{}).
-		Where("tanggal = ? AND status = ?", today, models.StatusHadir).
+		Where("tanggal = ? AND status IN ?", today, []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat}).
 		Count(&hadirHariIni)
-
-	var terlambatHariIni int64
-	config.DB.Model(&models.AttendanceRecord{}).
-		Where("tanggal = ? AND status = ?", today, models.StatusTerlambat).
-		Count(&terlambatHariIni)
 
 	var izinCutiHariIni int64
 	config.DB.Model(&models.LeaveRequest{}).
@@ -177,7 +166,6 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"total_karyawan":            totalKaryawan,
 		"hadir_hari_ini":            hadirHariIni,
-		"terlambat_hari_ini":        terlambatHariIni,
 		"izin_cuti_hari_ini":        izinCutiHariIni,
 		"total_magang":              totalMagang,
 		"magang_aktif":              magangAktif,
@@ -203,7 +191,7 @@ func GetAdminReports(c *fiber.Ctx) error {
 	if role != models.RoleHRD && role != models.RolePimpinan {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
-	_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
+	_ = closeExpiredAttendanceRecords(attendanceNow())
 
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
@@ -230,6 +218,12 @@ func GetAdminReports(c *fiber.Ctx) error {
 	if err := query.Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch reports"})
 	}
+	// Mask any legacy Terlambat records to Hadir
+	for i := range records {
+		if records[i].Status == models.StatusTerlambat {
+			records[i].Status = models.StatusHadir
+		}
+	}
 
 	return c.JSON(records)
 }
@@ -239,7 +233,7 @@ func ExportAdminReportsCSV(c *fiber.Ctx) error {
 	if role != models.RoleHRD && role != models.RolePimpinan {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
-	_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
+	_ = closeExpiredAttendanceRecords(attendanceNow())
 
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
@@ -367,163 +361,18 @@ func scheduleStartTime(schedule models.WorkSchedule, date time.Time) (time.Time,
 	return time.Date(date.Year(), date.Month(), date.Day(), parsed.Hour(), parsed.Minute(), parsed.Second(), 0, date.Location()), nil
 }
 
-func lateMinutes(record models.AttendanceRecord, schedule models.WorkSchedule) int64 {
-	if record.LateDurationMinutes > 0 {
-		return int64(record.LateDurationMinutes)
-	}
-	if record.JamMasuk == nil {
-		return 0
-	}
-	start, err := scheduleStartTime(schedule, record.Tanggal)
-	if err != nil {
-		return 0
-	}
-	minutes := int64(record.JamMasuk.Sub(start).Minutes())
-	if minutes < 0 {
-		return 0
-	}
-	return minutes
-}
-
-func GetLateReportsSummary(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
-	startDate, endDate, err := reportDateRange(c)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	query := config.DB.Preload("Employee.User").
-		Preload("Employee.Division").
-		Preload("Employee.Position").
-		Where("status = ?", models.StatusTerlambat).
-		Order("tanggal desc")
-	query = query.Where("tanggal::date BETWEEN ? AND ?", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
-	if divisionID := c.Query("division_id"); divisionID != "" && divisionID != "Semua" {
-		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", divisionID)
-	}
-	if name := c.Query("name"); name != "" {
-		query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON employees.user_id = users.id WHERE users.nama ILIKE ?)", "%"+name+"%")
-	}
-
-	var records []models.AttendanceRecord
-	if err := query.Find(&records).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch late reports"})
-	}
-	var schedule models.WorkSchedule
-	if err := config.DB.Order("id asc").First(&schedule).Error; err != nil {
-		schedule = models.WorkSchedule{JamMulai: "09:00:00"}
-	}
-
-	summaryMap := make(map[uint]*EmployeeReportSummary)
-	for _, rec := range records {
-		if _, exists := summaryMap[rec.EmployeeID]; !exists {
-			summaryMap[rec.EmployeeID] = &EmployeeReportSummary{
-				EmployeeID: rec.EmployeeID, NIK: rec.Employee.NIK, Divisi: rec.Employee.Division.NamaDivisi,
-				Jabatan: rec.Employee.Position.NamaJabatan, Details: []models.AttendanceRecord{},
-			}
-		}
-		summary := summaryMap[rec.EmployeeID]
-		if rec.Employee.User != nil {
-			summary.Nama = rec.Employee.User.Nama
-		}
-		summary.Total++
-		summary.TotalMenit += lateMinutes(rec, schedule)
-		summary.Details = append(summary.Details, rec)
-	}
-
-	result := make([]EmployeeReportSummary, 0, len(summaryMap))
-	for _, v := range summaryMap {
-		if v.Total > 0 {
-			v.RataRataMenit = v.TotalMenit / v.Total
-		}
-		result = append(result, *v)
-	}
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].Total != result[j].Total {
-			return result[i].Total > result[j].Total
-		}
-		return result[i].Nama < result[j].Nama
-	})
-
-	return c.JSON(result)
-}
-
-// ExportLateReportsCSV exports one row per late attendance record so HRD can
-// investigate the exact date and check-in time behind an employee summary.
-func ExportLateReportsCSV(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-	startDate, endDate, err := reportDateRange(c)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-	}
-	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").
-		Where("status = ?", models.StatusTerlambat).
-		Where("tanggal::date BETWEEN ? AND ?", startDate.Format("2006-01-02"), endDate.Format("2006-01-02")).
-		Order("tanggal desc")
-	if divisionID := c.Query("division_id"); divisionID != "" && divisionID != "Semua" {
-		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", divisionID)
-	}
-	if name := c.Query("name"); name != "" {
-		query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON employees.user_id = users.id WHERE users.nama ILIKE ?)", "%"+name+"%")
-	}
-	var records []models.AttendanceRecord
-	if err := query.Find(&records).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to export late reports"})
-	}
-	var schedule models.WorkSchedule
-	if err := config.DB.Order("id asc").First(&schedule).Error; err != nil {
-		schedule.JamMulai = "09:00:00"
-	}
-	c.Set("Content-Type", "text/csv; charset=utf-8")
-	c.Set("Content-Disposition", `attachment; filename="laporan-keterlambatan.csv"`)
-	writer := csv.NewWriter(c.Response().BodyWriter())
-	defer writer.Flush()
-	_ = writer.Write([]string{"Tanggal", "NIK", "Nama", "Divisi", "Jabatan", "Jam Masuk", "Menit Terlambat", "Tipe Kerja"})
-	for _, record := range records {
-		jamMasuk := "-"
-		if record.JamMasuk != nil {
-			jamMasuk = record.JamMasuk.Format("15:04:05")
-		}
-		_ = writer.Write([]string{
-			record.Tanggal.Format("2006-01-02"), record.Employee.NIK, record.Employee.User.Nama,
-			record.Employee.Division.NamaDivisi, record.Employee.Position.NamaJabatan,
-			jamMasuk, strconv.FormatInt(lateMinutes(record, schedule), 10), record.TipeKerja,
-		})
-	}
-	return nil
-}
-
 func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
 	if role != models.RoleHRD && role != models.RolePimpinan {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
-	_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
+	_ = closeExpiredAttendanceRecords(attendanceNow())
 
 	startDate, endDate, err := reportDateRange(c)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	var schedule models.WorkSchedule
-	if err := config.DB.Order("id asc").First(&schedule).Error; err != nil {
-		schedule.HariKerja = "1,2,3,4,5"
-	}
-	workingDays := map[int]bool{}
-	for _, value := range strings.Split(schedule.HariKerja, ",") {
-		if day, parseErr := strconv.Atoi(strings.TrimSpace(value)); parseErr == nil && day >= 1 && day <= 7 {
-			workingDays[day] = true
-		}
-	}
-	if len(workingDays) == 0 {
-		workingDays = map[int]bool{1: true, 2: true, 3: true, 4: true, 5: true}
-	}
+	workingDays := map[int]bool{1: true, 2: true, 3: true, 4: true, 5: true}
 
 	var employees []models.Employee
 	if err := config.DB.Preload("User").Preload("Division").Preload("Position").Find(&employees).Error; err != nil {
@@ -649,7 +498,7 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	if role != models.RoleHRD && role != models.RolePimpinan {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
-	_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
+	_ = closeExpiredAttendanceRecords(attendanceNow())
 	// Reuse the report calculation through a small response-capturing context.
 	// Fiber handlers write JSON to the response; invoking the calculation again
 	// here would make the CSV diverge, so we calculate the compact CSV inputs
@@ -670,19 +519,7 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	if err := query.Find(&employees).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to export alpha reports"})
 	}
-	var schedule models.WorkSchedule
-	if err := config.DB.Order("id asc").First(&schedule).Error; err != nil {
-		schedule.HariKerja = "1,2,3,4,5"
-	}
-	workingDays := map[int]bool{}
-	for _, value := range strings.Split(schedule.HariKerja, ",") {
-		if day, parseErr := strconv.Atoi(strings.TrimSpace(value)); parseErr == nil && day >= 1 && day <= 7 {
-			workingDays[day] = true
-		}
-	}
-	if len(workingDays) == 0 {
-		workingDays = map[int]bool{1: true, 2: true, 3: true, 4: true, 5: true}
-	}
+	workingDays := map[int]bool{1: true, 2: true, 3: true, 4: true, 5: true}
 	var records []models.AttendanceRecord
 	if err := config.DB.Where("tanggal::date BETWEEN ? AND ?", startDate.Format("2006-01-02"), endDate.Format("2006-01-02")).Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to export alpha reports"})

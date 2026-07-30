@@ -30,10 +30,6 @@
         <h3>WFH Hari Ini</h3>
         <p class="stat-value text-primary">{{ stats.presentWFH }}</p>
       </div>
-      <div class="stat-card">
-        <h3>Terlambat</h3>
-        <p class="stat-value text-danger">{{ stats.late }}</p>
-      </div>
     </div>
 
     <div class="golan-card mt-20" *ngIf="!isLoading">
@@ -51,7 +47,7 @@
             <td>{{ record.Tanggal | date:'dd MMM yyyy' }} {{ record.JamMasuk | date:'HH:mm:ss' }}</td>
             <td>
               <span class="status-badge" 
-                    [ngClass]="{'status-hadir': record.Status === 'Hadir', 'status-terlambat': record.Status === 'Terlambat'}">
+                    [ngClass]="{'status-hadir': record.Status === 'Hadir'}">
                 {{ record.Status }}
               </span>
             </td>

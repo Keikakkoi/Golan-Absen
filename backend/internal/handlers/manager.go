@@ -82,12 +82,11 @@ func managerWeeklyAttendance(ids []uint) []fiber.Map {
 	result := []fiber.Map{}
 	for offset := 6; offset >= 0; offset-- {
 		date := attendanceBusinessDate(attendanceNow()).AddDate(0, 0, -offset).Format("2006-01-02")
-		var hadir, terlambat int64
+		var hadir int64
 		if len(ids) > 0 {
-			config.DB.Model(&models.AttendanceRecord{}).Where("employee_id IN ? AND tanggal = ? AND status = ?", ids, date, models.StatusHadir).Count(&hadir)
-			config.DB.Model(&models.AttendanceRecord{}).Where("employee_id IN ? AND tanggal = ? AND status = ?", ids, date, models.StatusTerlambat).Count(&terlambat)
+			config.DB.Model(&models.AttendanceRecord{}).Where("employee_id IN ? AND tanggal = ? AND status IN ?", ids, date, []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat}).Count(&hadir)
 		}
-		result = append(result, fiber.Map{"tanggal": date, "hadir": hadir, "terlambat": terlambat})
+		result = append(result, fiber.Map{"tanggal": date, "hadir": hadir})
 	}
 	return result
 }
@@ -121,6 +120,9 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 		pulang := ""
 		if record, ok := byEmployee[employee.ID]; ok {
 			status = string(record.Status)
+			if status == string(models.StatusTerlambat) {
+				status = string(models.StatusHadir)
+			}
 			if record.JamMasuk != nil {
 				masuk = record.JamMasuk.Format("15:04")
 			}

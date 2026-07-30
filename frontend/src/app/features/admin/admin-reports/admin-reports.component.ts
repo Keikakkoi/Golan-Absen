@@ -18,7 +18,6 @@ export class AdminReportsComponent implements OnInit {
   stats: any = {
     total_karyawan: 0,
     hadir_hari_ini: 0,
-    terlambat_hari_ini: 0,
     izin_cuti_hari_ini: 0
   };
   
@@ -341,7 +340,6 @@ export class AdminReportsComponent implements OnInit {
       
       let badgeClass = 'status-alpha';
       if (r.Status === 'Hadir') badgeClass = 'status-hadir';
-      else if (r.Status === 'Terlambat') badgeClass = 'status-terlambat';
       else if (r.Status === 'Izin') badgeClass = 'status-izin';
       else if (r.Status === 'Cuti') badgeClass = 'status-cuti';
 
@@ -377,7 +375,6 @@ export class AdminReportsComponent implements OnInit {
           tr:nth-child(even) { background-color: #f8fafc; }
           .status-badge { padding: 3px 8px; border-radius: 9999px; font-size: 10px; font-weight: 500; display: inline-block; }
           .status-hadir { background-color: #dbeafe; color: #1e5aa8; }
-          .status-terlambat { background-color: #fef3c7; color: #92400e; }
           .status-alpha { background-color: #fee2e2; color: #991b1b; }
           .status-izin { background-color: #e0f2fe; color: #075985; }
           .status-cuti { background-color: #f3e8ff; color: #6b21a8; }

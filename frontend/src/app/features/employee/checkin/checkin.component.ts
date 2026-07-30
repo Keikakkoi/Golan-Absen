@@ -84,6 +84,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   isCameraReady = false;
   isSubmitting = false;
   
+  isScheduleLoaded = false;
+  isViewInitialized = false;
+  isHardwareInitialized = false;
+  
   tipeKerja: string = 'WFO';
   workTypes: any[] = [];
   
@@ -127,12 +131,32 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    if (!this.hasCheckedOut && !this.attendanceClosed) {
+    this.isViewInitialized = true;
+    this.tryInitHardware();
+  }
+
+  private tryInitHardware(): void {
+    if (this.isHardwareInitialized || !this.isViewInitialized || !this.isScheduleLoaded) return;
+    if (this.hasCheckedOut || this.hasLeaveToday || this.attendanceClosed) return;
+
+    // Use setTimeout to ensure Angular has rendered the *ngIf blocks
+    setTimeout(() => {
+      // Check if elements are bound
+      if (!document.getElementById('map') || !this.videoElement) {
+        // If not in DOM yet, try again shortly
+        setTimeout(() => this.tryInitHardware(), 100);
+        return;
+      }
+      this.isHardwareInitialized = true;
       this.initMap();
       this.startLocationTracking();
       this.startCamera();
-    }
+    }, 0);
   }
+
+  shiftCheckoutTime: number = 17 * 3600;
+  shiftCloseTime: number = 18 * 3600;
+  todayDashboardMessage: string = '';
 
   private checkTodayAttendance(): void {
     this.attendanceService.getHistory().subscribe({
@@ -149,9 +173,48 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
             this.tipeKerja = todayRecord.TipeKerja;
           }
         }
-        this.updateAttendanceWindow();
+        
+        // Also fetch dashboard stats for dynamic shift times
+        this.attendanceService.getDashboardStats().subscribe({
+          next: (stats) => {
+            if (stats.schedule) {
+              const parseTime = (timeStr: string) => {
+                const parts = timeStr.split(':');
+                return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60;
+              };
+              if (stats.schedule.end) {
+                this.shiftCheckoutTime = parseTime(stats.schedule.end);
+              }
+              if (stats.schedule.deadline) {
+                this.shiftCloseTime = parseTime(stats.schedule.deadline);
+              }
+              // If the deadline is past midnight (e.g. overnight shift), add 24 hours
+              if (this.shiftCloseTime < this.shiftCheckoutTime) {
+                this.shiftCloseTime += 24 * 3600;
+              }
+            }
+            if (stats.todayMessage) {
+              this.todayDashboardMessage = stats.todayMessage;
+            }
+            this.isScheduleLoaded = true;
+            this.updateAttendanceWindow();
+            this.tryInitHardware();
+          },
+          error: (err) => {
+            console.error('Failed to load dashboard stats', err);
+            this.isScheduleLoaded = true;
+            this.updateAttendanceWindow();
+            this.tryInitHardware();
+          }
+        });
       },
-      error: (err) => console.error('Failed to load attendance history', err)
+      error: (err) => {
+        console.error('Failed to load attendance history', err);
+        // Fallback so it doesn't hang forever
+        this.isScheduleLoaded = true;
+        this.updateAttendanceWindow();
+        this.tryInitHardware();
+      }
     });
   }
 
@@ -162,37 +225,49 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private updateAttendanceWindow(): void {
-    if (this.hasLeaveToday) {
+    if (!this.isScheduleLoaded) {
+      // Don't evaluate window if schedule is not loaded yet to prevent early 'Absensi Ditutup' flash
       this.canPunchBySchedule = false;
-      this.attendanceClosed = true;
-      this.scheduleMessage = `Status ${this.leaveStatus} sudah tercatat untuk hari ini.`;
+      this.attendanceClosed = false;
+      this.scheduleMessage = 'Memuat jadwal absensi...';
       return;
     }
 
-    const seconds = this.currentTime.getHours() * 3600 + this.currentTime.getMinutes() * 60 + this.currentTime.getSeconds();
+    if (this.hasLeaveToday) {
+      this.canPunchBySchedule = false;
+      this.attendanceClosed = true;
+      this.scheduleMessage = this.todayDashboardMessage || `Status ${this.leaveStatus} sudah tercatat untuk hari ini.`;
+      return;
+    }
+    let currentHours = this.currentTime.getHours();
+    // If the shift spans past midnight and we are in the early morning hours,
+    // we logically consider the time as being on the previous day (e.g., 01:00 becomes 25:00)
+    // so we can properly check if it's within the shift CloseTime which was incremented by 24.
+    if (this.shiftCloseTime >= 24 * 3600 && currentHours < 7) {
+      currentHours += 24;
+    }
+
+    const seconds = currentHours * 3600 + this.currentTime.getMinutes() * 60 + this.currentTime.getSeconds();
     const resetTime = 7 * 3600;
-    const checkoutTime = 17 * 3600;
-    const closeTime = 18 * 3600;
 
     if (seconds < resetTime) {
       this.canPunchBySchedule = false;
       this.attendanceClosed = false;
-      this.scheduleMessage = 'Absensi hari ini dibuka pukul 07:00.';
+      this.scheduleMessage = this.todayDashboardMessage || 'Absensi hari ini dibuka pukul 07:00.';
       return;
     }
 
-    if (seconds > closeTime) {
+    if (seconds > this.shiftCloseTime) {
       this.canPunchBySchedule = false;
-      if (this.hasCheckedIn && !this.hasCheckedOut) this.hasCheckedOut = true;
-      this.attendanceClosed = !this.hasCheckedOut;
-      this.scheduleMessage = 'Batas absensi pukul 18:00 telah lewat. Check-out otomatis diterapkan.';
+      this.attendanceClosed = true;
+      this.scheduleMessage = this.todayDashboardMessage || 'Batas absensi hari ini telah lewat. Check-out otomatis diterapkan.';
       return;
     }
 
     this.attendanceClosed = false;
     if (this.hasCheckedIn && !this.hasCheckedOut) {
-      this.canPunchBySchedule = seconds >= checkoutTime;
-      this.scheduleMessage = this.canPunchBySchedule ? '' : 'Check-out dapat dilakukan mulai pukul 17:00.';
+      this.canPunchBySchedule = seconds >= this.shiftCheckoutTime;
+      this.scheduleMessage = this.canPunchBySchedule ? '' : (this.todayDashboardMessage || 'Check-out belum dapat dilakukan.');
     } else if (!this.hasCheckedIn) {
       this.canPunchBySchedule = !this.isCheckoutPage;
       this.scheduleMessage = this.isCheckoutPage ? 'Belum ada check-in untuk hari ini.' : '';
@@ -363,8 +438,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       (error) => {
         this.isGpsActive = false;
         this.isLocationValid = false;
-        this.locationError = 'Aktifkan GPS untuk melanjutkan absensi.';
-        this.statusText = 'GPS Tidak Aktif · Silakan aktifkan GPS perangkat Anda';
+        this.locationError = `Aktifkan GPS untuk melanjutkan absensi. (Err: ${error.message || error.code})`;
+        this.statusText = `GPS Tidak Aktif · Err: ${error.message || error.code}`;
       },
       { enableHighAccuracy: true, maximumAge: 0 }
     );
@@ -449,7 +524,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         this.cameraError = '';
       })
       .catch((err) => {
-        this.cameraError = 'Izin kamera ditolak. Silakan aktifkan kamera.';
+        this.cameraError = `Izin kamera ditolak. Silakan aktifkan kamera. (Err: ${err.message || err.name || err})`;
       });
   }
 

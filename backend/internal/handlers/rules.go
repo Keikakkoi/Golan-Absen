@@ -49,7 +49,6 @@ func missingWorkReportRows(employeeIDs []uint, now time.Time) []fiber.Map {
 		return []fiber.Map{}
 	}
 	setting := getGeneralSetting()
-	schedules := getAttendanceSchedules()
 	var records []models.AttendanceRecord
 	config.DB.Preload("Employee.User").Where("employee_id IN ? AND jam_masuk IS NOT NULL AND jam_pulang IS NOT NULL", employeeIDs).Find(&records)
 	if len(records) == 0 {
@@ -63,10 +62,8 @@ func missingWorkReportRows(employeeIDs []uint, now time.Time) []fiber.Map {
 	}
 	rows := make([]fiber.Map, 0)
 	for _, record := range records {
-		deadline := workReportDeadline(record, schedules[0], setting)
-		if latest, ok := latestScheduleEndTime(record.Tanggal, schedules); ok {
-			deadline = latest.Add(time.Duration(setting.BatasLaporanSetelahCheckoutJam) * time.Hour)
-		}
+		schedule := getAttendanceSchedule(record.EmployeeID, record.Tanggal)
+		deadline := workReportDeadline(record, schedule, setting)
 		if now.Before(deadline) || hasReport[workReportKey(record.EmployeeID, record.Tanggal)] {
 			continue
 		}

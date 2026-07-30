@@ -25,7 +25,12 @@
 
         <div class="calendar-toolbar">
           <button type="button" class="month-nav" (click)="changeMonth(-1)" aria-label="Bulan sebelumnya">‹</button>
-          <strong>{{ currentMonth | date:'MMMM yyyy' }}</strong>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <strong>{{ currentMonth | date:'MMMM' }}</strong>
+            <select class="golan-input" style="padding: 0.25rem 2rem 0.25rem 0.75rem; height: auto; min-height: 28px; width: auto; font-size: 0.9rem;" [(ngModel)]="selectedYear" (change)="onYearChange()">
+              <option *ngFor="let year of availableYears" [value]="year">{{ year }}</option>
+            </select>
+          </div>
           <button type="button" class="month-nav" (click)="changeMonth(1)" aria-label="Bulan berikutnya">›</button>
         </div>
 
@@ -76,15 +81,37 @@
       <div class="card-header">
         <div>
           <span class="eyebrow">Daftar agenda</span>
-          <h3>Event bulan ini</h3>
+          <h3>Semua Event</h3>
         </div>
-        <span *ngIf="isLoading" class="loading-label">Memuat...</span>
       </div>
+      
+      <!-- FILTER SECTION -->
+      <div class="filter-card premium-filter" style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <div class="filter-grid" style="display: flex; gap: 1rem; align-items: flex-end;">
+          <div class="filter-group">
+            <label style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Dari Tanggal</label>
+            <div class="input-wrapper" style="position: relative;">
+              <input type="date" class="golan-input" [(ngModel)]="tableFilters.start_date" (change)="onTableFilterChange()">
+            </div>
+          </div>
+          <div class="filter-group">
+            <label style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Sampai Tanggal</label>
+            <div class="input-wrapper" style="position: relative;">
+              <input type="date" class="golan-input" [(ngModel)]="tableFilters.end_date" (change)="onTableFilterChange()">
+            </div>
+          </div>
+          <div style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #64748b; padding-bottom: 0.5rem;">
+            Menampilkan <strong>{{ tableEvents.length }}</strong> event
+          </div>
+        </div>
+      </div>
+
       <div class="table-container">
-        <table class="golan-table" *ngIf="events.length > 0; else noEvents">
+        <div *ngIf="isLoadingTable" style="padding: 1rem; color: #6b7280; text-align: center;">Memuat daftar agenda...</div>
+        <table class="golan-table" *ngIf="!isLoadingTable && tableEvents.length > 0; else noEvents">
           <thead><tr><th>Tanggal</th><th>Waktu</th><th>Judul</th><th>Tipe</th><th>Lokasi</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody>
-            <tr *ngFor="let event of events">
+            <tr *ngFor="let event of tableEvents">
               <td>{{ event.Tanggal | date:'dd MMM yyyy' }}</td>
               <td class="mono-text">{{ event.JamMulai }}<span *ngIf="event.JamSelesai"> – {{ event.JamSelesai }}</span></td>
               <td><strong>{{ event.Judul }}</strong><small class="table-description">{{ event.Deskripsi || '-' }}</small></td>
@@ -95,7 +122,7 @@
             </tr>
           </tbody>
         </table>
-        <ng-template #noEvents><div class="empty-state">Belum ada event pada bulan ini.</div></ng-template>
+        <ng-template #noEvents><div class="empty-state" *ngIf="!isLoadingTable">Belum ada event pada periode ini.</div></ng-template>
       </div>
     </section>
   </div>

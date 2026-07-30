@@ -17,7 +17,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   stats: any = {
     total_karyawan: 0,
     hadir_hari_ini: 0,
-    terlambat_hari_ini: 0,
     izin_cuti_hari_ini: 0,
     total_magang: 0,
     magang_aktif: 0,

@@ -82,7 +82,6 @@ func ConnectDB(cfg *Config) {
 			JamMulai:                "09:00:00",
 			JamSelesai:              "17:00:00",
 			ToleransiTerlambatMenit: 10,
-			HariKerja:               "1,2,3,4,5",
 		})
 		log.Println("Seeded default work schedule")
 	}

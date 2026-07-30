@@ -86,7 +86,24 @@ func GetSchedules(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var schedules []models.WorkSchedule
-	if err := config.DB.Order("id asc").Find(&schedules).Error; err != nil {
+	query := config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division")
+
+	search := c.Query("search")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+
+	if startDate != "" && endDate != "" {
+		query = query.Where("tanggal BETWEEN ? AND ?", startDate, endDate)
+	}
+	if search != "" {
+		// Use lowercasing for simple case-insensitive matching
+		// Assuming we want to search by NamaShift, Employee Name, or Employee NIK
+		query = query.Joins("LEFT JOIN employees ON employees.id = work_schedules.employee_id").
+			Joins("LEFT JOIN users ON users.id = employees.user_id").
+			Where("LOWER(work_schedules.nama_shift) LIKE ? OR LOWER(users.nama) LIKE ? OR LOWER(employees.nik) LIKE ?", "%"+strings.ToLower(search)+"%", "%"+strings.ToLower(search)+"%", "%"+strings.ToLower(search)+"%")
+	}
+
+	if err := query.Order("tanggal desc").Order("id desc").Find(&schedules).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch schedules"})
 	}
 	return c.JSON(schedules)
@@ -97,11 +114,21 @@ func CreateSchedule(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var schedule models.WorkSchedule
-	if err := c.BodyParser(&schedule); err != nil || schedule.NamaShift == "" || schedule.JamMulai == "" || schedule.JamSelesai == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Nama shift, jam mulai, dan jam selesai wajib diisi"})
+	if err := c.BodyParser(&schedule); err != nil || schedule.NamaShift == "" || schedule.JamMulai == "" || schedule.JamSelesai == "" || schedule.Tanggal == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Nama shift, jam mulai, jam selesai, dan tanggal wajib diisi"})
 	}
+	
+	if schedule.EmployeeID == nil || *schedule.EmployeeID == 0 {
+		var count int64
+		config.DB.Model(&models.WorkSchedule{}).Where("employee_id IS NULL").Count(&count)
+		if count > 0 {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Shift global (untuk semua karyawan) sudah ada. Hanya boleh ada satu shift global."})
+		}
+		schedule.EmployeeID = nil // pastikan benar-benar nil jika 0
+	}
+
 	if err := config.DB.Create(&schedule).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create schedule"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan shift ke database: " + err.Error()})
 	}
 	utils.LogAction(c.Locals("user_id").(uint), "CREATE", "WorkSchedule", schedule.ID, "Admin created work schedule: "+schedule.NamaShift)
 	return c.Status(fiber.StatusCreated).JSON(schedule)
@@ -116,16 +143,28 @@ func UpdateSchedule(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Schedule not found"})
 	}
 	var input models.WorkSchedule
-	if err := c.BodyParser(&input); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	if err := c.BodyParser(&input); err != nil || input.NamaShift == "" || input.JamMulai == "" || input.JamSelesai == "" || input.Tanggal == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Nama shift, jam mulai, jam selesai, dan tanggal wajib diisi"})
 	}
+	
+	if input.EmployeeID == nil || *input.EmployeeID == 0 {
+		var count int64
+		config.DB.Model(&models.WorkSchedule{}).Where("employee_id IS NULL AND id != ?", schedule.ID).Count(&count)
+		if count > 0 {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Shift global (untuk semua karyawan) sudah ada. Hanya boleh ada satu shift global."})
+		}
+		input.EmployeeID = nil
+	}
+	
+	schedule.EmployeeID = input.EmployeeID
+	schedule.Tanggal = input.Tanggal
 	schedule.NamaShift = input.NamaShift
 	schedule.JamMulai = input.JamMulai
 	schedule.JamSelesai = input.JamSelesai
 	schedule.ToleransiTerlambatMenit = input.ToleransiTerlambatMenit
-	schedule.HariKerja = input.HariKerja
+	
 	if err := config.DB.Save(&schedule).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update schedule"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengupdate shift ke database: " + err.Error()})
 	}
 	utils.LogAction(c.Locals("user_id").(uint), "UPDATE", "WorkSchedule", schedule.ID, "Admin updated work schedule: "+schedule.NamaShift)
 	return c.JSON(schedule)
@@ -482,14 +521,15 @@ func UpdateNotificationSettings(c *fiber.Ctx) error {
 		}
 		var existing models.NotificationSetting
 		err := tx.Where("tipe_notifikasi = ? AND role = ?", setting.TipeNotifikasi, setting.Role).First(&existing).Error
-		if err == nil {
+		switch err {
+		case nil:
 			existing.IsEmailEnabled = setting.IsEmailEnabled
 			existing.IsInAppEnabled = setting.IsInAppEnabled
 			if err := tx.Save(&existing).Error; err != nil {
 				tx.Rollback()
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update notification settings"})
 			}
-		} else if err == gorm.ErrRecordNotFound {
+		case gorm.ErrRecordNotFound:
 			if err := tx.Create(&models.NotificationSetting{
 				TipeNotifikasi: setting.TipeNotifikasi,
 				Role:           setting.Role,
@@ -499,7 +539,7 @@ func UpdateNotificationSettings(c *fiber.Ctx) error {
 				tx.Rollback()
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create notification settings"})
 			}
-		} else {
+		default:
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to read notification settings"})
 		}

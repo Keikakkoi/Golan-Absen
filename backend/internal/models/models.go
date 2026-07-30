@@ -191,11 +191,13 @@ type OfficeLocation struct {
 
 type WorkSchedule struct {
 	gorm.Model
-	NamaShift               string `gorm:"size:100;not null"`
-	JamMulai                string `gorm:"type:varchar(10);not null"` // e.g., 09:00:00
-	JamSelesai              string `gorm:"type:varchar(10);not null"` // e.g., 17:00:00
-	ToleransiTerlambatMenit int    `gorm:"not null;default:10"`
-	HariKerja               string `gorm:"size:100;default:'1,2,3,4,5'"` // 1=Monday, 7=Sunday
+	EmployeeID              *uint      `gorm:"index"`
+	Employee                Employee
+	Tanggal                 *time.Time `gorm:"type:date;index"`
+	NamaShift               string     `gorm:"size:100;not null"`
+	JamMulai                string     `gorm:"type:varchar(10);not null"` // e.g., 09:00:00
+	JamSelesai              string     `gorm:"type:varchar(10);not null"` // e.g., 17:00:00
+	ToleransiTerlambatMenit int        `gorm:"not null;default:10"`
 }
 
 type LeaveStatus string

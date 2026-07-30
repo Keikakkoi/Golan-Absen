@@ -497,6 +497,6 @@ func isLateWorkReportSubmission(employeeID uint, date time.Time) bool {
 		return false
 	}
 	setting := getGeneralSetting()
-	deadline := workReportDeadline(record, getAttendanceSchedule(), setting)
+	deadline := workReportDeadline(record, getAttendanceSchedule(employeeID, date), setting)
 	return attendanceNow().After(deadline)
 }

@@ -16,17 +16,7 @@
           📅 Bulan Ini
         </button>
       </div>
-      <div class="export-dropdown" style="position: relative;">
-        <button class="btn btn-secondary" (click)="toggleExportDropdown()">
-          <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
-        </button>
-        <div class="dropdown-menu-custom" *ngIf="isExportOpen">
-          <button class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button>
-          <button class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button>
-          <button class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button>
-          <button class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button>
-        </div>
-      </div>
+      <div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="isExportOpen"><button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div>
     </div>
 
     <div class="filter-card premium-filter">
@@ -81,10 +71,10 @@
       <h3>Detail Perbandingan</h3>
       <div class="table-container">
         <table class="golan-table" *ngIf="comparisons.length > 0">
-          <thead><tr><th>Divisi</th><th>Total Karyawan</th><th>Hadir</th><th>Terlambat</th><th>Izin/Cuti/Alpha</th><th>Tingkat Kehadiran</th><th>Aksi</th></tr></thead>
+          <thead><tr><th>Divisi</th><th>Total Karyawan</th><th>Hadir</th><th>Izin/Cuti/Alpha</th><th>Tingkat Kehadiran</th><th>Aksi</th></tr></thead>
           <tbody>
             <tr *ngFor="let item of comparisons">
-              <td>{{ item.division_name }}</td><td>{{ item.total_employees }}</td><td class="present">{{ item.present_count }}</td><td class="late">{{ item.late_count }}</td><td class="absent">{{ item.absent_count }}</td><td><strong>{{ item.attendance_rate | number:'1.0-1' }}%</strong></td>
+              <td>{{ item.division_name }}</td><td>{{ item.total_employees }}</td><td class="present">{{ item.present_count }}</td><td class="absent">{{ item.absent_count }}</td><td><strong>{{ item.attendance_rate | number:'1.0-1' }}%</strong></td>
               <td><a [routerLink]="['/executive/reports']" [queryParams]="{ division_id: item.division_id }">Lihat laporan</a></td>
             </tr>
           </tbody>

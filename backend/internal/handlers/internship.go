@@ -92,19 +92,16 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Intern profile not found"})
 	}
-	var present, late, leave int64
+	var present, leave int64
 	attendanceQuery := config.DB.Model(&models.AttendanceRecord{}).Where("employee_id = ?", user.Employee.ID)
-	lateQuery := config.DB.Model(&models.AttendanceRecord{}).Where("employee_id = ?", user.Employee.ID)
 	leaveQuery := config.DB.Model(&models.LeaveRequest{}).Where("employee_id = ? AND status = ?", user.Employee.ID, models.LeaveStatusApproved)
 	if start, end := c.Query("start_date"), c.Query("end_date"); start != "" && end != "" {
 		attendanceQuery = attendanceQuery.Where("tanggal BETWEEN ? AND ?", start, end)
-		lateQuery = lateQuery.Where("tanggal BETWEEN ? AND ?", start, end)
 		leaveQuery = leaveQuery.Where("tanggal_mulai <= ? AND tanggal_selesai >= ?", end, start)
 	}
 	attendanceQuery.Where("status IN ?", []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat}).Count(&present)
-	lateQuery.Where("status = ?", models.StatusTerlambat).Count(&late)
 	leaveQuery.Count(&leave)
-	return c.JSON(fiber.Map{"hadir": present, "terlambat": late, "izin_disetujui": leave, "start_date": c.Query("start_date"), "end_date": c.Query("end_date")})
+	return c.JSON(fiber.Map{"hadir": present, "izin_disetujui": leave, "start_date": c.Query("start_date"), "end_date": c.Query("end_date")})
 }
 
 func GetInternshipCertificate(c *fiber.Ctx) error {

@@ -17,7 +17,6 @@ func GetExecutiveDashboard(c *fiber.Ctx) error {
 	}
 	var totalEmployees int64
 	var totalPresent int64
-	var totalLate int64
 	var totalAbsent int64
 
 	now := time.Now()
@@ -26,31 +25,22 @@ func GetExecutiveDashboard(c *fiber.Ctx) error {
 	// Total Karyawan Aktif
 	config.DB.Model(&models.Employee{}).Where("status = ?", "aktif").Count(&totalEmployees)
 
-	// Kehadiran Hari Ini
+	// Kehadiran Hari Ini (Hadir + legacy Terlambat)
 	config.DB.Model(&models.AttendanceRecord{}).
-		Where("tanggal = ? AND status = ?", startOfDay, "Hadir").
+		Where("tanggal = ? AND status IN ?", startOfDay, []string{"Hadir", "Terlambat"}).
 		Count(&totalPresent)
-
-	// Keterlambatan Hari Ini
-	config.DB.Model(&models.AttendanceRecord{}).
-		Where("tanggal = ? AND status = ?", startOfDay, "Terlambat").
-		Count(&totalLate)
 
 	// Izin/Cuti/Alpha Hari Ini
 	config.DB.Model(&models.AttendanceRecord{}).
 		Where("tanggal = ? AND status IN ?", startOfDay, []string{"Izin", "Cuti", "Alpha"}).
 		Count(&totalAbsent)
 
-	// Get Monthly Trend (Mocked for simplicity, ideally group by date)
-	// In production, we would use a GROUP BY query here.
-
 	return c.JSON(fiber.Map{
 		"kpi": fiber.Map{
 			"total_employees": totalEmployees,
 			"present_today":   totalPresent,
-			"late_today":      totalLate,
 			"absent_today":    totalAbsent,
-			"attendance_rate": calculateRate(totalPresent+totalLate, totalEmployees),
+			"attendance_rate": calculateRate(totalPresent, totalEmployees),
 		},
 	})
 }
@@ -72,7 +62,6 @@ func GetDivisionStats(c *fiber.Ctx) error {
 		DivisionName   string  `json:"division_name"`
 		TotalEmployees int     `json:"total_employees"`
 		PresentCount   int     `json:"present_count"`
-		LateCount      int     `json:"late_count"`
 		AbsentCount    int     `json:"absent_count"`
 		AttendanceRate float64 `json:"attendance_rate"`
 	}
@@ -95,18 +84,12 @@ func GetDivisionStats(c *fiber.Ctx) error {
 		var totalEmp int64
 		config.DB.Model(&models.Employee{}).Where("division_id = ? AND status = ?", dept.ID, "aktif").Count(&totalEmp)
 
-		var present, late, absent int64
+		var present, absent int64
 		config.DB.Table("attendance_records").
 			Joins("JOIN employees ON attendance_records.employee_id = employees.id").
 			Where("employees.division_id = ? AND attendance_records.tanggal BETWEEN ? AND ?", dept.ID, startDate, endDate).
-			Where("attendance_records.status = ?", "Hadir").
+			Where("attendance_records.status IN ?", []string{"Hadir", "Terlambat"}).
 			Count(&present)
-
-		config.DB.Table("attendance_records").
-			Joins("JOIN employees ON attendance_records.employee_id = employees.id").
-			Where("employees.division_id = ? AND attendance_records.tanggal BETWEEN ? AND ?", dept.ID, startDate, endDate).
-			Where("attendance_records.status = ?", "Terlambat").
-			Count(&late)
 
 		config.DB.Table("attendance_records").
 			Joins("JOIN employees ON attendance_records.employee_id = employees.id").
@@ -115,9 +98,9 @@ func GetDivisionStats(c *fiber.Ctx) error {
 			Count(&absent)
 
 		var rate float64 = 0
-		totalDays := present + late + absent
+		totalDays := present + absent
 		if totalDays > 0 {
-			rate = float64(present+late) / float64(totalDays) * 100
+			rate = float64(present) / float64(totalDays) * 100
 		}
 
 		stats = append(stats, DeptStat{
@@ -125,7 +108,6 @@ func GetDivisionStats(c *fiber.Ctx) error {
 			DivisionName:   dept.NamaDivisi,
 			TotalEmployees: int(totalEmp),
 			PresentCount:   int(present),
-			LateCount:      int(late),
 			AbsentCount:    int(absent),
 			AttendanceRate: rate,
 		})
@@ -208,6 +190,10 @@ func GetExecutiveReports(c *fiber.Ctx) error {
 			checkOut = r.JamPulang.Format("15:04:05")
 		}
 
+		status := r.Status
+		if status == "Terlambat" {
+			status = "Hadir"
+		}
 		results = append(results, ReportRow{
 			Date:         r.Tanggal,
 			NIK:          r.NIK,
@@ -215,7 +201,7 @@ func GetExecutiveReports(c *fiber.Ctx) error {
 			DivisionName: r.NamaDivisi,
 			CheckIn:      checkIn,
 			CheckOut:     checkOut,
-			Status:       r.Status,
+			Status:       status,
 		})
 	}
 
@@ -279,9 +265,13 @@ func ExportExecutiveReportsCSV(c *fiber.Ctx) error {
 		if record.JamPulang != nil {
 			checkOut = record.JamPulang.Format("15:04:05")
 		}
+		recordStatus := record.Status
+		if recordStatus == "Terlambat" {
+			recordStatus = "Hadir"
+		}
 		_ = writer.Write([]string{
 			record.Tanggal.Format("2006-01-02"), record.NIK, record.Nama,
-			record.NamaDivisi, checkIn, checkOut, record.Status,
+			record.NamaDivisi, checkIn, checkOut, recordStatus,
 		})
 	}
 	return nil

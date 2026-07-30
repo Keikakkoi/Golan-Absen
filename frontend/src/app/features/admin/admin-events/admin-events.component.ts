@@ -40,6 +40,8 @@ interface HolidayItem {
 })
 export class AdminEventsComponent implements OnInit {
   currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  selectedYear = new Date().getFullYear();
+  availableYears: number[] = [];
   selectedDate = this.toDateKey(new Date());
   calendarDays: Array<CalendarDay | null> = [];
   weekDays = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -49,6 +51,13 @@ export class AdminEventsComponent implements OnInit {
   isSaving = false;
   showModal = false;
   errorMessage = '';
+
+  tableFilters = {
+    start_date: '',
+    end_date: ''
+  };
+  tableEvents: CompanyEvent[] = [];
+  isLoadingTable = false;
 
   form = this.emptyForm();
   private readonly baseUrl = 'http://localhost:8080/api/v1/admin/events';
@@ -60,9 +69,22 @@ export class AdminEventsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    const today = new Date();
+    
+    // Initialize available years (5 years back, 5 years forward)
+    for (let i = today.getFullYear() - 5; i <= today.getFullYear() + 5; i++) {
+      this.availableYears.push(i);
+    }
+
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    this.tableFilters.start_date = this.toDateKey(firstDay);
+    this.tableFilters.end_date = this.toDateKey(lastDay);
+
     this.generateCalendar();
     this.loadHolidays();
     this.loadEvents();
+    this.loadTableEvents();
   }
 
   getHeaders(): HttpHeaders {
@@ -84,6 +106,27 @@ export class AdminEventsComponent implements OnInit {
         this.isLoading = false;
       }
     });
+  }
+
+  loadTableEvents(): void {
+    if (!this.tableFilters.start_date || !this.tableFilters.end_date) return;
+    this.isLoadingTable = true;
+    const start = this.tableFilters.start_date;
+    const end = this.tableFilters.end_date;
+    this.http.get<CompanyEvent[]>(`${this.baseUrl}?start=${start}&end=${end}`, { headers: this.getHeaders() }).subscribe({
+      next: (data) => {
+        this.tableEvents = data || [];
+        this.isLoadingTable = false;
+      },
+      error: (err) => {
+        console.error('Failed to load table events', err);
+        this.isLoadingTable = false;
+      }
+    });
+  }
+
+  onTableFilterChange(): void {
+    this.loadTableEvents();
   }
 
   loadHolidays(): void {
@@ -128,6 +171,15 @@ export class AdminEventsComponent implements OnInit {
 
   changeMonth(offset: number): void {
     this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + offset, 1);
+    this.selectedYear = this.currentMonth.getFullYear();
+    this.selectedDate = this.toDateKey(this.currentMonth);
+    this.events = [];
+    this.generateCalendar();
+    this.loadEvents();
+  }
+
+  onYearChange(): void {
+    this.currentMonth = new Date(Number(this.selectedYear), this.currentMonth.getMonth(), 1);
     this.selectedDate = this.toDateKey(this.currentMonth);
     this.events = [];
     this.generateCalendar();
@@ -137,6 +189,7 @@ export class AdminEventsComponent implements OnInit {
   goToToday(): void {
     const today = new Date();
     this.currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    this.selectedYear = this.currentMonth.getFullYear();
     this.selectedDate = this.toDateKey(today);
     this.events = [];
     this.generateCalendar();
@@ -206,6 +259,7 @@ export class AdminEventsComponent implements OnInit {
         this.closeModal();
         this.alert.success(isEdit ? 'Event berhasil diperbarui' : 'Event berhasil ditambahkan');
         this.loadEvents();
+        this.loadTableEvents();
       },
       error: (err) => {
         this.isSaving = false;
@@ -221,6 +275,7 @@ export class AdminEventsComponent implements OnInit {
       next: () => {
         this.alert.success('Event berhasil dihapus');
         this.loadEvents();
+        this.loadTableEvents();
       },
       error: (err) => this.alert.error('Gagal menghapus event', err.error?.error || 'Gagal menghapus event perusahaan')
     });

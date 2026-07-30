@@ -41,25 +41,12 @@ func TestAttendanceWindowUsesNineTenGraceAndSixPmDeadline(t *testing.T) {
 	}
 }
 
-func TestScheduleAppliesToConfiguredWorkingDays(t *testing.T) {
-	schedule := models.WorkSchedule{HariKerja: "1,2,3,4,5"}
-	monday := time.Date(2026, 7, 27, 0, 0, 0, 0, jakartaLocation)
-	saturday := monday.AddDate(0, 0, 5)
-
-	if !scheduleAppliesToDate(schedule, monday) {
-		t.Fatal("Monday should be a working day")
-	}
-	if scheduleAppliesToDate(schedule, saturday) {
-		t.Fatal("Saturday should not be a working day")
-	}
-}
-
 func TestOvernightScheduleDeadlineUsesFollowingDay(t *testing.T) {
 	schedule := models.WorkSchedule{JamMulai: "22:00:00", JamSelesai: "06:00:00"}
 	date := time.Date(2026, 7, 27, 0, 0, 0, 0, jakartaLocation)
 	got := scheduleCheckoutDeadline(schedule, date)
-	want := time.Date(2026, 7, 28, 7, 0, 0, 0, jakartaLocation)
+	want := time.Date(2026, 7, 28, 7, 0, 0, 0, jakartaLocation) // 06:00 + 1 hour checkout deadline
 	if !got.Equal(want) {
-		t.Fatalf("overnight deadline: got %s, want %s", got, want)
+		t.Fatalf("got %v, want %v", got, want)
 	}
 }

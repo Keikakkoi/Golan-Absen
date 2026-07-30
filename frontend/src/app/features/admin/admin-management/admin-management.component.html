@@ -47,6 +47,20 @@
 
           <form class="schedule-form" (ngSubmit)="saveSchedule()">
             <label class="schedule-field schedule-field-wide" for="schedule-name">
+              <span>Karyawan</span>
+              <input type="text" class="golan-input" placeholder="Cari nama atau NIK karyawan..." [(ngModel)]="employeeSearchTerm" name="employeeSearchTerm" style="margin-bottom: 8px;">
+              <select id="schedule-employee" class="golan-input" [(ngModel)]="scheduleForm.EmployeeID" name="EmployeeID">
+                <option value="">Semua Karyawan (Global)</option>
+                <option *ngFor="let emp of filteredEmployees" [value]="emp.Employee?.ID">{{ emp.Nama }} ({{ emp.Employee?.Division?.NamaDivisi || 'Tidak ada bagian' }})</option>
+              </select>
+            </label>
+
+            <label class="schedule-field schedule-field-wide" for="schedule-tanggal">
+              <span>Tanggal Shift</span>
+              <input id="schedule-tanggal" type="date" class="golan-input" [(ngModel)]="scheduleForm.Tanggal" name="Tanggal" required>
+            </label>
+
+            <label class="schedule-field schedule-field-wide" for="schedule-name">
               <span>Nama shift</span>
               <input id="schedule-name" class="golan-input" [(ngModel)]="scheduleForm.NamaShift" name="NamaShift" placeholder="Contoh: Shift Pagi" required>
             </label>
@@ -74,11 +88,7 @@
               </div>
             </label>
 
-            <label class="schedule-field schedule-field-wide" for="schedule-days">
-              <span>Hari kerja</span>
-              <input id="schedule-days" class="golan-input" [(ngModel)]="scheduleForm.HariKerja" name="HariKerja" placeholder="1,2,3,4,5" required>
-              <small>Gunakan angka 1–7: Senin sampai Minggu.</small>
-            </label>
+
 
             <div class="schedule-form-actions">
               <button type="submit" class="btn-primary" [disabled]="isSaving">
@@ -98,6 +108,24 @@
             <span class="schedule-count"><strong>{{ schedules.length }}</strong> shift</span>
           </div>
 
+          <div class="schedule-filters" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; padding: 0 24px;">
+            <label class="schedule-field" style="flex: 1; min-width: 200px;">
+              <span>Cari Shift / Karyawan</span>
+              <input type="text" class="golan-input" placeholder="Ketik kata kunci lalu enter..." [(ngModel)]="scheduleSearch" name="scheduleSearch" (keyup.enter)="loadSchedules()">
+            </label>
+            <label class="schedule-field" style="width: 150px;">
+              <span>Dari Tanggal</span>
+              <input type="date" class="golan-input" [(ngModel)]="scheduleStartDate" name="scheduleStartDate" (change)="loadSchedules()">
+            </label>
+            <label class="schedule-field" style="width: 150px;">
+              <span>Sampai Tanggal</span>
+              <input type="date" class="golan-input" [(ngModel)]="scheduleEndDate" name="scheduleEndDate" (change)="loadSchedules()">
+            </label>
+            <div style="display: flex; align-items: flex-end;">
+              <button class="btn-primary" type="button" (click)="loadSchedules()" style="height: 42px;">Filter</button>
+            </div>
+          </div>
+
           <div class="schedule-loading" *ngIf="isLoading">Memuat data shift...</div>
           <div class="schedule-empty" *ngIf="!isLoading && schedules.length === 0">
             <div class="schedule-empty-icon" aria-hidden="true">⌚</div>
@@ -107,18 +135,15 @@
 
           <div class="table-container schedule-table-container" *ngIf="!isLoading && schedules.length > 0">
             <table class="golan-table schedule-table">
-              <thead><tr><th>Nama shift</th><th>Jam kerja</th><th>Toleransi</th><th>Hari kerja</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Jam kerja</th><th>Toleransi</th><th>Aksi</th></tr></thead>
               <tbody>
                 <tr *ngFor="let schedule of schedules">
                   <td><div class="schedule-name-cell"><span class="schedule-row-icon" aria-hidden="true">⌁</span><strong>{{ schedule.NamaShift }}</strong></div></td>
+                  <td><span class="schedule-date">{{ schedule.Tanggal ? (schedule.Tanggal | date:'dd MMM yyyy') : '-' }}</span></td>
+                  <td><span class="schedule-employee">{{ schedule.EmployeeID ? (schedule.Employee?.User?.Nama || '-') : 'Semua Karyawan (Global)' }}</span></td>
+                  <td><span class="schedule-division">{{ schedule.EmployeeID ? (schedule.Employee?.Division?.NamaDivisi || '-') : 'Semua Divisi' }}</span></td>
                   <td><span class="schedule-hours">{{ schedule.JamMulai | slice:0:5 }} <small>–</small> {{ schedule.JamSelesai | slice:0:5 }}</span></td>
                   <td><span class="tolerance-pill">{{ schedule.ToleransiTerlambatMenit }} menit</span></td>
-                  <td>
-                    <div class="schedule-days" *ngIf="getWorkDays(schedule).length > 0">
-                      <span *ngFor="let day of getWorkDays(schedule)">{{ day }}</span>
-                    </div>
-                    <span class="schedule-days-raw" *ngIf="getWorkDays(schedule).length === 0">{{ schedule.HariKerja || '-' }}</span>
-                  </td>
                   <td class="schedule-actions"><button class="icon-button edit" type="button" (click)="editSchedule(schedule)" aria-label="Edit shift" title="Edit shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button><button class="icon-button delete" type="button" (click)="deleteSchedule(schedule.ID)" aria-label="Hapus shift" title="Hapus shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button></td>
                 </tr>
               </tbody>
@@ -193,7 +218,7 @@
           <label class="quota-field" for="quota-type">
             <span>Jenis kuota</span>
             <select id="quota-type" class="golan-input" [(ngModel)]="quotaForm.jenis_cuti" name="jenis">
-              <option>Cuti Tahunan</option>
+              <option value="Cuti">Cuti Tahunan</option>
               <option>Izin Khusus</option>
               <option>Cuti Sakit</option>
             </select>

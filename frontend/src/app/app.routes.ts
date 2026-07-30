@@ -19,7 +19,6 @@ import { MaintenanceComponent } from './features/errors/maintenance/maintenance.
 import { AdminDashboardComponent } from './features/admin/admin-dashboard/admin-dashboard.component';
 import { OrganizationComponent } from './features/admin/organization/organization.component';
 import { AdminNotificationSettingsComponent } from './features/admin/admin-notification-settings/admin-notification-settings.component';
-import { AdminLateReportsComponent } from './features/admin/admin-late-reports/admin-late-reports.component';
 import { AdminAlphaReportsComponent } from './features/admin/admin-alpha-reports/admin-alpha-reports.component';
 import { ExecutiveDepartmentStatsComponent } from './features/executive/executive-department-stats/executive-department-stats.component';
 import { ExecutiveComparisonComponent } from './features/executive/executive-comparison/executive-comparison.component';
@@ -112,7 +111,6 @@ export const routes: Routes = [
   { path: 'admin/reports/daily', component: AdminReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], periode: 'Harian' } },
   { path: 'admin/reports/weekly', component: AdminReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], periode: 'Mingguan' } },
   { path: 'admin/reports/monthly', component: AdminReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], periode: 'Bulanan' } },
-  { path: 'admin/reports/late', component: AdminLateReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/reports/alpha', component: AdminAlphaReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/settings', component: AdminSettingsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/settings/notifications', component: AdminNotificationSettingsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },

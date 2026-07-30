@@ -60,10 +60,24 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid credentials"})
 	}
 
+	if config.RedisClient != nil {
+		sessionKey := fmt.Sprintf("active_session:%d", user.ID)
+		val, err := config.RedisClient.Get(config.Ctx, sessionKey).Result()
+		if err == nil && val != "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Akun ini sedang login di perangkat lain. Harap logout terlebih dahulu."})
+		}
+	}
+
 	token, err := jwt.GenerateToken(&user)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate token"})
 	}
+
+	if config.RedisClient != nil {
+		sessionKey := fmt.Sprintf("active_session:%d", user.ID)
+		config.RedisClient.Set(config.Ctx, sessionKey, token, 24*time.Hour)
+	}
+
 	auditutils.LogAction(user.ID, "LOGIN", "User", user.ID, "User berhasil login")
 
 	divisi := "Belum Ditentukan"
@@ -99,6 +113,10 @@ func Logout(c *fiber.Ctx) error {
 	}
 	if userID, ok := c.Locals("user_id").(uint); ok {
 		auditutils.LogAction(userID, "LOGOUT", "User", userID, "User berhasil logout")
+		if config.RedisClient != nil {
+			sessionKey := fmt.Sprintf("active_session:%d", userID)
+			config.RedisClient.Del(config.Ctx, sessionKey)
+		}
 	}
 
 	return c.JSON(fiber.Map{"message": "Logged out successfully"})

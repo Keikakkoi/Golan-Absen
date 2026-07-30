@@ -253,6 +253,26 @@ export class EmployeeListComponent implements OnInit {
     }
 
     const action = this.isEditMode ? 'mengubah data karyawan ini' : 'menyimpan karyawan baru';
+
+    // Cek duplikat Email di frontend
+    const emailInput = String(this.formData.email || '').trim().toLowerCase();
+    const isEmailDuplicate = this.employees.some(emp => 
+      emp.Email?.toLowerCase() === emailInput && emp.ID !== this.formData.id
+    );
+    if (isEmailDuplicate) {
+      await this.alert.error('Gagal menyimpan', `Email '${this.formData.email}' sudah memiliki akun. Silakan gunakan email lain.`);
+      return;
+    }
+
+    // Cek duplikat NIK di frontend
+    const isNikDuplicate = this.employees.some(emp => 
+      emp.Employee?.NIK === nik && emp.ID !== this.formData.id
+    );
+    if (isNikDuplicate) {
+      await this.alert.error('Gagal menyimpan', `NIK '${nik}' sudah memiliki akun. Pastikan NIK benar.`);
+      return;
+    }
+
     if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.isSaving = true;
     const headers = this.getHeaders();

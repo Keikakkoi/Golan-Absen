@@ -50,8 +50,9 @@ func CheckIn(c *fiber.Ctx) error {
 	}
 
 	now := attendanceNow()
-	schedule := getAttendanceSchedule()
-	workDate, startTime, lateTime, endTime, checkoutDeadline := attendanceWindow(now, schedule)
+	workDate := attendanceBusinessDate(now)
+	schedule := getAttendanceSchedule(employee.ID, workDate)
+	_, startTime, lateTime, endTime, checkoutDeadline := attendanceWindow(now, schedule)
 	resetAt := time.Date(now.Year(), now.Month(), now.Day(), attendanceResetHour, 0, 0, 0, jakartaLocation)
 	if now.Before(resetAt) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-in baru dapat dimulai pukul 07:00."})
@@ -59,7 +60,7 @@ func CheckIn(c *fiber.Ctx) error {
 	if !now.Before(endTime) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas check-in hari ini adalah pukul " + endTime.Format("15:04") + "."})
 	}
-	_ = closeExpiredAttendanceRecords(now, schedule)
+	_ = closeExpiredAttendanceRecords(now)
 	if now.After(checkoutDeadline) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Periode absensi hari ini sudah ditutup setelah pukul " + checkoutDeadline.Format("15:04") + "."})
 	}
@@ -152,13 +153,12 @@ func CheckIn(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to upload image"})
 	}
 
-	// Determine Status (Hadir or Terlambat). Exactly at the grace limit is still on time.
+	// Determine Status — always Hadir within the check-in window.
 	nowStr := now.Format("15:04:05")
 
 	status := models.StatusHadir
 	lateMinutes := 0
 	if now.After(lateTime) {
-		status = models.StatusTerlambat
 		lateMinutes = int(now.Sub(startTime).Minutes())
 		if lateMinutes < 0 {
 			lateMinutes = 0
@@ -169,7 +169,7 @@ func CheckIn(c *fiber.Ctx) error {
 		EmployeeID:          employee.ID,
 		Tanggal:             workDate,
 		JamMasuk:            &now,
-		IsLate:              status == models.StatusTerlambat,
+		IsLate:              now.After(lateTime),
 		LateDurationMinutes: lateMinutes,
 		Status:              status,
 		LatitudeMasuk:       lat,
@@ -193,11 +193,7 @@ func CheckIn(c *fiber.Ctx) error {
 	var hrdUsers []models.User
 	if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
 		for _, hrd := range hrdUsers {
-			if status == models.StatusTerlambat {
-				_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Keterlambatan", "Karyawan Terlambat", fmt.Sprintf("%s melakukan check-in terlambat pada %s", employee.NIK, now.Format("02 Jan 2006 15:04")))
-			} else {
-				_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Check-In", "Check-In Karyawan", fmt.Sprintf("%s melakukan check-in pada %s (%s)", employee.NIK, now.Format("02 Jan 2006 15:04"), wt.Nama))
-			}
+			_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Check-In", "Check-In Karyawan", fmt.Sprintf("%s melakukan check-in pada %s (%s)", employee.NIK, now.Format("02 Jan 2006 15:04"), wt.Nama))
 		}
 	}
 
@@ -223,8 +219,9 @@ func CheckOut(c *fiber.Ctx) error {
 	}
 
 	now := attendanceNow()
-	schedule := getAttendanceSchedule()
-	workDate, _, _, checkoutStart, checkoutDeadline := attendanceWindow(now, schedule)
+	workDate := attendanceBusinessDate(now)
+	schedule := getAttendanceSchedule(employee.ID, workDate)
+	_, _, _, checkoutStart, checkoutDeadline := attendanceWindow(now, schedule)
 	if now.Before(checkoutStart) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-out baru dapat dilakukan mulai pukul " + checkoutStart.Format("15:04") + "."})
 	}
@@ -242,7 +239,7 @@ func CheckOut(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Already checked out today"})
 	}
 	if now.After(checkoutDeadline) {
-		_ = closeExpiredAttendanceRecords(now, schedule)
+		_ = closeExpiredAttendanceRecords(now)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas check-out pukul " + checkoutDeadline.Format("15:04") + " sudah lewat. Sistem melakukan check-out otomatis."})
 	}
 
@@ -346,7 +343,7 @@ func CheckOut(c *fiber.Ctx) error {
 func GetAttendanceHistory(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 	now := attendanceNow()
-	_ = closeExpiredAttendanceRecords(now, getAttendanceSchedule())
+	_ = closeExpiredAttendanceRecords(now)
 
 	var employee models.Employee
 	if err := config.DB.Where("user_id = ?", userID).First(&employee).Error; err != nil {
@@ -357,11 +354,9 @@ func GetAttendanceHistory(c *fiber.Ctx) error {
 	if err := config.DB.Where("employee_id = ?", employee.ID).Order("tanggal desc").Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch records"})
 	}
-	if role := c.Locals("role").(models.Role); role == models.RoleKaryawan || role == models.RoleMagang || role == models.RoleManajer {
-		for index := range records {
-			if records[index].Status == models.StatusTerlambat {
-				records[index].Status = models.StatusHadir
-			}
+	for index := range records {
+		if records[index].Status == models.StatusTerlambat {
+			records[index].Status = models.StatusHadir
 		}
 	}
 
@@ -406,11 +401,11 @@ func startAttendanceAutoCheckout() {
 		go func() {
 			// Reconcile completed workdays immediately so records remain visible
 			// even when nobody opens the attendance screen after a missed day.
-			_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
+			_ = reconcileMissingAttendanceRecords(attendanceNow())
 			ticker := time.NewTicker(time.Minute)
 			defer ticker.Stop()
 			for range ticker.C {
-				_ = closeExpiredAttendanceRecords(attendanceNow(), getAttendanceSchedule())
+				_ = reconcileMissingAttendanceRecords(attendanceNow())
 			}
 		}()
 	})
@@ -429,40 +424,30 @@ func attendanceBusinessDate(now time.Time) time.Time {
 	return date
 }
 
-func getAttendanceSchedule() models.WorkSchedule {
-	schedules := getAttendanceSchedules()
-	schedule := schedules[0]
-	if strings.TrimSpace(schedule.JamMulai) == "" {
-		schedule.JamMulai = defaultStartTime
-	}
-	if strings.TrimSpace(schedule.JamSelesai) == "" {
-		schedule.JamSelesai = defaultEndTime
-	}
-	if schedule.ToleransiTerlambatMenit < 0 {
-		schedule.ToleransiTerlambatMenit = defaultGraceMinutes
-	}
-	return schedule
-}
-
-// getAttendanceSchedules returns every configured shift. The application does
-// not yet assign a shift to an individual employee, so absence reconciliation
-// uses the union of configured working days and waits for the latest applicable
-// shift deadline on a day. This keeps newly added shifts from being ignored.
-func getAttendanceSchedules() []models.WorkSchedule {
+func getAttendanceSchedule(employeeID uint, date time.Time) models.WorkSchedule {
+	var schedules []models.WorkSchedule
+	dateStr := date.Format("2006-01-02")
 	if config.DB != nil {
-		var schedules []models.WorkSchedule
-		if err := config.DB.Order("id asc").Find(&schedules).Error; err == nil && len(schedules) > 0 {
-			return schedules
+		config.DB.Where("employee_id = ? AND DATE(tanggal) = ?", employeeID, dateStr).Limit(1).Find(&schedules)
+		if len(schedules) > 0 {
+			return schedules[0]
+		}
+
+		// Fallback to global shift (employee_id IS NULL)
+		config.DB.Where("employee_id IS NULL").Limit(1).Find(&schedules)
+		if len(schedules) > 0 {
+			return schedules[0]
 		}
 	}
-	return []models.WorkSchedule{{
-		NamaShift:               "Reguler",
+	
+	return models.WorkSchedule{
+		NamaShift:               "Reguler (Default)",
 		JamMulai:                defaultStartTime,
 		JamSelesai:              defaultEndTime,
 		ToleransiTerlambatMenit: defaultGraceMinutes,
-		HariKerja:               "1,2,3,4,5",
-	}}
+	}
 }
+
 
 func scheduleMoment(date time.Time, raw, fallback string) time.Time {
 	value := strings.TrimSpace(raw)
@@ -485,23 +470,6 @@ func attendanceWindow(now time.Time, schedule models.WorkSchedule) (time.Time, t
 	return workDate, start, lateAt, end, checkoutDeadline
 }
 
-func scheduleAppliesToDate(schedule models.WorkSchedule, date time.Time) bool {
-	weekday := int(date.Weekday()) // Sunday=0 in Go.
-	if weekday == 0 {
-		weekday = 7
-	}
-	days := strings.TrimSpace(schedule.HariKerja)
-	if days == "" {
-		days = "1,2,3,4,5"
-	}
-	for _, value := range strings.Split(days, ",") {
-		day, err := strconv.Atoi(strings.TrimSpace(value))
-		if err == nil && day == weekday {
-			return true
-		}
-	}
-	return false
-}
 
 func scheduleCheckoutDeadline(schedule models.WorkSchedule, date time.Time) time.Time {
 	return scheduleEndTime(schedule, date).Add(time.Hour)
@@ -518,33 +486,6 @@ func scheduleEndTime(schedule models.WorkSchedule, date time.Time) time.Time {
 	return end
 }
 
-func latestScheduleDeadline(date time.Time, schedules []models.WorkSchedule) (time.Time, bool) {
-	latest := time.Time{}
-	for _, schedule := range schedules {
-		if !scheduleAppliesToDate(schedule, date) {
-			continue
-		}
-		deadline := scheduleCheckoutDeadline(schedule, date)
-		if latest.IsZero() || deadline.After(latest) {
-			latest = deadline
-		}
-	}
-	return latest, !latest.IsZero()
-}
-
-func latestScheduleEndTime(date time.Time, schedules []models.WorkSchedule) (time.Time, bool) {
-	latest := time.Time{}
-	for _, schedule := range schedules {
-		if !scheduleAppliesToDate(schedule, date) {
-			continue
-		}
-		end := scheduleEndTime(schedule, date)
-		if latest.IsZero() || end.After(latest) {
-			latest = end
-		}
-	}
-	return latest, !latest.IsZero()
-}
 
 // reconcileMissingAttendanceRecords materializes Alpha rows for completed
 // working days. It is intentionally idempotent: an existing attendance row or
@@ -557,9 +498,7 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 
 	missingAttendanceMu.Lock()
 	defer missingAttendanceMu.Unlock()
-
 	now = now.In(jakartaLocation)
-	schedules := getAttendanceSchedules()
 	var employees []models.Employee
 	if err := config.DB.Find(&employees).Error; err != nil {
 		return err
@@ -619,8 +558,13 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 				continue
 			}
 
-			latestEnd, applicable := latestScheduleEndTime(day, schedules)
-			if !applicable || now.Before(latestEnd) {
+			wd := day.Weekday()
+			schedule := getAttendanceSchedule(employee.ID, day)
+			// Check if it's a working day (Monday-Friday or has a specific schedule override)
+			isWorkingDay := (wd >= time.Monday && wd <= time.Friday) || schedule.NamaShift != "Reguler (Default)"
+			
+			latestEnd := scheduleEndTime(schedule, day)
+			if !isWorkingDay || now.Before(latestEnd) {
 				continue
 			}
 
@@ -653,7 +597,7 @@ func normalizeAttendanceDate(value time.Time) time.Time {
 
 // closeExpiredAttendanceRecords makes the one-hour check-out limit effective
 // even when the employee never opens the app again after the deadline.
-func closeExpiredAttendanceRecords(now time.Time, schedule models.WorkSchedule) error {
+func closeExpiredAttendanceRecords(now time.Time) error {
 	if config.DB == nil {
 		return nil
 	}
@@ -661,7 +605,6 @@ func closeExpiredAttendanceRecords(now time.Time, schedule models.WorkSchedule) 
 		return err
 	}
 	currentDate := attendanceBusinessDate(now)
-	schedules := getAttendanceSchedules()
 	var records []models.AttendanceRecord
 	if err := config.DB.Where("jam_pulang IS NULL AND jam_masuk IS NOT NULL AND tanggal <= ?", currentDate.Format("2006-01-02")).Find(&records).Error; err != nil {
 		return err
@@ -671,10 +614,8 @@ func closeExpiredAttendanceRecords(now time.Time, schedule models.WorkSchedule) 
 		if err != nil {
 			continue
 		}
-		deadline, applicable := latestScheduleDeadline(recordDate, schedules)
-		if !applicable {
-			_, _, _, _, deadline = attendanceWindow(recordDate.Add(12*time.Hour), schedule)
-		}
+		schedule := getAttendanceSchedule(record.EmployeeID, recordDate)
+		_, _, _, _, deadline := attendanceWindow(recordDate.Add(12*time.Hour), schedule)
 		if now.Before(deadline) {
 			continue
 		}

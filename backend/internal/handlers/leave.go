@@ -63,8 +63,10 @@ func GetLeavePolicy(c *fiber.Ctx) error {
 	policy := []string{models.LeaveTypeSakit, models.LeaveTypeLainnya}
 	eligible := false
 	if role != models.RoleMagang {
-		policy = append([]string{models.LeaveTypeCuti}, policy...)
 		eligible = isEligibleForCuti(employee, attendanceNow(), setting.MinimumMasaKerjaCutiBulan)
+		if eligible {
+			policy = append([]string{models.LeaveTypeCuti}, policy...)
+		}
 	}
 	return c.JSON(fiber.Map{
 		"leave_types":                   policy,

@@ -24,7 +24,6 @@ export class StatisticsComponent implements OnInit {
   // General Counters
   totalDays = 0;
   countHadir = 0;
-  countTerlambat = 0;
   countIzin = 0;
   countCuti = 0;
   countAlpha = 0;
@@ -65,7 +64,6 @@ export class StatisticsComponent implements OnInit {
     this.totalDays = this.records.length;
     
     this.countHadir = 0;
-    this.countTerlambat = 0;
     this.countIzin = 0;
     this.countCuti = 0;
     this.countAlpha = 0;
@@ -104,7 +102,6 @@ export class StatisticsComponent implements OnInit {
       // Counters by status
       const status = rec.Status;
       if (status === 'Hadir') this.countHadir++;
-      else if (status === 'Terlambat') this.countTerlambat++;
       else if (status === 'Izin') this.countIzin++;
       else if (status === 'Cuti') this.countCuti++;
       else if (status === 'Alpha') this.countAlpha++;
@@ -124,8 +121,8 @@ export class StatisticsComponent implements OnInit {
       }
     });
 
-    // Attendance Rate (Hadir & Terlambat counts as present)
-    const presentCount = this.countHadir + this.countTerlambat;
+    // Attendance Rate (all Hadir records count as present)
+    const presentCount = this.countHadir;
     this.attendanceRate = this.totalDays > 0 
       ? Math.round((presentCount / this.totalDays) * 100) 
       : 100;
