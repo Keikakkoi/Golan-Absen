@@ -42,3 +42,20 @@ ALTER TABLE internship_certificates ADD COLUMN IF NOT EXISTS mime_type VARCHAR(8
 ALTER TABLE internship_certificates ADD COLUMN IF NOT EXISTS file_size BIGINT DEFAULT 0;
 ALTER TABLE internship_certificates ADD COLUMN IF NOT EXISTS uploaded_by BIGINT;
 ALTER TABLE internship_certificates ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP;
+
+CREATE TABLE IF NOT EXISTS internship_documents (
+    id BIGSERIAL PRIMARY KEY,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP,
+    user_id BIGINT NOT NULL,
+    document_type VARCHAR(40) NOT NULL,
+    file_url TEXT,
+    storage_key TEXT,
+    file_name VARCHAR(255),
+    mime_type VARCHAR(80),
+    file_size BIGINT DEFAULT 0,
+    uploaded_by BIGINT,
+    uploaded_at TIMESTAMP,
+    CONSTRAINT uq_internship_document_user_type UNIQUE (user_id, document_type)
+);

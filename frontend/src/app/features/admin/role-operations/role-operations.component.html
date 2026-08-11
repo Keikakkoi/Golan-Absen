@@ -5,18 +5,309 @@
 
   <ng-container *ngIf="activeSection === 'internship'">
     <div class="stats-grid"><div class="golan-card stat-card"><h4>Total Magang</h4><div class="value">{{ internshipStats.total_magang || 0 }}</div></div><div class="golan-card stat-card"><h4>Magang Aktif</h4><div class="value">{{ internshipStats.magang_aktif || 0 }}</div></div><div class="golan-card stat-card"><h4>Logbook Pending</h4><div class="value">{{ internshipStats.logbook_pending || 0 }}</div></div><div class="golan-card stat-card"><h4>Sertifikat Terbit</h4><div class="value">{{ internshipStats.sertifikat_terbit || 0 }}</div></div></div>
-    <section class="golan-card panel"><div class="panel-heading"><div><span class="eyebrow">REVIEW PEMBIMBING</span><h3>Logbook Magang</h3></div><div class="toolbar report-toolbar"><input class="golan-input" [(ngModel)]="internSearch" placeholder="Cari nama/NIK"><select class="golan-input" [(ngModel)]="selectedInternId"><option value="">Semua peserta</option><option *ngFor="let row of certificates" [value]="row.user_id">{{ row.nama }}</option></select><select class="golan-input" [(ngModel)]="selectedLogbookStatus"><option value="">Semua status</option><option value="submitted">Submitted</option><option value="draft">Draft</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><input type="date" class="golan-input" [(ngModel)]="start"><input type="date" class="golan-input" [(ngModel)]="end"><button class="btn-primary report-filter-action" (click)="loadLogbooks()">Filter</button><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('logbooks')"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="openExportMenu === 'logbooks'"><button type="button" class="dropdown-item" (click)="exportLogbooks()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportLogbooksExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportLogbooksJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportLogbooksPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Tanggal</th><th>Peserta</th><th>Kegiatan</th><th>Status</th><th>Catatan Review</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let row of logbooks"><td>{{ row.Tanggal | date:'dd MMM yyyy' }}</td><td>{{ row.Employee?.User?.Nama || '-' }}</td><td>{{ row.DeskripsiKegiatan || row.Tugas || '-' }}</td><td><span class="status-pill">{{ row.StatusLogbook }}</span></td><td><input class="golan-input note-input" [(ngModel)]="notes[row.ID]" placeholder="Catatan"></td><td><ng-container *ngIf="row.StatusLogbook === 'submitted'; else reviewed"><button class="btn-small approve" (click)="reviewLogbook(row.ID, 'approved')">Approve</button><button class="btn-small reject" (click)="reviewLogbook(row.ID, 'rejected')">Reject</button></ng-container><ng-template #reviewed>{{ row.ReviewNotes || '-' }}</ng-template></td></tr></tbody></table></div><p class="muted" *ngIf="!logbooks.length">Tidak ada logbook pada filter ini.</p></section>
-    <section class="golan-card panel"><div class="panel-heading"><div><span class="eyebrow">AKHIR PERIODE ATAU UPLOAD HRD</span><h3>Sertifikat Magang</h3></div><div class="toolbar report-toolbar"><input class="golan-input" [(ngModel)]="internSearch" placeholder="Cari peserta"><select class="golan-input" [(ngModel)]="certificateStatus"><option value="">Semua status</option><option value="active">Tersedia</option><option value="completed">Belum tersedia</option><option value="uploaded">Upload manual</option></select><button class="btn-primary report-filter-action" (click)="loadInternship()">Filter</button><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('certificates')"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="openExportMenu === 'certificates'"><button type="button" class="dropdown-item" (click)="exportCertificates()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportCertificatesExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportCertificatesJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportCertificatesPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Peserta</th><th>Institusi</th><th>Tanggal Selesai</th><th>Status</th><th>File</th><th>Upload / Aksi</th></tr></thead><tbody><tr *ngFor="let row of certificates"><td>{{ row.nama }}</td><td>{{ row.institution_name || '-' }}</td><td>{{ row.internship_end_date | date:'dd MMM yyyy' }}</td><td><span class="status-pill">{{ row.uploaded ? 'Upload manual' : (row.available ? 'Tersedia otomatis' : 'Belum tersedia') }}</span></td><td><a *ngIf="row.file_url" [href]="row.file_url" target="_blank" rel="noopener">{{ row.file_name }}</a><span *ngIf="!row.file_url">-</span></td><td class="actions"><input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" (change)="onCertificateFile($event)"><button class="btn-primary btn-small" [disabled]="uploadingUserId === row.user_id" (click)="uploadCertificate(row.user_id)">{{ uploadingUserId === row.user_id ? 'Mengunggah...' : (row.uploaded ? 'Ganti' : 'Upload') }}</button><button class="btn-secondary btn-small" *ngIf="row.available" (click)="downloadCertificate(row.user_id)">Download</button><button class="btn-small reject" *ngIf="row.uploaded" (click)="deleteCertificate(row.user_id)">Hapus</button></td></tr></tbody></table></div></section>
+    <section class="golan-card panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">VERIFIKASI LOGBOOK</span>
+          <h3>Logbook Magang</h3>
+        </div>
+        <div class="toolbar report-toolbar">
+          <label>Nama/NIK
+            <input class="golan-input" [(ngModel)]="internSearch" placeholder="Cari nama/NIK...">
+          </label>
+          <label>Peserta
+            <select class="golan-input" [(ngModel)]="selectedInternId" (change)="loadLogbooks()">
+              <option value="">Semua peserta</option>
+              <option *ngFor="let row of certificates" [value]="row.user_id">{{ row.nama }}</option>
+            </select>
+          </label>
+          <label>Status
+            <select class="golan-input" [(ngModel)]="selectedLogbookStatus" (change)="loadLogbooks()">
+              <option value="">Semua status</option>
+              <option value="submitted">Submitted</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="draft">Draft</option>
+            </select>
+          </label>
+          <label>Mulai
+            <input type="date" class="golan-input" [(ngModel)]="start">
+          </label>
+          <label>Selesai
+            <input type="date" class="golan-input" [(ngModel)]="end">
+          </label>
+          <button type="button" class="btn-primary report-filter-action" (click)="loadLogbooks()">Filter</button>
+          <div class="export-dropdown" style="position: relative;">
+            <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('logbooks')">
+              <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak
+              <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
+            </button>
+            <div class="dropdown-menu-custom" *ngIf="openExportMenu === 'logbooks'">
+              <button type="button" class="dropdown-item" (click)="exportLogbooks()">
+                <i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV
+              </button>
+              <button type="button" class="dropdown-item" (click)="exportLogbooksExcel()">
+                <i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)
+              </button>
+              <button type="button" class="dropdown-item" (click)="exportLogbooksJSON()">
+                <i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON
+              </button>
+              <button type="button" class="dropdown-item" (click)="exportLogbooksPDF()">
+                <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="golan-table-responsive">
+        <table class="golan-table role-operations-logbook-table">
+          <colgroup>
+            <col class="col-date">
+            <col class="col-participant">
+            <col class="col-task">
+            <col class="col-activity">
+            <col class="col-screenshot">
+            <col class="col-status">
+            <col class="col-filling">
+            <col class="col-review">
+            <col class="col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Peserta</th>
+              <th>Tugas</th>
+              <th>Kegiatan</th>
+              <th>Screenshot</th>
+              <th>Status Logbook</th>
+              <th>Pengisian</th>
+              <th>Catatan Review Pembimbing</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of logbooks">
+              <td>{{ (row.tanggal || row.Tanggal || row.CreatedAt) | date:'dd MMM yyyy' }}</td>
+              <td>
+                <div style="font-weight: 600;">{{ row.Employee?.User?.Nama || row.User?.Nama || '-' }}</div>
+                <small class="role-badge" style="font-size: 11px; display: inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); margin-top: 2px; color: var(--muted-color);">
+                  🎓 Magang
+                </small>
+              </td>
+              <td>{{ row.tugas || row.Tugas || '-' }}</td>
+              <td>{{ row.deskripsi_kegiatan || row.DeskripsiKegiatan || row.kegiatan || row.Kegiatan || '-' }}</td>
+              <td>
+                <span *ngFor="let image of (row.attachments || row.Attachments)" class="report-thumb">
+                  <a [href]="image.file_url || image.FileURL" target="_blank" rel="noopener">
+                    <img [src]="image.file_url || image.FileURL" [alt]="image.file_name || image.FileName">
+                  </a>
+                </span>
+                <span *ngIf="!(row.attachments?.length || row.Attachments?.length)">-</span>
+              </td>
+              <td>
+                <span class="status-pill" [ngClass]="{
+                  'status-success': (row.status_logbook || row.StatusLogbook) === 'approved',
+                  'status-warning': (row.status_logbook || row.StatusLogbook) === 'submitted',
+                  'status-danger': (row.status_logbook || row.StatusLogbook) === 'rejected'
+                }">
+                  {{ row.status_logbook || row.StatusLogbook || 'draft' }}
+                </span>
+              </td>
+              <td>
+                <span *ngIf="row.is_late_submission || row.IsLateSubmission" class="status-pill status-warning">⚠ Terlambat</span>
+                <span *ngIf="!(row.is_late_submission || row.IsLateSubmission)">Tepat waktu</span>
+              </td>
+              <td>
+                {{ row.review_notes || row.ReviewNotes || '-' }}
+              </td>
+              <td>
+                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                  <button type="button" class="btn-small btn-view-detail compact" (click)="viewLogbookDetail(row)" title="Lihat Detail">
+                    <i class="fas fa-eye"></i> Detail
+                  </button>
+                  <button type="button" class="btn-small reject" (click)="deleteLogbook(row)" title="Hapus logbook">
+                    <i class="fas fa-trash"></i> Hapus
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!logbooks.length">
+              <td colspan="10" style="text-align: center; color: var(--muted-color); padding: 24px;">Tidak ada logbook pada filter ini.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="golan-card panel">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">AKHIR PERIODE ATAU UPLOAD HRD</span>
+          <h3>Sertifikat Magang</h3>
+        </div>
+        <div class="toolbar report-toolbar">
+          <label>Nama/NIK
+            <input class="golan-input" [(ngModel)]="internSearch" placeholder="Cari nama peserta...">
+          </label>
+          <label>Peserta
+            <select class="golan-input" [(ngModel)]="selectedCertInternId">
+              <option value="">Semua peserta</option>
+              <option *ngFor="let row of certificates" [value]="row.user_id">{{ row.nama }}</option>
+            </select>
+          </label>
+          <label>Status
+            <select class="golan-input" [(ngModel)]="certificateStatus">
+              <option value="">Semua status</option>
+              <option value="uploaded">Sudah diupload</option>
+              <option value="not_uploaded">Belum diupload</option>
+            </select>
+          </label>
+          <button type="button" class="btn-primary report-filter-action" (click)="loadInternship()">Filter</button>
+          <div class="export-dropdown" style="position: relative;">
+            <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('certificates')">
+              <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak
+              <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
+            </button>
+            <div class="dropdown-menu-custom" *ngIf="openExportMenu === 'certificates'">
+              <button type="button" class="dropdown-item" (click)="exportCertificates()">
+                <i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV
+              </button>
+              <button type="button" class="dropdown-item" (click)="exportCertificatesExcel()">
+                <i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)
+              </button>
+              <button type="button" class="dropdown-item" (click)="exportCertificatesJSON()">
+                <i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON
+              </button>
+              <button type="button" class="dropdown-item" (click)="exportCertificatesPDF()">
+                <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="golan-table-responsive">
+        <table class="golan-table role-operations-certificate-table">
+          <thead>
+            <tr>
+              <th>Peserta</th>
+              <th>Institusi</th>
+              <th>Tanggal Selesai</th>
+              <th>Status Sertifikat</th>
+              <th>File Sertifikat</th>
+              <th>Dokumen Nilai &amp; Keterangan Lulus</th>
+              <th>Aksi &amp; Upload</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of certificates">
+              <td>
+                <div style="font-weight: 600;">{{ row.nama }}</div>
+                <small class="role-badge" style="font-size: 11px; display: inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); margin-top: 2px; color: var(--muted-color);">
+                  🎓 Magang
+                </small>
+              </td>
+              <td>{{ row.institution_name || '-' }}</td>
+              <td>{{ row.internship_end_date ? (row.internship_end_date | date:'dd MMM yyyy') : '-' }}</td>
+              <td>
+                <span class="status-pill" [ngClass]="{
+                  'status-success': row.uploaded,
+                  'status-warning': !row.uploaded && !isInternshipEnded(row),
+                  'status-muted': !row.uploaded && isInternshipEnded(row)
+                }" style="white-space: nowrap;">
+                  {{ row.uploaded ? 'Sudah diupload' : (!isInternshipEnded(row) ? 'Masa magang berlangsung' : 'Belum diupload') }}
+                </span>
+              </td>
+              <td>
+                <a *ngIf="row.file_url" [href]="row.file_url" target="_blank" rel="noopener" class="cert-link btn-view-detail compact" title="Lihat sertifikat">
+                  <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 4px;"></i> {{ row.file_name || 'Lihat File' }}
+                </a>
+                <span *ngIf="!row.file_url" style="color: var(--muted-color);">-</span>
+              </td>
+              <td>
+                <div class="document-file-list">
+                  <div *ngFor="let docType of ['nilai_magang', 'keterangan_lulus']"><strong>{{ docType === 'nilai_magang' ? 'Nilai Magang' : 'Keterangan Lulus' }}</strong><a *ngIf="row[docType]?.available && row[docType].file_url" [href]="row[docType].file_url" target="_blank" rel="noopener" class="cert-link" title="Lihat dokumen"><i class="fas fa-file-pdf"></i>{{ row[docType].file_name || 'Lihat File' }}</a><span *ngIf="!row[docType]?.available || !row[docType].file_url" class="muted-file">-</span></div>
+                </div>
+              </td>
+              <td>
+                <div class="document-actions">
+                  <div class="document-action-row"><strong>Sertifikat</strong><ng-container *ngIf="row.uploaded; else certificateUpload"><button type="button" class="btn-small cert-download-btn" (click)="downloadCertificate(row.user_id)" title="Unduh sertifikat"><i class="fas fa-download"></i> Download</button><button type="button" class="btn-small reject" (click)="deleteCertificate(row.user_id)" title="Hapus sertifikat"><i class="fas fa-trash"></i> Hapus</button></ng-container><ng-template #certificateUpload><ng-container *ngIf="isInternshipEnded(row); else certificateLockedAction"><label class="btn-small btn-secondary cert-upload-btn" [class.file-selected]="selectedCertificateFiles[row.user_id]" title="Pilih file sertifikat PDF"><i class="fas" [ngClass]="selectedCertificateFiles[row.user_id] ? 'fa-check-circle' : 'fa-folder-open'"></i> {{ selectedCertificateFiles[row.user_id] ? 'PDF dipilih' : 'Pilih PDF' }}<input type="file" accept=".pdf,application/pdf" (change)="onCertificateFileSelected($event, row.user_id)" hidden></label><button type="button" class="btn-small btn-primary" *ngIf="selectedCertificateFiles[row.user_id]" [disabled]="uploadingUserId === row.user_id" (click)="uploadCertificate(row.user_id)"><i class="fas" [ngClass]="uploadingUserId === row.user_id ? 'fa-spinner fa-spin' : 'fa-upload'"></i> {{ uploadingUserId === row.user_id ? 'Mengunggah...' : 'Upload' }}</button></ng-container><ng-template #certificateLockedAction><span class="muted-file">Setelah magang berakhir</span></ng-template></ng-template></div>
+                  <div class="document-action-row" *ngFor="let docType of ['nilai_magang', 'keterangan_lulus']"><strong>{{ docType === 'nilai_magang' ? 'Nilai Magang' : 'Keterangan Lulus' }}</strong><ng-container *ngIf="row[docType]?.available; else documentUpload"><button type="button" class="btn-small cert-download-btn" (click)="downloadDocument(row.user_id, docType)" title="Unduh dokumen"><i class="fas fa-download"></i> Download</button><button type="button" class="btn-small reject" (click)="deleteDocument(row.user_id, docType)" title="Hapus dokumen"><i class="fas fa-trash"></i> Hapus</button></ng-container><ng-template #documentUpload><ng-container *ngIf="isInternshipEnded(row); else documentLockedAction"><label class="btn-small btn-secondary cert-upload-btn" [class.file-selected]="!!selectedDocumentFiles[documentKey(row.user_id, docType)]" title="Pilih file PDF"><i class="fas" [ngClass]="selectedDocumentFiles[documentKey(row.user_id, docType)] ? 'fa-check-circle' : 'fa-folder-open'"></i> {{ selectedDocumentFiles[documentKey(row.user_id, docType)] ? 'PDF dipilih' : 'Pilih PDF' }}<input type="file" accept=".pdf,application/pdf" (change)="onDocumentFileSelected($event, row.user_id, docType)" hidden></label><button type="button" class="btn-small btn-primary document-upload-btn" *ngIf="selectedDocumentFiles[documentKey(row.user_id, docType)]" [disabled]="uploadingDocumentKey === documentKey(row.user_id, docType)" (click)="$event.stopPropagation(); uploadDocument(row.user_id, docType)"><i class="fas" [ngClass]="uploadingDocumentKey === documentKey(row.user_id, docType) ? 'fa-spinner fa-spin' : 'fa-upload'"></i> {{ uploadingDocumentKey === documentKey(row.user_id, docType) ? 'Mengunggah...' : 'Upload' }}</button></ng-container><ng-template #documentLockedAction><span class="muted-file">Setelah magang berakhir</span></ng-template></ng-template></div>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!certificates.length">
+              <td colspan="7" style="text-align: center; color: var(--muted-color); padding: 24px;">Tidak ada sertifikat magang pada filter ini.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </ng-container>
 
   <ng-container *ngIf="activeSection === 'team'">
-    <div class="stats-grid"><div class="golan-card stat-card"><h4>Total Anggota Tim</h4><div class="value">{{ teamStats.team_members || 0 }}</div></div><div class="golan-card stat-card"><h4>Hadir Hari Ini</h4><div class="value">{{ teamStats.hadir_hari_ini || 0 }}</div></div><div class="golan-card stat-card"><h4>Izin Pending</h4><div class="value">{{ teamStats.izin_pending || 0 }}</div></div></div>
+    <div class="stats-grid"><div class="golan-card stat-card"><h4>Total Anggota Tim</h4><div class="value">{{ teamStats.team_members || 0 }}</div></div><div class="golan-card stat-card"><h4>Hadir Hari Ini</h4><div class="value">{{ teamStats.hadir_hari_ini || 0 }}</div></div><div class="golan-card stat-card"><h4>Belum Absen Hari Ini</h4><div class="value">{{ teamStats.belum_absen_hari_ini || 0 }}</div></div><div class="golan-card stat-card"><h4>Izin Pending</h4><div class="value">{{ teamStats.izin_pending || 0 }}</div></div></div>
     <section class="golan-card panel"><div class="panel-heading"><h3>Absensi Tim</h3><div class="toolbar report-toolbar"><input class="golan-input" [(ngModel)]="teamSearch" placeholder="Cari nama/NIK"><input type="date" class="golan-input" [(ngModel)]="date"><select class="golan-input" [(ngModel)]="attendanceStatus"><option value="">Semua status</option><option value="Hadir">Hadir</option><option value="Terlambat">Terlambat</option><option value="Tidak hadir">Tidak hadir</option></select><button class="btn-primary report-filter-action" (click)="loadAttendance()">Filter</button><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('attendance')"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="openExportMenu === 'attendance'"><button type="button" class="dropdown-item" (click)="exportAttendance()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportAttendanceExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportAttendanceJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportAttendancePDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Nama</th><th>Tanggal</th><th>Status</th><th>Masuk</th><th>Pulang</th></tr></thead><tbody><tr *ngFor="let row of attendanceRows"><td>{{ row.nama }}</td><td>{{ row.tanggal }}</td><td><span class="status-pill">{{ row.status }}</span></td><td>{{ row.jam_masuk || '-' }}</td><td>{{ row.jam_pulang || '-' }}</td></tr></tbody></table></div></section>
-    <section class="golan-card panel"><div class="panel-heading"><h3>Laporan Tim / Logbook</h3><div class="toolbar report-toolbar"><input class="golan-input" [(ngModel)]="teamSearch" placeholder="Cari anggota/NIK"><input type="date" class="golan-input" [(ngModel)]="start"><input type="date" class="golan-input" [(ngModel)]="end"><button class="btn-primary report-filter-action" (click)="loadReports()">Filter</button><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('reports')"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="openExportMenu === 'reports'"><button type="button" class="dropdown-item" (click)="exportReports()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportReportsExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportReportsJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportReportsPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Tanggal</th><th>Anggota</th><th>Tugas</th><th>Kegiatan</th><th>Status</th></tr></thead><tbody><tr *ngFor="let row of teamReports"><td>{{ row.Tanggal | date:'dd MMM yyyy' }}</td><td>{{ row.Employee?.User?.Nama || '-' }}</td><td>{{ row.Tugas || '-' }}</td><td>{{ row.DeskripsiKegiatan || '-' }}</td><td><span class="status-pill">{{ row.StatusLogbook || row.StatusSesuai || '-' }}</span></td></tr></tbody></table></div></section>
+    <section class="golan-card panel"><div class="panel-heading"><h3>Laporan Tim / Logbook</h3><div class="toolbar report-toolbar"><input class="golan-input" [(ngModel)]="teamSearch" placeholder="Cari anggota/NIK"><input type="date" class="golan-input" [(ngModel)]="start"><input type="date" class="golan-input" [(ngModel)]="end"><button class="btn-primary report-filter-action" (click)="loadReports()">Filter</button><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('reports')"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="openExportMenu === 'reports'"><button type="button" class="dropdown-item" (click)="exportReports()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportReportsExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportReportsJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportReportsPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Tanggal</th><th>Anggota</th><th>Tugas</th><th>Kegiatan</th><th>Status</th></tr></thead><tbody><tr *ngFor="let row of teamReports"><td>{{ (row.tanggal || row.Tanggal) | date:'dd MMM yyyy' }}</td><td>{{ row.Employee?.User?.Nama || '-' }}</td><td>{{ row.tugas || row.Tugas || '-' }}</td><td>{{ row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-' }}</td><td><span class="status-pill">{{ row.status_logbook || row.StatusLogbook || row.status_sesuai || row.StatusSesuai || '-' }}</span></td></tr></tbody></table></div></section>
     <section class="golan-card panel"><div class="panel-heading"><h3>Statistik Kehadiran Tim</h3><div class="toolbar report-toolbar"><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('statistics')"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="openExportMenu === 'statistics'"><button type="button" class="dropdown-item" (click)="exportTeamStatistics()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportTeamStatisticsExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportTeamStatisticsJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportTeamStatisticsPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="member-stat" *ngFor="let member of teamStatistics.members"><strong>{{ member.Name }}</strong><div class="bar-line"><span class="present" [style.width.%]="member.Total ? member.Hadir / member.Total * 100 : 0"></span><span class="late" [style.width.%]="member.Total ? member.Terlambat / member.Total * 100 : 0"></span></div><small>{{ member.Hadir }} hadir Ã‚Â· {{ member.Terlambat }} terlambat</small></div></section>
-    <section class="golan-card panel"><div class="panel-heading"><h3>Persetujuan Izin Tim</h3><button class="btn-secondary" (click)="loadTeam()">Refresh</button></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Anggota</th><th>Jenis</th><th>Periode</th><th>Alasan</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let request of leaveRequests"><td>{{ request.Employee?.User?.Nama || '-' }}</td><td>{{ request.JenisIzin }}</td><td>{{ request.TanggalMulai | date:'dd MMM' }} Ã¢â‚¬â€œ {{ request.TanggalSelesai | date:'dd MMM yyyy' }}</td><td>{{ request.Alasan }}</td><td><input class="golan-input note-input" [(ngModel)]="notes[request.ID]"></td><td><ng-container *ngIf="request.Status === 'Pending'; else leaveDone"><button class="btn-small approve" (click)="decideLeave(request.ID, 'Approved')">Approve</button><button class="btn-small reject" (click)="decideLeave(request.ID, 'Rejected')">Reject</button></ng-container><ng-template #leaveDone><span class="status-pill">{{ request.Status }}</span></ng-template></td></tr></tbody></table></div><p class="muted" *ngIf="!leaveRequests.length">Tidak ada pengajuan izin.</p></section>
+    <section class="golan-card panel"><div class="panel-heading"><h3>Persetujuan Izin Tim</h3><button class="btn-secondary" (click)="loadTeam()">Refresh</button></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Anggota</th><th>Jenis</th><th>Periode</th><th>Alasan</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let request of leaveRequests"><td>{{ request.Employee?.User?.Nama || '-' }}</td><td>{{ request.JenisIzin }}</td><td>{{ request.TanggalMulai | date:'dd MMM' }} – {{ request.TanggalSelesai | date:'dd MMM yyyy' }}</td><td>{{ request.Alasan }}</td><td><input class="golan-input note-input" [(ngModel)]="notes[request.ID]"></td><td><ng-container *ngIf="request.Status === 'Pending'; else leaveDone"><button class="btn-small approve" (click)="decideLeave(request.ID, 'Approved')">Approve</button><button class="btn-small reject" (click)="decideLeave(request.ID, 'Rejected')">Reject</button></ng-container><ng-template #leaveDone><span class="status-pill">{{ request.Status }}</span></ng-template></td></tr></tbody></table></div><p class="muted" *ngIf="!leaveRequests.length">Tidak ada pengajuan izin.</p></section>
   </ng-container>
 </main></div>
+
+<div class="modal-backdrop" *ngIf="selectedLogbookDetail" (click)="closeLogbookDetail()">
+  <div class="modal-card golan-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Detail Logbook Magang - {{ (selectedLogbookDetail.tanggal || selectedLogbookDetail.Tanggal || selectedLogbookDetail.CreatedAt) | date:'dd MMMM yyyy' }}</h3>
+      <button type="button" class="close-btn" (click)="closeLogbookDetail()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-row">
+        <strong>Peserta:</strong>
+        <p>{{ selectedLogbookDetail.Employee?.User?.Nama || selectedLogbookDetail.User?.Nama || '-' }}</p>
+      </div>
+      <div class="detail-row">
+        <strong>Status:</strong>
+        <span class="status-pill" [ngClass]="{
+          'status-success': (selectedLogbookDetail.status_logbook || selectedLogbookDetail.StatusLogbook) === 'approved',
+          'status-warning': (selectedLogbookDetail.status_logbook || selectedLogbookDetail.StatusLogbook) === 'submitted',
+          'status-danger': (selectedLogbookDetail.status_logbook || selectedLogbookDetail.StatusLogbook) === 'rejected'
+        }">
+          {{ selectedLogbookDetail.status_logbook || selectedLogbookDetail.StatusLogbook || 'draft' }}
+        </span>
+      </div>
+      <div class="detail-row" *ngIf="selectedLogbookDetail.is_late_submission || selectedLogbookDetail.IsLateSubmission">
+        <strong>Pengisian:</strong> <span class="status-pill status-warning">⚠ Terlambat</span>
+      </div>
+      <div class="detail-row">
+        <strong>Tugas / Topik:</strong>
+        <p>{{ selectedLogbookDetail.tugas || selectedLogbookDetail.Tugas || '-' }}</p>
+      </div>
+      <div class="detail-row">
+        <strong>Deskripsi Kegiatan:</strong>
+        <p style="white-space: pre-wrap;">{{ selectedLogbookDetail.deskripsi_kegiatan || selectedLogbookDetail.DeskripsiKegiatan || selectedLogbookDetail.kegiatan || selectedLogbookDetail.Kegiatan || '-' }}</p>
+      </div>
+      <div class="detail-row">
+        <strong>Kendala:</strong>
+        <p style="white-space: pre-wrap;">{{ selectedLogbookDetail.kendala || selectedLogbookDetail.Kendala || '-' }}</p>
+      </div>
+      <div class="detail-row">
+        <strong>Catatan Review Pembimbing:</strong>
+        <p>{{ selectedLogbookDetail.review_notes || selectedLogbookDetail.ReviewNotes || '-' }}</p>
+      </div>
+      <div class="detail-row" *ngIf="(selectedLogbookDetail.attachments || selectedLogbookDetail.Attachments)?.length">
+        <strong>Screenshot Pekerjaan:</strong>
+        <div class="screenshot-preview-grid" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+          <a *ngFor="let img of (selectedLogbookDetail.attachments || selectedLogbookDetail.Attachments)" [href]="img.file_url || img.FileURL" target="_blank" rel="noopener">
+            <img [src]="img.file_url || img.FileURL" [alt]="img.file_name || img.FileName" style="width: 120px; height: 90px; object-fit: cover; border-radius: 6px;">
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" (click)="closeLogbookDetail()">Tutup</button>
+    </div>
+  </div>
+</div>
 
 
 

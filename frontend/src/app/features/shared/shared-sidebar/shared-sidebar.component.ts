@@ -5,7 +5,6 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { Subscription } from 'rxjs';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 @Component({
   selector: 'app-shared-sidebar',
@@ -22,7 +21,6 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   darkModeEnabled = false;
   isDarkMode = false;
   notifications: AppNotification[] = [];
-  pendingApprovalCount = 0;
   showNotifications = false;
   private themeSubscription = new Subscription();
   private disconnectRealtime?: () => void;
@@ -30,13 +28,11 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   constructor(
     private authService: AuthService,
     private themeService: ThemeService,
-    private notificationService: NotificationService,
-    private http: HttpClient
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
     this.userRole = this.authService.getRole();
-    if (this.userRole === 'MANAJER') this.loadPendingApprovalCount();
     this.authService.currentUser$.subscribe(user => {
       if (user) {
         this.loadNotifications();
@@ -49,14 +45,6 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
     this.themeSubscription.add(this.themeService.darkMode$.subscribe(isDark => {
       this.isDarkMode = isDark;
     }));
-  }
-
-  loadPendingApprovalCount(): void {
-    const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
-    this.http.get<any>('http://localhost:8080/api/v1/manager/dashboard', { headers }).subscribe({
-      next: data => this.pendingApprovalCount = Number(data?.izin_pending || 0),
-      error: () => this.pendingApprovalCount = 0
-    });
   }
 
   ngAfterViewInit(): void {
@@ -140,5 +128,9 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
     event.preventDefault();
     this.isDrawerOpen = false;
     this.authService.logout();
+  }
+
+  hasPermission(permission: string): boolean {
+    return this.authService.hasPermission(permission);
   }
 }

@@ -107,6 +107,33 @@
     padding: 16px !important;
   }
 
+  .help-page .category-filter-row {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: 0.5rem !important;
+  }
+
+  .help-page .category-filter-row > span {
+    min-width: 0 !important;
+  }
+
+  .help-page .category-filter-row .category-chips {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .help-page .category-filter-row .category-chip {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 0.45rem 0.5rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+
   .help-page .faq-question {
     align-items: flex-start !important;
     padding: 0.85rem !important;

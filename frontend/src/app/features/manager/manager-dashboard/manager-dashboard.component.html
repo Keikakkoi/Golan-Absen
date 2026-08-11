@@ -1,1 +1,138 @@
-<div class="dashboard-container"><app-shared-sidebar></app-shared-sidebar><main class="main-content"><div class="header"><h2>Dashboard Manajer</h2><p>Ringkasan kehadiran dan approval tim Anda.</p></div><div class="stats-grid"><section class="golan-card stat-card"><h4>Anggota Tim</h4><div class="value">{{ stats.team_members }}</div></section><section class="golan-card stat-card"><h4>Hadir Hari Ini</h4><div class="value">{{ stats.hadir_hari_ini }}</div></section><section class="golan-card stat-card"><h4>Izin Pending Approval</h4><div class="value">{{ stats.izin_pending }}</div></section></div><section class="golan-card compliance-warning" *ngFor="let item of stats.missing_work_reports"><strong>⚠ Laporan kerja belum diisi</strong><p>{{ item.nama }} belum mengisi laporan kerja untuk {{ item.tanggal }}. Batas pengisian {{ item.deadline_label }}.</p></section><section class="golan-card weekly-card"><div class="section-heading"><div><span class="eyebrow">7 HARI TERAKHIR</span><h3>Kehadiran Tim Mingguan</h3></div></div><div class="weekly-chart"><div class="week-column" *ngFor="let item of stats.weekly"><div class="bar" [style.height.%]="bar(item)" [title]="item.hadir + ' hadir'"></div><small>{{ item.tanggal | date:'EEE' }}</small></div></div></section></main></div>
+<div class="dashboard-container">
+  <app-shared-sidebar></app-shared-sidebar>
+  <main class="main-content">
+    <div class="header">
+      <h2>Dashboard Manajer</h2>
+      <p>Ringkasan kehadiran dan approval tim Anda.</p>
+    </div>
+
+    <div class="stats-grid">
+      <section class="golan-card stat-card">
+        <h4>Anggota Tim</h4>
+        <div class="value">{{ stats.team_members }}</div>
+      </section>
+      <section class="golan-card stat-card">
+        <h4>Hadir Hari Ini</h4>
+        <div class="value">{{ stats.hadir_hari_ini }}</div>
+      </section>
+      <section class="golan-card stat-card">
+        <h4>Belum Absen Hari Ini</h4>
+        <div class="value">{{ stats.belum_absen_hari_ini || 0 }}</div>
+      </section>
+      <section class="golan-card stat-card">
+        <h4>Izin Pending Approval</h4>
+        <div class="value">{{ stats.izin_pending }}</div>
+      </section>
+    </div>
+
+    <app-dashboard-charts role="manager"></app-dashboard-charts>
+
+    <section class="golan-card compliance-warning" *ngFor="let item of stats.missing_work_reports">
+      <strong>⚠ Laporan kerja belum diisi</strong>
+      <p>{{ item.nama }} belum mengisi laporan kerja untuk {{ item.tanggal }}. Batas pengisian {{ item.deadline_label }}.</p>
+    </section>
+
+    <!-- CALENDAR & EVENT SECTION (MATCHING DASH KARYAWAN EXACTLY) -->
+    <div class="dashboard-lower-grid">
+      <section class="golan-card calendar-card" aria-labelledby="calendar-title">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Agenda</span>
+            <h3 id="calendar-title">Kalender perusahaan</h3>
+          </div>
+          <button class="today-btn" type="button" (click)="goToToday()">Hari ini</button>
+        </div>
+
+        <div class="calendar-toolbar">
+          <button type="button" class="month-nav" (click)="changeMonth(-1)" aria-label="Bulan sebelumnya">‹</button>
+          <strong>{{ currentMonth | date:'MMMM yyyy' }}</strong>
+          <button type="button" class="month-nav" (click)="changeMonth(1)" aria-label="Bulan berikutnya">›</button>
+        </div>
+
+        <div class="calendar-grid" role="grid" aria-label="Kalender agenda perusahaan">
+          <span class="weekday" *ngFor="let dayName of weekDays">{{ dayName }}</span>
+          <button
+            *ngFor="let day of calendarDays"
+            type="button"
+            class="calendar-day"
+            [class.empty]="!day"
+            [class.today]="day?.isToday"
+            [class.selected]="day?.dateKey === selectedDate"
+            [class.has-event]="day?.hasEvents"
+            [class.holiday]="day?.isHoliday"
+            [disabled]="!day"
+            (click)="selectDate(day)">
+            <ng-container *ngIf="day">
+              <span>{{ day.date }}</span>
+              <i *ngIf="day.hasEvents" aria-label="Memiliki event"></i>
+            </ng-container>
+          </button>
+        </div>
+
+        <div class="calendar-legend">
+          <span><i class="legend-dot"></i> Ada event</span>
+          <span><i class="legend-today"></i> Hari ini</span>
+        </div>
+      </section>
+
+      <section class="golan-card events-card" aria-labelledby="events-title">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Catatan</span>
+            <h3 id="events-title">Event perusahaan</h3>
+          </div>
+          <svg class="event-heading-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#calendar"></use></svg>
+        </div>
+
+        <p class="selected-date-label">{{ selectedDateLabel }}</p>
+        <div class="event-list" *ngIf="selectedDateEvents.length > 0 || selectedDateHolidays.length > 0; else noEvents">
+          <ng-container *ngFor="let holiday of selectedDateHolidays">
+            <article class="event-item event-holiday">
+              <div class="event-time">--</div>
+              <div class="event-copy">
+                <strong>Hari Libur</strong>
+                <p>{{ holiday.description }}</p>
+              </div>
+            </article>
+          </ng-container>
+          <article class="event-item" *ngFor="let event of selectedDateEvents" [ngClass]="'event-' + event.type">
+            <div class="event-time">{{ event.time }}<span *ngIf="event.endTime">–{{ event.endTime }}</span></div>
+            <div class="event-copy">
+              <strong>{{ event.title }}</strong>
+              <p>{{ event.description }}</p>
+              <div *ngIf="event.fileAttachmentUrl" class="event-attachment">
+                <div *ngIf="isImageAttachment(event.fileAttachmentUrl, event.fileAttachmentName)" class="attachment-image-preview">
+                  <a [href]="event.fileAttachmentUrl" target="_blank">
+                    <img [src]="event.fileAttachmentUrl" [alt]="event.fileAttachmentName || 'Gambar Pengumuman'" class="event-img-thumb">
+                  </a>
+                </div>
+                <a [href]="event.fileAttachmentUrl" target="_blank" download class="attachment-link">
+                  <i class="fas fa-paperclip"></i>
+                  <span>{{ event.fileAttachmentName || 'Download File Pengumuman' }}</span>
+                </a>
+              </div>
+            </div>
+          </article>
+        </div>
+        <ng-template #noEvents>
+          <div class="event-empty">Tidak ada event pada tanggal ini.</div>
+        </ng-template>
+      </section>
+    </div>
+
+    <section class="golan-card weekly-card" style="margin-top: 24px;">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">7 HARI TERAKHIR</span>
+          <h3>Kehadiran Tim Mingguan</h3>
+        </div>
+      </div>
+      <div class="weekly-chart">
+        <div class="week-column" *ngFor="let item of stats.weekly">
+          <div class="bar" [style.height.%]="bar(item)" [title]="item.hadir + ' hadir'"></div>
+          <small>{{ item.tanggal | date:'EEE' }}</small>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

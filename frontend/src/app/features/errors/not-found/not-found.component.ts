@@ -14,7 +14,6 @@ export class NotFoundComponent {
   private resolveHomeLink(): string {
     const role = localStorage.getItem('role');
     if (role === 'HRD') return '/admin/dashboard';
-    if (role === 'Pimpinan') return '/executive/dashboard';
     if (role === 'MAGANG') return '/intern/dashboard';
     if (role === 'MANAJER') return '/manager/dashboard';
     if (role === 'Karyawan') return '/employee/checkin';

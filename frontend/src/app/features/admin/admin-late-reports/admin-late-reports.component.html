@@ -95,7 +95,7 @@
               <td><strong>{{ summary.total }} kali</strong></td>
               <td>{{ summary.rata_rata_menit || 0 }} menit</td>
               <td><span class="status-badge status-terlambat">Perlu Perhatian</span></td>
-              <td><button type="button" class="link-button" (click)="toggleDetails(summary.employee_id)">{{ expandedEmployeeId === summary.employee_id ? 'Tutup' : 'Lihat' }}</button></td>
+              <td><button type="button" class="link-button btn-view-detail compact" (click)="toggleDetails(summary.employee_id)">{{ expandedEmployeeId === summary.employee_id ? 'Tutup' : 'Lihat' }}</button></td>
             </tr>
             <tr *ngIf="expandedEmployeeId === summary.employee_id" class="detail-row">
               <td colspan="7">

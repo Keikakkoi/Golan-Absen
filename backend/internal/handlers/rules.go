@@ -7,6 +7,7 @@ import (
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/models"
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 const (
@@ -93,3 +94,103 @@ func timeKey(employeeID uint, date time.Time) string {
 func missingWorkReportRowsForEmployee(employeeID uint, now time.Time) []fiber.Map {
 	return missingWorkReportRows([]uint{employeeID}, now)
 }
+
+func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
+	if db == nil {
+		return
+	}
+	var employees []models.Employee
+	if err := db.Preload("User").Find(&employees).Error; err != nil {
+		return
+	}
+
+	// Backfill existing empty reports that have blank/null/Menunggu status_sesuai
+	db.Model(&models.WorkReport{}).
+		Where("(status_sesuai IS NULL OR status_sesuai = '' OR status_sesuai = 'Menunggu') AND (tugas = '' OR tugas IS NULL) AND (judul = '' OR judul IS NULL) AND (deskripsi_kegiatan = '' OR deskripsi_kegiatan IS NULL)").
+		Update("status_sesuai", "tidak membuat laporan kerja")
+
+	setting := getGeneralSetting()
+
+	for _, emp := range employees {
+		if emp.User == nil {
+			continue
+		}
+		role := emp.User.Role
+		if role != models.RoleKaryawan && role != models.RoleManajer && role != models.RoleMagang {
+			continue
+		}
+
+		var startDate time.Time
+		if role == models.RoleMagang {
+			if emp.User.InternshipStartDate != nil && !emp.User.InternshipStartDate.IsZero() {
+				startDate = *emp.User.InternshipStartDate
+			} else {
+				startDate = emp.User.CreatedAt
+			}
+		} else {
+			if !emp.TanggalBergabung.IsZero() {
+				startDate = emp.TanggalBergabung
+			} else {
+				startDate = emp.User.CreatedAt
+			}
+		}
+
+		// Restrict lookback window up to 60 days
+		minAllowed := now.AddDate(0, 0, -60)
+		if startDate.Before(minAllowed) {
+			startDate = minAllowed
+		}
+
+		startDate = startDate.Truncate(24 * time.Hour)
+		today := now.Truncate(24 * time.Hour)
+
+		var existingReports []models.WorkReport
+		db.Where("employee_id = ? AND tanggal BETWEEN ? AND ?", emp.ID, startDate, today).Find(&existingReports)
+		reportMap := make(map[string]bool)
+		for _, r := range existingReports {
+			reportMap[r.Tanggal.Format("2006-01-02")] = true
+		}
+
+		var attendances []models.AttendanceRecord
+		db.Where("employee_id = ? AND tanggal BETWEEN ? AND ?", emp.ID, startDate, today).Find(&attendances)
+		attMap := make(map[string]models.AttendanceRecord)
+		for _, a := range attendances {
+			attMap[a.Tanggal.Format("2006-01-02")] = a
+		}
+
+		for d := startDate; !d.After(today); d = d.AddDate(0, 0, 1) {
+			dateStr := d.Format("2006-01-02")
+			if reportMap[dateStr] {
+				continue
+			}
+
+			attRecord, hasAtt := attMap[dateStr]
+			var deadline time.Time
+			if hasAtt {
+				schedule := getAttendanceSchedule(emp.ID, d)
+				deadline = workReportDeadline(attRecord, schedule, setting)
+			} else {
+				schedule := getAttendanceSchedule(emp.ID, d)
+				deadline = scheduleEndTime(schedule, d).Add(time.Duration(setting.BatasLaporanSetelahCheckoutJam) * time.Hour)
+			}
+
+			if now.After(deadline) {
+				autoReport := models.WorkReport{
+					EmployeeID:       emp.ID,
+					Tanggal:          d,
+					Tugas:            "",
+					Judul:            "",
+					DeskripsiKegiatan: "",
+					RealisasiKegiatan: "",
+					Kendala:          "",
+					StatusSesuai:     "tidak membuat laporan kerja",
+					StatusLogbook:    "submitted",
+					IsLateSubmission: true,
+				}
+				db.Create(&autoReport)
+				reportMap[dateStr] = true
+			}
+		}
+	}
+}
+

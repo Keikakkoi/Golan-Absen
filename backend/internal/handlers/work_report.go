@@ -36,11 +36,14 @@ func SetupWorkReportRoutes(api fiber.Router) {
 }
 
 func GetWorkReportColumns(c *fiber.Ctx) error {
+	c.Set(fiber.HeaderCacheControl, "no-store, no-cache, must-revalidate, proxy-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
 	var columns []models.WorkReportColumn
 	userRole := string(c.Locals("role").(models.Role))
 
 	query := config.DB.Order("urutan asc")
-	if userRole != string(models.RoleHRD) && userRole != string(models.RolePimpinan) {
+	if userRole != string(models.RoleHRD) {
 		query = query.Where("aktif = ?", true)
 	}
 
@@ -123,13 +126,17 @@ func DeleteWorkReportColumn(c *fiber.Ctx) error {
 }
 
 func GetWorkReports(c *fiber.Ctx) error {
+	c.Set(fiber.HeaderCacheControl, "no-store, no-cache, must-revalidate, proxy-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
+	EnsureDailyWorkReportsAutoCreated(config.DB, attendanceNow())
 	userID := c.Locals("user_id").(uint)
 	userRole := string(c.Locals("role").(models.Role))
 
 	var reports []models.WorkReport
 	query := config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").Order("tanggal desc")
 
-	if userRole != string(models.RoleHRD) && userRole != string(models.RolePimpinan) {
+	if userRole != string(models.RoleHRD) {
 		var emp models.Employee
 		if err := config.DB.Where("user_id = ?", userID).First(&emp).Error; err == nil {
 			query = query.Where("employee_id = ?", emp.ID)
@@ -140,6 +147,9 @@ func GetWorkReports(c *fiber.Ctx) error {
 		empID := c.Query("employee_id")
 		if empID != "" {
 			query = query.Where("employee_id = ?", empID)
+		}
+		if projectID := c.Query("project_id"); projectID != "" {
+			query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON users.id = employees.user_id WHERE users.project_id = ?)", projectID)
 		}
 	}
 
@@ -173,6 +183,35 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid date format"})
 	}
 
+	statusLogbook := "submitted"
+	var existing models.WorkReport
+	if config.DB.Where("employee_id = ? AND tanggal = ?", emp.ID, t).First(&existing).Error == nil {
+		updates := map[string]interface{}{
+			"tugas":                input.Tugas,
+			"judul":                input.Judul,
+			"deskripsi_kegiatan":   input.DeskripsiKegiatan,
+			"realisasi_kegiatan":   input.RealisasiKegiatan,
+			"kendala":              input.Kendala,
+			"rencana_minggu_depan": input.RencanaMingguDepan,
+			"link_artikel":         input.LinkArtikel,
+			"catatan_tambahan":     input.CatatanTambahan,
+			"custom_fields":        input.CustomFields,
+			"status_logbook":       statusLogbook,
+			"is_late_submission":   existing.IsLateSubmission || isLateWorkReportSubmission(emp.ID, t),
+		}
+		if existing.StatusSesuai == "tidak membuat laporan kerja" {
+			updates["status_sesuai"] = ""
+		}
+		if err := config.DB.Model(&existing).Updates(updates).Error; err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to update work report"})
+		}
+		if len(files) > 0 {
+			saveWorkReportAttachments(existing.ID, emp.NIK, files)
+		}
+		config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").First(&existing, existing.ID)
+		return c.JSON(existing)
+	}
+
 	report := models.WorkReport{
 		EmployeeID:         emp.ID,
 		Tanggal:            t,
@@ -185,6 +224,7 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		LinkArtikel:        input.LinkArtikel,
 		CatatanTambahan:    input.CatatanTambahan,
 		CustomFields:       input.CustomFields,
+		StatusLogbook:      statusLogbook,
 		IsLateSubmission:   isLateWorkReportSubmission(emp.ID, t),
 	}
 
@@ -195,6 +235,7 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").First(&report, report.ID)
+	WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
 
 	// Notify HRD about the new work report
 	var hrdUsers []models.User
@@ -221,7 +262,7 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	userRole := string(c.Locals("role").(models.Role))
 	userID := c.Locals("user_id").(uint)
 
-	if userRole != string(models.RoleHRD) && userRole != string(models.RolePimpinan) {
+	if userRole != string(models.RoleHRD) {
 		var emp models.Employee
 		if err := config.DB.Where("user_id = ?", userID).First(&emp).Error; err == nil {
 			if report.EmployeeID != emp.ID {
@@ -272,7 +313,7 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 
 	var statusChanged bool
 
-	if userRole == string(models.RoleHRD) || userRole == string(models.RolePimpinan) {
+	if userRole == string(models.RoleHRD) {
 		if input.StatusSesuai != "" && input.StatusSesuai != report.StatusSesuai {
 			updates["status_sesuai"] = input.StatusSesuai
 			updates["validasi_oleh_hr"] = true
@@ -305,7 +346,7 @@ func DeleteWorkReport(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Report not found"})
 	}
 	role := string(c.Locals("role").(models.Role))
-	if role != string(models.RoleHRD) && role != string(models.RolePimpinan) {
+	if role != string(models.RoleHRD) {
 		var employee models.Employee
 		if err := config.DB.Where("user_id = ?", c.Locals("user_id").(uint)).First(&employee).Error; err != nil || report.EmployeeID != employee.ID {
 			return c.Status(403).JSON(fiber.Map{"error": "Not your report"})
@@ -333,7 +374,7 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 	var emp models.Employee
 	var empID uint
 
-	if userRole != string(models.RoleHRD) && userRole != string(models.RolePimpinan) {
+	if userRole != string(models.RoleHRD) {
 		if err := config.DB.Where("user_id = ?", userID).First(&emp).Error; err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Employee not found"})
 		}
@@ -410,6 +451,7 @@ type workReportInput struct {
 	CustomFields       string `json:"custom_fields"`
 	StatusSesuai       string `json:"status_sesuai"`
 	Status             string `json:"status"`
+	StatusLogbook      string `json:"status_logbook"`
 }
 
 func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeader, error) {
@@ -428,6 +470,9 @@ func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeade
 		input.CustomFields = c.FormValue("custom_fields")
 		input.StatusSesuai = c.FormValue("status_sesuai")
 		input.Status = c.FormValue("status")
+		if input.Status == "" {
+			input.Status = c.FormValue("status_logbook")
+		}
 		form, err := c.MultipartForm()
 		if err != nil {
 			return input, nil, err
@@ -451,6 +496,9 @@ func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeade
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return input, nil, err
+	}
+	if input.Status == "" && input.StatusLogbook != "" {
+		input.Status = input.StatusLogbook
 	}
 	return input, nil, nil
 }
@@ -492,11 +540,15 @@ func saveWorkReportAttachments(reportID uint, nik string, files []*multipart.Fil
 }
 
 func isLateWorkReportSubmission(employeeID uint, date time.Time) bool {
-	var record models.AttendanceRecord
-	if config.DB.Where("employee_id = ? AND tanggal = ? AND jam_pulang IS NOT NULL", employeeID, date.Format("2006-01-02")).First(&record).Error != nil {
-		return false
-	}
 	setting := getGeneralSetting()
-	deadline := workReportDeadline(record, getAttendanceSchedule(employeeID, date), setting)
-	return attendanceNow().After(deadline)
+	now := attendanceNow()
+	var record models.AttendanceRecord
+	if config.DB.Where("employee_id = ? AND tanggal = ?", employeeID, date.Format("2006-01-02")).First(&record).Error == nil {
+		schedule := getAttendanceSchedule(employeeID, date)
+		deadline := workReportDeadline(record, schedule, setting)
+		return now.After(deadline)
+	}
+	schedule := getAttendanceSchedule(employeeID, date)
+	deadline := scheduleEndTime(schedule, date).Add(time.Duration(setting.BatasLaporanSetelahCheckoutJam) * time.Hour)
+	return now.After(deadline)
 }

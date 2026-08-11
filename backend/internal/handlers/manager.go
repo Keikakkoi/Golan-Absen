@@ -69,13 +69,19 @@ func GetManagerDashboard(c *fiber.Ctx) error {
 		ids = append(ids, item.ID)
 	}
 	today := attendanceBusinessDate(attendanceNow()).Format("2006-01-02")
-	var present, pending int64
+	var present, pending, belumAbsen int64
 	if len(ids) > 0 {
 		config.DB.Model(&models.AttendanceRecord{}).Where("employee_id IN ? AND tanggal = ? AND status IN ?", ids, today, []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat}).Count(&present)
 		config.DB.Model(&models.LeaveRequest{}).Where("employee_id IN ? AND status = ?", ids, models.LeaveStatusPending).Count(&pending)
+		var onLeave int64
+		config.DB.Model(&models.LeaveRequest{}).Where("employee_id IN ? AND ? BETWEEN tanggal_mulai AND tanggal_selesai AND status = ?", ids, today, models.LeaveStatusApproved).Count(&onLeave)
+		belumAbsen = int64(len(team)) - (present + onLeave)
+		if belumAbsen < 0 {
+			belumAbsen = 0
+		}
 	}
 	weekly := managerWeeklyAttendance(ids)
-	return c.JSON(fiber.Map{"team_members": len(team), "hadir_hari_ini": present, "izin_pending": pending, "weekly": weekly, "missing_work_reports": missingWorkReportRows(ids, attendanceNow())})
+	return c.JSON(fiber.Map{"team_members": len(team), "hadir_hari_ini": present, "belum_absen_hari_ini": belumAbsen, "izin_pending": pending, "weekly": weekly, "missing_work_reports": missingWorkReportRows(ids, attendanceNow())})
 }
 
 func managerWeeklyAttendance(ids []uint) []fiber.Map {
@@ -146,6 +152,12 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 }
 
 func GetManagerTeamReports(c *fiber.Ctx) error {
+	// Reports are refreshed on demand by the manager dashboard. Explicitly
+	// disable intermediary caching so a refresh always reflects server state.
+	c.Set(fiber.HeaderCacheControl, "no-store, no-cache, must-revalidate, proxy-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
+	EnsureDailyWorkReportsAutoCreated(config.DB, attendanceNow())
 	managerID := c.Locals("user_id").(uint)
 	team, err := managerTeamEmployees(managerID)
 	if err != nil {
@@ -262,6 +274,9 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 	}
 	if !containsUint(ids, report.EmployeeID) {
 		return c.Status(403).JSON(fiber.Map{"error": "Logbook is outside your team"})
+	}
+	if report.StatusLogbook != "submitted" {
+		return c.Status(400).JSON(fiber.Map{"error": "Manager hanya dapat melakukan review jika status Submitted"})
 	}
 	var input struct {
 		Status string `json:"status"`

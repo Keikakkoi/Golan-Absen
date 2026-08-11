@@ -13,6 +13,179 @@
   font-family: var(--font-body);
 }
 
+/* The reports table has many fields. Keep the table wide and readable, while
+   allowing the viewport around it to scroll on smaller screens. */
+.work-report-admin-page {
+  min-width: 0;
+
+  .golan-card {
+    min-width: 0;
+  }
+
+  .work-report-table-wrapper {
+    position: relative;
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+  }
+
+  .work-report-table {
+    width: 1900px;
+    min-width: 1900px !important;
+    table-layout: fixed;
+    white-space: normal !important;
+    font-size: 0.85rem;
+
+    th,
+    td {
+      box-sizing: border-box;
+      padding: 10px 12px;
+      vertical-align: top;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+      word-break: normal;
+      white-space: normal !important;
+    }
+
+    th {
+      line-height: 1.25;
+      overflow-wrap: break-word;
+    }
+
+    /* Explicit widths keep every header aligned with its data column. */
+    th:nth-child(1), td:nth-child(1) { width: 52px; text-align: center; }
+    th:nth-child(2), td:nth-child(2) { width: 145px; }
+    th:nth-child(3), td:nth-child(3) { width: 150px; }
+    th:nth-child(4), td:nth-child(4) { width: 125px; }
+    th:nth-child(5), td:nth-child(5) { width: 125px; }
+    th:nth-child(6), td:nth-child(6) { width: 190px; }
+    th:nth-child(7), td:nth-child(7) { width: 190px; }
+    th:nth-child(8), td:nth-child(8) { width: 270px; }
+    th:nth-child(9), td:nth-child(9) { width: 170px; }
+    th:nth-child(10), td:nth-child(10) { width: 170px; }
+    th:nth-child(11), td:nth-child(11) { width: 170px; }
+    th:nth-child(12), td:nth-child(12) { width: 105px; }
+    th:nth-child(13), td:nth-child(13) { width: 170px; }
+    th:nth-child(14), td:nth-child(14) { width: 165px; }
+    th:nth-child(15), td:nth-child(15) { width: 155px; }
+    th:nth-child(16), td:nth-child(16) { width: 165px; }
+
+    .text-cell {
+      white-space: pre-wrap !important;
+    }
+
+    .status-badge,
+    .status-pill {
+      max-width: 100%;
+      box-sizing: border-box;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .report-thumb img {
+      width: 54px;
+      height: 44px;
+    }
+
+    select {
+      width: 100% !important;
+      min-width: 125px;
+      min-height: 38px;
+      white-space: normal;
+    }
+  }
+
+  .view-toggle,
+  .premium-filter .filter-header {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .work-report-admin-page {
+    .golan-card {
+      padding: 12px !important;
+    }
+
+    .work-report-table-wrapper {
+      margin-left: -2px;
+      margin-right: -2px;
+      border-radius: 8px;
+    }
+
+    /* This intentionally overrides the generic 620px mobile table rule. */
+    .golan-table-responsive > .work-report-table {
+      min-width: 1900px !important;
+    }
+
+    .work-report-table th,
+    .work-report-table td {
+      padding: 9px 10px;
+      font-size: 0.8rem;
+    }
+
+    .work-report-table .status-badge,
+    .work-report-table .status-pill {
+      padding: 5px 8px;
+      font-size: 0.72rem;
+    }
+
+    .work-report-table-wrapper::after {
+      content: 'Geser ke samping untuk melihat kolom lainnya';
+      display: block;
+      position: sticky;
+      left: 0;
+      width: max-content;
+      max-width: 100%;
+      padding: 7px 10px;
+      color: #64748b;
+      background: #f8fafc;
+      font-size: 0.7rem;
+    }
+
+    .header > .view-toggle,
+    .view-toggle {
+      width: 100%;
+      gap: 8px !important;
+    }
+
+    .view-toggle .btn,
+    .golan-dropdown > .btn-secondary {
+      min-height: 40px;
+      flex: 1 1 150px;
+      padding: 9px 10px;
+      font-size: 0.78rem;
+    }
+
+    .premium-filter {
+      padding: 12px;
+
+      .filter-header {
+        align-items: flex-start;
+        gap: 8px;
+
+        h5 { font-size: 0.9rem; }
+        .filter-count { font-size: 0.72rem; }
+      }
+
+      .premium-grid {
+        gap: 10px;
+
+        .filter-group,
+        .col-span-2 {
+          flex: 1 1 100%;
+          min-width: 0;
+        }
+      }
+
+      .filter-input,
+      .btn-reset-filter {
+        min-height: 42px;
+        font-size: 0.85rem;
+      }
+    }
+  }
+}
+
 @media print {
   * {
     -webkit-print-color-adjust: exact !important;

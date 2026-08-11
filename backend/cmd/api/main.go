@@ -2,11 +2,10 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/handlers"
-	"absensi-golan-backend/internal/middleware"
-	"absensi-golan-backend/internal/models"
 	"absensi-golan-backend/pkg/minio"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -23,6 +22,15 @@ func main() {
 	// Init MinIO
 	minio.SetupMinIO(cfg)
 
+	// Start background ticker for missing daily work report check
+	go func() {
+		handlers.EnsureDailyWorkReportsAutoCreated(config.DB, time.Now())
+		ticker := time.NewTicker(15 * time.Minute)
+		for range ticker.C {
+			handlers.EnsureDailyWorkReportsAutoCreated(config.DB, time.Now())
+		}
+	}()
+
 	app := fiber.New(fiber.Config{
 		BodyLimit: 20 * 1024 * 1024, // up to three 5MB work-report screenshots plus form fields
 	})
@@ -35,26 +43,17 @@ func main() {
 	// Setup Routes
 	handlers.SetupAuthRoutes(api)
 
-	// Pimpinan (Executive) routes
-	executiveGroup := api.Group("/executive")
-	executiveGroup.Use(middleware.Protected(), middleware.RequireRoles(models.RolePimpinan))
-	executiveGroup.Get("/dashboard", handlers.GetExecutiveDashboard)
-	executiveGroup.Get("/divisions/stats", handlers.GetDivisionStats)
-	executiveGroup.Get("/divisions/comparison", handlers.GetDivisionComparison)
-	executiveGroup.Get("/reports/employees", handlers.GetExecutiveReports)
-	executiveGroup.Get("/reports/export", handlers.ExportExecutiveReportsCSV)
-
 	handlers.SetupAttendanceRoutes(api)
 	handlers.SetupEmployeeRoutes(api)
 	handlers.SetupLeaveRoutes(api)
 	handlers.SetupNotificationRoutes(api)
 	handlers.SetupReportRoutes(api)
+	handlers.SetupDashboardChartRoutes(api)
 	handlers.SetupWorkTypeRoutes(api)
 	handlers.SetupSettingsRoutes(api)
 	handlers.SetupOrganizationRoutes(api)
 	handlers.SetupHolidayRoutes(api)
 	handlers.SetupEventRoutes(api)
-	handlers.SetupRBACRoutes(api)
 	handlers.SetupAdminDirectoryRoutes(api)
 	handlers.SetupWorkReportRoutes(api)
 	handlers.SetupInternshipRoutes(api)

@@ -2,7 +2,7 @@
   <app-shared-sidebar></app-shared-sidebar>
 
   <div class="main-content">
-    <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="header history-page-header">
       <h2>Riwayat Absensi Pribadi</h2>
       <div class="view-toggle">
         <button [class.active]="viewMode === 'table'" (click)="toggleView('table')">Tabel</button>
@@ -11,8 +11,8 @@
     </div>
 
     <div class="golan-card history-card" *ngIf="viewMode === 'table'">
-      <div class="golan-table-responsive" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-        <table class="golan-table history-table" *ngIf="!isLoading && records.length > 0" style="min-width: 600px;">
+      <div class="golan-table-responsive history-table-responsive">
+        <table class="golan-table history-table" *ngIf="!isLoading && records.length > 0">
           <thead>
             <tr>
               <th>Tanggal</th>
@@ -36,7 +36,7 @@
                 <span *ngIf="rec.IsCheckoutMissing" class="status-pill status-warning">⚠ Belum Check-out</span>
               </td>
               <td class="history-action-cell">
-                <button type="button" class="icon-button view history-detail-button" aria-label="Lihat detail" title="Lihat detail" (click)="openDetail(rec)">
+                <button type="button" class="icon-button view btn-view-detail icon-only history-detail-button" aria-label="Lihat detail" title="Lihat detail" (click)="openDetail(rec)">
                   <svg aria-hidden="true" style="width: 20px; height: 20px;"><use href="assets/sidebar-icons.svg#eye"></use></svg>
                 </button>
               </td>
@@ -62,8 +62,8 @@
         <button (click)="nextMonth()">Selanjutnya &gt;</button>
       </div>
       
-      <div class="calendar-wrapper" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-        <div class="calendar-grid" style="min-width: 600px;">
+      <div class="calendar-wrapper">
+        <div class="calendar-grid">
         <div class="weekday" *ngFor="let d of weekDays">{{ d }}</div>
         
         <div class="day-cell" *ngFor="let day of calendarDays" [class.empty]="!day" (click)="day?.record ? openDetail(day.record) : null" [style.cursor]="day?.record ? 'pointer' : 'default'">

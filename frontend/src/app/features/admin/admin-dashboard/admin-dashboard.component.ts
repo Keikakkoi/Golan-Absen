@@ -5,11 +5,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { RouterLink } from '@angular/router';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
+import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, AdminSidebarComponent, RouterLink],
+  imports: [CommonModule, AdminSidebarComponent, RouterLink, DashboardChartsComponent],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
 })
@@ -17,6 +18,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   stats: any = {
     total_karyawan: 0,
     hadir_hari_ini: 0,
+    belum_absen_hari_ini: 0,
     izin_cuti_hari_ini: 0,
     total_magang: 0,
     magang_aktif: 0,
@@ -26,10 +28,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   adminName = '';
   isLoading = true;
+  skeletonItems = [1, 2, 3, 4, 5, 6];
   lastUpdated = '';
   private refreshTimer?: ReturnType<typeof setInterval>;
-  private socket?: WebSocket;
-  private destroyed = false;
   notifications: AppNotification[] = [];
   showNotifications = false;
   private disconnectRealtime?: () => void;
@@ -43,7 +44,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         this.loadStats();
         this.loadNotifications();
         this.notificationService.enablePush(false).catch(() => undefined);
-        this.disconnectRealtime = this.notificationService.connectRealtime(() => this.loadNotifications());
+        this.disconnectRealtime = this.notificationService.connectRealtime(() => { this.loadStats(); this.loadNotifications(); });
         this.startLiveUpdates();
       }
     });
@@ -67,9 +68,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.destroyed = true;
     if (this.refreshTimer) clearInterval(this.refreshTimer);
-    this.socket?.close();
     this.disconnectRealtime?.();
   }
 
@@ -94,20 +93,5 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   private startLiveUpdates(): void {
     this.refreshTimer = setInterval(() => this.loadStats(), 30_000);
-    this.connectLiveSocket();
-  }
-
-  private connectLiveSocket(): void {
-    if (this.destroyed) return;
-    this.socket = new WebSocket('ws://localhost:8080/ws/dashboard');
-    this.socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.event === 'new_checkin' || message.event === 'new_checkout') this.loadStats();
-      } catch { /* Ignore malformed broadcast messages. */ }
-    };
-    this.socket.onclose = () => {
-      if (!this.destroyed) setTimeout(() => this.connectLiveSocket(), 3_000);
-    };
   }
 }

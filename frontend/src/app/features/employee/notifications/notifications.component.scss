@@ -31,7 +31,12 @@
   transition: .2s ease;
 }
 
-.push-button:hover:not(:disabled) { background: var(--green-deep); transform: translateY(-1px); }
+.push-button:hover:not(:disabled) {
+  color: #fff;
+  background: var(--green-deep);
+  transform: translateY(-1px);
+}
+.push-button:hover:not(:disabled) svg { stroke: currentColor; }
 .push-button:disabled { cursor: default; opacity: .78; }
 .push-button.enabled { color: var(--green-deep); background: var(--mint-0); }
 .push-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
@@ -94,7 +99,7 @@
   text-align: left;
   border: 0;
   border-bottom: 1px solid var(--mint-1);
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
 }
 
@@ -122,6 +127,17 @@
 .notification-copy span { color: var(--text-dark-lo); line-height: 1.45; }
 .notification-copy small { color: var(--text-dark-lo); }
 .state-message { padding: 2rem; color: var(--text-dark-lo); text-align: center; }
+
+/* Keep notification surfaces readable in both theme modes. */
+body.dark-theme .notification-item {
+  background: var(--surface) !important;
+  color: var(--text-dark) !important;
+  border-bottom-color: var(--border-strong) !important;
+}
+
+body.dark-theme .notification-item.unread {
+  background: var(--surface-raised) !important;
+}
 
 @media (max-width: 640px) {
   .notification-header { align-items: flex-start; flex-direction: column; }

@@ -1,3 +1,282 @@
-.toolbar{display:flex;align-items:end;gap:12px;margin-bottom:20px}.toolbar label{display:flex;flex-direction:column;gap:6px}@media(max-width:600px){.toolbar{flex-direction:column;align-items:stretch}}
-.report-thumb { display: inline-block; margin: 2px; }
-.report-thumb img { width: 72px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
+.toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+@media (max-width: 600px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+.report-thumb {
+  display: inline-block;
+  margin: 2px;
+}
+.report-thumb img {
+  width: 72px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.note-input {
+  width: 100%;
+  min-width: 150px;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+.btn-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+
+  &.approve {
+    background-color: rgba(40, 167, 69, 0.15);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+
+    &:hover {
+      background-color: #28a745;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+    }
+  }
+
+  &.reject {
+    background-color: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+
+    &:hover {
+      background-color: #dc3545;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+    }
+  }
+}
+
+.status-success {
+  background-color: rgba(40, 167, 69, 0.15) !important;
+  color: #28a745 !important;
+  border: 1px solid rgba(40, 167, 69, 0.3) !important;
+}
+
+.status-warning {
+  background-color: rgba(255, 193, 7, 0.15) !important;
+  color: #ffc107 !important;
+  border: 1px solid rgba(255, 193, 7, 0.3) !important;
+}
+
+.status-danger {
+  background-color: rgba(220, 53, 69, 0.15) !important;
+  color: #dc3545 !important;
+  border: 1px solid rgba(220, 53, 69, 0.3) !important;
+}
+
+/* Keep this table readable without changing the shared table styles. */
+.team-reports-table-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mint-2) transparent;
+  overscroll-behavior-x: contain;
+  direction: ltr;
+}
+
+.team-reports-toolbar {
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.report-refresh-action {
+  white-space: nowrap;
+}
+
+.report-loading {
+  padding: 18px;
+  text-align: center;
+  color: var(--muted-color);
+}
+
+.team-reports-table.is-refreshing {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  color: var(--muted-color);
+}
+
+.team-reports-toolbar > label {
+  min-width: 0;
+}
+
+.team-reports-table {
+  table-layout: fixed;
+  min-width: 0 !important;
+  width: 100%;
+}
+
+.team-reports-table th,
+.team-reports-table td {
+  word-break: normal;
+  overflow-wrap: break-word;
+  white-space: normal;
+  vertical-align: middle;
+  line-height: 1.35;
+}
+
+.team-reports-table th {
+  height: 44px;
+  padding: 10px 12px;
+  line-height: 1.2;
+}
+
+.team-reports-table td {
+  padding: 10px 12px;
+}
+
+.team-reports-table .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+  line-height: 1.2;
+}
+
+.team-reports-col-date { width: 10%; }
+.team-reports-col-member { width: 15%; }
+.team-reports-col-task { width: 12%; }
+.team-reports-col-activity { width: 15%; }
+.team-reports-col-screenshot { width: 10%; }
+.team-reports-col-status { width: 10%; }
+.team-reports-col-submission { width: 10%; }
+.team-reports-col-review { width: 8%; }
+.team-reports-col-action { width: 10%; }
+
+@media (max-width: 600px) {
+  .team-reports-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .team-reports-toolbar > label,
+  .team-reports-toolbar > .report-filter-action,
+  .team-reports-toolbar > .export-dropdown {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    box-sizing: border-box;
+  }
+
+  .team-reports-toolbar > label {
+    gap: 4px;
+    line-height: 1.2;
+  }
+
+  .team-reports-toolbar .golan-input {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+  }
+
+  .team-reports-toolbar > .report-filter-action,
+  .team-reports-toolbar > .export-dropdown > button {
+    width: 100% !important;
+  }
+
+  .team-reports-table-wrapper {
+    margin-top: 12px;
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+
+  .team-reports-table {
+    /* Use stable column widths on phones so badges and inputs never overlap. */
+    min-width: 1315px !important;
+    table-layout: fixed;
+  }
+
+  .team-reports-col-date { width: 100px; }
+  .team-reports-col-member { width: 170px; }
+  .team-reports-col-task { width: 130px; }
+  .team-reports-col-activity { width: 150px; }
+  .team-reports-col-screenshot { width: 110px; }
+  .team-reports-col-status { width: 130px; }
+  .team-reports-col-submission { width: 125px; }
+  .team-reports-col-review { width: 220px; }
+  .team-reports-col-action { width: 180px; }
+
+  .team-reports-table th,
+  .team-reports-table td {
+    padding: 8px 9px;
+    font-size: 0.8125rem;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
+    vertical-align: middle;
+  }
+
+  .team-reports-table th {
+    height: 42px;
+    font-size: 0.6875rem;
+    letter-spacing: 0.03em;
+  }
+
+  .team-reports-table td:first-child,
+  .team-reports-table th:first-child,
+  .team-reports-table td:nth-child(6),
+  .team-reports-table td:nth-child(7) {
+    white-space: nowrap !important;
+  }
+
+  .team-reports-table td:nth-child(6),
+  .team-reports-table td:nth-child(7) {
+    overflow: visible;
+  }
+
+  .team-reports-table td:last-child > div {
+    flex-wrap: wrap;
+  }
+
+  .team-reports-table .status-pill {
+    padding: 5px 7px;
+    font-size: 0.6875rem;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+  }
+
+  .team-reports-table .note-input {
+    min-width: 0;
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
+}

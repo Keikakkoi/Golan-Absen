@@ -25,6 +25,14 @@
       </div>
     </div>
 
+    <!-- Skeleton Loading -->
+    <div class="stats-grid skeleton-grid" *ngIf="isLoading">
+      <div class="golan-card stat-card admin-stat skeleton-card" *ngFor="let item of skeletonItems">
+        <div class="skeleton-title"></div>
+        <div class="skeleton-value"></div>
+      </div>
+    </div>
+
     <div class="stats-grid" *ngIf="!isLoading">
       <div class="golan-card stat-card admin-stat">
         <h4>Total Karyawan</h4>
@@ -33,6 +41,10 @@
       <div class="golan-card stat-card admin-stat">
         <h4>Hadir Hari Ini</h4>
         <div class="value">{{ stats.hadir_hari_ini }} <span class="unit">Karyawan</span></div>
+      </div>
+      <div class="golan-card stat-card admin-stat">
+        <h4>Belum Absen Hari Ini</h4>
+        <div class="value" style="color: var(--warning);">{{ stats.belum_absen_hari_ini || 0 }} <span class="unit">Karyawan</span></div>
       </div>
 
       <div class="golan-card stat-card admin-stat">
@@ -52,6 +64,8 @@
         <div class="value" style="color: var(--warning);">{{ stats.missing_work_report_count || 0 }} <span class="unit">Karyawan</span></div>
       </div>
     </div>
+
+    <app-dashboard-charts role="admin"></app-dashboard-charts>
 
     <section class="golan-card mt-4" *ngIf="stats.missing_work_reports?.length">
       <h3>Rekap Laporan Kerja Terlambat</h3>

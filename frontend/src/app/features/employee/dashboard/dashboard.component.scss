@@ -101,6 +101,23 @@
     align-items: center;
     margin-bottom: 32px;
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-left: auto;
+
+      .account-email {
+        order: 1;
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      .top-nav {
+        order: 2;
+      }
+    }
+
     .welcome-text {
       h2 {
         font-family: var(--font-display);
@@ -518,6 +535,14 @@
 }
 
 @media (max-width: 600px) {
+  .main-content .header {
+    width: 100%;
+
+    .header-actions {
+      display: none !important;
+    }
+  }
+
   .calendar-card,
   .events-card {
     padding: 18px;

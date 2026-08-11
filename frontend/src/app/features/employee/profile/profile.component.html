@@ -3,8 +3,8 @@
 
   <div class="main-content">
     <div class="header">
-      <h2>Profil & Pengaturan Akun</h2>
-      <p class="subtitle text-dark-lo">Kelola data diri, keamanan akun, dan preferensi sistem Anda di sini.</p>
+      <h2>Profil &amp; Pengaturan Akun</h2>
+      <p class="subtitle text-dark-lo">Kelola data diri, alamat rumah, keamanan akun, dan preferensi sistem Anda di sini.</p>
     </div>
 
     <!-- Tab navigation controls -->
@@ -15,11 +15,11 @@
       </button>
       <button class="tab-btn" [class.active]="activeTab === 'profile'" (click)="setActiveTab('profile')">
         <svg class="tab-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#user"></use></svg>
-        Profil Karyawan
+        Profil Saya
       </button>
       <button class="tab-btn" [class.active]="activeTab === 'settings'" (click)="setActiveTab('settings')">
         <svg class="tab-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#settings"></use></svg>
-        Edit Profil &amp; Akun
+        Edit Profil &amp; Alamat
       </button>
       <button class="tab-btn" [class.active]="activeTab === 'security'" (click)="setActiveTab('security')">
         <svg class="tab-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#lock"></use></svg>
@@ -37,7 +37,7 @@
           <div *ngIf="successMessage" class="alert alert-success" style="color: #2F80ED; margin-bottom: 1rem; padding: 12px; background: #E8F2FF; border-radius: 6px;">{{ successMessage }}</div>
           <div *ngIf="errorMessage" class="alert alert-danger" style="color: red; margin-bottom: 1rem; padding: 12px; background: #fdf2f2; border-radius: 6px;">{{ errorMessage }}</div>
 
-          <!-- TAB 1: Profil Karyawan (Metadata, Division, Position, Home Geofence Map) -->
+          <!-- TAB 1: Profil Saya (Metadata, Division, Position, Address, Home Geofence Map) -->
           <div *ngIf="activeTab === 'profile'" class="tab-content-panel">
             <div class="profile-summary-header">
               <div class="avatar-circle" *ngIf="!profilePhotoPreviewUrl && !profileData.Employee?.FotoProfilURL">
@@ -58,10 +58,13 @@
             <div class="profile-photo-section">
               <div>
                 <h4>Pas Foto Profil</h4>
-                <p class="text-dark-lo">Gunakan foto 3×4 portrait, background merah, dan pakaian rapi. Format JPG/PNG/GIF, maksimal 5 MB.</p>
+                <p class="text-dark-lo">Gunakan foto 3×4 portrait, background merah, dengan pakaian rapi. Format JPG/PNG/GIF, maksimal 5 MB.</p>
               </div>
-              <label class="btn-secondary photo-picker">
-                {{ selectedPhoto ? 'Ganti Pilihan Foto' : 'Pilih Pas Foto' }}
+              <label class="btn-secondary photo-picker" [class.file-selected]="selectedPhoto">
+                <i class="fas" [ngClass]="selectedPhoto ? 'fa-check-circle' : 'fa-camera'" style="margin-right: 6px;"></i>
+                <span style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle;">
+                  {{ selectedPhoto ? selectedPhoto.name : 'Pilih Pas Foto' }}
+                </span>
                 <input type="file" accept="image/jpeg,image/png,image/gif" (change)="onProfilePhotoSelected($event)" />
               </label>
               <div *ngIf="photoError" class="photo-error">{{ photoError }}</div>
@@ -80,7 +83,7 @@
                 <span class="detail-value">{{ profileData.Email }}</span>
               </div>
               <div class="detail-row">
-                <span class="detail-label">Divisi / Divisi</span>
+                <span class="detail-label">Divisi</span>
                 <span class="detail-value">{{ profileData.Employee?.Division?.NamaDivisi || 'Belum Diatur' }}</span>
               </div>
               <div class="detail-row">
@@ -92,6 +95,10 @@
                 <span class="detail-value">{{ profileData.Employee?.TanggalBergabung ? (profileData.Employee.TanggalBergabung | date:'longDate') : '-' }}</span>
               </div>
               <div class="detail-row">
+                <span class="detail-label"><svg class="detail-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#pin"></use></svg>Alamat Rumah</span>
+                <span class="detail-value">{{ profileData.Employee?.HomeLocation?.AlamatRumah || profileData.Employee?.HomeLocation?.alamat_rumah || 'Belum Diisi' }}</span>
+              </div>
+              <div class="detail-row">
                 <span class="detail-label">Status Akun</span>
                 <span class="detail-value" style="color: var(--green); font-weight: bold;">{{ profileData.Status | uppercase }}</span>
               </div>
@@ -99,6 +106,31 @@
                 <div class="detail-row"><span class="detail-label">Institusi Pendidikan</span><span class="detail-value">{{ profileData.InstitutionName || '-' }}</span></div>
                 <div class="detail-row"><span class="detail-label">Periode Magang</span><span class="detail-value">{{ profileData.InternshipStartDate ? (profileData.InternshipStartDate | date:'dd MMM yyyy') : '-' }} – {{ profileData.InternshipEndDate ? (profileData.InternshipEndDate | date:'dd MMM yyyy') : '-' }}</span></div>
               </ng-container>
+            </div>
+
+            <div class="shift-profile-section mt-4">
+              <div class="section-title">Jadwal Shift Saya</div>
+              <p class="text-dark-lo" style="font-size: 0.9rem; margin-bottom: 12px;">
+                Jadwal di bawah ini adalah acuan jam absensi yang ditetapkan admin.
+              </p>
+              <div *ngIf="profileData.WorkSchedules?.length; else noWorkSchedule" class="golan-table-responsive">
+                <table class="golan-table">
+                  <thead>
+                    <tr><th>Tanggal</th><th>Nama Shift</th><th>Jam Check-in</th><th>Jam Check-out</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let shift of profileData.WorkSchedules">
+                      <td>{{ shift.Tanggal ? (shift.Tanggal | date:'dd MMM yyyy') : 'Shift Aktif' }}</td>
+                      <td><strong>{{ shift.NamaShift }}</strong></td>
+                      <td>{{ shift.JamMulai ? (shift.JamMulai | slice:0:5) : '-' }}</td>
+                      <td>{{ shift.JamSelesai ? (shift.JamSelesai | slice:0:5) : '-' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <ng-template #noWorkSchedule>
+                <div class="alert alert-warning">Belum ada jadwal shift yang ditetapkan admin.</div>
+              </ng-template>
             </div>
 
             <!-- Home Geofence verification map -->
@@ -118,23 +150,36 @@
             </div>
           </div>
 
-          <!-- TAB 2: Edit Profil & Pengaturan Akun Pribadi (Nama, Preferences) -->
+          <!-- TAB 2: Edit Profil & Pengaturan Akun (Nama, Alamat Rumah, Preferences) -->
           <div *ngIf="activeTab === 'settings'" class="tab-content-panel">
             <form (ngSubmit)="updateProfile()">
               <div class="section-title">Edit Profil</div>
               
-              <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label>Nama Lengkap</label>
+              <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label style="font-weight: 500; margin-bottom: 6px; display: block;">Nama Lengkap</label>
                 <input type="text" class="form-control" [(ngModel)]="updateForm.nama" name="nama" required style="width: 100%; padding: 10px; border: 1px solid var(--mint-2); border-radius: 6px;" />
               </div>
 
+              <div class="form-group" style="margin-bottom: 1.25rem;">
+                <label style="font-weight: 500; margin-bottom: 6px; display: block;">Alamat Rumah / Tempat Tinggal</label>
+                <textarea class="form-control" [(ngModel)]="updateForm.alamat_rumah" name="alamat_rumah" rows="3" placeholder="Masukkan alamat lengkap rumah tempat tinggal Anda (misal: Jl. Merdeka No. 45, RT 02/RW 05, Kel. Kebon Jeruk, Jakarta Barat)..." style="width: 100%; padding: 10px; border: 1px solid var(--mint-2); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label style="font-weight: 500; margin-bottom: 6px; display: block;">Link Google Maps Rumah - Untuk WFH</label>
+                <input type="url" class="form-control" [(ngModel)]="updateForm.google_maps_url" name="google_maps_url" placeholder="https://maps.google.com/?q=..." style="width: 100%; padding: 10px; border: 1px solid var(--mint-2); border-radius: 6px;" />
+                <small class="text-dark-lo" style="font-size: 0.82rem; margin-top: 4px; display: block;">
+                  Link Google Maps dapat digunakan untuk memperbarui koordinat lokasi rumah untuk keperluan absensi WFH.
+                </small>
+              </div>
+
               <button type="submit" class="btn-primary" [disabled]="isSubmitting" style="margin-bottom: 2rem;">
-                {{ isSubmitting ? 'Menyimpan...' : 'Simpan Nama Profil' }}
+                {{ isSubmitting ? 'Menyimpan...' : 'Simpan Profil &amp; Alamat' }}
               </button>
             </form>
 
             <form (ngSubmit)="savePreferences()">
-              <div class="section-title" style="border-top: 1px solid var(--mint-1); padding-top: 2rem;">Preferensi Aplikasi & Akun</div>
+              <div class="section-title" style="border-top: 1px solid var(--mint-1); padding-top: 2rem;">Preferensi Aplikasi &amp; Akun</div>
               
               <div class="form-group-checkbox mt-3" style="display: flex; align-items: center; gap: 10px; margin-bottom: 1rem;">
                 <input type="checkbox" id="darkMode" [(ngModel)]="preferences.darkMode" name="darkMode" style="width: 18px; height: 18px;" />

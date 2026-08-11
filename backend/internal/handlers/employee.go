@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"encoding/csv"
 	"fmt"
 	"image"
@@ -8,7 +9,9 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"log"
 	"net/mail"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +33,13 @@ type EmployeeRequest struct {
 	Role                models.Role `json:"role"`
 	Status              string      `json:"status"`
 	NIK                 string      `json:"nik"`
+	JenisKelamin        string      `json:"jenis_kelamin"`
+	TempatLahir         string      `json:"tempat_lahir"`
+	TanggalLahir        string      `json:"tanggal_lahir"`
+	NomorTelepon        string      `json:"nomor_telepon"`
+	Alamat              string      `json:"alamat"`
+	FotoProfilURL       string      `json:"foto_profil_url"`
+	ShiftKerja          string      `json:"shift_kerja"`
 	DivisionID          uint        `json:"division_id"`
 	PositionID          uint        `json:"position_id"`
 	TanggalBergabung    string      `json:"tanggal_bergabung"` // YYYY-MM-DD
@@ -37,12 +47,84 @@ type EmployeeRequest struct {
 	HomeLongitude       float64     `json:"home_longitude"`
 	HomeGoogleMapsURL   string      `json:"home_google_maps_url"`
 	ManagerID           *uint       `json:"manager_id"`
+	ProjectID           *uint       `json:"project_id"`
 	TeamID              string      `json:"team_id"`
 	InternshipStartDate string      `json:"internship_start_date"`
 	InternshipEndDate   string      `json:"internship_end_date"`
 	MentorName          string      `json:"mentor_name"`
 	MentorContact       string      `json:"mentor_contact"`
 	InstitutionName     string      `json:"institution_name"`
+}
+
+func validateEmployeeProfile(req *EmployeeRequest) error {
+	req.Nama = strings.TrimSpace(req.Nama)
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	req.NIK = strings.TrimSpace(req.NIK)
+	if req.Nama == "" || req.Email == "" || req.NIK == "" {
+		return fmt.Errorf("NIK/NIP, nama lengkap, dan email wajib diisi")
+	}
+	if req.TanggalBergabung == "" {
+		return fmt.Errorf("tanggal masuk wajib diisi")
+	}
+	if _, err := mail.ParseAddress(req.Email); err != nil || !strings.Contains(req.Email, "@") {
+		return fmt.Errorf("format email tidak valid")
+	}
+	if req.JenisKelamin != "" && req.JenisKelamin != "Laki-laki" && req.JenisKelamin != "Perempuan" {
+		return fmt.Errorf("jenis kelamin tidak valid")
+	}
+	if req.NomorTelepon != "" && !regexp.MustCompile(`^\+?[0-9][0-9 .-]{7,19}$`).MatchString(req.NomorTelepon) {
+		return fmt.Errorf("format nomor telepon tidak valid")
+	}
+	for label, value := range map[string]string{"tanggal masuk": req.TanggalBergabung, "tanggal lahir": req.TanggalLahir} {
+		if value != "" {
+			if _, err := time.Parse("2006-01-02", value); err != nil {
+				return fmt.Errorf("%s harus menggunakan format YYYY-MM-DD", label)
+			}
+		}
+	}
+	if req.FotoProfilURL != "" && strings.HasPrefix(req.FotoProfilURL, "data:image/") {
+		parts := strings.SplitN(req.FotoProfilURL, ",", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("foto tidak valid")
+		}
+		if decoded, err := base64.StdEncoding.DecodeString(parts[1]); err != nil || len(decoded) > 5*1024*1024 {
+			return fmt.Errorf("foto harus berupa gambar maksimal 5 MB")
+		}
+	}
+	return nil
+}
+
+func parseDate(value string) (*time.Time, error) {
+	if value == "" {
+		return nil, nil
+	}
+	date, err := time.Parse("2006-01-02", value)
+	return &date, err
+}
+
+func validateEmployeeAssignments(db *gorm.DB, req *EmployeeRequest, employeeUserID uint) error {
+	if req.ManagerID != nil {
+		if employeeUserID != 0 && *req.ManagerID == employeeUserID {
+			return fmt.Errorf("karyawan tidak dapat menjadi manajer untuk dirinya sendiri")
+		}
+		var manager models.User
+		if err := db.Where("id = ? AND role = ? AND status = ?", *req.ManagerID, models.RoleManajer, "aktif").First(&manager).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return fmt.Errorf("manager yang dipilih tidak tersedia")
+			}
+			return fmt.Errorf("gagal memeriksa manager")
+		}
+	}
+	if req.ProjectID != nil {
+		var project models.Project
+		if err := db.Where("id = ? AND status_aktif = ?", *req.ProjectID, true).First(&project).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return fmt.Errorf("project yang dipilih tidak tersedia")
+			}
+			return fmt.Errorf("gagal memeriksa project")
+		}
+	}
+	return nil
 }
 
 func SetupEmployeeRoutes(router fiber.Router) {
@@ -60,27 +142,96 @@ func SetupEmployeeRoutes(router fiber.Router) {
 	admin.Post("/employees/import", ImportEmployees)
 	admin.Put("/employees/:id", UpdateEmployee)
 	admin.Delete("/employees/:id", DeleteEmployee)
+	admin.Put("/employees/:id/shift", UpdateEmployeeShift)
+}
+
+func getOrCreateEmployee(userID uint) (models.Employee, error) {
+	var emp models.Employee
+	if err := config.DB.Where("user_id = ?", userID).Preload("User").Preload("Division").Preload("Position").First(&emp).Error; err == nil {
+		return emp, nil
+	}
+
+	var user models.User
+	if err := config.DB.First(&user, userID).Error; err != nil {
+		return emp, err
+	}
+
+	var defaultDiv models.Division
+	var defaultPos models.Position
+	config.DB.First(&defaultDiv)
+	config.DB.First(&defaultPos)
+
+	nik := fmt.Sprintf("EMP-%03d", user.ID)
+	emp = models.Employee{
+		UserID:           user.ID,
+		NIK:              nik,
+		DivisionID:       defaultDiv.ID,
+		PositionID:       defaultPos.ID,
+		TanggalBergabung: time.Now(),
+	}
+	if err := config.DB.Create(&emp).Error; err != nil {
+		return emp, err
+	}
+	_ = config.DB.Preload("User").Preload("Division").Preload("Position").First(&emp, emp.ID)
+	return emp, nil
 }
 
 func GetProfile(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 
 	var user models.User
-	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").First(&user, userID).Error; err != nil {
+	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Preload("Project").Preload("Manager").First(&user, userID).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
 	}
 
-	return c.JSON(user)
+	empID := user.Employee.ID
+	if empID == 0 {
+		emp, err := getOrCreateEmployee(user.ID)
+		if err == nil {
+			empID = emp.ID
+			user.Employee = emp
+		}
+	}
+
+	var schedules []models.WorkSchedule
+	if empID != 0 {
+		config.DB.Where("employee_id = ?", empID).Order("tanggal desc, id desc").Find(&schedules)
+	}
+
+	if len(schedules) == 0 {
+		config.DB.Where("employee_id IS NULL").Order("tanggal desc, id desc").Find(&schedules)
+	}
+
+	if len(schedules) == 0 {
+		today := attendanceBusinessDate(attendanceNow())
+		effSchedule := getAttendanceSchedule(empID, today)
+		if effSchedule.Tanggal == nil {
+			effSchedule.Tanggal = &today
+		}
+		schedules = append(schedules, effSchedule)
+	}
+
+	return c.JSON(struct {
+		models.User
+		WorkSchedules      []models.WorkSchedule `json:"WorkSchedules"`
+		WorkSchedulesSnake []models.WorkSchedule `json:"work_schedules"`
+	}{
+		User:               user,
+		WorkSchedules:      schedules,
+		WorkSchedulesSnake: schedules,
+	})
 }
 
 func UpdateMyProfile(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 
 	var req struct {
-		Nama        string `json:"nama"`
-		Email       string `json:"email"`
-		Password    string `json:"password"`
-		OldPassword string `json:"old_password"`
+		Nama          string  `json:"nama"`
+		Email         string  `json:"email"`
+		Password      string  `json:"password"`
+		OldPassword   string  `json:"old_password"`
+		AlamatRumah   *string `json:"alamat_rumah"`
+		GoogleMapsURL *string `json:"google_maps_url"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -89,7 +240,7 @@ func UpdateMyProfile(c *fiber.Ctx) error {
 	tx := config.DB.Begin()
 
 	var user models.User
-	if err := tx.First(&user, userID).Error; err != nil {
+	if err := tx.Preload("Employee").First(&user, userID).Error; err != nil {
 		tx.Rollback()
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
 	}
@@ -147,7 +298,55 @@ func UpdateMyProfile(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update profile"})
 	}
 
+	// Update Home Location / Alamat Rumah if provided
+	var employee models.Employee
+	if user.Employee.ID != 0 {
+		employee = user.Employee
+	} else {
+		_ = tx.Where("user_id = ?", user.ID).First(&employee).Error
+	}
+
+	if employee.ID != 0 && (req.AlamatRumah != nil || req.GoogleMapsURL != nil) {
+		var homeLoc models.EmployeeHomeLocation
+		if err := tx.Where("employee_id = ?", employee.ID).First(&homeLoc).Error; err != nil {
+			homeLoc = models.EmployeeHomeLocation{
+				EmployeeID:  employee.ID,
+				RadiusMeter: 100,
+			}
+		}
+
+		if req.AlamatRumah != nil {
+			homeLoc.AlamatRumah = strings.TrimSpace(*req.AlamatRumah)
+		}
+
+		if req.GoogleMapsURL != nil {
+			gUrl := strings.TrimSpace(*req.GoogleMapsURL)
+			homeLoc.GoogleMapsURL = gUrl
+			if gUrl != "" {
+				lat, lng, err := utils.ResolveGoogleMapsLocationURL(gUrl)
+				if err != nil || lat == 0 || lng == 0 {
+					tx.Rollback()
+					if err != nil {
+						return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+					}
+					return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Link Google Maps rumah tidak valid"})
+				}
+				homeLoc.LatitudeRumah = lat
+				homeLoc.LongitudeRumah = lng
+				employee.HomeLatitude = lat
+				employee.HomeLongitude = lng
+				_ = tx.Save(&employee).Error
+			}
+		}
+
+		if err := tx.Save(&homeLoc).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan alamat rumah"})
+		}
+	}
+
 	tx.Commit()
+	utils.LogAction(userID, "UPDATE", "User", user.ID, "User updated profile")
 	return c.JSON(fiber.Map{"message": "Profile updated successfully"})
 }
 
@@ -268,26 +467,124 @@ func UpdateMyEmail(c *fiber.Ctx) error {
 
 func GetAllEmployees(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 
 	var users []models.User
-	// Also get the HRD/Pimpinan if needed, but for now we list all Karyawan
-	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Find(&users).Error; err != nil {
+	// Include all users so HRD can manage the complete employee directory.
+	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Preload("Project").Preload("Manager").Find(&users).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch employees"})
 	}
 
-	return c.JSON(users)
+	// WorkSchedule is the source of truth for the directory shift badge. Resolve
+	// the requested date (or today) without mutating employees.shift_kerja.
+	effectiveDate := attendanceBusinessDate(attendanceNow())
+	if rawDate := strings.TrimSpace(c.Query("date")); rawDate != "" {
+		parsed, err := time.Parse("2006-01-02", rawDate)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format date harus YYYY-MM-DD"})
+		}
+		effectiveDate = parsed
+	}
+	entries := make([]employeeDirectoryEntry, 0, len(users))
+	for i := range users {
+		employee := &users[i].Employee
+		if employee.ID == 0 {
+			entries = append(entries, employeeDirectoryEntry{User: users[i]})
+			continue
+		}
+		schedule, found := findEffectiveSchedule(employee.ID, effectiveDate)
+		if found {
+			employee.ShiftID = schedule.ID
+			employee.ShiftName = strings.TrimSpace(schedule.NamaShift)
+			employee.ShiftTanggal = schedule.Tanggal
+			employee.ShiftJamMulai = schedule.JamMulai
+			employee.ShiftJamSelesai = schedule.JamSelesai
+			employee.ShiftKerja = employee.ShiftName
+		} else {
+			employee.ShiftName = "Reguler"
+			employee.ShiftKerja = "Reguler"
+		}
+		entries = append(entries, employeeDirectoryEntry{
+			User:           users[i],
+			EmployeeID:     employee.ID,
+			EmployeeName:   users[i].Nama,
+			ShiftID:        employee.ShiftID,
+			ShiftName:      employee.ShiftName,
+			TanggalBerlaku: employee.ShiftTanggal,
+			JamMasuk:       employee.ShiftJamMulai,
+			JamPulang:      employee.ShiftJamSelesai,
+		})
+	}
+
+	return c.JSON(entries)
+}
+
+type employeeDirectoryEntry struct {
+	models.User
+	EmployeeID     uint       `json:"employee_id,omitempty"`
+	EmployeeName   string     `json:"employee_name,omitempty"`
+	ShiftID        uint       `json:"shift_id,omitempty"`
+	ShiftName      string     `json:"shift_name"`
+	TanggalBerlaku *time.Time `json:"tanggal_berlaku,omitempty"`
+	JamMasuk       string     `json:"jam_masuk,omitempty"`
+	JamPulang      string     `json:"jam_pulang,omitempty"`
+}
+
+// findEffectiveSchedule applies the scheduling precedence used by the employee
+// directory: employee-specific schedules beat global schedules, and the latest
+// schedule effective on the selected date wins.
+func findEffectiveSchedule(employeeID uint, date time.Time) (models.WorkSchedule, bool) {
+	dateOnly := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	var schedules []models.WorkSchedule
+	result := config.DB.Where("employee_id = ? OR employee_id IS NULL", employeeID).Find(&schedules)
+	if result.Error != nil {
+		return models.WorkSchedule{}, false
+	}
+	return selectEffectiveSchedule(schedules, employeeID, dateOnly)
+}
+
+func selectEffectiveSchedule(schedules []models.WorkSchedule, employeeID uint, date time.Time) (models.WorkSchedule, bool) {
+	var selected models.WorkSchedule
+	found := false
+	for _, schedule := range schedules {
+		isSpecific := schedule.EmployeeID != nil && *schedule.EmployeeID == employeeID
+		if schedule.EmployeeID != nil && !isSpecific {
+			continue
+		}
+		if schedule.Tanggal != nil && schedule.Tanggal.After(date) {
+			continue
+		}
+		if !found || (isSpecific && (selected.EmployeeID == nil || scheduleDateAfter(schedule, selected))) ||
+			(!isSpecific && selected.EmployeeID == nil && scheduleDateAfter(schedule, selected)) {
+			selected = schedule
+			found = true
+		}
+	}
+	return selected, found
+}
+
+func scheduleDateAfter(candidate, current models.WorkSchedule) bool {
+	if candidate.Tanggal == nil {
+		return false
+	}
+	if current.Tanggal == nil {
+		return true
+	}
+	if candidate.Tanggal.After(*current.Tanggal) {
+		return true
+	}
+	return candidate.Tanggal.Equal(*current.Tanggal) && candidate.ID > current.ID
 }
 
 func GetEmployeeDetail(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var user models.User
-	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").First(&user, c.Params("id")).Error; err != nil {
+	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Preload("Project").Preload("Manager").First(&user, c.Params("id")).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee not found"})
 	}
 	var quotas []models.LeaveQuota
@@ -309,8 +606,27 @@ func CreateEmployee(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
+	// Empty optional selects can arrive as 0 from the browser. PostgreSQL
+	// treats 0 as a real foreign-key value, so convert it to NULL first.
+	if req.ManagerID != nil && *req.ManagerID == 0 {
+		req.ManagerID = nil
+	}
+	if req.ProjectID != nil && *req.ProjectID == 0 {
+		req.ProjectID = nil
+	}
+	req.Nama = strings.TrimSpace(req.Nama)
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+	if req.Status == "" {
+		req.Status = "aktif"
+	}
+	if err := validateEmployeeProfile(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 	if !models.IsValidRole(req.Role) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid role"})
+	}
+	if err := validateEmployeeAssignments(config.DB, &req, 0); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 	if err := resolveEmployeeHomeLocation(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
@@ -323,19 +639,20 @@ func CreateEmployee(c *fiber.Ctx) error {
 
 	// Cek ketersediaan Email
 	var existingUser models.User
-	if err := config.DB.Where("LOWER(email) = ?", strings.ToLower(req.Email)).First(&existingUser).Error; err == nil {
+	if err := config.DB.Unscoped().Where("LOWER(email) = ?", strings.ToLower(req.Email)).First(&existingUser).Error; err == nil {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Email '" + req.Email + "' sudah memiliki akun. Silakan gunakan email lain untuk melanjutkan."})
 	}
 
 	// Cek ketersediaan NIK
 	if req.NIK != "" {
 		var existingEmp models.Employee
-		if err := config.DB.Where("nik = ?", req.NIK).First(&existingEmp).Error; err == nil {
+		if err := config.DB.Unscoped().Where("nik = ?", req.NIK).First(&existingEmp).Error; err == nil {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "NIK '" + req.NIK + "' sudah memiliki akun. Pastikan NIK yang dimasukkan benar."})
 		}
 	}
 
 	tglGabung, _ := time.Parse("2006-01-02", req.TanggalBergabung)
+	tglLahir, _ := parseDate(req.TanggalLahir)
 
 	tx := config.DB.Begin()
 
@@ -346,6 +663,7 @@ func CreateEmployee(c *fiber.Ctx) error {
 		Role:            req.Role,
 		Status:          req.Status,
 		ManagerID:       req.ManagerID,
+		ProjectID:       req.ProjectID,
 		TeamID:          req.TeamID,
 		MentorName:      req.MentorName,
 		MentorContact:   req.MentorContact,
@@ -356,12 +674,18 @@ func CreateEmployee(c *fiber.Ctx) error {
 
 	if err := tx.Create(&user).Error; err != nil {
 		tx.Rollback()
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create user"})
+		log.Printf("CreateEmployee user insert failed: %v", err)
+		message := "Failed to create user. Periksa email, role, dan data akun."
+		if config.LoadConfig().AppEnv == "development" {
+			message += " Detail: " + err.Error()
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": message})
 	}
 
 	employee := models.Employee{
-		UserID:           user.ID,
-		NIK:              req.NIK,
+		UserID:       user.ID,
+		NIK:          req.NIK,
+		JenisKelamin: req.JenisKelamin, TempatLahir: req.TempatLahir, TanggalLahir: tglLahir, NomorTelepon: req.NomorTelepon, Alamat: req.Alamat, FotoProfilURL: req.FotoProfilURL, ShiftKerja: "Reguler",
 		DivisionID:       req.DivisionID,
 		PositionID:       req.PositionID,
 		TanggalBergabung: tglGabung,
@@ -406,6 +730,12 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	if !models.IsValidRole(req.Role) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid role"})
 	}
+	if err := validateEmployeeProfile(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateEmployeeAssignments(config.DB, &req, uint(id)); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 	if err := resolveEmployeeHomeLocation(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -447,6 +777,7 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	user.Role = req.Role
 	user.Status = req.Status
 	user.ManagerID = req.ManagerID
+	user.ProjectID = req.ProjectID
 	user.TeamID = req.TeamID
 	user.MentorName = req.MentorName
 	user.MentorContact = req.MentorContact
@@ -466,7 +797,14 @@ func UpdateEmployee(c *fiber.Ctx) error {
 
 	if user.Employee.ID != 0 {
 		tglGabung, _ := time.Parse("2006-01-02", req.TanggalBergabung)
+		tglLahir, _ := parseDate(req.TanggalLahir)
 		user.Employee.NIK = req.NIK
+		user.Employee.JenisKelamin = req.JenisKelamin
+		user.Employee.TempatLahir = req.TempatLahir
+		user.Employee.TanggalLahir = tglLahir
+		user.Employee.NomorTelepon = req.NomorTelepon
+		user.Employee.Alamat = req.Alamat
+		user.Employee.FotoProfilURL = req.FotoProfilURL
 		user.Employee.DivisionID = req.DivisionID
 		user.Employee.PositionID = req.PositionID
 		user.Employee.TanggalBergabung = tglGabung
@@ -487,9 +825,11 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	} else if req.NIK != "" {
 		// Create employee if it doesn't exist but NIK is provided
 		tglGabung, _ := time.Parse("2006-01-02", req.TanggalBergabung)
+		tglLahir, _ := parseDate(req.TanggalLahir)
 		newEmp := models.Employee{
-			UserID:           user.ID,
-			NIK:              req.NIK,
+			UserID:       user.ID,
+			NIK:          req.NIK,
+			JenisKelamin: req.JenisKelamin, TempatLahir: req.TempatLahir, TanggalLahir: tglLahir, NomorTelepon: req.NomorTelepon, Alamat: req.Alamat, FotoProfilURL: req.FotoProfilURL, ShiftKerja: "Reguler",
 			DivisionID:       req.DivisionID,
 			PositionID:       req.PositionID,
 			TanggalBergabung: tglGabung,

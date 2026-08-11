@@ -117,6 +117,14 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
       this.errorMessage = 'Jenis, tanggal, dan alasan pengajuan wajib diisi.';
       return;
     }
+    if (!this.selectedFile) {
+      this.errorMessage = 'Lampiran dokumen wajib diunggah sebelum mengirim pengajuan.';
+      return;
+    }
+    if (this.formData.tanggal_mulai < this.getJakartaDateString()) {
+      this.errorMessage = 'Tanggal mulai tidak boleh kurang dari hari ini';
+      return;
+    }
     if (this.formData.tanggal_selesai < this.formData.tanggal_mulai) {
       this.errorMessage = 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.';
       return;
@@ -168,5 +176,16 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   private getHeaders(): HttpHeaders {
     const token = this.authService.getToken();
     return new HttpHeaders().set('Authorization', `Bearer ${token}`);
+  }
+
+  private getJakartaDateString(): string {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${values['year']}-${values['month']}-${values['day']}`;
   }
 }

@@ -44,13 +44,13 @@ export class WorktypeListComponent implements OnInit {
 
   loadWorkTypes(): void {
     this.isLoading = true;
-    this.http.get<any[]>(this.publicUrl, { headers: this.getHeaders() }).subscribe({
+    this.http.get<any[]>(this.baseUrl, { headers: this.getHeaders() }).subscribe({
       next: (data) => {
         this.workTypes = data;
         this.isLoading = false;
       },
       error: (err) => {
-        this.errorMessage = err.error?.error || 'Gagal memuat tipe kerja';
+        this.errorMessage = 'Gagal memuat tipe kerja: ' + (err.error?.error || 'Unknown error');
         this.isLoading = false;
       }
     });

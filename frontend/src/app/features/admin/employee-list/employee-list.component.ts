@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { FormsModule } from '@angular/forms';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { ReportExportService } from '../../../core/services/report-export.service';
 
 @Component({
   selector: 'app-employee-list',
@@ -22,6 +23,7 @@ export class EmployeeListComponent implements OnInit {
     search: '',
     division_id: '',
     position_id: '',
+    project_id: '',
     sort_order: 'asc'
   };
   isLoading = true;
@@ -31,9 +33,12 @@ export class EmployeeListComponent implements OnInit {
   isEditMode = false;
   isSaving = false;
   selectedImportFile: File | null = null;
+  isExportMenuOpen = false;
   
   divisions: any[] = [];
   positions: any[] = [];
+  managers: any[] = [];
+  projects: any[] = [];
   
   // Detail Modal
   isDetailOpen = false;
@@ -62,16 +67,85 @@ export class EmployeeListComponent implements OnInit {
 
   private baseUrl = 'http://localhost:8080/api/v1/admin/employees';
 
+  getShiftLabel(employee: any): string {
+    return employee?.Employee?.ShiftName || employee?.Employee?.shift_name || employee?.Employee?.ShiftKerja || 'Reguler';
+  }
+  getShiftClass(employee: any): string {
+    return this.getShiftLabel(employee).toLowerCase().replace(/\s+/g, '-');
+  }
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private alert: AlertService
+    private alert: AlertService,
+    private reportExport: ReportExportService
   ) {}
+
+  @HostListener('document:click', ['$event'])
+  closeExportMenuOnOutsideClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.employee-export')) this.isExportMenuOpen = false;
+  }
+
+  toggleExportMenu(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isExportMenuOpen = !this.isExportMenuOpen;
+  }
+
+  exportEmployees(format: 'csv' | 'xls' | 'json' | 'pdf' | 'print'): void {
+    this.isExportMenuOpen = false;
+    if (!this.filteredEmployees.length) {
+      void this.alert.info('Tidak ada data karyawan untuk diekspor');
+      return;
+    }
+
+    const report = this.buildEmployeeReport();
+    const date = this.getExportDate();
+    if (format === 'csv') this.reportExport.downloadCsv(`data-karyawan-${date}.csv`, report.headers, report.rows);
+    if (format === 'xls') this.reportExport.downloadExcel(`data-karyawan-${date}.xlsx`, report.headers, report.rows);
+    if (format === 'json') this.reportExport.downloadJson(`data-karyawan-${date}.json`, report.data);
+    if (format === 'pdf') this.reportExport.downloadPdf(`laporan-karyawan-${date}.pdf`, 'Laporan Data Karyawan', date, report.headers, report.rows);
+    if (format === 'print') this.reportExport.printReport('Laporan Data Karyawan', date, report.headers, report.rows);
+  }
+
+  private buildEmployeeReport(): { headers: string[]; rows: string[][]; data: Record<string, string>[] } {
+    const headers = ['NIK/NIP', 'Nama lengkap', 'Jenis kelamin', 'Tempat dan tanggal lahir', 'Nomor telepon', 'Email', 'Alamat', 'Jabatan', 'Departemen', 'Status karyawan', 'Tanggal masuk', 'Shift kerja', 'Lokasi Rumah', 'Tanggal dibuat'];
+    const value = (emp: any, ...keys: string[]): string => {
+      for (const key of keys) {
+        const parts = key.split('.'); let current = emp;
+        for (const part of parts) current = current?.[part];
+        if (current !== undefined && current !== null && current !== '') return String(current);
+      }
+      return '-';
+    };
+    const date = (raw: any): string => {
+      if (!raw || String(raw).startsWith('0001-01-01')) return '-';
+      const parsed = new Date(raw); return Number.isNaN(parsed.getTime()) ? '-' : new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(parsed);
+    };
+    const rows = this.filteredEmployees.map((emp) => [
+      value(emp, 'Employee.NIK', 'NIK'), value(emp, 'Nama', 'name'), value(emp, 'Employee.JenisKelamin', 'JenisKelamin', 'jenis_kelamin'),
+      (() => { const place = value(emp, 'Employee.TempatLahir', 'tempat_lahir'); const birthDate = date(emp.Employee?.TanggalLahir); return place === '-' && birthDate === '-' ? '-' : `${place} / ${birthDate}`; })(),
+      value(emp, 'Employee.NomorTelepon', 'NomorTelepon', 'nomor_telepon', 'phone'), value(emp, 'Email', 'email'), value(emp, 'Employee.Alamat', 'alamat', 'Alamat'),
+      value(emp, 'Employee.Position.NamaJabatan', 'Jabatan'), value(emp, 'Employee.Division.NamaDivisi', 'Departemen'), this.statusLabel(value(emp, 'Status', 'status')),
+      date(emp.Employee?.TanggalBergabung), value(emp, 'Employee.ShiftKerja', 'ShiftKerja', 'shift_kerja'), value(emp, 'Employee.HomeLocation.GoogleMapsURL', 'Employee.HomeLocation.google_maps_url'), date(emp.CreatedAt || emp.created_at)
+    ]);
+    const keys = ['nik_nip', 'nama_lengkap', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nomor_telepon', 'email', 'alamat', 'jabatan', 'departemen', 'status_karyawan', 'tanggal_masuk', 'shift_kerja', 'lokasi_rumah', 'tanggal_dibuat'];
+    const data = rows.map(row => Object.fromEntries(keys.map((key, i) => [key, row[i]])));
+    return { headers, rows, data };
+  }
+
+  private statusLabel(value: string): string { return value === 'aktif' ? 'Aktif' : value === 'nonaktif' ? 'Nonaktif' : (value || '-'); }
+
+  private getExportDate(): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+  }
 
   ngOnInit(): void {
     this.loadEmployees();
     this.loadDivisions();
     this.loadPositions();
+    this.loadManagers();
+    this.loadProjects();
   }
 
   loadDivisions(): void {
@@ -87,6 +161,22 @@ export class EmployeeListComponent implements OnInit {
       .subscribe({
         next: (data) => this.positions = data,
         error: (err) => console.error('Gagal memuat jabatan:', err)
+      });
+  }
+
+  loadManagers(): void {
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/managers', { headers: this.getHeaders() })
+      .subscribe({
+        next: (data) => this.managers = data || [],
+        error: (err) => console.error('Gagal memuat manajer:', err)
+      });
+  }
+
+  loadProjects(): void {
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/projects', { headers: this.getHeaders() })
+      .subscribe({
+        next: (data) => this.projects = data || [],
+        error: (err) => console.error('Gagal memuat project:', err)
       });
   }
 
@@ -125,6 +215,10 @@ export class EmployeeListComponent implements OnInit {
 
     if (this.filters.position_id) {
       result = result.filter(emp => emp.Employee?.PositionID == this.filters.position_id);
+    }
+
+    if (this.filters.project_id) {
+      result = result.filter(emp => emp.ProjectID == this.filters.project_id);
     }
 
     if (this.filters.sort_order === 'asc') {
@@ -169,6 +263,12 @@ export class EmployeeListComponent implements OnInit {
     this.formData.nik = nik;
   }
 
+  onPhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement; const file = input.files?.[0]; if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) { this.alert.error('Foto tidak valid', 'Gunakan JPG, PNG, atau GIF dengan ukuran maksimal 5 MB.'); input.value = ''; return; }
+    const reader = new FileReader(); reader.onload = () => this.formData.foto_profil_url = String(reader.result); reader.readAsDataURL(file);
+  }
+
   openAddModal(): void {
     this.isEditMode = false;
     this.resetForm();
@@ -185,6 +285,7 @@ export class EmployeeListComponent implements OnInit {
       role: emp.Role || 'Karyawan',
       status: emp.Status || 'aktif',
       nik: emp.Employee?.NIK,
+      jenis_kelamin: emp.Employee?.JenisKelamin || '', tempat_lahir: emp.Employee?.TempatLahir || '', tanggal_lahir: emp.Employee?.TanggalLahir ? emp.Employee.TanggalLahir.split('T')[0] : '', nomor_telepon: emp.Employee?.NomorTelepon || '', alamat: emp.Employee?.Alamat || '', foto_profil_url: emp.Employee?.FotoProfilURL || '', shift_kerja: emp.Employee?.ShiftKerja || '',
       division_id: emp.Employee?.DivisionID || 0,
       position_id: emp.Employee?.PositionID || 0,
       tanggal_bergabung: emp.Employee?.TanggalBergabung ? emp.Employee.TanggalBergabung.split('T')[0] : '',
@@ -192,6 +293,7 @@ export class EmployeeListComponent implements OnInit {
       home_longitude: emp.Employee?.HomeLongitude,
       home_google_maps_url: emp.Employee?.HomeLocation?.GoogleMapsURL || '',
       manager_id: emp.ManagerID || null,
+      project_id: emp.ProjectID || null,
       team_id: emp.TeamID || '',
       internship_start_date: emp.InternshipStartDate ? emp.InternshipStartDate.split('T')[0] : '',
       internship_end_date: emp.InternshipEndDate ? emp.InternshipEndDate.split('T')[0] : '',
@@ -251,6 +353,7 @@ export class EmployeeListComponent implements OnInit {
       await this.alert.error('NIK tidak valid', 'NIK harus terdiri dari 16 digit angka.');
       return;
     }
+    if (this.formData.nomor_telepon && !/^\+?[0-9][0-9 .-]{7,19}$/.test(String(this.formData.nomor_telepon))) { await this.alert.error('Nomor telepon tidak valid', 'Gunakan format nomor telepon yang sesuai.'); return; }
 
     const action = this.isEditMode ? 'mengubah data karyawan ini' : 'menyimpan karyawan baru';
 
@@ -333,6 +436,7 @@ export class EmployeeListComponent implements OnInit {
       role: 'Karyawan',
       status: 'aktif',
       nik: '',
+      jenis_kelamin: '', tempat_lahir: '', tanggal_lahir: '', nomor_telepon: '', alamat: '', foto_profil_url: '', shift_kerja: '',
       division_id: 0,
       position_id: 0,
       tanggal_bergabung: '',
@@ -340,6 +444,7 @@ export class EmployeeListComponent implements OnInit {
       home_longitude: 0,
       home_google_maps_url: '',
       manager_id: null,
+      project_id: null,
       team_id: '',
       internship_start_date: '',
       internship_end_date: '',

@@ -232,6 +232,50 @@
 
 .schedule-field .golan-input { padding: 0 12px; }
 
+.schedule-global-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid #cfe3f6;
+  border-radius: 10px;
+  background: #f4f9fd;
+  color: #315a78;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.schedule-global-option input,
+.employee-check-item input { accent-color: #2f80ed; }
+
+.employee-checklist {
+  display: grid;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #cfe3f6;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.employee-checklist.disabled { opacity: .6; }
+.employee-check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid #edf3f8;
+  color: #284d68;
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 600;
+}
+.employee-check-item:last-child { border-bottom: 0; }
+.employee-check-item:hover { background: #f7fbff; }
+.employee-check-item span { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.employee-check-item small { color: #7b91a4; font-size: .68rem; font-weight: 500; }
+.employee-check-hint { padding: 12px; color: #7890a7; font-weight: 500; }
+
 .schedule-field .golan-input:focus,
 .schedule-input-suffix .golan-input:focus {
   border-color: #5aa4ee;
@@ -300,14 +344,32 @@
 .schedule-name-cell { display: flex; align-items: center; gap: 9px; color: #1d4667; }
 .schedule-row-icon {
   display: inline-grid;
+  flex: 0 0 34px;
   width: 28px;
-  height: 28px;
+  height: 34px;
   place-items: center;
-  border-radius: 9px;
-  background: #eaf5ff;
-  color: #3986be;
-  font-size: 1.15rem;
-  font-weight: 700;
+  border: 1px solid #c9e4f8;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #f4fbff, #e5f3ff);
+  color: #287db8;
+  box-shadow: 0 3px 8px rgba(37, 122, 181, .12), inset 0 1px 0 rgba(255, 255, 255, .9);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.schedule-row-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.schedule-name-cell:hover .schedule-row-icon {
+  border-color: #73b5e5;
+  box-shadow: 0 5px 12px rgba(37, 122, 181, .2), inset 0 1px 0 rgba(255, 255, 255, .95);
+  transform: translateY(-1px);
 }
 
 .schedule-hours { color: #365d79; font-family: var(--font-mono); font-size: .83rem; font-weight: 700; }
@@ -730,6 +792,13 @@ textarea.golan-input {
   border-color: #8fc1e9;
   background: #edf7ff;
   color: #1769aa;
+}
+
+.quota-actions {
+  white-space: nowrap;
+}
+.quota-actions .icon-button {
+  margin-right: 6px;
 }
 
 .quota-loading,

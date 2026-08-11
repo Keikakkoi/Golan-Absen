@@ -21,7 +21,7 @@ import (
 )
 
 func SetupAttendanceRoutes(router fiber.Router) {
-	attendance := router.Group("/attendance", middleware.Protected())
+	attendance := router.Group("/attendance", middleware.Protected(), middleware.RequireRoles(models.RoleKaryawan, models.RoleMagang, models.RoleManajer))
 	attendance.Post("/checkin", CheckIn)
 	attendance.Post("/checkout", CheckOut)
 	attendance.Get("/history", GetAttendanceHistory)
@@ -53,9 +53,8 @@ func CheckIn(c *fiber.Ctx) error {
 	workDate := attendanceBusinessDate(now)
 	schedule := getAttendanceSchedule(employee.ID, workDate)
 	_, startTime, lateTime, endTime, checkoutDeadline := attendanceWindow(now, schedule)
-	resetAt := time.Date(now.Year(), now.Month(), now.Day(), attendanceResetHour, 0, 0, 0, jakartaLocation)
-	if now.Before(resetAt) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-in baru dapat dimulai pukul 07:00."})
+	if now.Before(startTime) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-in baru dapat dilakukan mulai pukul " + startTime.Format("15:04") + "."})
 	}
 	if !now.Before(endTime) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas check-in hari ini adalah pukul " + endTime.Format("15:04") + "."})
@@ -72,9 +71,24 @@ func CheckIn(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Anda sudah melakukan check-in 1 kali untuk hari ini."})
 	}
 
-	var leaveRecord models.AttendanceRecord
-	if err := config.DB.Where("employee_id = ? AND tanggal = ? AND status IN ?", employee.ID, workDate.Format("2006-01-02"), []models.AttendanceStatus{models.StatusIzin, models.StatusCuti}).First(&leaveRecord).Error; err == nil {
-		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Anda memiliki status " + string(leaveRecord.Status) + " untuk hari ini, sehingga tidak dapat melakukan check-in."})
+	// The leave request is the source of truth. Attendance rows for future
+	// leave dates used to be materialized when a request was approved, which
+	// made the history look as if the employee had already been absent for
+	// days that had not happened yet. Keep the check-in guard scoped to the
+	// actual attendance date.
+	var leaveRequest models.LeaveRequest
+	if err := config.DB.Where(
+		"employee_id = ? AND status = ? AND tanggal_mulai <= ? AND tanggal_selesai >= ?",
+		employee.ID,
+		models.LeaveStatusApproved,
+		workDate.Format("2006-01-02"),
+		workDate.Format("2006-01-02"),
+	).First(&leaveRequest).Error; err == nil {
+		leaveStatus := models.StatusIzin
+		if leaveRequest.JenisIzin == models.LeaveTypeCuti {
+			leaveStatus = models.StatusCuti
+		}
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Anda memiliki status " + string(leaveStatus) + " untuk hari ini, sehingga tidak dapat melakukan check-in."})
 	}
 
 	latStr := c.FormValue("latitude")
@@ -84,12 +98,6 @@ func CheckIn(c *fiber.Ctx) error {
 	lat, _ := strconv.ParseFloat(latStr, 64)
 	lon, _ := strconv.ParseFloat(lonStr, 64)
 	acc, _ := strconv.ParseFloat(accStr, 64)
-
-	// Get Office Location
-	var office models.OfficeLocation
-	if err := config.DB.First(&office).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Office location not configured"})
-	}
 
 	tipeKerja := c.FormValue("tipe_kerja")
 	if tipeKerja == "" {
@@ -109,26 +117,16 @@ func CheckIn(c *fiber.Ctx) error {
 	radiusTervalidasi := "tidak_tervalidasi"
 
 	if wt.IsHomeBase {
-		// WFH accepts either the office radius or the employee's configured home radius.
-		officeDistance := utils.HaversineDistance(lat, lon, office.Latitude, office.Longitude)
-		officeValid := officeDistance <= office.RadiusMeter
-		homeConfigured := employee.HomeLatitude != 0 && employee.HomeLongitude != 0
-		homeDistance := 0.0
-		homeValid := false
-		if homeConfigured {
-			homeDistance = utils.HaversineDistance(lat, lon, employee.HomeLatitude, employee.HomeLongitude)
-			homeValid = homeDistance <= 100
-		}
-		dalamRadius = officeValid || homeValid
-		if !dalamRadius {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Lokasi berada di luar radius kantor maupun rumah"})
-		}
-		if homeValid {
-			radiusTervalidasi = "rumah"
-		} else {
-			radiusTervalidasi = "kantor"
+		var validationErr error
+		dalamRadius, radiusTervalidasi, validationErr = validateHomeAttendanceLocation(employee.ID, lat, lon)
+		if validationErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Error()})
 		}
 	} else if wt.Nama == "WFO" {
+		var office models.OfficeLocation
+		if err := config.DB.First(&office).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Office location not configured"})
+		}
 		// Use office coordinates
 		distance = utils.HaversineDistance(lat, lon, office.Latitude, office.Longitude)
 		dalamRadius = distance <= office.RadiusMeter
@@ -251,9 +249,6 @@ func CheckOut(c *fiber.Ctx) error {
 	lon, _ := strconv.ParseFloat(lonStr, 64)
 	acc, _ := strconv.ParseFloat(accStr, 64)
 
-	var office models.OfficeLocation
-	config.DB.First(&office)
-
 	var wt models.WorkType
 	if err := config.DB.Where("nama = ?", record.TipeKerja).First(&wt).Error; err != nil {
 		wt.Nama = record.TipeKerja
@@ -264,24 +259,16 @@ func CheckOut(c *fiber.Ctx) error {
 	radiusTervalidasi := "tidak_tervalidasi"
 
 	if wt.IsHomeBase {
-		officeDistance := utils.HaversineDistance(lat, lon, office.Latitude, office.Longitude)
-		officeValid := officeDistance <= office.RadiusMeter
-		homeConfigured := employee.HomeLatitude != 0 && employee.HomeLongitude != 0
-		homeValid := false
-		if homeConfigured {
-			homeDistance := utils.HaversineDistance(lat, lon, employee.HomeLatitude, employee.HomeLongitude)
-			homeValid = homeDistance <= 100
-		}
-		dalamRadius = officeValid || homeValid
-		if !dalamRadius {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Lokasi berada di luar radius kantor maupun rumah"})
-		}
-		if homeValid {
-			radiusTervalidasi = "rumah"
-		} else {
-			radiusTervalidasi = "kantor"
+		var validationErr error
+		dalamRadius, radiusTervalidasi, validationErr = validateHomeAttendanceLocation(employee.ID, lat, lon)
+		if validationErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Error()})
 		}
 	} else if wt.Nama == "WFO" {
+		var office models.OfficeLocation
+		if err := config.DB.First(&office).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Office location not configured"})
+		}
 		distance := utils.HaversineDistance(lat, lon, office.Latitude, office.Longitude)
 		dalamRadius = distance <= office.RadiusMeter
 		radiusTervalidasi = "kantor"
@@ -340,6 +327,30 @@ func CheckOut(c *fiber.Ctx) error {
 	})
 }
 
+// validateHomeAttendanceLocation is the single WFH geofence rule used by
+// check-in and check-out. The link is required; coordinates are the values
+// resolved from that link when the home location was saved.
+func validateHomeAttendanceLocation(employeeID uint, latitude, longitude float64) (bool, string, error) {
+	var home models.EmployeeHomeLocation
+	if err := config.DB.Where("employee_id = ?", employeeID).First(&home).Error; err != nil || strings.TrimSpace(home.GoogleMapsURL) == "" {
+		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
+	}
+	return validateConfiguredHomeLocation(home, latitude, longitude)
+}
+
+func validateConfiguredHomeLocation(home models.EmployeeHomeLocation, latitude, longitude float64) (bool, string, error) {
+	if strings.TrimSpace(home.GoogleMapsURL) == "" {
+		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
+	}
+	if home.LatitudeRumah == 0 || home.LongitudeRumah == 0 || home.RadiusMeter <= 0 {
+		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
+	}
+	if utils.HaversineDistance(latitude, longitude, home.LatitudeRumah, home.LongitudeRumah) > home.RadiusMeter {
+		return false, "rumah", fmt.Errorf("Lokasi berada di luar radius rumah")
+	}
+	return true, "rumah", nil
+}
+
 func GetAttendanceHistory(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 	now := attendanceNow()
@@ -350,11 +361,20 @@ func GetAttendanceHistory(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee profile not found"})
 	}
 
+	// Do not expose pre-created rows for future dates. A history row should
+	// represent a date that has already started, not a planned leave period.
+	currentDate := attendanceBusinessDate(now)
 	var records []models.AttendanceRecord
-	if err := config.DB.Where("employee_id = ?", employee.ID).Order("tanggal desc").Find(&records).Error; err != nil {
+	if err := config.DB.Where("employee_id = ? AND tanggal <= ?", employee.ID, currentDate.Format("2006-01-02")).Order("tanggal desc").Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch records"})
 	}
 	for index := range records {
+		// Older approvals could overwrite a real punched record with Izin or
+		// Cuti. A record with JamMasuk is attendance evidence and must remain
+		// visible as attendance in the history.
+		if records[index].JamMasuk != nil && (records[index].Status == models.StatusIzin || records[index].Status == models.StatusCuti) {
+			records[index].Status = models.StatusHadir
+		}
 		if records[index].Status == models.StatusTerlambat {
 			records[index].Status = models.StatusHadir
 		}
@@ -425,21 +445,47 @@ func attendanceBusinessDate(now time.Time) time.Time {
 }
 
 func getAttendanceSchedule(employeeID uint, date time.Time) models.WorkSchedule {
-	var schedules []models.WorkSchedule
 	dateStr := date.Format("2006-01-02")
 	if config.DB != nil {
-		config.DB.Where("employee_id = ? AND DATE(tanggal) = ?", employeeID, dateStr).Limit(1).Find(&schedules)
-		if len(schedules) > 0 {
-			return schedules[0]
+		var schedule models.WorkSchedule
+
+		// An employee-specific assignment always wins over a global schedule.
+		// Use the latest assignment on or before the attendance date as a
+		// fallback. This also keeps a shift active when the admin saved it one
+		// day earlier than the current attendance date.
+		result := config.DB.Where("employee_id = ? AND DATE(tanggal) = ?", employeeID, dateStr).
+			Order("id desc").Limit(1).Find(&schedule)
+		if result.Error == nil && result.RowsAffected > 0 {
+			return schedule
 		}
 
-		// Fallback to global shift (employee_id IS NULL)
-		config.DB.Where("employee_id IS NULL").Limit(1).Find(&schedules)
-		if len(schedules) > 0 {
-			return schedules[0]
+		result = config.DB.Where("employee_id = ? AND tanggal <= ?", employeeID, dateStr).
+			Order("tanggal desc").Order("id desc").Limit(1).Find(&schedule)
+		if result.Error == nil && result.RowsAffected > 0 {
+			return schedule
+		}
+
+		// Fallback to the latest global shift. Prefer a dated global shift
+		// effective for this attendance date, then the legacy undated default.
+		result = config.DB.Where("employee_id IS NULL AND DATE(tanggal) = ?", dateStr).
+			Order("id desc").Limit(1).Find(&schedule)
+		if result.Error == nil && result.RowsAffected > 0 {
+			return schedule
+		}
+
+		result = config.DB.Where("employee_id IS NULL AND tanggal <= ?", dateStr).
+			Order("tanggal desc").Order("id desc").Limit(1).Find(&schedule)
+		if result.Error == nil && result.RowsAffected > 0 {
+			return schedule
+		}
+
+		result = config.DB.Where("employee_id IS NULL AND tanggal IS NULL").
+			Order("id desc").Limit(1).Find(&schedule)
+		if result.Error == nil && result.RowsAffected > 0 {
+			return schedule
 		}
 	}
-	
+
 	return models.WorkSchedule{
 		NamaShift:               "Reguler (Default)",
 		JamMulai:                defaultStartTime,
@@ -447,7 +493,6 @@ func getAttendanceSchedule(employeeID uint, date time.Time) models.WorkSchedule 
 		ToleransiTerlambatMenit: defaultGraceMinutes,
 	}
 }
-
 
 func scheduleMoment(date time.Time, raw, fallback string) time.Time {
 	value := strings.TrimSpace(raw)
@@ -465,11 +510,10 @@ func attendanceWindow(now time.Time, schedule models.WorkSchedule) (time.Time, t
 	workDate := attendanceBusinessDate(now)
 	start := scheduleMoment(workDate, schedule.JamMulai, defaultStartTime)
 	lateAt := start.Add(time.Duration(schedule.ToleransiTerlambatMenit) * time.Minute)
-	end := scheduleMoment(workDate, schedule.JamSelesai, defaultEndTime)
+	end := scheduleEndTime(schedule, workDate)
 	checkoutDeadline := end.Add(time.Hour)
 	return workDate, start, lateAt, end, checkoutDeadline
 }
-
 
 func scheduleCheckoutDeadline(schedule models.WorkSchedule, date time.Time) time.Time {
 	return scheduleEndTime(schedule, date).Add(time.Hour)
@@ -485,7 +529,6 @@ func scheduleEndTime(schedule models.WorkSchedule, date time.Time) time.Time {
 	}
 	return end
 }
-
 
 // reconcileMissingAttendanceRecords materializes Alpha rows for completed
 // working days. It is intentionally idempotent: an existing attendance row or
@@ -511,6 +554,15 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 	// backfilled as well, while employees without a join date get this month's
 	// start as a safe fallback.
 	currentDate := attendanceBusinessDate(now)
+	// Remove stale future leave rows created by older versions. Future leave
+	// belongs in leave_requests and is evaluated when that date becomes active.
+	if err := config.DB.Where(
+		"tanggal > ? AND jam_masuk IS NULL AND status IN ?",
+		currentDate.Format("2006-01-02"),
+		[]models.AttendanceStatus{models.StatusIzin, models.StatusCuti},
+	).Delete(&models.AttendanceRecord{}).Error; err != nil {
+		return err
+	}
 	startDate := time.Date(currentDate.Year(), currentDate.Month(), 1, 0, 0, 0, 0, jakartaLocation)
 	for _, employee := range employees {
 		joined := normalizeAttendanceDate(employee.TanggalBergabung)
@@ -532,10 +584,14 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 	if err := config.DB.Where("status = ? AND tanggal_mulai <= ? AND tanggal_selesai >= ?", models.LeaveStatusApproved, currentDate.Format("2006-01-02"), startDate.Format("2006-01-02")).Find(&leaves).Error; err != nil {
 		return err
 	}
-	leaveDates := make(map[string]bool)
+	leaveStatusMap := make(map[string]models.AttendanceStatus)
 	for _, leave := range leaves {
+		leaveStatus := models.StatusIzin
+		if leave.JenisIzin == models.LeaveTypeCuti {
+			leaveStatus = models.StatusCuti
+		}
 		for day := normalizeAttendanceDate(leave.TanggalMulai); !day.After(normalizeAttendanceDate(leave.TanggalSelesai)); day = day.AddDate(0, 0, 1) {
-			leaveDates[fmt.Sprintf("%d:%s", leave.EmployeeID, day.Format("2006-01-02"))] = true
+			leaveStatusMap[fmt.Sprintf("%d:%s", leave.EmployeeID, day.Format("2006-01-02"))] = leaveStatus
 		}
 	}
 
@@ -543,9 +599,9 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 	if err := config.DB.Where("tanggal BETWEEN ? AND ?", startDate.Format("2006-01-02"), currentDate.Format("2006-01-02")).Find(&records).Error; err != nil {
 		return err
 	}
-	existing := make(map[string]bool, len(records))
+	existingMap := make(map[string]models.AttendanceRecord, len(records))
 	for _, record := range records {
-		existing[fmt.Sprintf("%d:%s", record.EmployeeID, normalizeAttendanceDate(record.Tanggal).Format("2006-01-02"))] = true
+		existingMap[fmt.Sprintf("%d:%s", record.EmployeeID, normalizeAttendanceDate(record.Tanggal).Format("2006-01-02"))] = record
 	}
 
 	for _, employee := range employees {
@@ -558,20 +614,42 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 				continue
 			}
 
+			key := fmt.Sprintf("%d:%s", employee.ID, day.Format("2006-01-02"))
+			leaveStatus, isOnLeave := leaveStatusMap[key]
+
+			if existingRecord, found := existingMap[key]; found {
+				if isOnLeave && existingRecord.JamMasuk == nil && (existingRecord.Status == models.StatusAlpha || existingRecord.Status == "") {
+					config.DB.Model(&models.AttendanceRecord{}).Where("id = ?", existingRecord.ID).Update("status", leaveStatus)
+					existingRecord.Status = leaveStatus
+					existingMap[key] = existingRecord
+				}
+				continue
+			}
+
+			if isOnLeave {
+				record := models.AttendanceRecord{
+					EmployeeID: employee.ID,
+					Tanggal:    day,
+					TipeKerja:  "WFO",
+					Status:     leaveStatus,
+				}
+				if err := config.DB.Create(&record).Error; err != nil {
+					return err
+				}
+				existingMap[key] = record
+				continue
+			}
+
 			wd := day.Weekday()
 			schedule := getAttendanceSchedule(employee.ID, day)
 			// Check if it's a working day (Monday-Friday or has a specific schedule override)
 			isWorkingDay := (wd >= time.Monday && wd <= time.Friday) || schedule.NamaShift != "Reguler (Default)"
-			
+
 			latestEnd := scheduleEndTime(schedule, day)
 			if !isWorkingDay || now.Before(latestEnd) {
 				continue
 			}
 
-			key := fmt.Sprintf("%d:%s", employee.ID, day.Format("2006-01-02"))
-			if existing[key] || leaveDates[key] {
-				continue
-			}
 			record := models.AttendanceRecord{
 				EmployeeID: employee.ID,
 				Tanggal:    day,
@@ -581,7 +659,7 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 			if err := config.DB.Create(&record).Error; err != nil {
 				return err
 			}
-			existing[key] = true
+			existingMap[key] = record
 		}
 	}
 	return nil

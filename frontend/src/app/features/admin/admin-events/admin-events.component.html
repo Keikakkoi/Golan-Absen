@@ -53,7 +53,6 @@
             <span class="eyebrow">Tanggal terpilih</span>
             <h3>{{ selectedDateLabel }}</h3>
           </div>
-          <button class="btn-primary btn-small" type="button" (click)="openCreateModal()">+ Event</button>
         </div>
 
         <div *ngIf="selectedDateEvents.length > 0; else noSelectedEvents" class="selected-event-list">
@@ -64,6 +63,17 @@
               <span>{{ event.Tipe | titlecase }} · {{ event.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span>
               <p>{{ event.Deskripsi || 'Tidak ada deskripsi.' }}</p>
               <small *ngIf="event.Lokasi">Lokasi: {{ event.Lokasi }}</small>
+              <div *ngIf="event.FileAttachmentURL" class="event-attachment" style="margin-top: 6px;">
+                <div *ngIf="isImageAttachment(event.FileAttachmentURL, event.FileAttachmentName)" class="attachment-image-preview">
+                  <a [href]="event.FileAttachmentURL" target="_blank">
+                    <img [src]="event.FileAttachmentURL" [alt]="event.FileAttachmentName || 'Gambar Pengumuman'" class="event-img-thumb">
+                  </a>
+                </div>
+                <a [href]="event.FileAttachmentURL" target="_blank" download class="attachment-link">
+                  <i class="fas fa-paperclip"></i>
+                  <span>{{ event.FileAttachmentName || 'Download File Pengumuman' }}</span>
+                </a>
+              </div>
             </div>
             <div class="event-actions">
               <button type="button" class="icon-button edit" (click)="openEditModal(event)" aria-label="Edit event" title="Edit event"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>
@@ -86,21 +96,21 @@
       </div>
       
       <!-- FILTER SECTION -->
-      <div class="filter-card premium-filter" style="margin-bottom: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
-        <div class="filter-grid" style="display: flex; gap: 1rem; align-items: flex-end;">
+      <div class="filter-card premium-filter event-filter-card">
+        <div class="filter-grid event-filter-grid">
           <div class="filter-group">
-            <label style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Dari Tanggal</label>
-            <div class="input-wrapper" style="position: relative;">
+            <label>Dari Tanggal</label>
+            <div class="input-wrapper">
               <input type="date" class="golan-input" [(ngModel)]="tableFilters.start_date" (change)="onTableFilterChange()">
             </div>
           </div>
           <div class="filter-group">
-            <label style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Sampai Tanggal</label>
-            <div class="input-wrapper" style="position: relative;">
+            <label>Sampai Tanggal</label>
+            <div class="input-wrapper">
               <input type="date" class="golan-input" [(ngModel)]="tableFilters.end_date" (change)="onTableFilterChange()">
             </div>
           </div>
-          <div style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #64748b; padding-bottom: 0.5rem;">
+          <div class="event-filter-summary">
             Menampilkan <strong>{{ tableEvents.length }}</strong> event
           </div>
         </div>
@@ -109,12 +119,18 @@
       <div class="table-container">
         <div *ngIf="isLoadingTable" style="padding: 1rem; color: #6b7280; text-align: center;">Memuat daftar agenda...</div>
         <table class="golan-table" *ngIf="!isLoadingTable && tableEvents.length > 0; else noEvents">
-          <thead><tr><th>Tanggal</th><th>Waktu</th><th>Judul</th><th>Tipe</th><th>Lokasi</th><th>Status</th><th>Aksi</th></tr></thead>
+          <thead><tr><th>Tanggal</th><th>Waktu</th><th>Judul</th><th>Lampiran File</th><th>Tipe</th><th>Lokasi</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody>
             <tr *ngFor="let event of tableEvents">
               <td>{{ event.Tanggal | date:'dd MMM yyyy' }}</td>
               <td class="mono-text">{{ event.JamMulai }}<span *ngIf="event.JamSelesai"> – {{ event.JamSelesai }}</span></td>
               <td><strong>{{ event.Judul }}</strong><small class="table-description">{{ event.Deskripsi || '-' }}</small></td>
+              <td>
+                <a *ngIf="event.FileAttachmentURL" [href]="event.FileAttachmentURL" target="_blank" download class="attachment-link" style="padding: 3px 8px; font-size: 11px;">
+                  <i class="fas fa-download"></i> Unduh
+                </a>
+                <span *ngIf="!event.FileAttachmentURL" class="muted" style="font-size: 0.8rem;">-</span>
+              </td>
               <td>{{ event.Tipe | titlecase }}</td>
               <td>{{ event.Lokasi || '-' }}</td>
               <td><span class="status-badge" [class.status-hadir]="event.StatusAktif" [class.status-alpha]="!event.StatusAktif">{{ event.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span></td>
@@ -122,6 +138,32 @@
             </tr>
           </tbody>
         </table>
+        <div class="event-mobile-list" *ngIf="!isLoadingTable && tableEvents.length > 0">
+          <article class="event-mobile-card" *ngFor="let event of tableEvents">
+            <div class="event-mobile-card-header">
+              <div class="event-mobile-title">
+                <span class="event-mobile-label">Judul</span>
+                <strong>{{ event.Judul }}</strong>
+              </div>
+              <span class="status-badge" [class.status-hadir]="event.StatusAktif" [class.status-alpha]="!event.StatusAktif">{{ event.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span>
+            </div>
+            <div class="event-mobile-details">
+              <div class="event-mobile-field"><span>Tanggal</span><strong>{{ event.Tanggal | date:'dd MMM yyyy' }}</strong></div>
+              <div class="event-mobile-field"><span>Waktu</span><strong class="mono-text">{{ event.JamMulai }}<ng-container *ngIf="event.JamSelesai"> – {{ event.JamSelesai }}</ng-container></strong></div>
+              <div class="event-mobile-field"><span>Tipe</span><strong>{{ event.Tipe | titlecase }}</strong></div>
+              <div class="event-mobile-field"><span>Lokasi</span><strong>{{ event.Lokasi || '-' }}</strong></div>
+              <div class="event-mobile-field event-mobile-description"><span>Deskripsi</span><strong>{{ event.Deskripsi || '-' }}</strong></div>
+              <div class="event-mobile-field event-mobile-attachment"><span>Lampiran File</span>
+                <a *ngIf="event.FileAttachmentURL" [href]="event.FileAttachmentURL" target="_blank" download class="attachment-link"><i class="fas fa-download"></i> Unduh <small>{{ event.FileAttachmentName || 'File lampiran' }}</small></a>
+                <strong *ngIf="!event.FileAttachmentURL">-</strong>
+              </div>
+            </div>
+            <div class="event-mobile-actions actions">
+              <button class="icon-button edit" type="button" (click)="openEditModal(event)" aria-label="Edit event" title="Edit event"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>
+              <button class="icon-button delete" type="button" (click)="deleteEvent(event)" aria-label="Hapus event" title="Hapus event"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button>
+            </div>
+          </article>
+        </div>
         <ng-template #noEvents><div class="empty-state" *ngIf="!isLoadingTable">Belum ada event pada periode ini.</div></ng-template>
       </div>
     </section>
@@ -134,7 +176,7 @@
       <div class="modal-title-group">
         <span class="eyebrow">Agenda perusahaan</span>
         <h3>{{ form.ID ? 'Edit Event Perusahaan' : 'Tambah Event Perusahaan' }}</h3>
-        <p>Lengkapi informasi kegiatan yang akan dibagikan kepada karyawan.</p>
+        <p>Lengkapi informasi kegiatan dan unggah file pengumuman jika ada.</p>
       </div>
       <button class="btn-close" type="button" (click)="closeModal()" aria-label="Tutup">&times;</button>
     </div>
@@ -150,9 +192,30 @@
       <div class="form-group"><label for="event-title">Judul Event <b>*</b></label><input id="event-title" type="text" class="golan-input" name="judul" [(ngModel)]="form.judul" placeholder="Contoh: Meeting dengan investor" required></div>
       <div class="form-group"><label for="event-location">Lokasi <span>(opsional)</span></label><input id="event-location" type="text" class="golan-input" name="lokasi" [(ngModel)]="form.lokasi" placeholder="Contoh: Ruang Meeting Utama / Online"></div>
       <div class="form-group"><label for="event-description">Deskripsi / Catatan <span>(opsional)</span></label><textarea id="event-description" class="golan-input" name="deskripsi" [(ngModel)]="form.deskripsi" rows="3" placeholder="Tambahkan informasi event"></textarea></div>
+      
+      <!-- FILE UPLOAD FIELD -->
+      <div class="form-group">
+        <label for="event-file">Upload File Pengumuman / Lampiran <span>(opsional, maks 10MB)</span></label>
+        <input id="event-file" type="file" class="golan-input" (change)="onFileSelected($event)" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*">
+        
+        <div *ngIf="selectedFile" style="margin-top: 6px; font-size: 0.85rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+          <span>📄 File baru dipilih: <strong>{{ selectedFile.name }}</strong></span>
+          <button type="button" class="btn-secondary btn-small" (click)="removeFile()" style="padding: 2px 6px; font-size: 0.75rem;">Batal</button>
+        </div>
+
+        <div *ngIf="!selectedFile && existingAttachmentUrl && !removeExistingFile" style="margin-top: 6px; font-size: 0.85rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+          <span>📎 Lampiran saat ini: <a [href]="existingAttachmentUrl" target="_blank" download><strong>{{ existingAttachmentName || 'Download File' }}</strong></a></span>
+          <button type="button" class="btn-secondary btn-small" (click)="removeFile()" style="padding: 2px 6px; font-size: 0.75rem; color: #dc2626;">Hapus File</button>
+        </div>
+
+        <div *ngIf="removeExistingFile && !selectedFile" style="margin-top: 6px; font-size: 0.8rem; color: #dc2626;">
+          ⚠ File lampiran akan dihapus saat disimpan.
+        </div>
+      </div>
+
       <label class="active-toggle">
         <span class="toggle-control"><input type="checkbox" name="status_aktif" [(ngModel)]="form.status_aktif"><span class="toggle-track"><span></span></span></span>
-        <span class="toggle-copy"><strong>Tampilkan event pada dashboard karyawan</strong><small>Event aktif dapat dilihat oleh seluruh karyawan.</small></span>
+        <span class="toggle-copy"><strong>Tampilkan event pada dashboard karyawan, magang, dan manajer</strong><small>Event aktif dapat dilihat oleh seluruh karyawan dan role terkait.</small></span>
       </label>
       <div *ngIf="errorMessage && showModal" class="alert alert-danger modal-error">{{ errorMessage }}</div>
       <div class="modal-actions"><button type="button" class="btn-secondary" (click)="closeModal()">Batal</button><button type="submit" class="btn-primary" [disabled]="isSaving">{{ isSaving ? 'Menyimpan...' : 'Simpan Event' }}</button></div>

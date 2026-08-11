@@ -1,1 +1,281 @@
 .role-operations-page .section-tabs{display:flex;gap:8px;margin-bottom:24px}.section-tabs button{border:1px solid var(--mint-2);background:var(--mint-0);color:var(--text-dark-lo);border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer;transition:.2s}.section-tabs button:hover,.section-tabs button.active{background:var(--green);color:#fff;border-color:var(--green)}.panel{margin-top:24px}.panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.toolbar{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}.toolbar .golan-input{min-width:120px}.note-input{min-width:130px}.btn-small{border:0;border-radius:6px;padding:7px 9px;color:#fff;cursor:pointer;margin:2px;font-weight:700}.btn-small:disabled{opacity:.55;cursor:not-allowed}.approve{background:var(--green)}.reject{background:var(--absent)}.muted{color:var(--text-dark-lo)}.member-stat{margin:18px 0}.bar-line{display:flex;height:12px;background:var(--mint-1);border-radius:99px;overflow:hidden;margin:8px 0}.present{background:var(--green)}.late{background:#f59e0b}.member-stat small{color:var(--text-dark-lo)}.actions{min-width:260px}.actions input[type=file]{max-width:170px;font-size:12px}.status-pill{display:inline-block;border-radius:999px;background:var(--mint-1);padding:5px 9px;font-size:12px;font-weight:700;color:var(--text-dark)}@media(max-width:760px){.panel-heading{align-items:stretch;flex-direction:column}.toolbar{width:100%;align-items:stretch}.toolbar>*{flex:1}.role-operations-page .section-tabs{overflow:auto}}@media print{app-admin-sidebar,.section-tabs,.toolbar,.btn-small,.btn-primary,.btn-secondary{display:none!important}.role-operations-page{padding:0}.panel{box-shadow:none;break-inside:avoid}}
+
+/*
+ * The global mobile table rule uses `overflow-wrap: anywhere`, which is useful
+ * for arbitrary tokens but makes normal labels and names unreadable here.
+ * Keep these tables as real tables and let the surrounding viewport scroll on
+ * narrow screens so header and body columns always share the same track.
+ */
+.role-operations-page .golan-table-responsive {
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.role-operations-page .golan-table {
+  display: table !important;
+  width: 100% !important;
+  min-width: 760px !important;
+  max-width: none !important;
+  table-layout: fixed;
+  white-space: normal !important;
+}
+
+.role-operations-page .golan-table th,
+.role-operations-page .golan-table td {
+  box-sizing: border-box;
+  padding: 11px 12px;
+  vertical-align: middle;
+  line-height: 1.35;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+}
+
+.role-operations-page .golan-table th {
+  white-space: nowrap !important;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.role-operations-page .golan-table td:first-child,
+.role-operations-page .golan-table th:first-child {
+  white-space: nowrap !important;
+}
+
+.role-operations-logbook-table {
+  min-width: 1180px !important;
+}
+
+.role-operations-logbook-table .col-date { width: 112px; }
+.role-operations-logbook-table .col-participant { width: 190px; }
+.role-operations-logbook-table .col-task { width: 170px; }
+.role-operations-logbook-table .col-activity { width: 240px; }
+.role-operations-logbook-table .col-screenshot { width: 116px; }
+.role-operations-logbook-table .col-status { width: 132px; }
+.role-operations-logbook-table .col-filling { width: 112px; }
+.role-operations-logbook-table .col-review { width: 210px; }
+.role-operations-logbook-table .col-actions { width: 132px; }
+
+.role-operations-logbook-table td:nth-child(2) > div:first-child,
+.role-operations-logbook-table td:nth-child(3),
+.role-operations-logbook-table td:nth-child(4),
+.role-operations-logbook-table td:nth-child(8) {
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+}
+
+.role-operations-logbook-table .status-pill {
+  white-space: nowrap;
+}
+
+.role-operations-logbook-table .report-thumb {
+  display: inline-block;
+  width: 68px;
+  height: 48px;
+  margin: 2px;
+  vertical-align: middle;
+}
+
+.role-operations-logbook-table .report-thumb img {
+  display: block;
+  width: 68px !important;
+  height: 48px !important;
+  max-width: 100% !important;
+  object-fit: cover;
+  border: 1px solid var(--mint-2);
+  border-radius: 6px;
+}
+
+.role-operations-certificate-table {
+  min-width: 1050px !important;
+}
+
+@media (max-width: 640px) {
+  .role-operations-page .golan-table {
+    font-size: 0.8125rem;
+  }
+
+  .role-operations-page .golan-table th,
+  .role-operations-page .golan-table td {
+    padding: 9px 10px;
+  }
+
+  .role-operations-page .golan-table th {
+    font-size: 0.6875rem;
+    letter-spacing: 0.03em;
+  }
+
+  .role-operations-logbook-table .col-participant { width: 200px; }
+  .role-operations-logbook-table .col-task { width: 180px; }
+  .role-operations-logbook-table .col-activity { width: 250px; }
+
+  .role-operations-logbook-table .report-thumb {
+    width: 56px;
+    height: 42px;
+  }
+
+  .role-operations-logbook-table .report-thumb img {
+    width: 56px !important;
+    height: 42px !important;
+  }
+}
+
+.muted-file {
+  color: var(--muted-color);
+  font-size: 11px;
+}
+
+/* Light mode action colors. Keep these scoped to light mode so the shared
+   dark-theme overrides continue to define the dark appearance. */
+:host-context(body:not(.dark-theme)) .role-operations-page .btn-small.btn-view-detail,
+:host-context(body:not(.dark-theme)) .role-operations-page .cert-link {
+  background: #e8f3ff;
+  background-color: #e8f3ff;
+  border: 1px solid #b8d9fb;
+  color: #175a9d;
+}
+
+:host-context(body:not(.dark-theme)) .role-operations-page .btn-small.btn-view-detail:hover,
+:host-context(body:not(.dark-theme)) .role-operations-page .cert-link:hover {
+  background: #d7eaff;
+  background-color: #d7eaff;
+  border-color: #8fc2f3;
+  color: #124a80;
+}
+
+:host-context(body:not(.dark-theme)) .role-operations-page .cert-download-btn {
+  background: #2f80ed;
+  border: 1px solid #2f80ed;
+  color: #fff;
+}
+
+:host-context(body:not(.dark-theme)) .role-operations-page .cert-download-btn:hover {
+  background: #1769aa;
+  border-color: #1769aa;
+}
+
+/* Modal Popup Styles */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-card {
+  width: 90%;
+  max-width: 650px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-card, #ffffff);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-dark, #1e293b);
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-muted, #6c757d);
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #dc3545;
+    }
+  }
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  .detail-row {
+    strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.875rem;
+      color: var(--text-muted, #64748b);
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text-dark, #1e293b);
+    }
+  }
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media(max-width: 760px) {
+  .panel-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .toolbar {
+    width: 100%;
+    align-items: stretch;
+    > * {
+      flex: 1;
+    }
+  }
+  .role-operations-page .section-tabs {
+    overflow: auto;
+  }
+}
+
+@media print {
+  app-admin-sidebar,
+  .section-tabs,
+  .toolbar,
+  .btn-small,
+  .btn-primary,
+  .btn-secondary {
+    display: none !important;
+  }
+  .role-operations-page {
+    padding: 0;
+  }
+  .panel {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}

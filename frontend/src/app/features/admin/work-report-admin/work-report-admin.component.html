@@ -1,4 +1,4 @@
-<div class="dashboard-container">
+<div class="dashboard-container work-report-admin-page">
   <app-shared-sidebar></app-shared-sidebar>
 
   <div class="main-content">
@@ -79,6 +79,17 @@
             </div>
 
             <div class="filter-group">
+              <label>Project</label>
+              <div class="input-wrapper select-wrapper">
+                <select class="filter-input" [(ngModel)]="filterOptions.project_id" (ngModelChange)="loadData()">
+                  <option value="">Semua Project</option>
+                  <option *ngFor="let project of projects" [value]="project.ID">{{ project.ID }} - {{ project.NamaProject }}</option>
+                </select>
+                <i class="fas fa-chevron-down icon-right"></i>
+              </div>
+            </div>
+
+            <div class="filter-group">
               <label>Jabatan</label>
               <div class="input-wrapper select-wrapper">
                 <select class="filter-input" [(ngModel)]="filterOptions.role" (ngModelChange)="applyFilters()">
@@ -97,6 +108,7 @@
                   <option value="Menunggu">Menunggu</option>
                   <option value="Sesuai">Sesuai</option>
                   <option value="Tidak Sesuai">Tidak Sesuai</option>
+                  <option value="tidak membuat laporan kerja">tidak membuat laporan kerja</option>
                 </select>
                 <i class="fas fa-chevron-down icon-right"></i>
               </div>
@@ -123,8 +135,8 @@
           </div>
         </div>
 
-        <div class="golan-table-responsive">
-          <table class="golan-table table-bordered table-sm" style="font-size: 0.85rem; white-space: nowrap;" *ngIf="reports.length > 0">
+        <div class="golan-table-responsive work-report-table-wrapper">
+          <table class="golan-table table-bordered table-sm work-report-table" *ngIf="reports.length > 0">
             <thead>
               <tr>
                 <th class="th-yellow">No</th>
@@ -152,30 +164,36 @@
                 <td>{{ getEmployeeName(r) }}</td>
                 <td>{{ r.Employee?.Division?.NamaDivisi || '-' }}</td>
                 <td>{{ r.Employee?.Position?.NamaJabatan || '-' }}</td>
-                <td style="min-width: 250px; white-space: normal; line-height: 1.4;" [title]="r.tugas || '-'">{{ r.tugas || '-' }}</td>
-                <td style="min-width: 150px; white-space: normal; line-height: 1.4;" [title]="r.judul || '-'">{{ r.judul || '-' }}</td>
-                <td style="min-width: 350px; white-space: normal; line-height: 1.4;" [title]="r.deskripsi_kegiatan || '-'">{{ r.deskripsi_kegiatan || '-' }}</td>
+                <td class="text-cell task-cell" [title]="r.tugas || '-'">{{ r.tugas || '-' }}</td>
+                <td class="text-cell title-cell" [title]="r.judul || '-'">{{ r.judul || '-' }}</td>
+                <td class="text-cell description-cell" [title]="r.deskripsi_kegiatan || '-'">{{ r.deskripsi_kegiatan || '-' }}</td>
                 <td>{{ r.realisasi_kegiatan || '-' }}</td>
-                <td style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.kendala || '-'">{{ r.kendala || '-' }}</td>
-                <td style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.rencana_minggu_depan || '-'">{{ r.rencana_minggu_depan || '-' }}</td>
+                <td class="text-cell" [title]="r.kendala || '-'">{{ r.kendala || '-' }}</td>
+                <td class="text-cell" [title]="r.rencana_minggu_depan || '-'">{{ r.rencana_minggu_depan || '-' }}</td>
                 <td>
                   <a *ngIf="r.link_artikel" [href]="r.link_artikel" target="_blank" style="color: #3B82F6; text-decoration: underline;">Link</a>
                   <span *ngIf="!r.link_artikel">-</span>
                 </td>
-                <td style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.catatan_tambahan || '-'">{{ r.catatan_tambahan || '-' }}</td>
+                <td class="text-cell" [title]="r.catatan_tambahan || '-'">{{ r.catatan_tambahan || '-' }}</td>
                 <td>
-                  <span class="status-badge status-hadir">Sudah Report</span>
+                  <span *ngIf="isNoReport(r)" class="status-badge status-alpha">tidak membuat laporan kerja</span>
+                  <span *ngIf="!isNoReport(r)" class="status-badge status-hadir">Sudah Report</span>
                 </td>
                 <td><span *ngIf="r.is_late_submission" class="status-pill status-warning">⚠ Terlambat</span><span *ngFor="let image of r.attachments" class="report-thumb"><a [href]="image.file_url" target="_blank"><img [src]="image.file_url" [alt]="image.file_name"></a></span></td>
                 <td>
-                  <span class="print-only" style="display: none;">{{ r.status_sesuai || 'Menunggu' }}</span>
+                  <span class="print-only" style="display: none;">{{ r.status_sesuai || (isNoReport(r) ? 'tidak membuat laporan kerja' : 'Menunggu') }}</span>
                   <select class="form-control no-print" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 500; border-radius: 4px;" 
-                          [value]="r.status_sesuai || ''" 
+                          [value]="r.status_sesuai || (isNoReport(r) ? 'tidak membuat laporan kerja' : '')" 
                           (change)="updateValidation(r, $event)"
-                          [ngStyle]="{'background-color': r.status_sesuai === 'Sesuai' ? '#d4edda' : (r.status_sesuai === 'Tidak Sesuai' ? '#f8d7da' : ''), 'color': r.status_sesuai === 'Sesuai' ? '#155724' : (r.status_sesuai === 'Tidak Sesuai' ? '#721c24' : '#333'), 'border-color': r.status_sesuai === 'Sesuai' ? '#c3e6cb' : (r.status_sesuai === 'Tidak Sesuai' ? '#f5c6cb' : '#ccc')}">
+                          [ngStyle]="{
+                            'background-color': r.status_sesuai === 'Sesuai' ? '#d4edda' : (r.status_sesuai === 'Tidak Sesuai' ? '#f8d7da' : ((isNoReport(r) || r.status_sesuai === 'tidak membuat laporan kerja') ? '#f8d7da' : '')),
+                            'color': r.status_sesuai === 'Sesuai' ? '#155724' : (r.status_sesuai === 'Tidak Sesuai' ? '#721c24' : ((isNoReport(r) || r.status_sesuai === 'tidak membuat laporan kerja') ? '#721c24' : '#333')),
+                            'border-color': r.status_sesuai === 'Sesuai' ? '#c3e6cb' : (r.status_sesuai === 'Tidak Sesuai' ? '#f5c6cb' : ((isNoReport(r) || r.status_sesuai === 'tidak membuat laporan kerja') ? '#f5c6cb' : '#ccc'))
+                          }">
                     <option value="">-- Pilih --</option>
                     <option value="Sesuai">Sesuai</option>
                     <option value="Tidak Sesuai">Tidak Sesuai</option>
+                    <option value="tidak membuat laporan kerja">tidak membuat laporan kerja</option>
                   </select>
                 </td>
               </tr>

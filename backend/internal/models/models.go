@@ -11,31 +11,12 @@ type Role string
 const (
 	RoleKaryawan Role = "Karyawan"
 	RoleHRD      Role = "HRD"
-	RolePimpinan Role = "Pimpinan"
 	RoleMagang   Role = "MAGANG"
 	RoleManajer  Role = "MANAJER"
 )
 
 func IsValidRole(role Role) bool {
-	return role == RoleKaryawan || role == RoleHRD || role == RolePimpinan || role == RoleMagang || role == RoleManajer
-}
-
-// Permission stores a capability that can be assigned to one or more roles.
-// Keeping permissions as data makes the HRD permission screen extensible
-// without requiring a new database column for every capability.
-type Permission struct {
-	gorm.Model
-	Kode      string `gorm:"size:80;uniqueIndex;not null"`
-	Nama      string `gorm:"size:120;not null"`
-	Deskripsi string `gorm:"type:text"`
-}
-
-type RolePermission struct {
-	gorm.Model
-	Role         Role `gorm:"type:varchar(20);uniqueIndex:idx_role_permission;not null"`
-	PermissionID uint `gorm:"uniqueIndex:idx_role_permission;not null"`
-	Permission   Permission
-	Diizinkan    bool `gorm:"default:true"`
+	return role == RoleKaryawan || role == RoleHRD || role == RoleMagang || role == RoleManajer
 }
 
 type User struct {
@@ -49,6 +30,8 @@ type User struct {
 	Status              string     `gorm:"size:20;default:'aktif'"`
 	ManagerID           *uint      `gorm:"index"`
 	Manager             *User      `gorm:"foreignKey:ManagerID"`
+	ProjectID           *uint      `gorm:"index"`
+	Project             *Project   `gorm:"foreignKey:ProjectID"`
 	TeamID              string     `gorm:"size:80;index"`
 	InternshipStartDate *time.Time `gorm:"type:date"`
 	InternshipEndDate   *time.Time `gorm:"type:date"`
@@ -56,6 +39,15 @@ type User struct {
 	MentorContact       string     `gorm:"size:100"`
 	InstitutionName     string     `gorm:"size:150"`
 	Employee            Employee
+}
+
+// Project is the source of valid project IDs used when assigning employees.
+// Soft deletion keeps historical employee assignments referentially readable.
+type Project struct {
+	gorm.Model
+	NamaProject string `gorm:"size:150;not null;uniqueIndex"`
+	Deskripsi   string `gorm:"type:text"`
+	StatusAktif bool   `gorm:"default:true;index"`
 }
 
 // InternshipCertificate records generated or manually uploaded certificate metadata.
@@ -74,6 +66,32 @@ type InternshipCertificate struct {
 	UploadedAt    *time.Time `gorm:"type:timestamp"`
 }
 
+// InternshipDocument stores supporting documents issued to an intern.
+// DocumentType is either nilai_magang or keterangan_lulus.
+type InternshipDocument struct {
+	gorm.Model
+	UserID       uint `gorm:"uniqueIndex:idx_internship_document_user_type;not null"`
+	User         User
+	DocumentType string     `gorm:"size:40;uniqueIndex:idx_internship_document_user_type;not null"`
+	FileURL      string     `gorm:"type:text"`
+	StorageKey   string     `gorm:"type:text"`
+	FileName     string     `gorm:"size:255"`
+	MimeType     string     `gorm:"size:80"`
+	FileSize     int64      `gorm:"default:0"`
+	UploadedBy   *uint      `gorm:"index"`
+	UploadedAt   *time.Time `gorm:"type:timestamp"`
+}
+
+// CertificateIssuanceLog keeps a cumulative lifetime record of every intern who has ever been issued a certificate.
+// This ensures total issued certificates count never decreases when individual files/metadata are deleted.
+type CertificateIssuanceLog struct {
+	gorm.Model
+	UserID        uint      `gorm:"index;not null"`
+	CertificateNo string    `gorm:"size:80;not null"`
+	IssuedAt      time.Time `gorm:"type:timestamp;not null"`
+	Action        string    `gorm:"size:50;not null"`
+}
+
 type Division struct {
 	gorm.Model
 	NamaDivisi string `gorm:"size:100;not null"`
@@ -90,18 +108,32 @@ type Position struct {
 
 type Employee struct {
 	gorm.Model
-	UserID           uint                  `gorm:"uniqueIndex;not null"`
-	User             *User                 `gorm:"foreignKey:UserID"`
-	NIK              string                `gorm:"size:50;uniqueIndex;not null"`
-	DivisionID       uint                  `gorm:"not null"`
-	Division         Division              `gorm:"foreignKey:DivisionID"`
-	PositionID       uint                  `gorm:"not null"`
-	Position         Position              `gorm:"foreignKey:PositionID"`
-	TanggalBergabung time.Time             `gorm:"type:date"`
-	FotoProfilURL    string                `gorm:"type:text"`
-	HomeLatitude     float64               `gorm:"default:0"`
-	HomeLongitude    float64               `gorm:"default:0"`
-	HomeLocation     *EmployeeHomeLocation `gorm:"foreignKey:EmployeeID"`
+	UserID           uint       `gorm:"uniqueIndex;not null"`
+	User             *User      `gorm:"foreignKey:UserID"`
+	NIK              string     `gorm:"size:50;uniqueIndex;not null"`
+	JenisKelamin     string     `gorm:"size:20"`
+	TempatLahir      string     `gorm:"size:100"`
+	TanggalLahir     *time.Time `gorm:"type:date"`
+	NomorTelepon     string     `gorm:"size:30"`
+	Alamat           string     `gorm:"type:text"`
+	DivisionID       uint       `gorm:"not null"`
+	Division         Division   `gorm:"foreignKey:DivisionID"`
+	PositionID       uint       `gorm:"not null"`
+	Position         Position   `gorm:"foreignKey:PositionID"`
+	TanggalBergabung time.Time  `gorm:"type:date"`
+	FotoProfilURL    string     `gorm:"type:text"`
+	ShiftKerja       string     `gorm:"size:100;not null;default:'Reguler'"`
+	// Effective shift fields are response-only. The source of truth is WorkSchedule;
+	// these fields let directory APIs expose the resolved assignment without writing
+	// it back to the legacy employees.shift_kerja column.
+	ShiftID         uint                  `gorm:"-" json:"shift_id,omitempty"`
+	ShiftName       string                `gorm:"-" json:"shift_name,omitempty"`
+	ShiftTanggal    *time.Time            `gorm:"-" json:"tanggal_berlaku,omitempty"`
+	ShiftJamMulai   string                `gorm:"-" json:"jam_masuk,omitempty"`
+	ShiftJamSelesai string                `gorm:"-" json:"jam_pulang,omitempty"`
+	HomeLatitude    float64               `gorm:"default:0"`
+	HomeLongitude   float64               `gorm:"default:0"`
+	HomeLocation    *EmployeeHomeLocation `gorm:"foreignKey:EmployeeID"`
 }
 
 type AttendanceStatus string
@@ -161,7 +193,7 @@ type WorkType struct {
 type EmployeeHomeLocation struct {
 	gorm.Model
 	EmployeeID     uint     `gorm:"uniqueIndex;not null"`
-	Employee       Employee `gorm:"foreignKey:EmployeeID"`
+	Employee       Employee `gorm:"foreignKey:EmployeeID" json:"-"`
 	LatitudeRumah  float64  `gorm:"not null"`
 	LongitudeRumah float64  `gorm:"not null"`
 	RadiusMeter    float64  `gorm:"default:100"`
@@ -191,7 +223,7 @@ type OfficeLocation struct {
 
 type WorkSchedule struct {
 	gorm.Model
-	EmployeeID              *uint      `gorm:"index"`
+	EmployeeID              *uint `gorm:"index"`
 	Employee                Employee
 	Tanggal                 *time.Time `gorm:"type:date;index"`
 	NamaShift               string     `gorm:"size:100;not null"`
@@ -283,15 +315,17 @@ type Holiday struct {
 // CompanyEvent stores company activities that are shown on employee and HRD calendars.
 type CompanyEvent struct {
 	gorm.Model
-	Tanggal     time.Time `gorm:"type:date;not null;index"`
-	JamMulai    string    `gorm:"size:5;not null"`
-	JamSelesai  string    `gorm:"size:5"`
-	Judul       string    `gorm:"size:150;not null"`
-	Tipe        string    `gorm:"size:30;not null;default:'info'"`
-	Deskripsi   string    `gorm:"type:text"`
-	Lokasi      string    `gorm:"size:150"`
-	StatusAktif bool      `gorm:"default:true;index"`
-	DibuatOleh  uint      `gorm:"index"`
+	Tanggal            time.Time `gorm:"type:date;not null;index"`
+	JamMulai           string    `gorm:"size:5;not null"`
+	JamSelesai         string    `gorm:"size:5"`
+	Judul              string    `gorm:"size:150;not null"`
+	Tipe               string    `gorm:"size:30;not null;default:'info'"`
+	Deskripsi          string    `gorm:"type:text"`
+	Lokasi             string    `gorm:"size:150"`
+	FileAttachmentURL  string    `gorm:"type:text"`
+	FileAttachmentName string    `gorm:"size:255"`
+	StatusAktif        bool      `gorm:"default:true;index"`
+	DibuatOleh         uint      `gorm:"index"`
 }
 
 type NotificationSetting struct {
@@ -326,13 +360,23 @@ type WorkReport struct {
 	CatatanTambahan    string                 `gorm:"type:text" json:"catatan_tambahan"`
 	StatusSesuai       string                 `gorm:"size:50" json:"status_sesuai"` // Sesuai/Tidak Sesuai
 	ValidasiOlehHR     bool                   `gorm:"default:false" json:"validasi_oleh_hr"`
-	StatusLogbook      string                 `gorm:"size:20;default:'draft'" json:"status_logbook"` // draft/submitted/approved
+	StatusLogbook      string                 `gorm:"size:20;default:'draft'" json:"status_logbook"` // draft/submitted/approved/rejected
 	ReviewedBy         *uint                  `gorm:"index" json:"reviewed_by"`
 	ReviewedAt         *time.Time             `gorm:"type:timestamp" json:"reviewed_at"`
 	ReviewNotes        string                 `gorm:"type:text" json:"review_notes"`
+	ManagerReviewNote  string                 `gorm:"-" json:"manager_review_note,omitempty"`
+	ManagerReviewedAt  *time.Time             `gorm:"-" json:"manager_reviewed_at,omitempty"`
+	ManagerReviewedBy  *uint                  `gorm:"-" json:"manager_reviewed_by,omitempty"`
 	CustomFields       string                 `gorm:"type:text" json:"custom_fields"` // JSON representation of custom headers
 	IsLateSubmission   bool                   `gorm:"default:false;index" json:"is_late_submission"`
 	Attachments        []WorkReportAttachment `gorm:"foreignKey:WorkReportID" json:"attachments,omitempty"`
+}
+
+func (w *WorkReport) AfterFind(tx *gorm.DB) error {
+	w.ManagerReviewNote = w.ReviewNotes
+	w.ManagerReviewedAt = w.ReviewedAt
+	w.ManagerReviewedBy = w.ReviewedBy
+	return nil
 }
 
 type WorkReportAttachment struct {

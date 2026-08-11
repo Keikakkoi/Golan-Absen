@@ -20,6 +20,7 @@ func SetupWorkTypeRoutes(router fiber.Router) {
 
 	// Admin only routes
 	admin := router.Group("/admin/worktypes", middleware.Protected())
+	admin.Get("/", GetAllWorkTypes)
 	admin.Post("/", CreateWorkType)
 	admin.Put("/:id", UpdateWorkType)
 	admin.Delete("/:id", DeleteWorkType)
@@ -53,11 +54,6 @@ func GetAllWorkTypes(c *fiber.Ctx) error {
 }
 
 func CreateWorkType(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	wt := new(models.WorkType)
 	if err := c.BodyParser(wt); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
@@ -77,11 +73,6 @@ func CreateWorkType(c *fiber.Ctx) error {
 }
 
 func UpdateWorkType(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 
@@ -108,11 +99,6 @@ func UpdateWorkType(c *fiber.Ctx) error {
 }
 
 func DeleteWorkType(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 

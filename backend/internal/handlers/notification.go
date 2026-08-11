@@ -54,12 +54,15 @@ func SubscribeToPush(c *fiber.Ctx) error {
 	}
 
 	var existing models.PushSubscription
-	err := config.DB.Where("endpoint = ?", subscription.Endpoint).First(&existing).Error
+	// Include soft-deleted rows so a browser can re-enable the same push
+	// subscription after it was disabled.
+	err := config.DB.Unscoped().Where("endpoint = ?", subscription.Endpoint).First(&existing).Error
 	if err == nil {
 		existing.UserID = userID
 		existing.P256dh = subscription.Keys.P256dh
 		existing.Auth = subscription.Keys.Auth
-		if err := config.DB.Save(&existing).Error; err != nil {
+		existing.DeletedAt = gorm.DeletedAt{}
+		if err := config.DB.Unscoped().Save(&existing).Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan subscription push"})
 		}
 		return c.SendStatus(fiber.StatusNoContent)
@@ -114,7 +117,7 @@ func BroadcastNotification(c *fiber.Ctx) error {
 	query := config.DB.Model(&models.User{})
 	if input.TargetRole != "" && input.TargetRole != "Semua" {
 		role := models.Role(input.TargetRole)
-		if role != models.RoleKaryawan && role != models.RoleHRD && role != models.RolePimpinan && role != models.RoleMagang && role != models.RoleManajer {
+		if role != models.RoleKaryawan && role != models.RoleHRD && role != models.RoleMagang && role != models.RoleManajer {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Target role tidak valid"})
 		}
 		query = query.Where("role = ?", role)

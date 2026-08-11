@@ -88,7 +88,7 @@
       </section>
 
       <section class="golan-card panel-card">
-        <div class="panel-header"><div><h3>Aturan Cuti & Laporan Kerja</h3><p class="panel-description">Aturan ini berlaku untuk Karyawan, Manajer, dan Pimpinan.</p></div><span class="panel-badge">Kebijakan</span></div>
+        <div class="panel-header"><div><h3>Aturan Cuti & Laporan Kerja</h3><p class="panel-description">Aturan ini berlaku untuk Karyawan dan Manajer.</p></div><span class="panel-badge">Kebijakan</span></div>
         <div *ngIf="isLoadingGeneral" class="loading-state">Memuat...</div>
         <form *ngIf="!isLoadingGeneral" (ngSubmit)="saveGeneral()">
           <div class="form-group"><label>Minimum masa kerja untuk Cuti (bulan)</label><input type="number" min="0" max="120" class="golan-input" [(ngModel)]="general.MinimumMasaKerjaCutiBulan" name="MinimumMasaKerjaCutiBulan" required></div>

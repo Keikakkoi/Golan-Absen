@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"strconv"
+	"strings"
 
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/middleware"
@@ -16,11 +17,14 @@ func SetupOrganizationRoutes(router fiber.Router) {
 	orgs := router.Group("/organization", middleware.Protected())
 	orgs.Get("/divisions", GetAllDivisions)
 	orgs.Get("/positions", GetAllPositions)
+	orgs.Get("/managers", GetAvailableManagers)
+	orgs.Get("/projects", GetAllProjects)
 
 	// Admin only routes
 	admin := router.Group("/admin/organization", middleware.Protected())
 	admin.Get("/divisions", GetAllDivisions)
 	admin.Get("/positions", GetAllPositions)
+	admin.Get("/projects", GetAllProjectsForAdmin)
 
 	admin.Post("/divisions", CreateDivision)
 	admin.Put("/divisions/:id", UpdateDivision)
@@ -29,6 +33,89 @@ func SetupOrganizationRoutes(router fiber.Router) {
 	admin.Post("/positions", CreatePosition)
 	admin.Put("/positions/:id", UpdatePosition)
 	admin.Delete("/positions/:id", DeletePosition)
+
+	admin.Post("/projects", CreateProject)
+	admin.Put("/projects/:id", UpdateProject)
+	admin.Delete("/projects/:id", DeleteProject)
+}
+
+func GetAvailableManagers(c *fiber.Ctx) error {
+	var managers []models.User
+	if err := config.DB.Where("role = ? AND status = ?", models.RoleManajer, "aktif").Order("nama asc").Find(&managers).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch available managers"})
+	}
+	return c.JSON(managers)
+}
+
+func GetAllProjects(c *fiber.Ctx) error {
+	var projects []models.Project
+	if err := config.DB.Where("status_aktif = ?", true).Order("nama_project asc").Find(&projects).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch projects"})
+	}
+	return c.JSON(projects)
+}
+
+func GetAllProjectsForAdmin(c *fiber.Ctx) error {
+	var projects []models.Project
+	if err := config.DB.Order("nama_project asc").Find(&projects).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch projects"})
+	}
+	return c.JSON(projects)
+}
+
+func CreateProject(c *fiber.Ctx) error {
+	var project models.Project
+	if err := c.BodyParser(&project); err != nil || strings.TrimSpace(project.NamaProject) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Nama project wajib diisi"})
+	}
+	project.NamaProject = strings.TrimSpace(project.NamaProject)
+	if err := config.DB.Create(&project).Error; err != nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Nama project sudah digunakan atau gagal disimpan"})
+	}
+	utils.LogAction(c.Locals("user_id").(uint), "CREATE", "Project", project.ID, "Created project: "+project.NamaProject)
+	return c.Status(fiber.StatusCreated).JSON(project)
+}
+
+func UpdateProject(c *fiber.Ctx) error {
+	var project models.Project
+	if err := config.DB.First(&project, c.Params("id")).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Project not found"})
+	}
+	var req struct {
+		NamaProject string
+		Deskripsi   string
+		StatusAktif *bool
+	}
+	if err := c.BodyParser(&req); err != nil || strings.TrimSpace(req.NamaProject) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Nama project wajib diisi"})
+	}
+	project.NamaProject = strings.TrimSpace(req.NamaProject)
+	project.Deskripsi = req.Deskripsi
+	if req.StatusAktif != nil {
+		project.StatusAktif = *req.StatusAktif
+	}
+	if err := config.DB.Save(&project).Error; err != nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Nama project sudah digunakan atau gagal disimpan"})
+	}
+	utils.LogAction(c.Locals("user_id").(uint), "UPDATE", "Project", project.ID, "Updated project: "+project.NamaProject)
+	return c.JSON(project)
+}
+
+func DeleteProject(c *fiber.Ctx) error {
+	var project models.Project
+	if err := config.DB.First(&project, c.Params("id")).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Project not found"})
+	}
+	var assigned int64
+	config.DB.Model(&models.User{}).Where("project_id = ?", project.ID).Count(&assigned)
+	if assigned > 0 {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Project masih digunakan oleh karyawan dan tidak dapat dihapus"})
+	}
+	if err := config.DB.Delete(&project).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete project"})
+	}
+	utils.LogAction(c.Locals("user_id").(uint), "DELETE", "Project", project.ID, "Deleted project: "+project.NamaProject)
+	return c.JSON(fiber.Map{"message": "Project deleted successfully"})
 }
 
 // --- DIVISIS ---
@@ -42,11 +129,6 @@ func GetAllDivisions(c *fiber.Ctx) error {
 }
 
 func CreateDivision(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	dept := new(models.Division)
 	if err := c.BodyParser(dept); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
@@ -61,11 +143,6 @@ func CreateDivision(c *fiber.Ctx) error {
 }
 
 func UpdateDivision(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 
@@ -87,11 +164,6 @@ func UpdateDivision(c *fiber.Ctx) error {
 }
 
 func DeleteDivision(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 
@@ -118,11 +190,6 @@ func GetAllPositions(c *fiber.Ctx) error {
 }
 
 func CreatePosition(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	pos := new(models.Position)
 	if err := c.BodyParser(pos); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
@@ -137,11 +204,6 @@ func CreatePosition(c *fiber.Ctx) error {
 }
 
 func UpdatePosition(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 
@@ -163,11 +225,6 @@ func UpdatePosition(c *fiber.Ctx) error {
 }
 
 func DeletePosition(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 

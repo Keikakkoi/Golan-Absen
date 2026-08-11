@@ -7,32 +7,34 @@
         <h2>Halo, {{ userName }}!</h2>
         <p>Selamat datang di sistem absensi.</p>
       </div>
-      <div class="account-email" *ngIf="userEmail">
-        <svg class="account-email-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#mail"></use></svg>
-        <div>
-          <span>Email</span>
-          <strong>{{ userEmail }}</strong>
-        </div>
-      </div>
-      <div class="top-nav">
-        <div class="notification-wrapper">
-          <button class="notif-btn" type="button" (click)="toggleNotifications()" aria-label="Buka notifikasi">
-            <svg class="notif-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
-            <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
-          </button>
-          <div class="notif-dropdown" *ngIf="showNotifications">
-            <div class="notif-header">Notifikasi</div>
-            <div class="notif-body">
-              <button class="notif-item" type="button" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca" (click)="markAsRead(notif)">
-                <strong>{{ notif.Judul }}</strong>
-                <p>{{ notif.Pesan }}</p>
-                <small>{{ notif.Waktu | date:'medium' }}</small>
-              </button>
-              <div class="notif-empty" *ngIf="notifications.length === 0">
-                Tidak ada notifikasi.
+      <div class="header-actions">
+        <div class="top-nav">
+          <div class="notification-wrapper">
+            <button class="notif-btn" type="button" (click)="toggleNotifications()" aria-label="Buka notifikasi">
+              <svg class="notif-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
+              <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+            </button>
+            <div class="notif-dropdown" *ngIf="showNotifications">
+              <div class="notif-header">Notifikasi</div>
+              <div class="notif-body">
+                <button class="notif-item" type="button" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca" (click)="markAsRead(notif)">
+                  <strong>{{ notif.Judul }}</strong>
+                  <p>{{ notif.Pesan }}</p>
+                  <small>{{ notif.Waktu | date:'medium' }}</small>
+                </button>
+                <div class="notif-empty" *ngIf="notifications.length === 0">
+                  Tidak ada notifikasi.
+                </div>
               </div>
+              <a class="notif-footer" routerLink="/employee/notifications" (click)="showNotifications = false">Lihat semua notifikasi</a>
             </div>
-            <a class="notif-footer" routerLink="/employee/notifications" (click)="showNotifications = false">Lihat semua notifikasi</a>
+          </div>
+        </div>
+        <div class="account-email" *ngIf="userEmail">
+          <svg class="account-email-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#mail"></use></svg>
+          <div>
+            <span>Email</span>
+            <strong>{{ userEmail }}</strong>
           </div>
         </div>
       </div>
@@ -67,6 +69,8 @@
         <div class="value">{{ stats.sisa_cuti }} <span class="unit">Hari</span></div>
       </div>
     </div>
+
+    <app-dashboard-charts role="employee"></app-dashboard-charts>
 
     <section class="golan-card compliance-warning" *ngFor="let item of stats.missing_work_reports">
       <strong>⚠ Laporan kerja belum diisi</strong>
@@ -141,6 +145,17 @@
             <div class="event-copy">
               <strong>{{ event.title }}</strong>
               <p>{{ event.description }}</p>
+              <div *ngIf="event.fileAttachmentUrl" class="event-attachment">
+                <div *ngIf="isImageAttachment(event.fileAttachmentUrl, event.fileAttachmentName)" class="attachment-image-preview">
+                  <a [href]="event.fileAttachmentUrl" target="_blank">
+                    <img [src]="event.fileAttachmentUrl" [alt]="event.fileAttachmentName || 'Gambar Pengumuman'" class="event-img-thumb">
+                  </a>
+                </div>
+                <a [href]="event.fileAttachmentUrl" target="_blank" download class="attachment-link">
+                  <i class="fas fa-paperclip"></i>
+                  <span>{{ event.fileAttachmentName || 'Download File Pengumuman' }}</span>
+                </a>
+              </div>
             </div>
           </article>
         </div>

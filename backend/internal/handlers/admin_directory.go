@@ -19,6 +19,7 @@ func SetupAdminDirectoryRoutes(router fiber.Router) {
 	admin.Put("/home-locations/:employee_id", UpdateHomeLocation)
 	admin.Get("/leave-quotas", GetLeaveQuotas)
 	admin.Put("/leave-quotas/:employee_id", UpsertLeaveQuota)
+	admin.Delete("/leave-quotas/:id", DeleteLeaveQuota)
 }
 
 func GetHomeLocations(c *fiber.Ctx) error {
@@ -69,14 +70,15 @@ func UpdateHomeLocation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Data lokasi rumah tidak valid"})
 	}
 	input.GoogleMapsURL = strings.TrimSpace(input.GoogleMapsURL)
-	if strings.TrimSpace(input.GoogleMapsURL) != "" {
-		latitude, longitude, err := utils.ResolveGoogleMapsLocationURL(input.GoogleMapsURL)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-		}
-		input.LatitudeRumah = latitude
-		input.LongitudeRumah = longitude
+	if input.GoogleMapsURL == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Link Google Maps Rumah - Untuk WFH wajib diisi"})
 	}
+	latitude, longitude, err := utils.ResolveGoogleMapsLocationURL(input.GoogleMapsURL)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	input.LatitudeRumah = latitude
+	input.LongitudeRumah = longitude
 	if input.LatitudeRumah == 0 || input.LongitudeRumah == 0 || input.RadiusMeter <= 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Link Google Maps dan radius rumah wajib valid"})
 	}
@@ -150,4 +152,19 @@ func UpsertLeaveQuota(c *fiber.Ctx) error {
 	}
 	utils.LogAction(c.Locals("user_id").(uint), "UPDATE", "LeaveQuota", quota.ID, "Updated employee leave quota")
 	return c.JSON(quota)
+}
+
+func DeleteLeaveQuota(c *fiber.Ctx) error {
+	if !isHRD(c) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
+	}
+	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid quota id"})
+	}
+	if err := config.DB.Unscoped().Delete(&models.LeaveQuota{}, id).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete leave quota"})
+	}
+	utils.LogAction(c.Locals("user_id").(uint), "DELETE", "LeaveQuota", uint(id), "Deleted employee leave quota")
+	return c.JSON(fiber.Map{"message": "Quota deleted"})
 }

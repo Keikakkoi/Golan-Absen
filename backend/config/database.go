@@ -23,11 +23,13 @@ func ConnectDB(cfg *Config) {
 	}
 
 	log.Println("Database connection established")
+	// Backfill legacy rows before AutoMigrate attempts to enforce the model's
+	// NOT NULL constraint. This is harmless on a fresh database.
+	_ = DB.Exec("UPDATE employees SET shift_kerja = 'Reguler' WHERE shift_kerja IS NULL OR BTRIM(shift_kerja) = ''")
 
 	err = DB.AutoMigrate(
+		&models.Project{},
 		&models.User{},
-		&models.Permission{},
-		&models.RolePermission{},
 		&models.Division{},
 		&models.Position{},
 		&models.Employee{},
@@ -49,15 +51,37 @@ func ConnectDB(cfg *Config) {
 		&models.WorkReportAttachment{},
 		&models.WorkReportColumn{},
 		&models.InternshipCertificate{},
+		&models.InternshipDocument{},
+		&models.CertificateIssuanceLog{},
 		&models.GeneralSetting{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schemas: %v", err)
 	}
+	if err := DB.Exec("UPDATE employees SET shift_kerja = 'Reguler' WHERE shift_kerja IS NULL OR BTRIM(shift_kerja) = ''").Error; err != nil {
+		log.Printf("Failed to backfill employee shifts: %v", err)
+	}
+	if err := DB.Exec("ALTER TABLE employees ALTER COLUMN shift_kerja SET DEFAULT 'Reguler', ALTER COLUMN shift_kerja SET NOT NULL").Error; err != nil {
+		log.Printf("Failed to enforce employee shift constraint: %v", err)
+	}
 
 	log.Println("Database migration completed")
 
-	seedPermissions()
+	// Backfill CertificateIssuanceLog for existing certificates
+	var existingCerts []models.InternshipCertificate
+	DB.Find(&existingCerts)
+	for _, cert := range existingCerts {
+		var logCount int64
+		DB.Model(&models.CertificateIssuanceLog{}).Where("user_id = ?", cert.UserID).Count(&logCount)
+		if logCount == 0 {
+			DB.Create(&models.CertificateIssuanceLog{
+				UserID:        cert.UserID,
+				CertificateNo: cert.CertificateNo,
+				IssuedAt:      cert.IssuedAt,
+				Action:        "INITIAL_ISSUANCE",
+			})
+		}
+	}
 
 	// Seed default office location based on PRD v1.2
 	var officeCount int64
@@ -158,7 +182,9 @@ func seedNotificationSettings() {
 		{TipeNotifikasi: "Info Admin", Role: models.RoleMagang, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Info Admin", Role: models.RoleManajer, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Info Admin", Role: models.RoleHRD, IsEmailEnabled: false, IsInAppEnabled: true},
-		{TipeNotifikasi: "Info Admin", Role: models.RolePimpinan, IsEmailEnabled: false, IsInAppEnabled: true},
+		{TipeNotifikasi: "Jadwal Shift", Role: models.RoleKaryawan, IsEmailEnabled: false, IsInAppEnabled: true},
+		{TipeNotifikasi: "Jadwal Shift", Role: models.RoleMagang, IsEmailEnabled: false, IsInAppEnabled: true},
+		{TipeNotifikasi: "Jadwal Shift", Role: models.RoleManajer, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Pengajuan Izin", Role: models.RoleHRD, IsEmailEnabled: true, IsInAppEnabled: true},
 		{TipeNotifikasi: "Persetujuan Izin Tim", Role: models.RoleManajer, IsEmailEnabled: true, IsInAppEnabled: true},
 		{TipeNotifikasi: "Status Pengajuan", Role: models.RoleKaryawan, IsEmailEnabled: true, IsInAppEnabled: true},
@@ -166,50 +192,12 @@ func seedNotificationSettings() {
 		{TipeNotifikasi: "Status Pengajuan", Role: models.RoleManajer, IsEmailEnabled: true, IsInAppEnabled: true},
 		{TipeNotifikasi: "Keterlambatan", Role: models.RoleHRD, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Kehadiran WFH", Role: models.RoleHRD, IsEmailEnabled: false, IsInAppEnabled: true},
-		{TipeNotifikasi: "Laporan Mingguan", Role: models.RolePimpinan, IsEmailEnabled: true, IsInAppEnabled: false},
+		{TipeNotifikasi: "Laporan Mingguan", Role: models.RoleManajer, IsEmailEnabled: true, IsInAppEnabled: false},
 	}
 	for _, setting := range defaults {
 		var existing models.NotificationSetting
 		if DB.Where("tipe_notifikasi = ? AND role = ?", setting.TipeNotifikasi, setting.Role).First(&existing).Error != nil {
 			DB.Create(&setting)
-		}
-	}
-}
-
-func seedPermissions() {
-	defaults := []models.Permission{
-		{Kode: "employee.view", Nama: "Lihat data karyawan", Deskripsi: "Melihat daftar dan detail karyawan"},
-		{Kode: "employee.manage", Nama: "Kelola data karyawan", Deskripsi: "Menambah, mengubah, menghapus, dan import karyawan"},
-		{Kode: "leave.approve", Nama: "Approval izin/cuti", Deskripsi: "Memproses pengajuan izin dan cuti"},
-		{Kode: "attendance.report", Nama: "Rekap absensi", Deskripsi: "Melihat dan mengekspor rekap absensi"},
-		{Kode: "organization.manage", Nama: "Kelola organisasi", Deskripsi: "Mengelola divisi dan jabatan"},
-		{Kode: "settings.manage", Nama: "Pengaturan sistem", Deskripsi: "Mengelola lokasi, shift, hari libur, dan tipe kerja"},
-		{Kode: "quota.manage", Nama: "Kuota izin/cuti", Deskripsi: "Mengelola kuota izin dan cuti karyawan"},
-		{Kode: "team.attendance", Nama: "Absensi tim", Deskripsi: "Melihat absensi anggota tim sendiri"},
-		{Kode: "team.reports", Nama: "Laporan tim", Deskripsi: "Melihat laporan dan logbook anggota tim sendiri"},
-		{Kode: "team.leave.approve", Nama: "Approval izin tim", Deskripsi: "Approve/reject izin anggota tim sendiri"},
-		{Kode: "internship.logbook", Nama: "Logbook magang", Deskripsi: "Mengelola logbook harian peserta magang"},
-		{Kode: "internship.certificate", Nama: "Sertifikat magang", Deskripsi: "Mengunduh sertifikat setelah periode selesai"},
-	}
-	for _, permission := range defaults {
-		var existing models.Permission
-		if DB.Where("kode = ?", permission.Kode).First(&existing).Error != nil {
-			DB.Create(&permission)
-			existing = permission
-		}
-		for _, role := range []models.Role{models.RoleHRD, models.RolePimpinan, models.RoleManajer} {
-			var count int64
-			DB.Model(&models.RolePermission{}).Where("role = ? AND permission_id = ?", role, existing.ID).Count(&count)
-			if count == 0 {
-				allowed := role == models.RoleHRD || permission.Kode == "employee.view" || permission.Kode == "attendance.report"
-				if role == models.RoleManajer && (permission.Kode == "team.attendance" || permission.Kode == "team.reports" || permission.Kode == "team.leave.approve") {
-					allowed = true
-				}
-				if role == models.RoleMagang && (permission.Kode == "internship.logbook" || permission.Kode == "internship.certificate") {
-					allowed = true
-				}
-				DB.Create(&models.RolePermission{Role: role, PermissionID: existing.ID, Diizinkan: allowed})
-			}
 		}
 	}
 }

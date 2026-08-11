@@ -16,14 +16,17 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
 export class OrganizationComponent implements OnInit {
   divisions: any[] = [];
   positions: any[] = [];
+  projects: any[] = [];
   
-  activeTab: 'divisions' | 'positions' = 'divisions';
+  activeTab: 'divisions' | 'positions' | 'projects' = 'divisions';
 
   deptForm = { ID: 0, NamaDivisi: '', Deskripsi: '' };
   posForm = { ID: 0, NamaJabatan: '', Deskripsi: '' };
+  projectForm = { ID: 0, NamaProject: '', Deskripsi: '', StatusAktif: true };
   
   showDeptModal = false;
   showPosModal = false;
+  showProjectModal = false;
   errorMessage = '';
 
   constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
@@ -31,6 +34,7 @@ export class OrganizationComponent implements OnInit {
   ngOnInit(): void {
     this.loadDivisions();
     this.loadPositions();
+    this.loadProjects();
   }
 
   getHeaders() {
@@ -39,9 +43,9 @@ export class OrganizationComponent implements OnInit {
 
   // DIVISIS
   loadDivisions() {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/divisions', { headers: this.getHeaders() }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/divisions', { headers: this.getHeaders() }).subscribe({
       next: (data) => this.divisions = data,
-      error: (err) => console.error(err)
+      error: (err) => { this.errorMessage = 'Gagal memuat data organisasi: ' + (err.error?.error || 'Unknown error'); }
     });
   }
 
@@ -95,9 +99,9 @@ export class OrganizationComponent implements OnInit {
 
   // POSITIONS
   loadPositions() {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/positions', { headers: this.getHeaders() }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/positions', { headers: this.getHeaders() }).subscribe({
       next: (data) => this.positions = data,
-      error: (err) => console.error(err)
+      error: (err) => { this.errorMessage = 'Gagal memuat data organisasi: ' + (err.error?.error || 'Unknown error'); }
     });
   }
 
@@ -147,5 +151,43 @@ export class OrganizationComponent implements OnInit {
         error: (err) => { this.errorMessage = err.error?.error || 'Gagal menghapus jabatan.'; this.alert.error('Gagal menghapus jabatan', this.errorMessage); }
       });
     }
+  }
+
+  loadProjects(): void {
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/projects', { headers: this.getHeaders() }).subscribe({
+      next: (data) => this.projects = data || [],
+      error: (err) => { this.errorMessage = 'Gagal memuat data organisasi: ' + (err.error?.error || 'Unknown error'); }
+    });
+  }
+
+  openProjectModal(project: any = null): void {
+    this.projectForm = project
+      ? { ID: project.ID, NamaProject: project.NamaProject, Deskripsi: project.Deskripsi || '', StatusAktif: project.StatusAktif !== false }
+      : { ID: 0, NamaProject: '', Deskripsi: '', StatusAktif: true };
+    this.showProjectModal = true;
+  }
+
+  closeProjectModal(): void { this.showProjectModal = false; }
+
+  async saveProject(): Promise<void> {
+    if (!this.projectForm.NamaProject.trim()) return;
+    const isEdit = !!this.projectForm.ID;
+    if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${isEdit ? 'mengubah project ini' : 'menyimpan project baru'}?`)) return;
+    this.errorMessage = '';
+    const request = isEdit
+      ? this.http.put(`http://localhost:8080/api/v1/admin/organization/projects/${this.projectForm.ID}`, this.projectForm, { headers: this.getHeaders() })
+      : this.http.post('http://localhost:8080/api/v1/admin/organization/projects', this.projectForm, { headers: this.getHeaders() });
+    request.subscribe({
+      next: () => { this.loadProjects(); this.closeProjectModal(); this.alert.success(isEdit ? 'Project diperbarui' : 'Project disimpan'); },
+      error: (err) => { this.errorMessage = err.error?.error || 'Gagal menyimpan project.'; this.alert.error('Gagal menyimpan project', this.errorMessage); }
+    });
+  }
+
+  async deleteProject(id: number): Promise<void> {
+    if (!await this.alert.confirm('Hapus project?', 'Project yang sedang dipakai karyawan tidak dapat dihapus.', 'Ya, hapus')) return;
+    this.http.delete(`http://localhost:8080/api/v1/admin/organization/projects/${id}`, { headers: this.getHeaders() }).subscribe({
+      next: () => { this.loadProjects(); this.alert.success('Project dihapus'); },
+      error: (err) => { this.errorMessage = err.error?.error || 'Gagal menghapus project.'; this.alert.error('Gagal menghapus project', this.errorMessage); }
+    });
   }
 }

@@ -2,3 +2,160 @@
 .screenshot-preview-grid { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .75rem; }
 .screenshot-preview-grid img, .report-thumb img { width: 72px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
 .report-thumb { display: inline-block; margin: 2px; }
+
+/* Keep the filter controls compact on phones. The shared report-toolbar
+   intentionally supports many desktop layouts and is too spacious here. */
+@media (max-width: 768px) {
+  .table-card .report-toolbar {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .table-card .report-toolbar > label,
+  .table-card .report-toolbar > .report-filter-action,
+  .table-card .report-toolbar > .export-dropdown {
+    flex: 0 0 auto;
+    min-height: 0;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .table-card .report-toolbar > label {
+    gap: 5px;
+  }
+
+  .table-card .report-toolbar .golan-input,
+  .table-card .report-toolbar > .report-filter-action,
+  .table-card .report-toolbar > .export-dropdown > button {
+    min-height: 38px;
+    height: 38px;
+    box-sizing: border-box;
+  }
+}
+
+/* The history table has its own mobile treatment so the shared table rules
+   cannot squeeze dates and status labels into character-sized columns. */
+.intern-logbook-table-wrapper {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.intern-logbook-table {
+  min-width: 760px !important;
+  table-layout: fixed;
+}
+
+.intern-logbook-table th,
+.intern-logbook-table td {
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.intern-logbook-table th:nth-child(1), .intern-logbook-table td:nth-child(1) { width: 112px; }
+.intern-logbook-table th:nth-child(2), .intern-logbook-table td:nth-child(2) { width: 135px; }
+.intern-logbook-table th:nth-child(3), .intern-logbook-table td:nth-child(3) { width: 220px; }
+.intern-logbook-table th:nth-child(4), .intern-logbook-table td:nth-child(4) { width: 110px; }
+.intern-logbook-table th:nth-child(5), .intern-logbook-table td:nth-child(5) { width: 112px; }
+.intern-logbook-table th:nth-child(6), .intern-logbook-table td:nth-child(6) { width: 160px; }
+.intern-logbook-table th:nth-child(7), .intern-logbook-table td:nth-child(7) { width: 190px; }
+
+.intern-logbook-table td:first-child,
+.intern-logbook-table td:nth-child(5),
+.intern-logbook-table .status-pill,
+.intern-logbook-actions,
+.intern-logbook-actions button {
+  white-space: nowrap;
+}
+
+.intern-logbook-table .status-pill {
+  display: inline-block;
+  text-transform: capitalize;
+}
+
+.intern-logbook-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .intern-logbook-table-wrapper {
+    overflow-x: hidden;
+    border-radius: 8px;
+  }
+
+  .intern-logbook-table {
+    display: block;
+    min-width: 0 !important;
+    width: 100% !important;
+    table-layout: auto;
+    white-space: normal;
+  }
+
+  .intern-logbook-table thead {
+    display: none;
+  }
+
+  .intern-logbook-table tbody,
+  .intern-logbook-table tr,
+  .intern-logbook-table td {
+    display: block;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .intern-logbook-table tr {
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--mint-1);
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  .intern-logbook-table tr:last-child { margin-bottom: 0; }
+
+  .intern-logbook-table td {
+    display: grid;
+    grid-template-columns: minmax(92px, 34%) minmax(0, 1fr);
+    gap: 10px;
+    min-width: 0;
+    max-width: none;
+    padding: 8px 0;
+    border-bottom: 1px solid #e7eef5;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .intern-logbook-table td::before {
+    content: attr(data-label);
+    color: var(--text-dark-lo);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .intern-logbook-table td:first-child,
+  .intern-logbook-table td:nth-child(5) {
+    white-space: nowrap;
+  }
+
+  .intern-logbook-table td:last-child { border-bottom: 0; }
+  .intern-logbook-table .status-pill { justify-self: start; }
+  .intern-logbook-actions { flex-wrap: wrap; white-space: normal; }
+  .intern-logbook-actions button { white-space: nowrap; }
+}
+
+.modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(4px); animation: fadeIn 0.2s ease-out; }
+.modal-card { width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; background: var(--bg-card, #ffffff); border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #e5e7eb); padding-bottom: 12px; margin-bottom: 16px; h3 { margin: 0; font-size: 1.25rem; font-weight: 600; } .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted, #6c757d); } }
+.modal-body { display: flex; flex-direction: column; gap: 14px; .detail-row { strong { display: block; margin-bottom: 4px; font-size: 0.875rem; color: var(--text-muted, #6c757d); } p { margin: 0; font-size: 0.95rem; color: var(--text-dark, #212529); } } }
+.modal-footer { display: flex; justify-content: flex-end; margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border-color, #e5e7eb); }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

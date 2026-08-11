@@ -46,11 +46,14 @@
           </label>
 
           <label class="field-group field-group-full file-field">
-            <span>Lampiran Dokumen (Surat Dokter, dll)</span>
-            <div class="file-input-wrapper">
-              <input type="file" id="leave-file" (change)="onFileSelected($event)" accept="image/*,.pdf" />
-              <label for="leave-file" class="file-button">Pilih File</label>
-              <span class="file-name">{{ selectedFile?.name || 'Belum ada file yang dipilih' }}</span>
+            <span>Lampiran Dokumen (Surat Dokter, dll) <span class="text-danger">*</span></span>
+            <div class="file-input-wrapper" [class.file-selected]="selectedFile">
+              <input type="file" id="leave-file" (change)="onFileSelected($event)" accept="image/*,.pdf" required />
+              <label for="leave-file" class="file-button" [class.file-selected]="selectedFile">
+                <i class="fas" [ngClass]="selectedFile ? 'fa-check-circle' : 'fa-paperclip'" style="margin-right: 6px;"></i>
+                Pilih File
+              </label>
+              <span class="file-name">{{ selectedFile?.name || 'Belum ada file yang dipilih (wajib diunggah)' }}</span>
             </div>
           </label>
 
@@ -97,11 +100,11 @@
                     </span>
                   </td>
                   <td>
-                    <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="link-action">Lihat</a>
+                    <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="link-action btn-view-detail compact">Lihat</a>
                     <span *ngIf="!req.LampiranURL" class="text-muted">-</span>
                   </td>
                   <td>
-                    <button type="button" class="btn-secondary btn-sm" (click)="openDetail(req)">Detail</button>
+                    <button type="button" class="btn-secondary btn-sm btn-view-detail compact" (click)="openDetail(req)">Detail</button>
                   </td>
                 </tr>
               </tbody>
@@ -142,7 +145,7 @@
       </div>
       <div *ngIf="selectedLeave.LampiranURL" class="detail-block">
         <span>Dokumen Lampiran</span>
-        <a [href]="selectedLeave.LampiranURL" target="_blank" class="link-action">Unduh Lampiran</a>
+        <a [href]="selectedLeave.LampiranURL" target="_blank" class="link-action btn-view-detail compact">Unduh Lampiran</a>
       </div>
     </div>
   </div>

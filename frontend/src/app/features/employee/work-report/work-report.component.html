@@ -52,12 +52,21 @@
       <div class="golan-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
           <h3>Riwayat Laporan</h3>
-          <button class="btn btn-primary" (click)="loadInitialData()" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
-            <i class="fas fa-sync-alt"></i> Segarkan
+          <button class="btn btn-primary refresh-report-button" (click)="refreshReports()" [disabled]="isRefreshing" [attr.aria-busy]="isRefreshing" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+            <i class="fas fa-sync-alt" [class.fa-spin]="isRefreshing"></i> {{ isRefreshing ? 'Memuat...' : 'Segarkan' }}
           </button>
         </div>
-        <div class="golan-table-responsive">
-          <table class="golan-table table-bordered table-sm" style="font-size: 0.85rem; white-space: nowrap;" *ngIf="reports.length > 0">
+          <div *ngIf="refreshSuccess" class="report-refresh-success" role="status">
+            <i class="fas fa-check-circle"></i> {{ refreshSuccess }}
+          </div>
+          <div *ngIf="refreshError" class="report-refresh-error" role="alert">
+            <i class="fas fa-exclamation-circle"></i> {{ refreshError }}
+          </div>
+          <div *ngIf="isLoading || isRefreshing" class="report-refresh-loading" role="status" aria-live="polite">
+            <i class="fas fa-spinner fa-spin"></i> Memuat ulang data laporan...
+          </div>
+        <div class="golan-table-responsive report-history-table-wrapper">
+          <table class="golan-table table-bordered table-sm report-history-table" *ngIf="reports.length > 0">
             <thead>
               <tr>
                 <th class="th-yellow">No</th>

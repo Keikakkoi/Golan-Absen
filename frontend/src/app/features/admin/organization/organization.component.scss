@@ -77,6 +77,114 @@
     .btn-danger { background-color: var(--absent); }
   }
 
+  /* Keep organization tables readable when the mobile viewport is narrow.
+     The table may scroll horizontally; its columns must not collapse into
+     character-width strips. */
+  .organization-table {
+    table-layout: auto;
+    min-width: 700px;
+
+    th,
+    td {
+      white-space: normal;
+      word-break: normal;
+      overflow-wrap: break-word;
+      vertical-align: top;
+    }
+
+    .org-col-id { width: 64px; }
+    .org-col-name { width: 190px; }
+    .org-col-description { width: 320px; }
+    .org-col-status { width: 110px; }
+    .org-col-actions { width: 160px; }
+
+    th:first-child,
+    td:first-child {
+      min-width: 64px;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      min-width: 190px;
+    }
+
+    th:nth-child(3),
+    td:nth-child(3) {
+      min-width: 320px;
+    }
+
+    .actions {
+      min-width: 160px;
+      white-space: nowrap;
+    }
+  }
+
+  .project-table {
+    min-width: 800px;
+
+    th:nth-child(4),
+    td:nth-child(4) {
+      min-width: 110px;
+    }
+  }
+
+}
+
+@media (max-width: 768px) {
+  .admin-theme {
+    .main-content {
+      min-width: 0;
+    }
+
+    .card-header {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-header > button {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .table-container {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .organization-table,
+    .project-table {
+      width: max-content;
+      max-width: none;
+      table-layout: auto;
+    }
+
+    .organization-table th,
+    .organization-table td,
+    .project-table th,
+    .project-table td {
+      padding: 10px 9px;
+      font-size: 0.875rem;
+      line-height: 1.35;
+      white-space: normal !important;
+      word-break: normal !important;
+      overflow-wrap: break-word !important;
+    }
+
+    .organization-table th {
+      font-size: 0.7rem;
+    }
+
+    .organization-table .actions {
+      display: flex;
+      flex-wrap: nowrap;
+      min-width: 160px;
+    }
+  }
 }
 
 .modal-overlay {

@@ -27,7 +27,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
     email_password: '',
     old_password: '',
     password: '',
-    confirm_password: ''
+    confirm_password: '',
+    alamat_rumah: '',
+    google_maps_url: ''
   };
 
   preferences: EmployeePreferences = {
@@ -89,8 +91,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.http.get<any>('http://localhost:8080/api/v1/employee/profile', { headers }).subscribe({
       next: (data) => {
         this.profileData = data;
+        if (this.profileData) {
+          this.profileData.WorkSchedules = data.WorkSchedules || data.work_schedules || [];
+        }
         this.updateForm.nama = data.Nama;
         this.updateForm.email = data.Email;
+        const homeLoc = data.Employee?.HomeLocation || data.Employee?.home_location;
+        this.updateForm.alamat_rumah = homeLoc?.AlamatRumah || homeLoc?.alamat_rumah || '';
+        this.updateForm.google_maps_url = homeLoc?.GoogleMapsURL || homeLoc?.google_maps_url || '';
         this.isLoading = false;
         
         if (this.activeTab === 'profile') {
@@ -159,12 +167,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.successMessage = '';
     this.errorMessage = '';
 
-    if (!await this.alert.confirm('Simpan perubahan profil?', 'Nama profil akan diperbarui.')) return;
+    if (!await this.alert.confirm('Simpan perubahan profil?', 'Data nama dan alamat rumah profil akan diperbarui.')) return;
 
     this.isSubmitting = true;
 
     const payload = {
-      nama: this.updateForm.nama
+      nama: this.updateForm.nama,
+      alamat_rumah: this.updateForm.alamat_rumah,
+      google_maps_url: this.updateForm.google_maps_url
     };
 
     const token = this.authService.getToken();
@@ -172,11 +182,19 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
     this.http.put<any>('http://localhost:8080/api/v1/employee/profile', payload, { headers }).subscribe({
       next: (res) => {
-        this.successMessage = 'Nama profil berhasil diperbarui.';
+        this.successMessage = 'Profil berhasil diperbarui.';
         localStorage.setItem('name', payload.nama);
         this.profileData.Nama = payload.nama;
+        if (this.profileData.Employee) {
+          if (!this.profileData.Employee.HomeLocation) {
+            this.profileData.Employee.HomeLocation = {};
+          }
+          this.profileData.Employee.HomeLocation.AlamatRumah = payload.alamat_rumah;
+          this.profileData.Employee.HomeLocation.GoogleMapsURL = payload.google_maps_url;
+        }
         this.isSubmitting = false;
         this.alert.success('Profil berhasil diperbarui');
+        this.loadProfile();
       },
       error: (err) => {
         this.errorMessage = err.error?.error || 'Gagal memperbarui profil.';
@@ -187,8 +205,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   async updatePassword(): Promise<void> {
-    this.successMessage = '';
-    this.errorMessage = '';
 
     if (!this.updateForm.old_password || !this.updateForm.password || !this.updateForm.confirm_password) {
       this.errorMessage = 'Semua field password harus diisi.';

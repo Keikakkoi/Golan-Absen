@@ -109,7 +109,7 @@
       <a routerLink="/intern/logbooks" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Logbook Harian</a>
       <a routerLink="/intern/statistics" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#chart"></use></svg> Statistik Kehadiran</a>
       <a routerLink="/employee/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#mail"></use></svg> Pengajuan Izin</a>
-      <a routerLink="/intern/mentor" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Info Pembimbing</a>
+      <a routerLink="/intern/mentor" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Info Manajer</a>
       <a routerLink="/intern/certificate" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#save"></use></svg> Sertifikat Magang</a>
       <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi</a>
       <a routerLink="/employee/profile" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya</a>
@@ -127,8 +127,8 @@
       <a routerLink="/employee/statistics" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#chart"></use></svg> Statistik Kehadiran</a>
       <a routerLink="/manager/team/statistics" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#chart"></use></svg> Statistik Kehadiran Tim</a>
       <a routerLink="/employee/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#mail"></use></svg> Pengajuan Izin</a>
-      <a routerLink="/manager/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#check"></use></svg> Persetujuan Izin <span class="sidebar-menu-badge" *ngIf="pendingApprovalCount > 0">{{ pendingApprovalCount }}</span></a>
-      <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi <span class="sidebar-menu-badge" *ngIf="pendingApprovalCount > 0">{{ pendingApprovalCount }}</span></a>
+      <a routerLink="/manager/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#check"></use></svg> Persetujuan Izin</a>
+      <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi</a>
       <a routerLink="/employee/profile" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya</a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ</a>
     </ng-container>
@@ -147,7 +147,6 @@
       <a routerLink="/admin/events" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#calendar"></use></svg> Kalender &amp; Event
       </a>
-      <a routerLink="/admin/roles" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#lock"></use></svg> Role &amp; Permission</a>
       <a routerLink="/admin/leaves" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#check"></use></svg> Persetujuan Cuti
       </a>
@@ -177,31 +176,6 @@
       </a>
       <a routerLink="/admin/audit" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#search"></use></svg> Audit Log
-      </a>
-      <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()">
-        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ
-      </a>
-      <a routerLink="/about" routerLinkActive="active" (click)="closeDrawer()">
-        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#info"></use></svg> Tentang Aplikasi
-      </a>
-    </ng-container>
-
-    <!-- Pimpinan / Executive Menu -->
-    <ng-container *ngIf="userRole === 'Pimpinan'">
-      <a routerLink="/executive/dashboard" routerLinkActive="active" (click)="closeDrawer()">
-        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#chart"></use></svg> Executive Dashboard
-      </a>
-      <a routerLink="/executive/divisions/stats" routerLinkActive="active" (click)="closeDrawer()">
-        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#building"></use></svg> Statistik Divisi
-      </a>
-      <a routerLink="/executive/divisions/comparison" routerLinkActive="active" (click)="closeDrawer()">
-        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#dashboard"></use></svg> Perbandingan Divisi
-      </a>
-      <a routerLink="/executive/reports" routerLinkActive="active" (click)="closeDrawer()">
-        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#users"></use></svg> Laporan Karyawan
-      </a>
-      <a routerLink="/admin/backup" routerLinkActive="active" (click)="closeDrawer()">
-        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#save"></use></svg> Backup Data
       </a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ

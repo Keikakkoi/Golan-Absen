@@ -91,6 +91,36 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   openDetail(request: any): void { this.selectedRequest = request; }
   closeDetail(): void { this.selectedRequest = null; }
 
+  getDurationDays(start: string | Date, end: string | Date): number {
+    if (!start || !end) return 0;
+    const d1 = new Date(start);
+    const d2 = new Date(end);
+    const timeDiff = Math.abs(d2.getTime() - d1.getTime());
+    return Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+  }
+
+  getInitials(name?: string): string {
+    if (!name) return 'K';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+
+  isImageAttachment(url?: string): boolean {
+    if (!url) return false;
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    return cleanUrl.endsWith('.png') || cleanUrl.endsWith('.jpg') || cleanUrl.endsWith('.jpeg') || cleanUrl.endsWith('.webp') || cleanUrl.endsWith('.gif');
+  }
+
+  async updateStatusFromModal(id: number, status: string): Promise<void> {
+    await this.updateStatus(id, status);
+    if (this.selectedRequest && this.selectedRequest.ID === id) {
+      this.closeDetail();
+    }
+  }
+
   private getHeaders(): HttpHeaders {
     const token = this.authService.getToken();
     return new HttpHeaders().set('Authorization', `Bearer ${token}`);

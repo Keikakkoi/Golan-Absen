@@ -78,7 +78,7 @@ func GetLeavePolicy(c *fiber.Ctx) error {
 
 func GetLeaveRequestDetail(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan && role != models.RoleManajer {
+	if role != models.RoleHRD && role != models.RoleManajer {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var request models.LeaveRequest
@@ -127,6 +127,11 @@ func SubmitLeaveRequest(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid tanggal_mulai format"})
 	}
+	now := attendanceNow()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, jakartaLocation)
+	if tglMulai.Before(today) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Tanggal mulai tidak boleh kurang dari hari ini"})
+	}
 
 	tglSelesai, err := time.Parse("2006-01-02", tanggalSelesaiStr)
 	if err != nil {
@@ -138,26 +143,28 @@ func SubmitLeaveRequest(c *fiber.Ctx) error {
 
 	var lampiranURL string
 	file, err := c.FormFile("lampiran")
-	if err == nil && file != nil {
-		src, err := file.Open()
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process file"})
-		}
-		defer src.Close()
-
-		fileName := fmt.Sprintf("leave-%s-%d%s", employee.NIK, time.Now().Unix(), filepath.Ext(file.Filename))
-		ctx := context.Background()
-		_, err = minio.Client.PutObject(ctx, minio.BucketName, fileName, src, file.Size, miniogo.PutObjectOptions{
-			ContentType: file.Header.Get("Content-Type"),
-		})
-
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to upload file"})
-		}
-
-		cfg := config.LoadConfig()
-		lampiranURL = fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, minio.BucketName, fileName)
+	if err != nil || file == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Lampiran dokumen (file) wajib diunggah untuk pengajuan izin"})
 	}
+
+	src, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to process file"})
+	}
+	defer src.Close()
+
+	fileName := fmt.Sprintf("leave-%s-%d%s", employee.NIK, time.Now().Unix(), filepath.Ext(file.Filename))
+	ctx := context.Background()
+	_, err = minio.Client.PutObject(ctx, minio.BucketName, fileName, src, file.Size, miniogo.PutObjectOptions{
+		ContentType: file.Header.Get("Content-Type"),
+	})
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to upload file"})
+	}
+
+	cfg := config.LoadConfig()
+	lampiranURL = fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, minio.BucketName, fileName)
 
 	leaveReq := models.LeaveRequest{
 		EmployeeID:     employee.ID,
@@ -214,7 +221,7 @@ func GetMyLeaveRequests(c *fiber.Ctx) error {
 
 func GetAllLeaveRequests(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan && role != models.RoleManajer {
+	if role != models.RoleHRD && role != models.RoleManajer {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 
@@ -245,7 +252,7 @@ func GetAllLeaveRequests(c *fiber.Ctx) error {
 
 func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan && role != models.RoleManajer {
+	if role != models.RoleHRD && role != models.RoleManajer {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 
@@ -329,12 +336,28 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 			attStatus = models.StatusIzin
 		}
 
-		for curr := leaveReq.TanggalMulai; !curr.After(leaveReq.TanggalSelesai); curr = curr.AddDate(0, 0, 1) {
+		// Only synchronize dates that have actually started. Future leave is
+		// kept in leave_requests and is evaluated by CheckIn on that day; it
+		// must not create future attendance rows in the employee history.
+		leaveStart := normalizeAttendanceDate(leaveReq.TanggalMulai)
+		leaveEnd := normalizeAttendanceDate(leaveReq.TanggalSelesai)
+		currentDate := attendanceBusinessDate(attendanceNow())
+		if leaveEnd.After(currentDate) {
+			leaveEnd = currentDate
+		}
+		for curr := leaveStart; !curr.After(leaveEnd); curr = curr.AddDate(0, 0, 1) {
 			var attRecord models.AttendanceRecord
 			err := tx.Where("employee_id = ? AND tanggal = ?", leaveReq.EmployeeID, curr).First(&attRecord).Error
 			if err == nil {
-				attRecord.Status = attStatus
-				tx.Save(&attRecord)
+				// A punched record always wins over a leave request. This avoids
+				// turning a real Hadir/Terlambat record into Izin.
+				if attRecord.JamMasuk == nil {
+					attRecord.Status = attStatus
+					if err := tx.Save(&attRecord).Error; err != nil {
+						tx.Rollback()
+						return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to sync attendance record"})
+					}
+				}
 			} else {
 				attRecord = models.AttendanceRecord{
 					EmployeeID: leaveReq.EmployeeID,
@@ -343,6 +366,19 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 				}
 				tx.Create(&attRecord)
 			}
+		}
+	} else if newStatus == models.LeaveStatusRejected {
+		// A rejected leave must not leave an empty Izin/Cuti row behind,
+		// otherwise the old row can keep blocking a later check-in.
+		if err := tx.Where(
+			"employee_id = ? AND tanggal BETWEEN ? AND ? AND jam_masuk IS NULL AND status IN ?",
+			leaveReq.EmployeeID,
+			normalizeAttendanceDate(leaveReq.TanggalMulai).Format("2006-01-02"),
+			normalizeAttendanceDate(leaveReq.TanggalSelesai).Format("2006-01-02"),
+			[]models.AttendanceStatus{models.StatusIzin, models.StatusCuti},
+		).Delete(&models.AttendanceRecord{}).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to clear rejected leave attendance"})
 		}
 	}
 

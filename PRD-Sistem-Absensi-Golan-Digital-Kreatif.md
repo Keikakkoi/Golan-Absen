@@ -2,16 +2,9 @@
 
 # Sistem Absensi Karyawan — Golan Digital Kreatif
 
-**Versi Dokumen:** 1.2
-**Tanggal:** 21 Juli 2026 (revisi: penambahan lokasi kantor, validasi GPS real-time, spesifikasi desain antarmuka, serta tipe kerja/status kehadiran WFO/WFH/Custom beserta aturan validasi GPS untuk WFH)
-**Status:** Draft untuk Review
-**Pemilik Dokumen:** Product/Project Manager
-
----
-
 ## 1. Ringkasan Eksekutif
 
-Golan Digital Kreatif membutuhkan sebuah **Sistem Informasi Absensi Karyawan berbasis web** untuk menggantikan proses absensi manual yang saat ini digunakan. Sistem ini akan menjadi satu sumber kebenaran (_single source of truth_) untuk data kehadiran, memungkinkan karyawan melakukan absen secara mandiri, HRD mengelola dan merekap data dengan cepat, serta pimpinan memantau kehadiran secara _real-time_ tanpa perlu menunggu laporan manual.
+Golan Digital Kreatif membutuhkan sebuah **Sistem Informasi Absensi Karyawan berbasis web** untuk menggantikan proses absensi manual yang saat ini digunakan. Sistem ini akan menjadi satu sumber kebenaran (_single source of truth_) untuk data kehadiran, memungkinkan karyawan melakukan absen secara mandiri, HRD mengelola dan merekap data dengan cepat, serta manajer memantau kehadiran secara _real-time_ tanpa perlu menunggu laporan manual.
 
 ### 1.1 Informasi Perusahaan & Lokasi Kantor
 
@@ -35,7 +28,7 @@ Golan Digital Kreatif membutuhkan sebuah **Sistem Informasi Absensi Karyawan ber
 | 2   | Rekap kehadiran bulanan sulit dilakukan                    | Proses lambat, sering terlambat untuk kebutuhan payroll/laporan |
 | 3   | HRD sulit memantau keterlambatan, izin, dan ketidakhadiran | Tidak ada data terpusat untuk pengambilan keputusan             |
 | 4   | Risiko kesalahan pencatatan & kehilangan data              | Data absensi tidak dapat diaudit/dipertanggungjawabkan          |
-| 5   | Pimpinan tidak bisa memantau kehadiran real-time           | Keputusan manajerial terlambat                                  |
+| 5   | Manajer tidak bisa memantau kehadiran real-time             | Keputusan manajerial terlambat                                  |
 
 ---
 
@@ -43,7 +36,7 @@ Golan Digital Kreatif membutuhkan sebuah **Sistem Informasi Absensi Karyawan ber
 
 1. Mengotomatisasi proses check-in/check-out karyawan.
 2. Menyediakan rekap kehadiran (harian/mingguan/bulanan) secara otomatis dan akurat.
-3. Memberikan visibilitas real-time kepada HRD dan pimpinan terkait status kehadiran.
+3. Memberikan visibilitas real-time kepada HRD dan manajer terkait status kehadiran.
 4. Menyediakan alur pengajuan & approval izin/cuti yang terdokumentasi.
 5. Mengurangi risiko kehilangan/kesalahan data melalui penyimpanan terpusat dan _audit log_.
 
@@ -72,7 +65,7 @@ Golan Digital Kreatif membutuhkan sebuah **Sistem Informasi Absensi Karyawan ber
 - **Kebutuhan:** Kelola data karyawan, pantau & approve izin/cuti, rekap laporan bulanan dengan cepat.
 - **Pain point:** Rekap manual dari kertas/Excel memakan waktu berhari-hari.
 
-### 4.3 Manajer/Pimpinan
+### 4.3 Manajer
 
 - **Kebutuhan:** Melihat status kehadiran tim secara real-time, laporan ringkas per periode.
 - **Pain point:** Tidak ada dashboard, harus menunggu laporan dari HRD.
@@ -81,7 +74,7 @@ Golan Digital Kreatif membutuhkan sebuah **Sistem Informasi Absensi Karyawan ber
 
 ## 5. Role & Hak Akses (RBAC)
 
-| Fitur                                                                   |   Karyawan   |   HRD/Admin    |         Manajer/Pimpinan          |
+| Fitur                                                                   |   Karyawan   |   HRD/Admin    |             Manajer              |
 | ----------------------------------------------------------------------- | :----------: | :------------: | :-------------------------------: |
 | Login sesuai role                                                       |      ✅      |       ✅       |                ✅                 |
 | Check-in / Check-out                                                    |      ✅      | ✅ (opsional)  |           ✅ (opsional)           |
@@ -142,7 +135,7 @@ Sistem tidak hanya mencatat "hadir/tidak hadir", tetapi juga **tipe kerja** yang
 
 1. Sebelum menekan tombol check-in, karyawan memilih **tipe kerja** untuk hari itu dari dropdown (WFO / WFH / tipe custom lain yang aktif) pada halaman Check-in.
 2. Sistem menyesuaikan alur validasi lokasi (radius mana yang dipakai) berdasarkan tipe kerja yang dipilih (lihat detail per tipe pada 6.2).
-3. Tipe kerja yang dipilih tersimpan pada record absensi harian (`tipe_kerja`), sehingga muncul di riwayat absensi, dashboard, dan rekap HRD/Pimpinan sebagai kolom/label terpisah dari status kehadiran (hadir/terlambat/alpha).
+3. Tipe kerja yang dipilih tersimpan pada record absensi harian (`tipe_kerja`), sehingga muncul di riwayat absensi, dashboard, dan rekap HRD/Manajer sebagai kolom/label terpisah dari status kehadiran (hadir/terlambat/alpha).
 4. HRD dapat memfilter rekap absensi berdasarkan tipe kerja (mis. melihat rekap WFH bulan ini saja) pada halaman Rekap Absensi.
 
 **Konfigurasi Admin:**
@@ -193,7 +186,7 @@ Selain validasi lokasi, setiap proses check-in **dan** check-out mewajibkan kary
 - Kompresi gambar di sisi klien sebelum unggah (mis. maks. 300–500 KB per foto) agar hemat bandwidth dan storage.
 - Backend: endpoint upload foto terenkripsi menuju object storage (S3-compatible), menghasilkan URL yang disimpan di field `foto_url` pada tabel `AttendanceRecord`.
 - Retensi: foto absensi disimpan minimal selama masa retensi data absensi perusahaan (mengacu ke kebijakan HRD, contoh: 1–2 tahun).
-- Privasi: akses foto absensi dibatasi hanya untuk karyawan bersangkutan, HRD, dan pimpinan — tidak dapat diakses publik.
+- Privasi: akses foto absensi dibatasi hanya untuk karyawan bersangkutan, HRD, dan manajer — tidak dapat diakses publik.
 
 ### 6.4 Rincian Fitur: Kebijakan Jam Kerja & Batas Toleransi Keterlambatan
 
@@ -255,7 +248,7 @@ Selain validasi lokasi, setiap proses check-in **dan** check-out mewajibkan kary
 - State management: NgRx (jika Angular)
 - UI Library: Angular Material / PrimeNG
 - Charting: Chart.js / ngx-charts untuk dashboard statistik
-- Realtime update: WebSocket / Server-Sent Events untuk dashboard pimpinan
+- Realtime update: WebSocket / Server-Sent Events untuk dashboard manajer
 
 ### 7.3 Arsitektur Umum
 
@@ -331,13 +324,13 @@ Selain validasi lokasi, setiap proses check-in **dan** check-out mewajibkan kary
 47. Laporan Keterlambatan
 48. Laporan Ketidakhadiran x(Alpha)
 
-### E. Modul Manajer/Pimpinan (5 halaman)
+### E. Modul Manajer (5 halaman)
 
-49. Dashboard Pimpinan (Real-time Monitoring)
+49. Dashboard Manajer (Real-time Monitoring)
 50. Statistik Kehadiran per Tim/Departemen
 51. Laporan Kehadiran per Karyawan
 52. Perbandingan Kehadiran Antar Departemen
-53. Export Laporan Pimpinan
+53. Export Laporan Manajer
 
 ### F. Modul Sistem & Bantuan (4 halaman)
 
@@ -346,13 +339,13 @@ Selain validasi lokasi, setiap proses check-in **dan** check-out mewajibkan kary
 56. Halaman Bantuan/FAQ
 57. Tentang Aplikasi
 
-### E. Modul Manajer/Pimpinan (5 halaman)
+### E. Modul Manajer (5 halaman)
 
-49. Dashboard Pimpinan (Real-time Monitoring)
+49. Dashboard Manajer (Real-time Monitoring)
 50. Statistik Kehadiran per Tim/Departemen
 51. Laporan Kehadiran per Karyawan
 52. Perbandingan Kehadiran Antar Departemen
-53. Export Laporan Pimpinan
+53. Export Laporan Manajer
 
 ### F. Modul Sistem & Bantuan (4 halaman)
 
@@ -389,9 +382,9 @@ Selain validasi lokasi, setiap proses check-in **dan** check-out mewajibkan kary
 3. Sistem generate rekap otomatis dari data check-in/check-out
 4. HRD export ke PDF/Excel untuk dokumentasi/kebutuhan payroll (di luar sistem ini)
 
-### 9.4 Alur Monitoring Real-time (Pimpinan)
+### 9.4 Alur Monitoring Real-time (Manajer)
 
-1. Pimpinan login → Dashboard Pimpinan
+1. Manajer login → Dashboard Manajer
 2. Melihat status kehadiran real-time (hadir/izin/alpha) per departemen
 3. Drill-down ke laporan detail per karyawan/departemen bila diperlukan
 
@@ -441,7 +434,7 @@ Selain validasi lokasi, setiap proses check-in **dan** check-out mewajibkan kary
 1. Pengurangan waktu rekap absensi bulanan dari beberapa hari menjadi < 1 jam.
 2. 100% karyawan menggunakan sistem absensi digital dalam 1 bulan pertama peluncuran.
 3. Pengurangan kesalahan pencatatan absensi hingga mendekati 0%.
-4. Pimpinan dapat mengakses data kehadiran real-time tanpa menunggu laporan manual.
+4. Manajer dapat mengakses data kehadiran real-time tanpa menunggu laporan manual.
 5. Waktu proses approval izin/cuti berkurang dari rata-rata beberapa hari menjadi < 1 hari kerja.
 
 ---
@@ -464,7 +457,7 @@ Selain validasi lokasi, setiap proses check-in **dan** check-out mewajibkan kary
 | **Fase 1 — MVP** | Login, Check-in/out, Riwayat Absensi, Manajemen Karyawan dasar | 4-6 minggu |
 | **Fase 2**       | Pengajuan Izin/Cuti + Approval, Notifikasi                     | 3-4 minggu |
 | **Fase 3**       | Dashboard Statistik & Rekap Otomatis + Export                  | 3-4 minggu |
-| **Fase 4**       | Dashboard Pimpinan Real-time, Audit Log, Geofencing            | 3-4 minggu |
+| **Fase 4**       | Dashboard Manajer Real-time, Audit Log, Geofencing              | 3-4 minggu |
 | **Fase 5**       | Polishing, testing, UAT, dan peluncuran                        | 2-3 minggu |
 
 ---
@@ -505,7 +498,7 @@ Arah warna: **putih dominan dengan gradasi hijau muda**, dipilih agar terasa ber
 
 ### 15.4 Layout & Komponen Utama
 
-- **Sidebar navigasi** dengan role switcher (Karyawan/HRD/Pimpinan) — struktur menu berubah sesuai role yang aktif.
+- **Sidebar navigasi** dengan role switcher (Karyawan/HRD/Manajer) — struktur menu berubah sesuai role yang aktif.
 - **Kartu statistik (stat card)** dengan latar gradasi mint tipis, angka besar Space Grotesk.
 - **Pill status** berwarna (hadir/terlambat/alpha/menunggu) untuk pemindaian cepat pada tabel.
 - **Tabel data** dengan header uppercase kecil, garis pemisah tipis, dan scroll horizontal otomatis di layar sempit.
@@ -534,7 +527,7 @@ Menindaklanjuti kebutuhan pada bagian 6.2, halaman Check-in/Check-out menampilka
 
 ### 15.7 Prototype
 
-Prototype resmi (HTML/CSS/JS interaktif, dapat dibuka langsung di browser) mencakup 7 layar representatif — Login, Dashboard Karyawan, Check-in/out, Pengajuan Izin, Dashboard HRD, Data Karyawan, Approval, Rekap Absensi, dan Dashboard Pimpinan — menggunakan sistem desain di atas sebagai acuan untuk direplikasi ke seluruh 55 halaman pada bagian 8.
+Prototype resmi (HTML/CSS/JS interaktif, dapat dibuka langsung di browser) mencakup layar representatif — Login, Dashboard Karyawan, Check-in/out, Pengajuan Izin, Dashboard HRD, Data Karyawan, Approval, Rekap Absensi, dan Dashboard Manajer — menggunakan sistem desain di atas sebagai acuan untuk direplikasi ke seluruh halaman pada bagian 8.
 
 ### 15.8 Aset Visual & Penamaan File Logo
 
@@ -570,4 +563,4 @@ Payroll, rekrutmen, penilaian performa, manajemen inventaris, chat internal, man
 
 ---
 
-_Dokumen ini adalah draft awal dan dapat direvisi berdasarkan diskusi lebih lanjut dengan stakeholder (Karyawan, HRD, dan Pimpinan Golan Digital Kreatif)._
+_Dokumen ini adalah draft awal dan dapat direvisi berdasarkan diskusi lebih lanjut dengan stakeholder (Karyawan, HRD, dan Manajer Golan Digital Kreatif)._

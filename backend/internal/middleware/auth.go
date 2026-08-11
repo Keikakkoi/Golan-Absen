@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"strings"
 
 	"absensi-golan-backend/config"
@@ -29,16 +30,34 @@ func Protected() fiber.Handler {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token"})
 		}
 
-		// Check Redis Blacklist
+		// Check Redis Blacklist & Single Active Session
 		if config.RedisClient != nil {
 			val, _ := config.RedisClient.Get(config.Ctx, "blacklist:"+tokenStr).Result()
 			if val == "true" {
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Token has been revoked (Logged out)"})
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Token has been revoked (Logged out or logged in on another device)"})
+			}
+
+			sessionKey := fmt.Sprintf("active_session:%d", claims.UserID)
+			activeToken, err := config.RedisClient.Get(config.Ctx, sessionKey).Result()
+			if err == nil && activeToken != "" && activeToken != tokenStr {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Token has been replaced by a newer session"})
 			}
 		}
 
+		// The token is used to authenticate the user, but its role may be stale
+		// after an administrator changes the account. Resolve the current role
+		// from the database so authorization does not randomly return 403 until
+		// the user logs in again.
+		var user models.User
+		if err := config.DB.Select("id", "role", "status").First(&user, claims.UserID).Error; err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User account not found"})
+		}
+		if strings.TrimSpace(user.Status) != "" && !strings.EqualFold(strings.TrimSpace(user.Status), "aktif") {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User account is inactive"})
+		}
+
 		c.Locals("user_id", claims.UserID)
-		c.Locals("role", claims.Role)
+		c.Locals("role", user.Role)
 		return c.Next()
 	}
 }

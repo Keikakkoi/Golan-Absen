@@ -8,9 +8,9 @@
         <p class="subtitle">Informasi terbaru terkait absensi dan pengajuan Anda.</p>
       </div>
       <div class="notification-actions">
-        <button class="push-button" type="button" (click)="enablePush()" [class.enabled]="pushEnabled" [disabled]="pushEnabled || pushBusy">
+        <button class="push-button" type="button" (click)="togglePush()" [class.enabled]="pushEnabled" [disabled]="pushBusy">
           <svg aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
-          <span>{{ pushBusy ? 'Mengaktifkan...' : (pushEnabled ? 'Push aktif' : 'Aktifkan push') }}</span>
+          <span>{{ pushBusy ? (pushEnabled ? 'Menonaktifkan...' : 'Mengaktifkan...') : (pushEnabled ? 'Nonaktifkan push' : 'Aktifkan push') }}</span>
         </button>
         <button class="btn-secondary" type="button" (click)="markAllAsRead()" [disabled]="unreadCount === 0">Tandai semua dibaca</button>
       </div>

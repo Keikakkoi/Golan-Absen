@@ -101,11 +101,18 @@ textarea.golan-input {
   align-items: center;
   min-width: 0;
   gap: 14px;
-  padding: 14px;
-  border: 1px solid #d9e4ef;
-  border-radius: 16px;
-  background: #f7f9ff;
+  padding: 12px 14px;
+  border: 1px dashed var(--mint-2, #b9ddf8);
+  border-radius: 14px;
+  background: var(--mint-0, #f7f9ff);
   box-sizing: border-box;
+  transition: all 0.2s ease;
+
+  &.file-selected {
+    border-style: solid;
+    border-color: rgba(40, 167, 69, 0.4);
+    background: rgba(40, 167, 69, 0.05);
+  }
 }
 
 .file-field input[type='file'] {
@@ -124,28 +131,53 @@ textarea.golan-input {
   align-items: center;
   justify-content: center;
   min-width: 120px;
-  padding: 0.75rem 1.2rem;
-  border-radius: 12px;
-  background: #2f80ed;
+  padding: 0.65rem 1.2rem;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #2f80ed 0%, #1769aa 100%);
   color: #ffffff;
-  font-weight: 700;
-  font-size: 0.92rem;
+  font-weight: 600;
+  font-size: 0.88rem;
   text-align: center;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
+  box-shadow: 0 2px 6px rgba(47, 128, 237, 0.25);
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 
-.file-button:hover {
-  background: #1d59b6;
-  transform: translateY(-1px);
+  &:hover {
+    background: linear-gradient(135deg, #1769aa 0%, #0f4c7d 100%);
+    box-shadow: 0 4px 10px rgba(23, 105, 170, 0.35);
+    transform: translateY(-1px);
+  }
+
+  &.file-selected {
+    background: linear-gradient(135deg, #28a745 0%, #198754 100%);
+    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.25);
+
+    &:hover {
+      background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+    }
+  }
 }
 
 .file-name {
-  color: #4f6378;
-  font-size: 0.93rem;
+  color: var(--text-dark-lo, #4f6378);
+  font-size: 0.88rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+body.dark-theme .file-field .file-input-wrapper {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+
+  &.file-selected {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+  }
+}
+
+body.dark-theme .file-name {
+  color: #94a3b8;
 }
 
 .form-actions {
@@ -173,12 +205,6 @@ textarea.golan-input {
   font-size: 0.95rem;
   text-align: center;
   padding: 16px;
-}
-
-.link-action {
-  color: #2577f4;
-  font-weight: 700;
-  text-decoration: none;
 }
 
 .text-muted {

@@ -29,12 +29,14 @@ export class WorkReportAdminComponent implements OnInit {
     startDate: '',
     endDate: '',
     division: '',
+    project_id: '',
     role: '',
     status: '',
     sort_order: 'desc'
   };
   uniqueDivisions: string[] = [];
   uniqueRoles: string[] = [];
+  projects: any[] = [];
 
   // Column Form
   isEditingColumn = false;
@@ -56,7 +58,7 @@ export class WorkReportAdminComponent implements OnInit {
   loadData() {
     this.isLoading = true;
     if (this.viewMode === 'reports') {
-      this.workReportService.getWorkReports().subscribe({
+      this.workReportService.getWorkReports(undefined, this.filterOptions.startDate, this.filterOptions.endDate, this.filterOptions.project_id).subscribe({
         next: (res) => {
           this.allReports = res;
           this.applyFilters();
@@ -92,6 +94,11 @@ export class WorkReportAdminComponent implements OnInit {
         this.uniqueRoles = data.map(p => p.NamaJabatan).sort();
       },
       error: (err) => console.error('Failed to load roles', err)
+    });
+
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/projects', { headers: this.getHeaders() }).subscribe({
+      next: (data) => this.projects = data || [],
+      error: (err) => console.error('Failed to load projects', err)
     });
   }
 
@@ -143,7 +150,9 @@ export class WorkReportAdminComponent implements OnInit {
     // 5. Status Validasi
     if (this.filterOptions.status) {
       if (this.filterOptions.status === 'Menunggu') {
-        temp = temp.filter(r => !r.status_sesuai || r.status_sesuai === 'Menunggu');
+        temp = temp.filter(r => (!r.status_sesuai || r.status_sesuai === 'Menunggu') && !this.isNoReport(r));
+      } else if (this.filterOptions.status === 'tidak membuat laporan kerja') {
+        temp = temp.filter(r => this.isNoReport(r) || r.status_sesuai === 'tidak membuat laporan kerja');
       } else {
         temp = temp.filter(r => r.status_sesuai === this.filterOptions.status);
       }
@@ -168,11 +177,12 @@ export class WorkReportAdminComponent implements OnInit {
       startDate: '',
       endDate: '',
       division: '',
+      project_id: '',
       role: '',
       status: '',
       sort_order: 'desc'
     };
-    this.applyFilters();
+    this.loadData();
   }
 
   switchMode(mode: 'reports' | 'columns') {
@@ -325,6 +335,8 @@ export class WorkReportAdminComponent implements OnInit {
       const dept = r.Employee?.Division?.NamaDivisi || '-';
       const jabatan = r.Employee?.Position?.NamaJabatan || '-';
       const userName = this.getEmployeeName(r);
+      const statusReport = this.isNoReport(r) ? 'tidak membuat laporan kerja' : 'Sudah Report';
+      const statusValidation = r.status_sesuai || (this.isNoReport(r) ? 'tidak membuat laporan kerja' : 'Menunggu');
       
       html += `
         <tr>
@@ -341,8 +353,8 @@ export class WorkReportAdminComponent implements OnInit {
           <td style="text-align: left;">${(r.rencana_minggu_depan || '').replace(/</g, '&lt;')}</td>
           <td>${r.link_artikel ? `<a href="${r.link_artikel}">${r.link_artikel}</a>` : '-'}</td>
           <td style="text-align: left;">${(r.catatan_tambahan || '').replace(/</g, '&lt;')}</td>
-          <td>Sudah Report</td>
-          <td>${r.status_sesuai || 'Menunggu'}</td>`;
+          <td>${statusReport}</td>
+          <td>${statusValidation}</td>`;
           
       let customData: any = {};
       try { customData = JSON.parse(r.custom_fields || '{}'); } catch(e) {}
@@ -385,7 +397,7 @@ export class WorkReportAdminComponent implements OnInit {
     // Create CSV content manually
     let csvContent = "data:text/csv;charset=utf-8,";
     // Headers
-    const headers = ["No", "Tanggal", "Nama Karyawan", "Divisi", "Jabatan", "Tugas", "Judul", "Deskripsi", "Realisasi", "Kendala", "Rencana", "Status Validasi"];
+    const headers = ["No", "Tanggal", "Nama Karyawan", "Divisi", "Jabatan", "Tugas", "Judul", "Deskripsi", "Realisasi", "Kendala", "Rencana", "Status Report", "Status Validasi"];
     const customHeaders = this.columns.map(c => `"${c.nama_kolom.replace(/"/g, '""')}"`);
     csvContent += headers.concat(customHeaders).join(",") + "\n";
     
@@ -402,7 +414,8 @@ export class WorkReportAdminComponent implements OnInit {
         `"${(r.realisasi_kegiatan || '').replace(/"/g, '""')}"`,
         `"${(r.kendala || '').replace(/"/g, '""')}"`,
         `"${(r.rencana_minggu_depan || '').replace(/"/g, '""')}"`,
-        `"${(r.status_sesuai || 'Menunggu').replace(/"/g, '""')}"`
+        `"${(this.isNoReport(r) ? 'tidak membuat laporan kerja' : 'Sudah Report').replace(/"/g, '""')}"`,
+        `"${(r.status_sesuai || (this.isNoReport(r) ? 'tidak membuat laporan kerja' : 'Menunggu')).replace(/"/g, '""')}"`
       ];
 
       // Custom fields
@@ -452,5 +465,13 @@ export class WorkReportAdminComponent implements OnInit {
 
   getEmployeeName(report: WorkReport): string {
     return report.Employee?.User?.Nama || 'Unknown';
+  }
+
+  isNoReport(report: WorkReport): boolean {
+    if (!report) return false;
+    if (report.status_sesuai === 'tidak membuat laporan kerja' || report.status_sesuai === 'Tidak Membuat Laporan Kerja') {
+      return true;
+    }
+    return !report.tugas && !report.judul && !report.deskripsi_kegiatan;
   }
 }

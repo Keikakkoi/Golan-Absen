@@ -109,29 +109,94 @@ func GetSchedules(c *fiber.Ctx) error {
 	return c.JSON(schedules)
 }
 
+type scheduleInput struct {
+	EmployeeID              *uint      `json:"EmployeeID"`
+	EmployeeIDs             []uint     `json:"EmployeeIDs"`
+	Tanggal                 *time.Time `json:"Tanggal"`
+	NamaShift               string     `json:"NamaShift"`
+	JamMulai                string     `json:"JamMulai"`
+	JamSelesai              string     `json:"JamSelesai"`
+	ToleransiTerlambatMenit int        `json:"ToleransiTerlambatMenit"`
+}
+
+func selectedEmployeeIDs(input scheduleInput) []uint {
+	ids := make([]uint, 0, len(input.EmployeeIDs)+1)
+	seen := make(map[uint]bool)
+	add := func(id uint) {
+		if id > 0 && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	for _, id := range input.EmployeeIDs {
+		add(id)
+	}
+	if len(ids) == 0 && input.EmployeeID != nil {
+		add(*input.EmployeeID)
+	}
+	return ids
+}
+
 func CreateSchedule(c *fiber.Ctx) error {
 	if !isHRD(c) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
-	var schedule models.WorkSchedule
-	if err := c.BodyParser(&schedule); err != nil || schedule.NamaShift == "" || schedule.JamMulai == "" || schedule.JamSelesai == "" || schedule.Tanggal == nil {
+	var input scheduleInput
+	if err := c.BodyParser(&input); err != nil || input.NamaShift == "" || input.JamMulai == "" || input.JamSelesai == "" || input.Tanggal == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Nama shift, jam mulai, jam selesai, dan tanggal wajib diisi"})
 	}
-	
-	if schedule.EmployeeID == nil || *schedule.EmployeeID == 0 {
+
+	employeeIDs := selectedEmployeeIDs(input)
+	if len(employeeIDs) == 0 {
 		var count int64
 		config.DB.Model(&models.WorkSchedule{}).Where("employee_id IS NULL").Count(&count)
 		if count > 0 {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Shift global (untuk semua karyawan) sudah ada. Hanya boleh ada satu shift global."})
 		}
-		schedule.EmployeeID = nil // pastikan benar-benar nil jika 0
 	}
 
-	if err := config.DB.Create(&schedule).Error; err != nil {
+	if len(employeeIDs) > 0 {
+		var employeeCount int64
+		if err := config.DB.Model(&models.Employee{}).Where("id IN ?", employeeIDs).Count(&employeeCount).Error; err != nil || employeeCount != int64(len(employeeIDs)) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Ada karyawan yang tidak valid"})
+		}
+	}
+
+	tx := config.DB.Begin()
+	if tx.Error != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memulai penyimpanan shift"})
+	}
+	createSchedule := func(employeeID *uint) models.WorkSchedule {
+		return models.WorkSchedule{EmployeeID: employeeID, Tanggal: input.Tanggal, NamaShift: input.NamaShift, JamMulai: input.JamMulai, JamSelesai: input.JamSelesai, ToleransiTerlambatMenit: input.ToleransiTerlambatMenit}
+	}
+	created := make([]models.WorkSchedule, 0, len(employeeIDs))
+	if len(employeeIDs) == 0 {
+		schedule := createSchedule(nil)
+		if err := tx.Create(&schedule).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan shift ke database: " + err.Error()})
+		}
+		created = append(created, schedule)
+	} else {
+		for _, employeeID := range employeeIDs {
+			id := employeeID
+			schedule := createSchedule(&id)
+			if err := tx.Create(&schedule).Error; err != nil {
+				tx.Rollback()
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan shift ke database: " + err.Error()})
+			}
+			created = append(created, schedule)
+		}
+	}
+	if err := tx.Commit().Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan shift ke database: " + err.Error()})
 	}
-	utils.LogAction(c.Locals("user_id").(uint), "CREATE", "WorkSchedule", schedule.ID, "Admin created work schedule: "+schedule.NamaShift)
-	return c.Status(fiber.StatusCreated).JSON(schedule)
+	userID := c.Locals("user_id").(uint)
+	for _, schedule := range created {
+		notifyScheduleChange(schedule, nil, false)
+		utils.LogAction(userID, "CREATE", "WorkSchedule", schedule.ID, "Admin created work schedule: "+schedule.NamaShift)
+	}
+	return c.Status(fiber.StatusCreated).JSON(created)
 }
 
 func UpdateSchedule(c *fiber.Ctx) error {
@@ -142,12 +207,14 @@ func UpdateSchedule(c *fiber.Ctx) error {
 	if err := config.DB.First(&schedule, c.Params("id")).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Schedule not found"})
 	}
-	var input models.WorkSchedule
+	previousSchedule := schedule
+	var input scheduleInput
 	if err := c.BodyParser(&input); err != nil || input.NamaShift == "" || input.JamMulai == "" || input.JamSelesai == "" || input.Tanggal == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Nama shift, jam mulai, jam selesai, dan tanggal wajib diisi"})
 	}
-	
-	if input.EmployeeID == nil || *input.EmployeeID == 0 {
+
+	employeeIDs := selectedEmployeeIDs(input)
+	if len(employeeIDs) == 0 {
 		var count int64
 		config.DB.Model(&models.WorkSchedule{}).Where("employee_id IS NULL AND id != ?", schedule.ID).Count(&count)
 		if count > 0 {
@@ -155,17 +222,26 @@ func UpdateSchedule(c *fiber.Ctx) error {
 		}
 		input.EmployeeID = nil
 	}
-	
-	schedule.EmployeeID = input.EmployeeID
+	if len(employeeIDs) > 1 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Edit shift hanya dapat dilakukan untuk satu karyawan"})
+	}
+
+	if len(employeeIDs) == 1 {
+		employeeID := employeeIDs[0]
+		schedule.EmployeeID = &employeeID
+	} else {
+		schedule.EmployeeID = nil
+	}
 	schedule.Tanggal = input.Tanggal
 	schedule.NamaShift = input.NamaShift
 	schedule.JamMulai = input.JamMulai
 	schedule.JamSelesai = input.JamSelesai
 	schedule.ToleransiTerlambatMenit = input.ToleransiTerlambatMenit
-	
+
 	if err := config.DB.Save(&schedule).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengupdate shift ke database: " + err.Error()})
 	}
+	notifyScheduleChange(schedule, &previousSchedule, false)
 	utils.LogAction(c.Locals("user_id").(uint), "UPDATE", "WorkSchedule", schedule.ID, "Admin updated work schedule: "+schedule.NamaShift)
 	return c.JSON(schedule)
 }
@@ -178,6 +254,7 @@ func DeleteSchedule(c *fiber.Ctx) error {
 	if err := config.DB.First(&schedule, c.Params("id")).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Schedule not found"})
 	}
+	notifyScheduleChange(schedule, nil, true)
 	if err := config.DB.Delete(&schedule).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete schedule"})
 	}
@@ -185,9 +262,69 @@ func DeleteSchedule(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Schedule deleted successfully"})
 }
 
+// notifyScheduleChange keeps every non-admin employee informed when an admin
+// assigns, changes, or removes a shift. The profile exposes the same schedule
+// rows as a durable reference, while this notification provides the immediate
+// warning on dashboards and in the notification center.
+func notifyScheduleChange(schedule models.WorkSchedule, previous *models.WorkSchedule, deleted bool) {
+	recipientIDs := make(map[uint]bool)
+	addRecipients := func(employeeID *uint) {
+		var employees []models.Employee
+		query := config.DB.Preload("User")
+		if employeeID != nil && *employeeID != 0 {
+			query = query.Where("id = ?", *employeeID)
+		}
+		if err := query.Find(&employees).Error; err != nil {
+			return
+		}
+		for _, employee := range employees {
+			if employee.User != nil && employee.User.Role != models.RoleHRD {
+				recipientIDs[employee.UserID] = true
+			}
+		}
+	}
+
+	// A global shift applies to everyone. An update can move a shift from one
+	// employee to another, so include both the old and new recipients.
+	if schedule.EmployeeID == nil || *schedule.EmployeeID == 0 {
+		addRecipients(nil)
+	} else {
+		addRecipients(schedule.EmployeeID)
+	}
+	if previous != nil && previous.EmployeeID != nil && *previous.EmployeeID != 0 {
+		addRecipients(previous.EmployeeID)
+	}
+
+	dateLabel := "tanggal yang ditentukan"
+	if schedule.Tanggal != nil {
+		dateLabel = schedule.Tanggal.Format("02 Jan 2006")
+	}
+	title := "Jadwal Shift Baru"
+	verb := "ditetapkan"
+	if previous != nil {
+		title = "Jadwal Shift Diperbarui"
+		verb = "diperbarui"
+	}
+	if deleted {
+		title = "Jadwal Shift Dihapus"
+		verb = "dihapus"
+	}
+
+	message := fmt.Sprintf("Shift %s pada %s %s: %s–%s. Check-in hanya dapat dilakukan mulai jam shift dan check-out mengikuti batas shift.", schedule.NamaShift, dateLabel, verb, schedule.JamMulai, schedule.JamSelesai)
+	if deleted {
+		message = fmt.Sprintf("Shift %s pada %s telah dihapus oleh admin. Silakan cek jadwal terbaru di profil Anda.", schedule.NamaShift, dateLabel)
+	}
+	for userID := range recipientIDs {
+		var user models.User
+		if err := config.DB.First(&user, userID).Error; err == nil {
+			_ = utils.CreateNotification(config.DB, user.ID, user.Role, "Jadwal Shift", title, message)
+		}
+	}
+}
+
 func BackupDatabase(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 
@@ -209,8 +346,6 @@ func BackupDatabase(c *fiber.Ctx) error {
 		notificationConfig []models.NotificationSetting
 		auditLogs          []models.AuditLog
 		homeLocations      []models.EmployeeHomeLocation
-		permissions        []models.Permission
-		rolePermissions    []models.RolePermission
 	)
 	queries := []struct {
 		name string
@@ -223,7 +358,6 @@ func BackupDatabase(c *fiber.Ctx) error {
 		{"office_locations", &officeLocations}, {"holidays", &holidays},
 		{"notifications", &notifications}, {"notification_settings", &notificationConfig},
 		{"audit_logs", &auditLogs}, {"employee_home_locations", &homeLocations},
-		{"permissions", &permissions}, {"role_permissions", &rolePermissions},
 	}
 	for _, query := range queries {
 		if err := config.DB.Find(query.dest).Error; err != nil {
@@ -248,7 +382,6 @@ func BackupDatabase(c *fiber.Ctx) error {
 			"office_locations": officeLocations, "holidays": holidays,
 			"notifications": notifications, "notification_settings": notificationConfig,
 			"audit_logs": auditLogs, "employee_home_locations": homeLocations,
-			"permissions": permissions, "role_permissions": rolePermissions,
 		},
 	}
 
@@ -392,7 +525,7 @@ func UpdateWorkSchedule(c *fiber.Ctx) error {
 
 func GetAuditLogs(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 
@@ -456,7 +589,7 @@ func auditLogQuery(c *fiber.Ctx) (*gorm.DB, error) {
 
 func ExportAuditLogsCSV(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	query, err := auditLogQuery(c)
@@ -515,7 +648,7 @@ func UpdateNotificationSettings(c *fiber.Ctx) error {
 	}
 	for _, setting := range input {
 		setting.TipeNotifikasi = strings.TrimSpace(setting.TipeNotifikasi)
-		if setting.TipeNotifikasi == "" || (setting.Role != models.RoleHRD && setting.Role != models.RoleKaryawan && setting.Role != models.RolePimpinan && setting.Role != models.RoleMagang && setting.Role != models.RoleManajer) {
+		if setting.TipeNotifikasi == "" || (setting.Role != models.RoleHRD && setting.Role != models.RoleKaryawan && setting.Role != models.RoleMagang && setting.Role != models.RoleManajer) {
 			tx.Rollback()
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Tipe notifikasi dan role tidak valid"})
 		}

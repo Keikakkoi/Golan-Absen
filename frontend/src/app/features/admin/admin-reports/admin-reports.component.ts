@@ -18,22 +18,26 @@ export class AdminReportsComponent implements OnInit {
   stats: any = {
     total_karyawan: 0,
     hadir_hari_ini: 0,
+    belum_absen_hari_ini: 0,
     izin_cuti_hari_ini: 0
   };
   
   allReports: any[] = [];
   reports: any[] = [];
   divisions: any[] = [];
+  projects: any[] = [];
   uniqueRoles: any[] = [];
   isLoadingStats = true;
   isLoadingReports = false;
   isExportOpen = false;
+  errorMessage = '';
 
   filters = {
     start_date: '',
     end_date: '',
     status: 'Semua',
     division_id: '',
+    project_id: '',
     periode: 'Kustom',
     search: '',
     role: '',
@@ -51,10 +55,9 @@ export class AdminReportsComponent implements OnInit {
 
   ngOnInit(): void {
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     
     // Format to YYYY-MM-DD
-    this.filters.start_date = this.toDateInput(firstDay);
+    this.filters.start_date = this.toDateInput(today);
     this.filters.end_date = this.toDateInput(today);
 
     const routePeriod = this.route.snapshot.data['periode'];
@@ -77,6 +80,7 @@ export class AdminReportsComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load stats', err);
+        this.errorMessage = 'Gagal memuat data karyawan: ' + (err.error?.error || 'Gagal memuat data.');
         this.isLoadingStats = false;
       }
     });
@@ -98,6 +102,11 @@ export class AdminReportsComponent implements OnInit {
         this.uniqueRoles = data.map(p => p.NamaJabatan).sort();
       },
       error: (err) => console.error('Failed to load roles', err)
+    });
+
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/projects', { headers }).subscribe({
+      next: (data) => this.projects = data || [],
+      error: (err) => console.error('Failed to load projects', err)
     });
   }
 
@@ -145,7 +154,9 @@ export class AdminReportsComponent implements OnInit {
     if (this.filters.division_id) {
       queryParams += `&division_id=${this.filters.division_id}`;
     }
-
+    if (this.filters.project_id) {
+      queryParams += `&project_id=${this.filters.project_id}`;
+    }
     this.http.get<any[]>(`${this.baseReportUrl}${queryParams}`, { headers }).subscribe({
       next: (data) => {
         this.allReports = data || [];
@@ -154,6 +165,7 @@ export class AdminReportsComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load reports', err);
+        this.errorMessage = 'Gagal memuat data karyawan: ' + (err.error?.error || 'Gagal memuat data.');
         this.isLoadingReports = false;
       }
     });

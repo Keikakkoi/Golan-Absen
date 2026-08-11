@@ -8,7 +8,7 @@
 
     <div class="golan-card leave-card">
       <div *ngIf="errorMessage" class="alert alert-danger" style="color: red; margin-bottom: 1rem;">{{ errorMessage }}</div>
-      <div class="toolbar" style="display: flex; gap: .75rem; margin-bottom: 1rem; align-items: end;">
+      <div class="toolbar leave-toolbar">
         <label>Filter Jenis
           <select class="golan-input" [(ngModel)]="selectedType" (change)="loadLeaveRequests()">
             <option value="">Semua jenis</option>
@@ -19,48 +19,58 @@
         </label>
       </div>
       
-      <div class="table-container leave-table-container" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-        <table class="leave-table" *ngIf="!isLoading && leaveRequests.length > 0" style="width: 100%; border-collapse: collapse; min-width: 800px;">
+      <div class="table-container leave-table-container">
+        <table class="leave-table" *ngIf="!isLoading && leaveRequests.length > 0">
+          <colgroup>
+            <col class="leave-col-employee">
+            <col class="leave-col-type">
+            <col class="leave-col-date">
+            <col class="leave-col-date">
+            <col class="leave-col-reason">
+            <col class="leave-col-attachment">
+            <col class="leave-col-status">
+            <col class="leave-col-actions">
+          </colgroup>
           <thead>
-            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
-              <th style="padding: 0.75rem;">Nama Karyawan</th>
-              <th style="padding: 0.75rem;">Jenis</th>
-              <th style="padding: 0.75rem;">Tanggal Mulai</th>
-              <th style="padding: 0.75rem;">Tanggal Selesai</th>
-              <th style="padding: 0.75rem;">Alasan</th>
-              <th style="padding: 0.75rem;">Lampiran</th>
-              <th style="padding: 0.75rem;">Status</th>
-              <th style="padding: 0.75rem;">Aksi</th>
+            <tr>
+              <th scope="col">Nama Karyawan</th>
+              <th scope="col">Jenis</th>
+              <th scope="col">Tanggal Mulai</th>
+              <th scope="col">Tanggal Selesai</th>
+              <th scope="col">Alasan</th>
+              <th scope="col">Lampiran</th>
+              <th scope="col">Status</th>
+              <th scope="col">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let req of leaveRequests" style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 0.75rem; font-weight: 500;">
-                {{ req.Employee?.User?.Nama }}
-                <div style="font-size: 0.75rem; color: #6b7280; font-family: monospace;">{{ req.Employee?.NIK }}</div>
+            <tr *ngFor="let req of leaveRequests">
+              <td class="leave-employee-cell">
+                <span class="leave-employee-name">{{ req.Employee?.User?.Nama }}</span>
+                <span class="leave-employee-nik">{{ req.Employee?.NIK }}</span>
               </td>
-              <td style="padding: 0.75rem;">{{ req.JenisIzin }}</td>
-              <td style="padding: 0.75rem;">{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
-              <td style="padding: 0.75rem;">{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
-              <td style="padding: 0.75rem;">{{ req.Alasan }}</td>
-              <td style="padding: 0.75rem;">
-                <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" style="color: #3b82f6; text-decoration: none;">Lihat Dokumen</a>
-                <span *ngIf="!req.LampiranURL" style="color: #9ca3af;">Tidak ada</span>
+              <td>{{ req.JenisIzin }}</td>
+              <td class="leave-date-cell">{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
+              <td class="leave-date-cell">{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
+              <td class="leave-reason-cell">{{ req.Alasan }}</td>
+              <td class="leave-attachment-cell">
+                <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="btn-view-detail compact">Lihat Dokumen</a>
+                <span *ngIf="!req.LampiranURL" class="leave-muted-text">Tidak ada</span>
               </td>
-              <td style="padding: 0.75rem;">
+              <td class="leave-status-cell">
                 <span class="status-badge" [ngClass]="{
                   'status-pending': req.Status === 'Pending',
                   'status-hadir': req.Status === 'Approved',
                   'status-alpha': req.Status === 'Rejected'
-                }" style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;"
+                }"
                 [style.background-color]="req.Status === 'Pending' ? '#fef3c7' : (req.Status === 'Approved' ? '#dbeafe' : '#fee2e2')"
                 [style.color]="req.Status === 'Pending' ? '#d97706' : (req.Status === 'Approved' ? '#2563eb' : '#dc2626')">
                   {{ req.Status }}
                 </span>
               </td>
-              <td style="padding: 0.75rem;">
+              <td class="leave-actions-cell">
                 <div class="table-actions">
-                  <button class="icon-button view" type="button" aria-label="Lihat detail" title="Lihat detail" (click)="openDetail(req)"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
+                  <button class="icon-button view btn-view-detail icon-only" type="button" aria-label="Lihat detail" title="Lihat detail" (click)="openDetail(req)"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
                   <div *ngIf="req.Status === 'Pending'" class="action-group">
                     <button class="icon-button approve" type="button" aria-label="Setuju" title="Setuju" (click)="updateStatus(req.ID, 'Approved')">
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
@@ -85,13 +95,146 @@
   </div>
 </div>
 
-<div class="modal-overlay" *ngIf="selectedRequest">
-  <div class="modal-content golan-card">
-    <div class="modal-header"><h3>Detail Pengajuan Izin / Cuti</h3><button class="btn-close" (click)="closeDetail()">×</button></div>
-    <p><strong>Karyawan:</strong> {{ selectedRequest.Employee?.User?.Nama }} ({{ selectedRequest.Employee?.NIK }})</p>
-    <p><strong>Jenis:</strong> {{ selectedRequest.JenisIzin }}</p>
-    <p><strong>Periode:</strong> {{ selectedRequest.TanggalMulai | date:'dd MMM yyyy' }} – {{ selectedRequest.TanggalSelesai | date:'dd MMM yyyy' }}</p>
-    <p><strong>Alasan:</strong> {{ selectedRequest.Alasan }}</p>
-    <a *ngIf="selectedRequest.LampiranURL" [href]="selectedRequest.LampiranURL" target="_blank">Buka lampiran</a>
+<div class="modal-overlay" *ngIf="selectedRequest" (click)="closeDetail()">
+  <div class="modal-content leave-detail-modal" (click)="$event.stopPropagation()">
+    <!-- Header -->
+    <div class="modal-header">
+      <div class="modal-title-box">
+        <div class="modal-icon-badge">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <div>
+          <h3>Detail Pengajuan Izin / Cuti</h3>
+          <span class="request-id">Ref ID: #REQ-{{ selectedRequest.ID }}</span>
+        </div>
+      </div>
+      <button class="btn-close" (click)="closeDetail()" aria-label="Tutup modal">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Employee Profile Banner -->
+      <div class="employee-profile-card">
+        <div class="avatar-circle">
+          <img *ngIf="selectedRequest.Employee?.User?.FotoProfile" [src]="selectedRequest.Employee.User.FotoProfile" [alt]="selectedRequest.Employee?.User?.Nama">
+          <span *ngIf="!selectedRequest.Employee?.User?.FotoProfile">{{ getInitials(selectedRequest.Employee?.User?.Nama) }}</span>
+        </div>
+        <div class="employee-info">
+          <h4 class="employee-name">{{ selectedRequest.Employee?.User?.Nama || 'Nama Tidak Tersedia' }}</h4>
+          <p class="employee-meta">
+            <span class="nik-tag">NIK: {{ selectedRequest.Employee?.NIK || '-' }}</span>
+            <span class="dept-tag" *ngIf="selectedRequest.Employee?.Jabatan || selectedRequest.Employee?.Departemen">
+              {{ selectedRequest.Employee?.Jabatan || selectedRequest.Employee?.Departemen }}
+            </span>
+          </p>
+        </div>
+        <div class="status-pill-badge" [ngClass]="{
+          'status-pending': selectedRequest.Status === 'Pending',
+          'status-approved': selectedRequest.Status === 'Approved',
+          'status-rejected': selectedRequest.Status === 'Rejected'
+        }">
+          <span class="status-dot"></span>
+          {{ selectedRequest.Status }}
+        </div>
+      </div>
+
+      <!-- Info Grid -->
+      <div class="detail-grid">
+        <div class="grid-item">
+          <span class="grid-label">Jenis Pengajuan</span>
+          <div class="grid-value">
+            <span class="type-badge" [ngClass]="{
+              'type-cuti': selectedRequest.JenisIzin === 'Cuti',
+              'type-sakit': selectedRequest.JenisIzin === 'Sakit',
+              'type-lainnya': selectedRequest.JenisIzin !== 'Cuti' && selectedRequest.JenisIzin !== 'Sakit'
+            }">
+              {{ selectedRequest.JenisIzin }}
+            </span>
+          </div>
+        </div>
+
+        <div class="grid-item">
+          <span class="grid-label">Total Durasi</span>
+          <div class="grid-value highlight-value">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-bottom;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            {{ getDurationDays(selectedRequest.TanggalMulai, selectedRequest.TanggalSelesai) }} Hari
+          </div>
+        </div>
+
+        <div class="grid-item">
+          <span class="grid-label">Tanggal Mulai</span>
+          <div class="grid-value font-medium">
+            {{ selectedRequest.TanggalMulai | date:'dd MMMM yyyy' }}
+          </div>
+        </div>
+
+        <div class="grid-item">
+          <span class="grid-label">Tanggal Selesai</span>
+          <div class="grid-value font-medium">
+            {{ selectedRequest.TanggalSelesai | date:'dd MMMM yyyy' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Alasan Section -->
+      <div class="detail-section">
+        <span class="section-label">Alasan Pengajuan</span>
+        <div class="reason-box">
+          <p>{{ selectedRequest.Alasan || 'Tidak ada alasan yang dicantumkan.' }}</p>
+        </div>
+      </div>
+
+      <!-- Attachment Section -->
+      <div class="detail-section">
+        <span class="section-label">Dokumen Lampiran</span>
+        <div *ngIf="selectedRequest.LampiranURL" class="attachment-card">
+          <div class="attachment-info">
+            <div class="attachment-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </div>
+            <div class="attachment-text">
+              <span class="attachment-title">Dokumen Pendukung / Surat Keterangan</span>
+              <span class="attachment-sub">Klik tombol untuk melihat file dokumen</span>
+            </div>
+          </div>
+          <a [href]="selectedRequest.LampiranURL" target="_blank" class="btn-attachment-action">
+            Buka File
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 4px; vertical-align: middle;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+
+        <div *ngIf="selectedRequest.LampiranURL && isImageAttachment(selectedRequest.LampiranURL)" class="image-preview-wrapper">
+          <img [src]="selectedRequest.LampiranURL" alt="Preview Lampiran" class="attachment-img-preview" />
+        </div>
+
+        <div *ngIf="!selectedRequest.LampiranURL" class="no-attachment-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #9ca3af; margin-right: 6px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Tidak ada dokumen lampiran yang diunggah.</span>
+        </div>
+      </div>
+
+      <!-- Notes / Approval History if processed -->
+      <div class="detail-section" *ngIf="selectedRequest.Status !== 'Pending' && selectedRequest.Notes">
+        <span class="section-label">Catatan Approval</span>
+        <div class="notes-box">
+          <p>{{ selectedRequest.Notes }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button class="btn-modal-secondary" type="button" (click)="closeDetail()">Tutup</button>
+      
+      <div *ngIf="selectedRequest.Status === 'Pending'" class="footer-action-group">
+        <button class="btn-modal-reject" type="button" (click)="updateStatusFromModal(selectedRequest.ID, 'Rejected')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-bottom;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Tolak
+        </button>
+        <button class="btn-modal-approve" type="button" (click)="updateStatusFromModal(selectedRequest.ID, 'Approved')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-bottom;"><polyline points="20 6 9 17 4 12"/></svg>
+          Setujui
+        </button>
+      </div>
+    </div>
   </div>
 </div>

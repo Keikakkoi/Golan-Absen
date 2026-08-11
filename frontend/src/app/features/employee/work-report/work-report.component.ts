@@ -4,6 +4,8 @@ import { WorkReportService, WorkReport, WorkReportColumn, ComplianceResult } fro
 import { AlertService } from '../../../core/services/alert.service';
 import { AuthService } from '../../../core/services/auth.service';
 import Swal from 'sweetalert2';
+import { forkJoin } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 
 import { CommonModule } from '@angular/common';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
@@ -26,6 +28,9 @@ export class WorkReportComponent implements OnInit {
   selectedDate: string = '';
   isSubmitting = false;
   isLoading = true;
+  isRefreshing = false;
+  refreshError = '';
+  refreshSuccess = '';
   userDivisi: string = '';
   selectedScreenshots: File[] = [];
   screenshotPreviews: string[] = [];
@@ -58,34 +63,58 @@ export class WorkReportComponent implements OnInit {
     });
   }
 
-  loadInitialData() {
-    this.isLoading = true;
-    
-    // Load columns
-    this.workReportService.getColumns().subscribe({
-      next: (cols) => {
-        this.columns = cols;
-        this.buildCustomFieldsForm();
-      }
-    });
+  loadInitialData(isRefresh = false) {
+    if (isRefresh && (this.isRefreshing || this.isLoading)) return;
 
-    // Load Reports
-    this.workReportService.getWorkReports().subscribe({
-      next: (res) => {
-        this.reports = res;
-        this.loadCompliance();
+    this.refreshError = '';
+    this.refreshSuccess = '';
+    this.isLoading = !isRefresh;
+    this.isRefreshing = isRefresh;
+
+    forkJoin({
+      columns: this.workReportService.getColumns(isRefresh),
+      reports: this.workReportService.getWorkReports(undefined, undefined, undefined, undefined, isRefresh)
+    }).pipe(
+      finalize(() => {
+        this.isLoading = false;
+        this.isRefreshing = false;
+      })
+    ).subscribe({
+      next: ({ columns, reports }) => {
+        this.columns = columns;
+        this.buildCustomFieldsForm();
+        this.reports = reports;
+        this.loadCompliance(isRefresh);
+        if (isRefresh) {
+          this.refreshSuccess = 'Data laporan berhasil diperbarui.';
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: this.refreshSuccess,
+            showConfirmButton: false,
+            timer: 2500,
+            timerProgressBar: true
+          });
+        }
       },
-      error: () => this.isLoading = false
+      error: (err) => {
+        this.refreshError = err?.error?.error || 'Gagal memperbarui data laporan. Periksa koneksi lalu coba lagi.';
+      }
     });
   }
 
-  loadCompliance() {
+  refreshReports(): void {
+    this.loadInitialData(true);
+  }
+
+  loadCompliance(forceRefresh = false) {
     // Check current month compliance
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
     const end = now.toISOString().split('T')[0];
 
-    this.workReportService.getCompliance(start, end).subscribe({
+    this.workReportService.getCompliance(start, end, undefined, forceRefresh).subscribe({
       next: (res) => {
         this.complianceData = res;
         this.isLoading = false;
@@ -96,6 +125,7 @@ export class WorkReportComponent implements OnInit {
 
   buildCustomFieldsForm() {
     const customGroup = this.reportForm.get('customFieldsForm') as FormGroup;
+    Object.keys(customGroup.controls).forEach(name => customGroup.removeControl(name));
     this.columns.forEach(col => {
       customGroup.addControl(col.nama_kolom, this.fb.control('', col.wajib_diisi ? Validators.required : null));
     });

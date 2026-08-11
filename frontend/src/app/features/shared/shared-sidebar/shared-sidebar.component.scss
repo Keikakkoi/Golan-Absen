@@ -182,18 +182,6 @@
         stroke-linejoin: round;
       }
 
-      .sidebar-menu-badge {
-        margin-left: auto;
-        min-width: 20px;
-        padding: 2px 6px;
-        border-radius: 999px;
-        background: var(--absent);
-        color: #fff;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-align: center;
-      }
-
       &:hover {
         background-color: var(--mint-1);
         color: var(--green-deep);

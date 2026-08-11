@@ -6,6 +6,8 @@
       <h2>Dashboard & Rekap Absensi</h2>
     </div>
 
+    <div *ngIf="errorMessage" class="alert alert-danger" style="margin-top: 1rem; margin-bottom: 1rem;">{{ errorMessage }}</div>
+
     <div class="stats-grid">
       <div class="golan-card stat-card" style="border-left: 4px solid #3b82f6;">
         <h4>Total Karyawan</h4>
@@ -16,6 +18,11 @@
         <div class="value">{{ stats.hadir_hari_ini }} <span class="unit">Orang</span></div>
       </div>
 
+      <div class="golan-card stat-card" style="border-left: 4px solid #f59e0b;">
+        <h4>Belum Absen Hari Ini</h4>
+        <div class="value">{{ stats.belum_absen_hari_ini || 0 }} <span class="unit">Orang</span></div>
+      </div>
+
       <div class="golan-card stat-card" style="border-left: 4px solid #8b5cf6;">
         <h4>Izin/Cuti Hari Ini</h4>
         <div class="value">{{ stats.izin_cuti_hari_ini }} <span class="unit">Orang</span></div>
@@ -23,7 +30,7 @@
     </div>
 
     <div class="golan-card" style="margin-top: 2rem;">
-    <div class="golan-card" style="margin-top: 2rem;">
+      <div *ngIf="errorMessage" class="alert alert-danger" style="margin-bottom: 1.5rem;">{{ errorMessage }}</div>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <h3 style="margin: 0;">Daftar Rekap Absensi</h3>
         
@@ -167,10 +174,12 @@
               <td style="padding: 0.75rem;">
                 <span *ngIf="!req.IsCheckoutMissing" class="status-badge" [ngClass]="{
                   'status-hadir': req.Status === 'Hadir',
-                  'status-alpha': req.Status === 'Alpha' || req.Status === 'Izin' || req.Status === 'Cuti'
+                  'status-alpha': req.Status === 'Alpha',
+                  'status-izin': req.Status === 'Izin',
+                  'status-cuti': req.Status === 'Cuti'
                 }" style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;"
-                [style.background-color]="req.Status === 'Hadir' ? '#dbeafe' : '#fee2e2'"
-                [style.color]="req.Status === 'Hadir' ? '#2563eb' : '#dc2626'">
+                [style.background-color]="req.Status === 'Hadir' ? '#dbeafe' : (req.Status === 'Izin' ? '#e0e7ff' : (req.Status === 'Cuti' ? '#fef3c7' : '#fee2e2'))"
+                [style.color]="req.Status === 'Hadir' ? '#2563eb' : (req.Status === 'Izin' ? '#4f46e5' : (req.Status === 'Cuti' ? '#d97706' : '#dc2626'))">
                   {{ req.Status }}
                 </span>
                 <span *ngIf="req.IsCheckoutMissing" class="status-badge status-warning">⚠ Belum Check-out</span>
@@ -180,7 +189,7 @@
         </table>
 
         <div *ngIf="isLoadingReports" style="padding: 1rem; color: #6b7280; text-align: center;">Memuat rekap laporan...</div>
-        <div *ngIf="!isLoadingReports && reports.length === 0" style="padding: 1rem; color: #6b7280; text-align: center;">Tidak ada data absensi untuk filter tersebut.</div>
+        <div *ngIf="!isLoadingReports && reports.length === 0 && !errorMessage" style="padding: 1rem; color: #6b7280; text-align: center;">Tidak ada data absensi untuk filter tersebut.</div>
       </div>
     </div>
   </div>

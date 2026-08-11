@@ -72,8 +72,6 @@ export class LoginComponent implements OnInit, OnDestroy {
         const role = String(res.role || '').trim().toUpperCase();
         if (role === 'HRD') {
           this.router.navigateByUrl('/admin/dashboard', { replaceUrl: true });
-        } else if (role === 'PIMPINAN') {
-          this.router.navigateByUrl('/executive/dashboard', { replaceUrl: true });
         } else {
           this.router.navigateByUrl('/employee/checkin', { replaceUrl: true });
         }

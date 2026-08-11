@@ -33,7 +33,7 @@ export class StatisticsComponent implements OnInit {
   workTypeStats = {
     wfo: 0,
     wfh: 0,
-    remote: 0
+    dinasLuar: 0
   };
 
   // SVG Chart data
@@ -67,7 +67,7 @@ export class StatisticsComponent implements OnInit {
     this.countIzin = 0;
     this.countCuti = 0;
     this.countAlpha = 0;
-    this.workTypeStats = { wfo: 0, wfh: 0, remote: 0 };
+    this.workTypeStats = { wfo: 0, wfh: 0, dinasLuar: 0 };
 
     let totalCheckInSecs = 0;
     let checkInCount = 0;
@@ -107,10 +107,10 @@ export class StatisticsComponent implements OnInit {
       else if (status === 'Alpha') this.countAlpha++;
 
       // Counters by work type
-      const tipe = rec.TipeKerja || 'WFO';
+      const tipe = String(rec.TipeKerja || 'WFO').trim().replace(/\s+/g, ' ').toUpperCase();
       if (tipe === 'WFO') this.workTypeStats.wfo++;
       else if (tipe === 'WFH') this.workTypeStats.wfh++;
-      else this.workTypeStats.remote++;
+      else if (tipe === 'DINAS LUAR' || tipe === 'REMOTE') this.workTypeStats.dinasLuar++;
 
       // Check-in times analysis
       if (rec.JamMasuk) {

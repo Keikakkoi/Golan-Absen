@@ -82,16 +82,22 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     });
   }
 
-  enablePush(): void {
+  togglePush(): void {
     this.pushError = '';
     this.pushBusy = true;
-    this.notificationService.enablePush(true).then(enabled => {
-      this.pushEnabled = enabled;
-      if (!enabled) this.pushError = 'Push belum aktif. Izinkan notifikasi browser lalu coba lagi.';
+    const operation = this.pushEnabled
+      ? this.notificationService.disablePush()
+      : this.notificationService.enablePush(true);
+
+    operation.then(enabled => {
+      this.pushEnabled = this.pushEnabled ? !enabled : enabled;
+      if (!this.pushEnabled && !enabled) this.pushError = 'Push belum aktif. Izinkan notifikasi browser lalu coba lagi.';
       this.pushBusy = false;
     }).catch(() => {
       this.pushBusy = false;
-      this.pushError = 'Push tidak dapat diaktifkan. Pastikan backend sudah direstart dan browser memakai localhost atau HTTPS.';
+      this.pushError = this.pushEnabled
+        ? 'Push gagal dinonaktifkan. Silakan coba lagi.'
+        : 'Push tidak dapat diaktifkan. Pastikan backend sudah direstart dan browser memakai localhost atau HTTPS.';
     });
   }
 }

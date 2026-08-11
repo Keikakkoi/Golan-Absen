@@ -44,6 +44,16 @@
             </div>
           </div>
           <div class="filter-group">
+            <label>Project</label>
+            <div class="input-wrapper select-wrapper">
+              <select [(ngModel)]="filters.project_id" name="project_id" class="filter-input">
+                <option value="">Semua project</option>
+                <option *ngFor="let project of projects" [value]="project.ID">{{ project.ID }} - {{ project.NamaProject }}</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right"></i>
+            </div>
+          </div>
+          <div class="filter-group">
             <label>Nama Karyawan</label>
             <div class="input-wrapper">
               <i class="fas fa-search icon-left"></i>
@@ -102,7 +112,7 @@
                   Tindakan Lanjut
                 </span>
               </td>
-              <td style="padding: 1rem;"><button type="button" class="link-button" (click)="toggleDetails(summary.employee_id)">{{ expandedEmployeeId === summary.employee_id ? 'Tutup' : 'Lihat' }}</button></td>
+              <td style="padding: 1rem;"><button type="button" class="link-button btn-view-detail compact" (click)="toggleDetails(summary.employee_id)">{{ expandedEmployeeId === summary.employee_id ? 'Tutup' : 'Lihat' }}</button></td>
             </tr>
             <tr *ngIf="expandedEmployeeId === summary.employee_id" class="detail-row">
               <td colspan="6">

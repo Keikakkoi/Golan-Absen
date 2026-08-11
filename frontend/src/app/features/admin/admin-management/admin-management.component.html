@@ -1,13 +1,8 @@
 <div class="dashboard-container admin-theme">
   <app-admin-sidebar></app-admin-sidebar>
   <div class="main-content">
-    <div class="header"><h2>{{ section === 'roles' ? 'Manajemen Role & Permission' : section === 'schedules' ? 'Manajemen Jadwal Kerja / Shift' : section === 'home' ? 'Lokasi Rumah Karyawan (Geofence WFH)' : 'Manajemen Kuota Cuti / Izin' }}</h2></div>
+    <div class="header"><h2>{{ section === 'schedules' ? 'Manajemen Jadwal Kerja / Shift' : section === 'home' ? 'Lokasi Rumah Karyawan (Geofence WFH)' : 'Manajemen Kuota Cuti / Izin' }}</h2></div>
     <div class="alert alert-danger" *ngIf="errorMessage">{{ errorMessage }}</div>
-
-    <ng-container *ngIf="section === 'roles'">
-      <div class="toolbar"><label>Role yang diatur <select [(ngModel)]="selectedRole" class="golan-input"><option>HRD</option><option>Karyawan</option><option>MAGANG</option><option>MANAJER</option><option>Pimpinan</option></select></label><button class="btn-primary" (click)="saveRoles()" [disabled]="isSaving">Simpan Permission</button></div>
-      <div class="golan-card table-container" *ngIf="!isLoading"><table class="golan-table"><thead><tr><th>Permission</th><th>Deskripsi</th><th>Diizinkan</th></tr></thead><tbody><tr *ngFor="let permission of permissions"><td><strong>{{ permission.Nama }}</strong><div class="code">{{ permission.Kode }}</div></td><td>{{ permission.Deskripsi }}</td><td><input type="checkbox" [checked]="allowed(permission.ID)" (change)="togglePermission(permission.ID)"></td></tr></tbody></table></div>
-    </ng-container>
 
     <ng-container *ngIf="section === 'schedules'">
       <section class="schedule-hero">
@@ -29,10 +24,34 @@
           </div>
           <div class="schedule-summary-item schedule-summary-hours">
             <span class="summary-label">JAM REGULER</span>
-            <strong>09:00 <small>–</small> 17:00</strong>
+            <strong>{{ regularHours.start }} <small>–</small> {{ regularHours.end }}</strong>
             <span>referensi jam kerja</span>
           </div>
         </div>
+      </section>
+
+      <section class="golan-card" style="margin-bottom: 24px; padding: 24px;">
+        <div class="schedule-card-heading">
+          <div>
+            <p class="eyebrow">PENUGASAN KARYAWAN</p>
+            <h3>Atur shift kerja karyawan</h3>
+            <p>Shift pada data karyawan hanya dapat diubah dari menu ini. Jika dikembalikan ke Reguler, sistem menggunakan shift default.</p>
+          </div>
+        </div>
+        <form class="schedule-form" (ngSubmit)="saveShiftAssignment()">
+          <label class="schedule-field schedule-field-wide"><span>Karyawan <em>(wajib)</em></span>
+            <select class="golan-input" [(ngModel)]="shiftAssignment.employee_id" name="shift_employee" required>
+              <option value="">Pilih karyawan</option>
+              <option *ngFor="let emp of employees" [value]="emp.ID">{{ emp.Nama }} ({{ emp.Employee?.NIK || '-' }}) — saat ini: {{ emp.Employee?.ShiftKerja || 'Reguler' }}</option>
+            </select>
+          </label>
+          <label class="schedule-field schedule-field-wide"><span>Shift kerja <em>(wajib)</em></span>
+            <select class="golan-input" [(ngModel)]="shiftAssignment.shift" name="employee_shift" required>
+              <option *ngFor="let shift of shiftOptions" [value]="shift">{{ shift }}</option>
+            </select>
+          </label>
+          <div class="schedule-form-actions"><button type="submit" class="btn-primary" [disabled]="isSaving">{{ isSaving ? 'Menyimpan...' : 'Simpan shift karyawan' }}</button></div>
+        </form>
       </section>
 
       <div class="schedule-layout">
@@ -138,7 +157,17 @@
               <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Jam kerja</th><th>Toleransi</th><th>Aksi</th></tr></thead>
               <tbody>
                 <tr *ngFor="let schedule of schedules">
-                  <td><div class="schedule-name-cell"><span class="schedule-row-icon" aria-hidden="true">⌁</span><strong>{{ schedule.NamaShift }}</strong></div></td>
+                  <td>
+                    <div class="schedule-name-cell">
+                      <span class="schedule-row-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                          <circle cx="12" cy="12" r="8.5"></circle>
+                          <path d="M12 7.5v5l3.5 2"></path>
+                        </svg>
+                      </span>
+                      <strong>{{ schedule.NamaShift }}</strong>
+                    </div>
+                  </td>
                   <td><span class="schedule-date">{{ schedule.Tanggal ? (schedule.Tanggal | date:'dd MMM yyyy') : '-' }}</span></td>
                   <td><span class="schedule-employee">{{ schedule.EmployeeID ? (schedule.Employee?.User?.Nama || '-') : 'Semua Karyawan (Global)' }}</span></td>
                   <td><span class="schedule-division">{{ schedule.EmployeeID ? (schedule.Employee?.Division?.NamaDivisi || '-') : 'Semua Divisi' }}</span></td>
@@ -218,9 +247,9 @@
           <label class="quota-field" for="quota-type">
             <span>Jenis kuota</span>
             <select id="quota-type" class="golan-input" [(ngModel)]="quotaForm.jenis_cuti" name="jenis">
-              <option value="Cuti">Cuti Tahunan</option>
-              <option>Izin Khusus</option>
-              <option>Cuti Sakit</option>
+              <option value="Cuti">Cuti</option>
+              <option value="Sakit">Sakit</option>
+              <option value="Lainnya">Lainnya</option>
             </select>
           </label>
           <label class="quota-field" for="quota-balance">
@@ -261,7 +290,11 @@
                 <td><span class="year-label">{{ quota.Tahun }}</span></td>
                 <td><span class="quota-type-pill">{{ quota.JenisCuti }}</span></td>
                 <td><strong class="quota-balance">{{ quota.SisaKuota }}</strong> <span class="quota-unit">hari</span></td>
-                <td><button class="icon-button edit quota-edit" type="button" (click)="editQuota(quota)" aria-label="Edit kuota" title="Edit kuota"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button></td>
+                <td class="quota-actions">
+                  <button class="icon-button view btn-view-detail icon-only" type="button" (click)="viewQuota(quota)" aria-label="Lihat kuota" title="Lihat detail kuota"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
+                  <button class="icon-button edit quota-edit" type="button" (click)="editQuota(quota)" aria-label="Edit kuota" title="Edit kuota"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>
+                  <button class="icon-button delete" type="button" (click)="deleteQuota(quota.ID)" aria-label="Hapus kuota" title="Hapus kuota"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button>
+                </td>
               </tr>
             </tbody>
           </table>

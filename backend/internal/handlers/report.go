@@ -22,6 +22,7 @@ func SetupReportRoutes(router fiber.Router) {
 	admin := router.Group("/admin/reports", middleware.Protected())
 	admin.Get("/stats", GetAdminDashboardStats)
 	admin.Get("/", GetAdminReports)
+	admin.Get("", GetAdminReports)
 	admin.Get("/daily", GetAdminReports)
 	admin.Get("/weekly", GetAdminReports)
 	admin.Get("/monthly", GetAdminReports)
@@ -44,9 +45,8 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 	workDate := attendanceBusinessDate(now)
 	schedule := getAttendanceSchedule(employee.ID, workDate)
 	_ = closeExpiredAttendanceRecords(now)
-	_, _, _, endTime, checkoutDeadline := attendanceWindow(now, schedule)
-	todayAtSeven := time.Date(now.Year(), now.Month(), now.Day(), attendanceResetHour, 0, 0, 0, jakartaLocation)
-	canCheckIn := !now.Before(todayAtSeven) && now.Before(endTime)
+	_, startTime, _, endTime, checkoutDeadline := attendanceWindow(now, schedule)
+	canCheckIn := !now.Before(startTime) && now.Before(endTime)
 	canCheckOut := !now.Before(endTime) && !now.After(checkoutDeadline)
 	startOfMonth := time.Date(workDate.Year(), workDate.Month(), 1, 0, 0, 0, 0, jakartaLocation)
 	endOfMonth := startOfMonth.AddDate(0, 1, -1)
@@ -92,26 +92,29 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"hadir_bulan_ini":      hadirCount,
-		"sisa_cuti":            sisaCuti,
-		"today_status":         todayStatus,
-		"today_check_in":       todayCheckInTime,
-		"today_check_out":      todayCheckOutTime,
-		"can_check_in":         canCheckIn && todayStatus == "Belum Absen",
-		"can_check_out":        canCheckOut && todayStatus == "Hadir",
-		"attendance_message":   attendanceMessage(now, todayStatus, todayAtSeven, endTime, checkoutDeadline),
-		"todayMessage":         attendanceMessage(now, todayStatus, todayAtSeven, endTime, checkoutDeadline),
+		"hadir_bulan_ini":    hadirCount,
+		"sisa_cuti":          sisaCuti,
+		"today_status":       todayStatus,
+		"today_check_in":     todayCheckInTime,
+		"today_check_out":    todayCheckOutTime,
+		"can_check_in":       canCheckIn && todayStatus == "Belum Absen",
+		"can_check_out":      canCheckOut && todayStatus == "Hadir",
+		"attendance_message": attendanceMessage(now, todayStatus, startTime, endTime, checkoutDeadline),
+		"todayMessage":       attendanceMessage(now, todayStatus, startTime, endTime, checkoutDeadline),
 		"schedule": fiber.Map{
-			"end":      schedule.JamSelesai,
-			"deadline": checkoutDeadline.Format("15:04"),
+			"name":      schedule.NamaShift,
+			"start":     schedule.JamMulai,
+			"end":       schedule.JamSelesai,
+			"deadline":  checkoutDeadline.Format("15:04"),
+			"overnight": endTime.Format("2006-01-02") != startTime.Format("2006-01-02"),
 		},
 		"missing_work_reports": missingWorkReportRowsForEmployee(employee.ID, now),
 	})
 }
 
-func attendanceMessage(now time.Time, status string, resetAt, checkoutStart, checkoutDeadline time.Time) string {
-	if now.Before(resetAt) {
-		return "Check-in dibuka pukul " + resetAt.Format("15:04") + "."
+func attendanceMessage(now time.Time, status string, checkinStart, checkoutStart, checkoutDeadline time.Time) string {
+	if now.Before(checkinStart) {
+		return "Check-in dibuka pukul " + checkinStart.Format("15:04") + "."
 	}
 	if now.After(checkoutDeadline) {
 		return "Batas absensi hari ini sudah lewat."
@@ -133,7 +136,7 @@ func attendanceMessage(now time.Time, status string, resetAt, checkoutStart, che
 
 func GetAdminDashboardStats(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 
@@ -154,11 +157,16 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 		Where("? BETWEEN tanggal_mulai AND tanggal_selesai AND status = ?", today, models.LeaveStatusApproved).
 		Count(&izinCutiHariIni)
 
-	var totalMagang, magangAktif, logbookPending, sertifikatTerbit int64
+	belumAbsenHariIni := totalKaryawan - (hadirHariIni + izinCutiHariIni)
+	if belumAbsenHariIni < 0 {
+		belumAbsenHariIni = 0
+	}
+
+	var totalMagang, magangAktif, logbookPending int64
 	config.DB.Model(&models.User{}).Where("role = ?", models.RoleMagang).Count(&totalMagang)
 	config.DB.Model(&models.User{}).Where("role = ? AND internship_end_date >= ?", models.RoleMagang, today).Count(&magangAktif)
 	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ? AND work_reports.status_logbook = ?", models.RoleMagang, "submitted").Count(&logbookPending)
-	config.DB.Model(&models.InternshipCertificate{}).Count(&sertifikatTerbit)
+	sertifikatTerbit := getSertifikatTerbitCount()
 	var employeeIDs []uint
 	config.DB.Model(&models.Employee{}).Pluck("id", &employeeIDs)
 	missingReports := missingWorkReportRows(employeeIDs, now)
@@ -166,6 +174,7 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"total_karyawan":            totalKaryawan,
 		"hadir_hari_ini":            hadirHariIni,
+		"belum_absen_hari_ini":      belumAbsenHariIni,
 		"izin_cuti_hari_ini":        izinCutiHariIni,
 		"total_magang":              totalMagang,
 		"magang_aktif":              magangAktif,
@@ -178,7 +187,7 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 
 func GetMissingWorkReports(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var employeeIDs []uint
@@ -188,7 +197,7 @@ func GetMissingWorkReports(c *fiber.Ctx) error {
 
 func GetAdminReports(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	_ = closeExpiredAttendanceRecords(attendanceNow())
@@ -197,6 +206,7 @@ func GetAdminReports(c *fiber.Ctx) error {
 	endDate := c.Query("end_date")
 	status := c.Query("status")
 	deptID := c.Query("division_id")
+	projectID := c.Query("project_id")
 
 	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Order("tanggal desc")
 
@@ -212,6 +222,9 @@ func GetAdminReports(c *fiber.Ctx) error {
 	}
 	if deptID != "" && deptID != "Semua" {
 		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", deptID)
+	}
+	if projectID != "" && projectID != "Semua" {
+		query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON users.id = employees.user_id WHERE users.project_id = ?)", projectID)
 	}
 
 	var records []models.AttendanceRecord
@@ -230,7 +243,7 @@ func GetAdminReports(c *fiber.Ctx) error {
 
 func ExportAdminReportsCSV(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	_ = closeExpiredAttendanceRecords(attendanceNow())
@@ -239,6 +252,7 @@ func ExportAdminReportsCSV(c *fiber.Ctx) error {
 	endDate := c.Query("end_date")
 	status := c.Query("status")
 	deptID := c.Query("division_id")
+	projectID := c.Query("project_id")
 
 	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Order("tanggal desc")
 
@@ -254,6 +268,9 @@ func ExportAdminReportsCSV(c *fiber.Ctx) error {
 	}
 	if deptID != "" && deptID != "Semua" {
 		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", deptID)
+	}
+	if projectID != "" && projectID != "Semua" {
+		query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON users.id = employees.user_id WHERE users.project_id = ?)", projectID)
 	}
 
 	var records []models.AttendanceRecord
@@ -363,7 +380,7 @@ func scheduleStartTime(schedule models.WorkSchedule, date time.Time) (time.Time,
 
 func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	_ = closeExpiredAttendanceRecords(attendanceNow())
@@ -382,6 +399,15 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 		filtered := employees[:0]
 		for _, employee := range employees {
 			if strconv.FormatUint(uint64(employee.DivisionID), 10) == divisionID {
+				filtered = append(filtered, employee)
+			}
+		}
+		employees = filtered
+	}
+	if projectID := c.Query("project_id"); projectID != "" && projectID != "Semua" {
+		filtered := employees[:0]
+		for _, employee := range employees {
+			if employee.User != nil && employee.User.ProjectID != nil && strconv.FormatUint(uint64(*employee.User.ProjectID), 10) == projectID {
 				filtered = append(filtered, employee)
 			}
 		}
@@ -495,7 +521,7 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 // including inferred absences that have no AttendanceRecord yet.
 func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD && role != models.RolePimpinan {
+	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	_ = closeExpiredAttendanceRecords(attendanceNow())
@@ -508,10 +534,14 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 	divisionID := c.Query("division_id")
+	projectID := c.Query("project_id")
 	var employees []models.Employee
 	query := config.DB.Preload("User").Preload("Division").Preload("Position")
 	if divisionID != "" && divisionID != "Semua" {
 		query = query.Where("division_id = ?", divisionID)
+	}
+	if projectID != "" && projectID != "Semua" {
+		query = query.Where("user_id IN (SELECT id FROM users WHERE project_id = ?)", projectID)
 	}
 	if name := c.Query("name"); name != "" {
 		query = query.Where("user_id IN (SELECT id FROM users WHERE nama ILIKE ?)", "%"+name+"%")

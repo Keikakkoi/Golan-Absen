@@ -41,6 +41,31 @@ func TestAttendanceWindowUsesNineTenGraceAndSixPmDeadline(t *testing.T) {
 	}
 }
 
+func TestAttendanceWindowUsesConfiguredStartAndSupportsOvernightEnd(t *testing.T) {
+	schedule := models.WorkSchedule{JamMulai: "20:38:00", JamSelesai: "22:00:00", ToleransiTerlambatMenit: 10}
+	now := time.Date(2026, 7, 23, 9, 40, 0, 0, jakartaLocation)
+	_, start, _, end, _ := attendanceWindow(now, schedule)
+
+	if got := start.Format("15:04"); got != "20:38" {
+		t.Fatalf("start: got %s, want 20:38", got)
+	}
+	if !now.Before(start) {
+		t.Fatal("09:40 must be before a 20:38 shift start")
+	}
+	if got := end.Format("15:04"); got != "22:00" {
+		t.Fatalf("end: got %s, want 22:00", got)
+	}
+
+	overnight := models.WorkSchedule{JamMulai: "22:00:00", JamSelesai: "06:00:00"}
+	_, overnightStart, _, overnightEnd, deadline := attendanceWindow(time.Date(2026, 7, 27, 23, 0, 0, 0, jakartaLocation), overnight)
+	if !overnightEnd.After(overnightStart) || overnightEnd.Day() != 28 {
+		t.Fatalf("overnight end: got %v, want following day", overnightEnd)
+	}
+	if !deadline.After(overnightEnd) {
+		t.Fatal("overnight checkout deadline must be after shift end")
+	}
+}
+
 func TestOvernightScheduleDeadlineUsesFollowingDay(t *testing.T) {
 	schedule := models.WorkSchedule{JamMulai: "22:00:00", JamSelesai: "06:00:00"}
 	date := time.Date(2026, 7, 27, 0, 0, 0, 0, jakartaLocation)
@@ -48,5 +73,33 @@ func TestOvernightScheduleDeadlineUsesFollowingDay(t *testing.T) {
 	want := time.Date(2026, 7, 28, 7, 0, 0, 0, jakartaLocation) // 06:00 + 1 hour checkout deadline
 	if !got.Equal(want) {
 		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestValidateConfiguredHomeLocationUsesGoogleMapsHomePoint(t *testing.T) {
+	home := models.EmployeeHomeLocation{
+		GoogleMapsURL: "https://www.google.com/maps/@-6.200000,106.800000,17z",
+		LatitudeRumah: -6.200000,
+		LongitudeRumah: 106.800000,
+		RadiusMeter: 100,
+	}
+
+	valid, source, err := validateConfiguredHomeLocation(home, -6.200100, 106.800000)
+	if err != nil || !valid || source != "rumah" {
+		t.Fatalf("home point should validate WFH: valid=%v source=%s err=%v", valid, source, err)
+	}
+
+	valid, _, err = validateConfiguredHomeLocation(home, -6.210000, 106.800000)
+	if err == nil || valid || err.Error() != "Lokasi berada di luar radius rumah" {
+		t.Fatalf("outside home radius should fail: valid=%v err=%v", valid, err)
+	}
+}
+
+func TestValidateConfiguredHomeLocationRequiresGoogleMapsLink(t *testing.T) {
+	valid, source, err := validateConfiguredHomeLocation(models.EmployeeHomeLocation{
+		LatitudeRumah: -6.2, LongitudeRumah: 106.8, RadiusMeter: 100,
+	}, -6.2, 106.8)
+	if err == nil || valid || source != "tidak_tervalidasi" || err.Error() != "Anda belum mengatur lokasi rumah untuk absensi WFH" {
+		t.Fatalf("missing home link should fail as unconfigured: valid=%v source=%s err=%v", valid, source, err)
 	}
 }

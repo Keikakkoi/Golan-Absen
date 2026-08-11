@@ -3,13 +3,14 @@
 
   <div class="main-content">
     <div class="header">
-      <h2>Organisasi & Jabatan</h2>
+      <h2>Organisasi, Jabatan & Project</h2>
     </div>
     <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
 
     <div class="tabs">
       <button class="tab-btn" [class.active]="activeTab === 'divisions'" (click)="activeTab = 'divisions'">Divisi</button>
       <button class="tab-btn" [class.active]="activeTab === 'positions'" (click)="activeTab = 'positions'">Jabatan</button>
+      <button class="tab-btn" [class.active]="activeTab === 'projects'" (click)="activeTab = 'projects'">Project</button>
     </div>
 
     <!-- Divisions Tab -->
@@ -19,7 +20,13 @@
         <button class="btn-primary" (click)="openDeptModal()">+ Tambah Divisi</button>
       </div>
       <div class="table-container">
-      <table class="golan-table">
+      <table class="golan-table organization-table division-table">
+        <colgroup>
+          <col class="org-col-id">
+          <col class="org-col-name">
+          <col class="org-col-description">
+          <col class="org-col-actions">
+        </colgroup>
         <thead>
           <tr>
             <th>ID</th>
@@ -50,7 +57,13 @@
         <button class="btn-primary" (click)="openPosModal()">+ Tambah Jabatan</button>
       </div>
       <div class="table-container">
-      <table class="golan-table">
+      <table class="golan-table organization-table position-table">
+        <colgroup>
+          <col class="org-col-id">
+          <col class="org-col-name">
+          <col class="org-col-description">
+          <col class="org-col-actions">
+        </colgroup>
         <thead>
           <tr>
             <th>ID</th>
@@ -73,6 +86,37 @@
       </table>
       </div>
     </div>
+
+    <!-- Projects Tab -->
+    <div class="golan-card" *ngIf="activeTab === 'projects'">
+      <div class="card-header">
+        <div>
+          <h3>Daftar Project</h3>
+          <small>Project aktif akan muncul sebagai pilihan Project ID pada form karyawan.</small>
+        </div>
+        <button class="btn-primary" (click)="openProjectModal()">+ Tambah Project</button>
+      </div>
+      <div class="table-container">
+        <table class="golan-table organization-table project-table">
+          <colgroup>
+            <col class="org-col-id">
+            <col class="org-col-name">
+            <col class="org-col-description">
+            <col class="org-col-status">
+            <col class="org-col-actions">
+          </colgroup>
+          <thead><tr><th>ID</th><th>Nama Project</th><th class="w-100">Deskripsi</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let p of projects">
+              <td>{{ p.ID }}</td><td>{{ p.NamaProject }}</td><td>{{ p.Deskripsi || '-' }}</td>
+              <td><span class="status-badge" [class.status-hadir]="p.StatusAktif" [class.status-alpha]="!p.StatusAktif">{{ p.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span></td>
+              <td class="actions"><button class="btn-sm btn-edit" (click)="openProjectModal(p)">Edit</button><button class="btn-sm btn-danger" (click)="deleteProject(p.ID)">Hapus</button></td>
+            </tr>
+            <tr *ngIf="projects.length === 0"><td colspan="5">Belum ada project. Tambahkan project untuk mengisi pilihan Project ID.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -93,6 +137,19 @@
         <button type="button" class="btn-secondary" (click)="closeDeptModal()">Batal</button>
         <button type="submit" class="btn-primary">Simpan</button>
       </div>
+    </form>
+  </div>
+</div>
+
+<!-- Project Modal -->
+<div class="modal-overlay" *ngIf="showProjectModal">
+  <div class="modal-content golan-card">
+    <h3>{{ projectForm.ID ? 'Edit' : 'Tambah' }} Project</h3>
+    <form (ngSubmit)="saveProject()">
+      <div class="form-group"><label>Nama Project</label><input type="text" class="form-control" name="nama_project" [(ngModel)]="projectForm.NamaProject" required></div>
+      <div class="form-group"><label>Deskripsi</label><textarea class="form-control" name="deskripsi_project" [(ngModel)]="projectForm.Deskripsi" rows="3"></textarea></div>
+      <div class="form-group" *ngIf="projectForm.ID"><label><input type="checkbox" name="status_project" [(ngModel)]="projectForm.StatusAktif"> Project aktif dan tersedia untuk karyawan</label></div>
+      <div class="modal-actions"><button type="button" class="btn-secondary" (click)="closeProjectModal()">Batal</button><button type="submit" class="btn-primary">Simpan</button></div>
     </form>
   </div>
 </div>

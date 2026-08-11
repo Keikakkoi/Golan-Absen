@@ -15,6 +15,7 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
 export class AdminAlphaReportsComponent implements OnInit {
   summaries: any[] = [];
   departments: any[] = [];
+  projects: any[] = [];
   isLoading = true;
   errorMessage = '';
   expandedEmployeeId: number | null = null;
@@ -23,6 +24,7 @@ export class AdminAlphaReportsComponent implements OnInit {
     start_date: '',
     end_date: '',
     department_id: '',
+    project_id: '',
     name: '',
     sort_order: 'name_asc'
   };
@@ -35,9 +37,8 @@ export class AdminAlphaReportsComponent implements OnInit {
 
   ngOnInit(): void {
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     
-    this.filters.start_date = this.toDateInput(firstDay);
+    this.filters.start_date = this.toDateInput(today);
     this.filters.end_date = this.toDateInput(today);
 
     this.loadDepartments();
@@ -52,6 +53,7 @@ export class AdminAlphaReportsComponent implements OnInit {
       .set('start_date', this.filters.start_date)
       .set('end_date', this.filters.end_date);
     if (this.filters.department_id) params = params.set('division_id', this.filters.department_id);
+    if (this.filters.project_id) params = params.set('project_id', this.filters.project_id);
     if (this.filters.name) params = params.set('name', this.filters.name);
 
     this.http.get<any[]>(this.baseUrl, { headers, params }).subscribe({
@@ -62,7 +64,7 @@ export class AdminAlphaReportsComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to load alpha reports summary', err);
-        this.errorMessage = err.error?.error || 'Gagal memuat laporan ketidakhadiran.';
+        this.errorMessage = 'Gagal memuat data karyawan: ' + (err.error?.error || 'Gagal memuat data.');
         this.isLoading = false;
       }
     });
@@ -87,6 +89,10 @@ export class AdminAlphaReportsComponent implements OnInit {
       next: data => this.departments = data || [],
       error: () => this.departments = []
     });
+    this.http.get<any[]>('http://localhost:8080/api/v1/organization/projects', { headers: this.getHeaders() }).subscribe({
+      next: data => this.projects = data || [],
+      error: () => this.projects = []
+    });
   }
 
   toggleDetails(employeeId: number): void {
@@ -102,6 +108,7 @@ export class AdminAlphaReportsComponent implements OnInit {
   exportCSV(): void {
     let params = new HttpParams().set('start_date', this.filters.start_date).set('end_date', this.filters.end_date);
     if (this.filters.department_id) params = params.set('division_id', this.filters.department_id);
+    if (this.filters.project_id) params = params.set('project_id', this.filters.project_id);
     if (this.filters.name) params = params.set('name', this.filters.name);
     this.http.get(`${this.baseUrl}/export`, { headers: this.getHeaders(), params, responseType: 'blob' }).subscribe({
       next: blob => this.download(blob, `laporan-alpha_${this.filters.start_date}_${this.filters.end_date}.csv`),

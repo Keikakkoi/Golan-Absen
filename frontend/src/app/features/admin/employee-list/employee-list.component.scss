@@ -21,6 +21,35 @@
   margin: 0 !important;
 }
 
+.employee-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 16px;
+}
+
+.employee-table-count { color: #6b8299; font-size: .82rem; }
+.employee-export { position: relative; z-index: 5; }
+.employee-export-trigger {
+  display: inline-flex; align-items: center; gap: 9px; min-height: 38px; padding: 0 13px;
+  border: 1px solid #cbddec; border-radius: 8px; background: #f8fbff; color: #254b68;
+  cursor: pointer; font: inherit; font-size: .82rem; font-weight: 600; transition: .2s ease;
+}
+.employee-export-trigger:hover, .employee-export-trigger[aria-expanded="true"] { border-color: #79b9e5; background: #edf7ff; color: #1769aa; }
+.employee-export-chevron { margin-left: 4px; font-size: .68rem; }
+.employee-export-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; width: 205px; padding: 6px 0;
+  border: 1px solid #e0eaf3; border-radius: 9px; background: #fff;
+  box-shadow: 0 12px 28px rgba(35, 74, 105, .16); animation: employee-export-in .16s ease-out;
+}
+.employee-export-menu button { display: flex; align-items: center; width: 100%; gap: 10px; padding: 10px 13px; border: 0; background: transparent; color: #344b60; cursor: pointer; text-align: left; font: inherit; font-size: .78rem; }
+.employee-export-menu button:hover { background: #f1f8fd; color: #1769aa; }
+.export-icon { width: 15px; text-align: center; }
+.export-icon.csv { color: #0e9fbc; } .export-icon.xls { color: #20a653; } .export-icon.json { color: #f1b51c; } .export-icon.pdf { color: #e94255; } .export-icon.print { color: #10a7bd; }
+.employee-export-divider { height: 1px; margin: 5px 0; background: #e7eef5; }
+@keyframes employee-export-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
 .employee-table-container {
   width: 100%;
   max-width: 100%;
@@ -406,6 +435,9 @@
 }
 
 @media (max-width: 640px) {
+  .employee-table-toolbar { align-items: stretch; flex-direction: column; }
+  .employee-export-trigger { width: 100%; justify-content: center; }
+  .employee-export-menu { right: 0; left: 0; width: auto; }
   .employee-page-header {
     align-items: stretch !important;
   }
@@ -491,4 +523,131 @@
   .employee-form-modal .form-group {
     margin-bottom: 16px;
   }
+
+  /* Present employee records as readable cards on narrow screens. The wide
+     desktop table otherwise gets squeezed by the shared mobile table rules. */
+  .employee-table-container {
+    overflow-x: hidden !important;
+  }
+
+  .employee-table {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto;
+  }
+
+  /* The shared mobile table rule sets a 620px minimum width. That is useful
+     for wide report tables, but it makes this card overflow on phones. Keep
+     the employee records fluid so every value stays inside its card. */
+  .main-content .employee-table-container > table.employee-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .employee-table thead {
+    display: none;
+  }
+
+  .employee-table tbody,
+  .employee-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .employee-table tr {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--mint-1);
+    border-radius: 12px;
+    background: #fff;
+    box-sizing: border-box;
+  }
+
+  .employee-table td,
+  .employee-table td:last-child {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 8px 0;
+    border-bottom: 1px solid #edf3f8;
+    white-space: normal !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    vertical-align: middle;
+    overflow: hidden;
+  }
+
+  .employee-table .employee-cell-value {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+    max-width: calc(100% - 102px);
+    white-space: normal !important;
+    overflow: hidden;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    line-height: 1.35;
+  }
+
+  .employee-table td::before {
+    display: block;
+    flex: 0 0 92px;
+    min-width: 0;
+    color: var(--text-dark-lo);
+    content: attr(data-label);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .employee-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .employee-table .employee-photo-thumb,
+  .employee-table .photo-placeholder,
+  .employee-table .status-badge {
+    flex: 0 0 auto;
+    justify-self: start;
+  }
+
+  .employee-table .status-badge {
+    max-width: 100%;
+  }
+
+  .employee-table .employee-actions-cell {
+    align-items: center;
+  }
+
+  .employee-table .employee-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  body.dark-theme .employee-table tr {
+    background: var(--surface);
+  }
 }
+.shift-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: .78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #e8eef8;
+  color: #31547d;
+}
+.shift-pagi { background: #fff1cf; color: #8a5a00; }
+.shift-siang { background: #dff4e8; color: #176b43; }
+.shift-malam { background: #e9e1ff; color: #5b3b9a; }

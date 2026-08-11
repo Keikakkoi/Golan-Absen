@@ -31,11 +31,6 @@ func GetAllHolidays(c *fiber.Ctx) error {
 }
 
 func CreateHoliday(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	var input struct {
 		Tanggal    string `json:"tanggal"`
 		Keterangan string `json:"keterangan"`
@@ -61,11 +56,6 @@ func CreateHoliday(c *fiber.Ctx) error {
 }
 
 func UpdateHoliday(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 
@@ -100,11 +90,6 @@ func UpdateHoliday(c *fiber.Ctx) error {
 }
 
 func DeleteHoliday(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
-	if role != models.RoleHRD {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
-	}
-
 	idParam := c.Params("id")
 	id, _ := strconv.Atoi(idParam)
 

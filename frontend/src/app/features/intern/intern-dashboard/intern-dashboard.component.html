@@ -1,15 +1,132 @@
-<div class="dashboard-container"><app-shared-sidebar></app-shared-sidebar><main class="main-content">
-  <div class="header"><h2>Halo, {{ userName }}!</h2><p>Ringkasan periode magang dan logbook harian Anda.</p></div>
-  <div class="stats-grid">
-    <section class="golan-card stat-card"><h4>Sisa Hari Magang</h4><div class="value">{{ stats.days_remaining }} <span class="unit">hari</span></div><p class="muted">{{ stats.internship_start_date | date:'dd MMM yyyy' }} – {{ stats.internship_end_date | date:'dd MMM yyyy' }}</p></section>
-    <section class="golan-card stat-card"><h4>Progress Periode Magang</h4><div class="value">{{ stats.progress_percent }}<span class="unit">%</span></div><div class="progress-track"><div class="progress-value" [style.width.%]="stats.progress_percent"></div></div></section>
-    <section class="golan-card stat-card"><h4>Logbook Submitted</h4><div class="value">{{ stats.logbooks_submitted }} <span class="unit">hari</span></div></section>
-    <section class="golan-card stat-card"><h4>Logbook Approved</h4><div class="value">{{ stats.logbooks_approved }} <span class="unit">hari</span></div></section>
-  </div>
-  <section class="golan-card compliance-warning" *ngFor="let item of stats.missing_work_reports">
-    <strong>⚠ Laporan kerja belum diisi</strong>
-    <p>Anda belum mengisi laporan kerja untuk {{ item.tanggal }}. Batas pengisian {{ item.deadline_label }}.</p>
-    <a class="btn-secondary" routerLink="/intern/logbooks">Isi laporan sekarang</a>
-  </section>
-  <section class="golan-card callout"><h3>Logbook wajib diisi setiap hari</h3><p>Catat kegiatan sebelum hari kerja berakhir dan kirim untuk ditinjau pembimbing.</p><a class="btn-primary" routerLink="/intern/logbooks">Buka Logbook Harian</a></section>
-</main></div>
+<div class="dashboard-container">
+  <app-shared-sidebar></app-shared-sidebar>
+  <main class="main-content">
+    <div class="header">
+      <h2>Halo, {{ userName }}!</h2>
+      <p>Ringkasan periode magang dan logbook harian Anda.</p>
+    </div>
+
+    <div class="stats-grid">
+      <section class="golan-card stat-card">
+        <h4>Sisa Hari Magang</h4>
+        <div class="value">{{ stats.days_remaining }} <span class="unit">hari</span></div>
+        <p class="muted">{{ stats.internship_start_date | date:'dd MMM yyyy' }} – {{ stats.internship_end_date | date:'dd MMM yyyy' }}</p>
+      </section>
+      <section class="golan-card stat-card">
+        <h4>Progress Periode Magang</h4>
+        <div class="value">{{ stats.progress_percent }}<span class="unit">%</span></div>
+        <div class="progress-track"><div class="progress-value" [style.width.%]="stats.progress_percent"></div></div>
+      </section>
+      <section class="golan-card stat-card">
+        <h4>Logbook Submitted</h4>
+        <div class="value">{{ stats.logbooks_submitted }} <span class="unit">hari</span></div>
+      </section>
+      <section class="golan-card stat-card">
+        <h4>Logbook Approved</h4>
+        <div class="value">{{ stats.logbooks_approved }} <span class="unit">hari</span></div>
+      </section>
+    </div>
+
+    <app-dashboard-charts role="intern"></app-dashboard-charts>
+
+    <section class="golan-card compliance-warning" *ngFor="let item of stats.missing_work_reports">
+      <strong>⚠ Laporan kerja belum diisi</strong>
+      <p>Anda belum mengisi laporan kerja untuk {{ item.tanggal }}. Batas pengisian {{ item.deadline_label }}.</p>
+      <a class="btn-secondary" routerLink="/intern/logbooks">Isi laporan sekarang</a>
+    </section>
+
+    <!-- CALENDAR & EVENT SECTION (MODIFIED TO MATCH DASH KARYAWAN EXACTLY) -->
+    <div class="dashboard-lower-grid">
+      <section class="golan-card calendar-card" aria-labelledby="calendar-title">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Agenda</span>
+            <h3 id="calendar-title">Kalender perusahaan</h3>
+          </div>
+          <button class="today-btn" type="button" (click)="goToToday()">Hari ini</button>
+        </div>
+
+        <div class="calendar-toolbar">
+          <button type="button" class="month-nav" (click)="changeMonth(-1)" aria-label="Bulan sebelumnya">‹</button>
+          <strong>{{ currentMonth | date:'MMMM yyyy' }}</strong>
+          <button type="button" class="month-nav" (click)="changeMonth(1)" aria-label="Bulan berikutnya">›</button>
+        </div>
+
+        <div class="calendar-grid" role="grid" aria-label="Kalender agenda perusahaan">
+          <span class="weekday" *ngFor="let dayName of weekDays">{{ dayName }}</span>
+          <button
+            *ngFor="let day of calendarDays"
+            type="button"
+            class="calendar-day"
+            [class.empty]="!day"
+            [class.today]="day?.isToday"
+            [class.selected]="day?.dateKey === selectedDate"
+            [class.has-event]="day?.hasEvents"
+            [class.holiday]="day?.isHoliday"
+            [disabled]="!day"
+            (click)="selectDate(day)">
+            <ng-container *ngIf="day">
+              <span>{{ day.date }}</span>
+              <i *ngIf="day.hasEvents" aria-label="Memiliki event"></i>
+            </ng-container>
+          </button>
+        </div>
+
+        <div class="calendar-legend">
+          <span><i class="legend-dot"></i> Ada event</span>
+          <span><i class="legend-today"></i> Hari ini</span>
+        </div>
+      </section>
+
+      <section class="golan-card events-card" aria-labelledby="events-title">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Catatan</span>
+            <h3 id="events-title">Event perusahaan</h3>
+          </div>
+          <svg class="event-heading-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#calendar"></use></svg>
+        </div>
+
+        <p class="selected-date-label">{{ selectedDateLabel }}</p>
+        <div class="event-list" *ngIf="selectedDateEvents.length > 0 || selectedDateHolidays.length > 0; else noEvents">
+          <ng-container *ngFor="let holiday of selectedDateHolidays">
+            <article class="event-item event-holiday">
+              <div class="event-time">--</div>
+              <div class="event-copy">
+                <strong>Hari Libur</strong>
+                <p>{{ holiday.description }}</p>
+              </div>
+            </article>
+          </ng-container>
+          <article class="event-item" *ngFor="let event of selectedDateEvents" [ngClass]="'event-' + event.type">
+            <div class="event-time">{{ event.time }}<span *ngIf="event.endTime">–{{ event.endTime }}</span></div>
+            <div class="event-copy">
+              <strong>{{ event.title }}</strong>
+              <p>{{ event.description }}</p>
+              <div *ngIf="event.fileAttachmentUrl" class="event-attachment">
+                <div *ngIf="isImageAttachment(event.fileAttachmentUrl, event.fileAttachmentName)" class="attachment-image-preview">
+                  <a [href]="event.fileAttachmentUrl" target="_blank">
+                    <img [src]="event.fileAttachmentUrl" [alt]="event.fileAttachmentName || 'Gambar Pengumuman'" class="event-img-thumb">
+                  </a>
+                </div>
+                <a [href]="event.fileAttachmentUrl" target="_blank" download class="attachment-link">
+                  <i class="fas fa-paperclip"></i>
+                  <span>{{ event.fileAttachmentName || 'Download File Pengumuman' }}</span>
+                </a>
+              </div>
+            </div>
+          </article>
+        </div>
+        <ng-template #noEvents>
+          <div class="event-empty">Tidak ada event pada tanggal ini.</div>
+        </ng-template>
+      </section>
+    </div>
+
+    <section class="golan-card callout" style="margin-top: 24px;">
+      <h3>Logbook wajib diisi setiap hari</h3>
+      <p>Catat kegiatan sebelum hari kerja berakhir dan kirim untuk ditinjau manajer.</p>
+      <a class="btn-primary" routerLink="/intern/logbooks">Buka Logbook Harian</a>
+    </section>
+  </main>
+</div>

@@ -25,13 +25,12 @@ export class AdminManagementComponent implements OnInit {
   scheduleStartDate: string = '';
   scheduleEndDate: string = '';
 
-  permissions: any[] = [];
-  assignments: any[] = [];
-  selectedRole = 'HRD';
-
   schedules: any[] = [];
+  readonly shiftOptions = ['Reguler', 'Shift Pagi', 'Shift Siang', 'Shift Malam'];
+  shiftAssignment: any = { employee_id: '', shift: 'Reguler' };
   scheduleForm: any = this.emptySchedule();
   editingScheduleId: number | null = null;
+  isGlobalSchedule = true;
   readonly workDays = [
     { id: '1', label: 'Sen' },
     { id: '2', label: 'Sel' },
@@ -53,7 +52,7 @@ export class AdminManagementComponent implements OnInit {
   private readonly api = 'http://localhost:8080/api/v1';
 
   constructor(private http: HttpClient, private auth: AuthService, private alert: AlertService, route: ActivatedRoute) {
-    this.section = route.snapshot.data['section'] || 'roles';
+    this.section = route.snapshot.data['section'] || 'schedules';
   }
 
   ngOnInit(): void { this.loadSection(); }
@@ -61,38 +60,12 @@ export class AdminManagementComponent implements OnInit {
   loadSection(): void {
     this.isLoading = true;
     this.errorMessage = '';
-    if (this.section === 'roles') this.loadRoles();
     if (this.section === 'schedules') this.loadSchedules();
     if (this.section === 'home') this.loadHomeLocations();
     if (this.section === 'quotas') this.loadQuotas();
   }
 
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }
-
-  loadRoles(): void {
-    this.http.get<any>(`${this.api}/admin/roles`, { headers: this.headers() }).subscribe({
-      next: data => { this.permissions = data.permissions || []; this.assignments = data.assignments || []; this.isLoading = false; },
-      error: err => this.fail(err)
-    });
-  }
-
-  allowed(permissionId: number): boolean {
-    return this.assignments.some(a => a.Role === this.selectedRole && a.PermissionID === permissionId && a.Diizinkan);
-  }
-
-  togglePermission(permissionId: number): void {
-    const existing = this.assignments.find(a => a.Role === this.selectedRole && a.PermissionID === permissionId);
-    if (existing) existing.Diizinkan = !existing.Diizinkan;
-    else this.assignments.push({ Role: this.selectedRole, PermissionID: permissionId, Diizinkan: true });
-  }
-
-  async saveRoles(): Promise<void> {
-    if (!await this.alert.confirm('Simpan permission?', 'Perubahan hak akses role akan langsung diterapkan.')) return;
-    this.isSaving = true;
-    this.http.put(`${this.api}/admin/roles`, this.assignments.map(a => ({ role: a.Role, permission_id: a.PermissionID, diizinkan: a.Diizinkan })), { headers: this.headers() }).subscribe({
-      next: () => { this.isSaving = false; this.alert.success('Permission berhasil disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan permission', err.error?.error || 'Gagal menyimpan permission'); }
-    });
-  }
 
   loadEmployees(): void {
     this.http.get<any[]>(`${this.api}/admin/employees`, { headers: this.headers() }).subscribe({ next: employees => { this.employees = employees || []; }, error: err => this.fail(err) });
@@ -119,10 +92,55 @@ export class AdminManagementComponent implements OnInit {
 
   editSchedule(schedule: any): void {
     this.editingScheduleId = schedule.ID;
-    this.scheduleForm = { ...schedule, EmployeeID: schedule.EmployeeID, Tanggal: schedule.Tanggal ? schedule.Tanggal.substring(0, 10) : '', JamMulai: (schedule.JamMulai || '').substring(0, 5), JamSelesai: (schedule.JamSelesai || '').substring(0, 5) };
+    this.isGlobalSchedule = !schedule.EmployeeID;
+    this.scheduleForm = { ...schedule, EmployeeID: schedule.EmployeeID || '', EmployeeIDs: schedule.EmployeeID ? [Number(schedule.EmployeeID)] : [], Tanggal: schedule.Tanggal ? schedule.Tanggal.substring(0, 10) : '', JamMulai: (schedule.JamMulai || '').substring(0, 5), JamSelesai: (schedule.JamSelesai || '').substring(0, 5) };
   }
 
-  resetSchedule(): void { this.editingScheduleId = null; this.scheduleForm = this.emptySchedule(); }
+  resetSchedule(): void { this.editingScheduleId = null; this.isGlobalSchedule = true; this.scheduleForm = this.emptySchedule(); }
+
+  isEmployeeSelected(employeeId: number | undefined): boolean {
+    return !this.isGlobalSchedule && !!employeeId && (this.scheduleForm.EmployeeIDs || []).includes(Number(employeeId));
+  }
+
+  toggleGlobalSchedule(): void {
+    this.isGlobalSchedule = !this.isGlobalSchedule;
+    this.scheduleForm.EmployeeIDs = this.isGlobalSchedule ? [] : (this.scheduleForm.EmployeeIDs || []);
+    this.scheduleForm.EmployeeID = this.isGlobalSchedule ? '' : (this.scheduleForm.EmployeeIDs[0] || '');
+  }
+
+  toggleEmployee(employeeId: number | undefined): void {
+    if (!employeeId) return;
+    this.isGlobalSchedule = false;
+    const selected = new Set<number>((this.scheduleForm.EmployeeIDs || []).map((id: any) => Number(id)));
+    const id = Number(employeeId);
+    if (selected.has(id)) selected.delete(id); else selected.add(id);
+    this.scheduleForm.EmployeeIDs = Array.from(selected);
+    this.scheduleForm.EmployeeID = this.scheduleForm.EmployeeIDs[0] || '';
+  }
+
+  get regularHours(): { start: string, end: string } {
+    if (!this.schedules || this.schedules.length === 0) {
+      return { start: '09:00', end: '17:00' };
+    }
+    const regulerShift = this.schedules.find(s => !s.EmployeeID && s.NamaShift?.toLowerCase().includes('reguler'));
+    
+    if (regulerShift) {
+      return {
+        start: (regulerShift.JamMulai || '09:00').substring(0, 5),
+        end: (regulerShift.JamSelesai || '17:00').substring(0, 5)
+      };
+    }
+    
+    const globalShift = this.schedules.find(s => !s.EmployeeID);
+    if (globalShift) {
+      return {
+        start: (globalShift.JamMulai || '09:00').substring(0, 5),
+        end: (globalShift.JamSelesai || '17:00').substring(0, 5)
+      };
+    }
+
+    return { start: '09:00', end: '17:00' };
+  }
 
   async saveSchedule(): Promise<void> {
     const wasEditing = !!this.editingScheduleId;
@@ -130,12 +148,37 @@ export class AdminManagementComponent implements OnInit {
     if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.isSaving = true;
     
-    // Pastikan format tanggal berupa RFC3339 agar backend Go bisa parsing time.Time dengan benar
     const formattedDate = this.scheduleForm.Tanggal ? (this.scheduleForm.Tanggal.includes('T') ? this.scheduleForm.Tanggal : `${this.scheduleForm.Tanggal}T00:00:00Z`) : '';
     
-    const body = { ...this.scheduleForm, EmployeeID: Number(this.scheduleForm.EmployeeID), Tanggal: formattedDate, JamMulai: this.scheduleForm.JamMulai.length === 5 ? `${this.scheduleForm.JamMulai}:00` : this.scheduleForm.JamMulai, JamSelesai: this.scheduleForm.JamSelesai.length === 5 ? `${this.scheduleForm.JamSelesai}:00` : this.scheduleForm.JamSelesai, ToleransiTerlambatMenit: Number(this.scheduleForm.ToleransiTerlambatMenit) };
+    const empId = Number(this.scheduleForm.EmployeeID);
+    const isGlobal = !empId || empId === 0;
+    const selectedEmployeeIds = isGlobal ? [] : [empId];
+    
+    const body = { 
+      ...this.scheduleForm, 
+      EmployeeID: isGlobal ? null : empId, 
+      EmployeeIDs: selectedEmployeeIds, 
+      Tanggal: formattedDate, 
+      JamMulai: this.scheduleForm.JamMulai.length === 5 ? `${this.scheduleForm.JamMulai}:00` : this.scheduleForm.JamMulai, 
+      JamSelesai: this.scheduleForm.JamSelesai.length === 5 ? `${this.scheduleForm.JamSelesai}:00` : this.scheduleForm.JamSelesai, 
+      ToleransiTerlambatMenit: Number(this.scheduleForm.ToleransiTerlambatMenit) 
+    };
     const request = this.editingScheduleId ? this.http.put(`${this.api}/admin/schedules/${this.editingScheduleId}`, body, { headers: this.headers() }) : this.http.post(`${this.api}/admin/schedules`, body, { headers: this.headers() });
-    request.subscribe({ next: () => { this.isSaving = false; this.resetSchedule(); this.loadSchedules(); this.alert.success(wasEditing ? 'Shift diperbarui' : 'Shift disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan shift', err.error?.error || 'Gagal menyimpan shift'); } });
+    request.subscribe({ next: () => { this.isSaving = false; this.resetSchedule(); this.loadSchedules(); this.alert.success(wasEditing ? 'Shift diperbarui' : 'Shift disimpan'); }, error: (err: any) => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan shift', err.error?.error || 'Gagal menyimpan shift'); } });
+  }
+
+  async saveShiftAssignment(): Promise<void> {
+    const employeeId = Number(this.shiftAssignment.employee_id);
+    if (!employeeId || !this.shiftAssignment.shift) {
+      this.alert.error('Data belum lengkap', 'Karyawan dan shift wajib dipilih.');
+      return;
+    }
+    if (!await this.alert.confirm('Simpan perubahan shift?', 'Shift karyawan akan diperbarui pada data karyawan.')) return;
+    this.isSaving = true;
+    this.http.put(`${this.api}/admin/employees/${employeeId}/shift`, { shift: this.shiftAssignment.shift }, { headers: this.headers() }).subscribe({
+      next: () => { this.isSaving = false; this.alert.success('Shift karyawan berhasil diperbarui'); this.loadEmployees(); },
+      error: err => { this.isSaving = false; this.alert.error('Gagal mengubah shift', err.error?.error || 'Gagal menyimpan shift'); }
+    });
   }
 
   async deleteSchedule(id: number): Promise<void> {
@@ -161,7 +204,7 @@ export class AdminManagementComponent implements OnInit {
   }
 
   loadQuotas(): void {
-    this.http.get<any[]>(`${this.api}/admin/employees`, { headers: this.headers() }).subscribe({ next: employees => { this.employees = employees || []; this.loadQuotaRows(); }, error: err => this.fail(err) });
+    this.http.get<any[]>(`${this.api}/admin/employees`, { headers: this.headers() }).subscribe({ next: employees => { this.employees = employees || []; this.loadQuotaRows(); }, error: err => this.failQuota(err) });
   }
 
   get quotaTypeCount(): number {
@@ -169,10 +212,15 @@ export class AdminManagementComponent implements OnInit {
   }
 
   loadQuotaRows(): void {
-    this.http.get<any[]>(`${this.api}/admin/leave-quotas?tahun=${this.quotaForm.tahun}`, { headers: this.headers() }).subscribe({ next: data => { this.quotas = data || []; this.isLoading = false; }, error: err => this.fail(err) });
+    this.http.get<any[]>(`${this.api}/admin/leave-quotas?tahun=${this.quotaForm.tahun}`, { headers: this.headers() }).subscribe({ next: data => { this.quotas = data || []; this.isLoading = false; }, error: err => this.failQuota(err) });
   }
 
-  editQuota(quota: any): void { this.quotaForm = { employee_id: quota.EmployeeID, tahun: quota.Tahun, jenis_cuti: quota.JenisCuti, sisa_kuota: quota.SisaKuota }; }
+  private failQuota(err: any): void { this.isLoading = false; this.errorMessage = 'Gagal memuat data kuota: ' + (err?.error?.error || 'Unknown error'); }
+
+  editQuota(quota: any): void {
+    this.quotaForm = { employee_id: String(quota.EmployeeID), tahun: quota.Tahun, jenis_cuti: quota.JenisCuti, sisa_kuota: quota.SisaKuota };
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   async saveQuota(): Promise<void> {
     if (!await this.alert.confirm('Simpan kuota?', 'Perubahan kuota izin/cuti akan disimpan.')) return;
@@ -180,6 +228,21 @@ export class AdminManagementComponent implements OnInit {
     this.http.put(`${this.api}/admin/leave-quotas/${this.quotaForm.employee_id}`, this.quotaForm, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.loadQuotaRows(); this.alert.success('Kuota berhasil disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan kuota', err.error?.error || 'Gagal menyimpan kuota'); } });
   }
 
-  private emptySchedule(): any { return { EmployeeID: '', Tanggal: new Date().toISOString().substring(0, 10), NamaShift: 'Reguler', JamMulai: '09:00', JamSelesai: '17:00', ToleransiTerlambatMenit: 10 }; }
+  async deleteQuota(id: number): Promise<void> {
+    if (!await this.alert.confirm('Hapus kuota?', 'Data kuota ini akan dihapus dari sistem.', 'Ya, hapus')) return;
+    this.http.delete(`${this.api}/admin/leave-quotas/${id}`, { headers: this.headers() }).subscribe({
+      next: () => { this.loadQuotaRows(); this.alert.success('Kuota dihapus'); },
+      error: err => { this.fail(err); this.alert.error('Gagal menghapus kuota', err.error?.error || 'Gagal menghapus kuota'); }
+    });
+  }
+
+  viewQuota(quota: any): void {
+    const nama = quota.Employee?.User?.Nama || 'Nama belum tersedia';
+    const nik = quota.Employee?.NIK || '—';
+    const info = `Karyawan: ${nama} (${nik})\nTahun: ${quota.Tahun}\nJenis: ${quota.JenisCuti}\nSisa Kuota: ${quota.SisaKuota} hari`;
+    this.alert.info('Detail Kuota', info);
+  }
+
+  private emptySchedule(): any { return { EmployeeID: '', EmployeeIDs: [], Tanggal: new Date().toISOString().substring(0, 10), NamaShift: 'Reguler', JamMulai: '09:00', JamSelesai: '17:00', ToleransiTerlambatMenit: 10 }; }
   private fail(err: any): void { this.isLoading = false; this.errorMessage = err?.error?.error || 'Gagal memuat data.'; }
 }

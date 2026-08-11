@@ -14,6 +14,8 @@ export interface AppNotification {
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
   private readonly baseUrl = 'http://localhost:8080/api/v1/notifications';
+  private realtimeSocket?: WebSocket;
+  private realtimeCallbacks = new Set<() => void>();
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
@@ -31,14 +33,18 @@ export class NotificationService {
 
   /** Refreshes an open app as soon as the backend creates a user notification. */
   connectRealtime(onNotification: () => void): () => void {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//localhost:8080/ws/dashboard`);
-    socket.onmessage = (event) => {
-      try {
-        if (JSON.parse(event.data)?.event === 'notification_created') onNotification();
-      } catch { /* Ignore malformed realtime messages. */ }
-    };
-    return () => socket.close();
+    this.realtimeCallbacks.add(onNotification);
+    if (!this.realtimeSocket || this.realtimeSocket.readyState === WebSocket.CLOSED) {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      this.realtimeSocket = new WebSocket(`${protocol}//localhost:8080/ws/dashboard`);
+      this.realtimeSocket.onmessage = (event) => {
+        try {
+          const eventName = JSON.parse(event.data)?.event;
+          if (['notification_created', 'new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'new_leave', 'leave_request_created', 'leave_status_updated'].includes(eventName)) this.realtimeCallbacks.forEach(callback => callback());
+        } catch { /* Ignore malformed broadcast messages. */ }
+      };
+    }
+    return () => { this.realtimeCallbacks.delete(onNotification); if (!this.realtimeCallbacks.size) { this.realtimeSocket?.close(); this.realtimeSocket = undefined; } };
   }
 
   /**
@@ -63,6 +69,27 @@ export class NotificationService {
       });
     }
     await firstValueFrom(this.http.post(`${this.baseUrl}/push/subscribe`, subscription.toJSON(), { headers: this.headers() }));
+    return true;
+  }
+
+  /**
+   * Removes this browser/device from the current user's push recipients.
+   * Browser permission cannot be revoked by a website, but the subscription
+   * itself can be revoked and removed from the backend so no push is sent.
+   */
+  async disablePush(): Promise<boolean> {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return true;
+
+    const endpoint = subscription.endpoint;
+    await firstValueFrom(this.http.delete(`${this.baseUrl}/push/subscribe`, {
+      headers: this.headers(),
+      body: { endpoint }
+    }));
+    await subscription.unsubscribe();
     return true;
   }
 

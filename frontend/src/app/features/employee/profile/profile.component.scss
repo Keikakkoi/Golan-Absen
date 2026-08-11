@@ -141,16 +141,26 @@
   }
 
   .photo-picker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     position: relative;
     overflow: hidden;
     cursor: pointer;
-  }
+    transition: all 0.2s ease;
 
-  .photo-picker input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
+    input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    &.file-selected {
+      background-color: rgba(40, 167, 69, 0.15) !important;
+      color: #198754 !important;
+      border-color: rgba(40, 167, 69, 0.4) !important;
+    }
   }
 
   .photo-error {

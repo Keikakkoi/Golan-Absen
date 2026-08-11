@@ -15,6 +15,8 @@ interface CompanyEvent {
   Tipe: string;
   Deskripsi: string;
   Lokasi: string;
+  FileAttachmentURL?: string;
+  FileAttachmentName?: string;
   StatusAktif: boolean;
 }
 
@@ -51,6 +53,11 @@ export class AdminEventsComponent implements OnInit {
   isSaving = false;
   showModal = false;
   errorMessage = '';
+
+  selectedFile: File | null = null;
+  existingAttachmentUrl = '';
+  existingAttachmentName = '';
+  removeExistingFile = false;
 
   tableFilters = {
     start_date: '',
@@ -216,6 +223,10 @@ export class AdminEventsComponent implements OnInit {
 
   openCreateModal(): void {
     this.form = this.emptyForm(this.selectedDate);
+    this.selectedFile = null;
+    this.existingAttachmentUrl = '';
+    this.existingAttachmentName = '';
+    this.removeExistingFile = false;
     this.errorMessage = '';
     this.showModal = true;
   }
@@ -232,6 +243,10 @@ export class AdminEventsComponent implements OnInit {
       lokasi: event.Lokasi || '',
       status_aktif: event.StatusAktif !== false
     };
+    this.selectedFile = null;
+    this.existingAttachmentUrl = event.FileAttachmentURL || '';
+    this.existingAttachmentName = event.FileAttachmentName || '';
+    this.removeExistingFile = false;
     this.errorMessage = '';
     this.showModal = true;
   }
@@ -240,18 +255,57 @@ export class AdminEventsComponent implements OnInit {
     this.showModal = false;
   }
 
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      if (file.size > 10 * 1024 * 1024) {
+        this.alert.error('Ukuran File Terlalu Besar', 'Maksimal ukuran file pengumuman adalah 10MB.');
+        input.value = '';
+        return;
+      }
+      this.selectedFile = file;
+      this.removeExistingFile = false;
+    }
+  }
+
+  removeFile(): void {
+    this.selectedFile = null;
+    this.removeExistingFile = true;
+  }
+
   async saveEvent(): Promise<void> {
     if (!this.form.tanggal || !this.form.jam_mulai || !this.form.judul.trim()) {
       this.errorMessage = 'Tanggal, jam mulai, dan judul wajib diisi.';
       return;
     }
     const isEdit = this.form.ID > 0;
-    if (!await this.alert.confirm(isEdit ? 'Simpan perubahan event?' : 'Tambah event perusahaan?', 'Agenda ini akan ditampilkan pada kalender karyawan.')) return;
+    if (!await this.alert.confirm(isEdit ? 'Simpan perubahan event?' : 'Tambah event perusahaan?', 'Agenda ini akan ditampilkan pada kalender karyawan, magang, dan manajer.')) return;
 
     this.isSaving = true;
+
+    const jamMulaiClean = (this.form.jam_mulai || '').substring(0, 5);
+    const jamSelesaiClean = (this.form.jam_selesai || '').substring(0, 5);
+
+    const formData = new FormData();
+    formData.append('tanggal', this.form.tanggal);
+    formData.append('jam_mulai', jamMulaiClean);
+    formData.append('jam_selesai', jamSelesaiClean);
+    formData.append('judul', this.form.judul.trim());
+    formData.append('tipe', this.form.tipe || 'info');
+    formData.append('deskripsi', this.form.deskripsi || '');
+    formData.append('lokasi', this.form.lokasi || '');
+    formData.append('status_aktif', this.form.status_aktif ? 'true' : 'false');
+    if (this.removeExistingFile) {
+      formData.append('remove_file', 'true');
+    }
+    if (this.selectedFile) {
+      formData.append('file', this.selectedFile);
+    }
+
     const request = isEdit
-      ? this.http.put(`${this.baseUrl}/${this.form.ID}`, this.form, { headers: this.getHeaders() })
-      : this.http.post(this.baseUrl, this.form, { headers: this.getHeaders() });
+      ? this.http.put(`${this.baseUrl}/${this.form.ID}`, formData, { headers: this.getHeaders() })
+      : this.http.post(this.baseUrl, formData, { headers: this.getHeaders() });
 
     request.subscribe({
       next: () => {
@@ -279,6 +333,12 @@ export class AdminEventsComponent implements OnInit {
       },
       error: (err) => this.alert.error('Gagal menghapus event', err.error?.error || 'Gagal menghapus event perusahaan')
     });
+  }
+
+  isImageAttachment(fileUrl?: string, fileName?: string): boolean {
+    if (!fileUrl) return false;
+    const target = (fileName || fileUrl).toLowerCase();
+    return target.endsWith('.png') || target.endsWith('.jpg') || target.endsWith('.jpeg') || target.endsWith('.webp') || target.endsWith('.gif') || target.endsWith('.svg');
   }
 
   private emptyForm(date = this.toDateKey(new Date())) {

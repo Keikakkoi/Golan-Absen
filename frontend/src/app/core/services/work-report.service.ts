@@ -62,11 +62,13 @@ export class WorkReportService {
   }
 
   // Work Reports
-  getWorkReports(employeeId?: string, startDate?: string, endDate?: string): Observable<WorkReport[]> {
+  getWorkReports(employeeId?: string, startDate?: string, endDate?: string, projectId?: string, forceRefresh = false): Observable<WorkReport[]> {
     let params = new HttpParams();
     if (employeeId) params = params.set('employee_id', employeeId);
     if (startDate) params = params.set('start_date', startDate);
     if (endDate) params = params.set('end_date', endDate);
+    if (projectId) params = params.set('project_id', projectId);
+    if (forceRefresh) params = params.set('_refresh', Date.now().toString());
     
     return this.http.get<WorkReport[]>(this.apiUrl, { params, headers: this.getHeaders() });
   }
@@ -83,18 +85,21 @@ export class WorkReportService {
     return this.http.delete(`${this.apiUrl}/${id}`, { headers: this.getHeaders() });
   }
 
-  getCompliance(startDate?: string, endDate?: string, employeeId?: string): Observable<ComplianceResult[]> {
+  getCompliance(startDate?: string, endDate?: string, employeeId?: string, forceRefresh = false): Observable<ComplianceResult[]> {
     let params = new HttpParams();
     if (startDate) params = params.set('start_date', startDate);
     if (endDate) params = params.set('end_date', endDate);
     if (employeeId) params = params.set('employee_id', employeeId);
+    if (forceRefresh) params = params.set('_refresh', Date.now().toString());
 
     return this.http.get<ComplianceResult[]>(`${this.apiUrl}/compliance`, { params, headers: this.getHeaders() });
   }
 
   // Work Report Columns
-  getColumns(): Observable<WorkReportColumn[]> {
-    return this.http.get<WorkReportColumn[]>(`${this.apiUrl}/columns`, { headers: this.getHeaders() });
+  getColumns(forceRefresh = false): Observable<WorkReportColumn[]> {
+    let params = new HttpParams();
+    if (forceRefresh) params = params.set('_refresh', Date.now().toString());
+    return this.http.get<WorkReportColumn[]>(`${this.apiUrl}/columns`, { params, headers: this.getHeaders() });
   }
 
   createColumn(column: Partial<WorkReportColumn>): Observable<WorkReportColumn> {

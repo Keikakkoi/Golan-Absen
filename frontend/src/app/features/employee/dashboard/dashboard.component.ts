@@ -5,6 +5,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
+import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
 
 interface CompanyEvent {
   date: string;
@@ -14,6 +15,8 @@ interface CompanyEvent {
   description: string;
   location?: string;
   type: 'meeting' | 'rapat' | 'info';
+  fileAttachmentUrl?: string;
+  fileAttachmentName?: string;
 }
 
 interface HolidayItem {
@@ -32,7 +35,7 @@ interface CalendarDay {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, SharedSidebarComponent],
+  imports: [CommonModule, RouterLink, SharedSidebarComponent, DashboardChartsComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -75,7 +78,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.loadStats();
         this.loadNotifications();
         this.notificationService.enablePush(false).catch(() => undefined);
-        this.disconnectRealtime = this.notificationService.connectRealtime(() => this.loadNotifications());
+        this.disconnectRealtime = this.notificationService.connectRealtime(() => this.refreshData());
         this.loadEvents();
         this.refreshTimer = setInterval(() => this.refreshData(), 30_000);
       }
@@ -161,7 +164,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
             title: event.Judul,
             description,
             location: event.Lokasi || undefined,
-            type
+            type,
+            fileAttachmentUrl: event.FileAttachmentURL || undefined,
+            fileAttachmentName: event.FileAttachmentName || undefined
           };
         });
         this.generateCalendar();
@@ -249,6 +254,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return new Intl.DateTimeFormat('id-ID', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     }).format(new Date(`${this.selectedDate}T00:00:00`));
+  }
+
+  isImageAttachment(fileUrl?: string, fileName?: string): boolean {
+    if (!fileUrl) return false;
+    const target = (fileName || fileUrl).toLowerCase();
+    return target.endsWith('.png') || target.endsWith('.jpg') || target.endsWith('.jpeg') || target.endsWith('.webp') || target.endsWith('.gif') || target.endsWith('.svg');
   }
 
   private toDateKey(date: Date): string {

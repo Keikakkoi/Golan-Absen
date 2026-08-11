@@ -10,6 +10,12 @@
   flex: 1;
   padding: 40px;
 
+  .history-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   .history-card {
     padding: 0;
     overflow: hidden;
@@ -17,12 +23,24 @@
   }
 
   .history-table {
-    .history-status-cell,
-    .history-action-cell {
+    table-layout: auto;
+
+    th,
+    td {
+      text-align: center;
       vertical-align: middle;
     }
 
+    .history-status-cell,
+    .history-action-cell {
+      vertical-align: middle;
+      text-align: center;
+    }
+
     .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       white-space: nowrap;
       flex-shrink: 0;
     }
@@ -33,6 +51,15 @@
       padding: 5px 8px;
       border-radius: 6px;
       font-size: 0.76rem;
+    }
+
+    .history-action-cell {
+      .history-detail-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+      }
     }
   }
 
@@ -296,38 +323,62 @@
   font-style: italic;
 }
 
-@media (max-width: 640px) {
+  @media (max-width: 640px) {
   .main-content {
+    .history-page-header {
+      align-items: center !important;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 24px;
+      text-align: center;
+
+      h2 {
+        width: 100%;
+        margin-bottom: 0;
+        text-align: center;
+      }
+
+      .view-toggle {
+        justify-content: center;
+        width: 100%;
+      }
+    }
+
     .history-card {
       padding: 0 !important;
     }
 
-    .golan-table-responsive > table.history-table {
+    .history-table-responsive > table.history-table {
       min-width: 0 !important;
       width: 100% !important;
+      max-width: 100% !important;
     }
 
     .history-table {
       width: 100% !important;
       min-width: 0 !important;
       table-layout: fixed;
+      white-space: normal;
 
       th,
       td {
         padding: 10px 6px;
         font-size: 0.76rem;
+        text-align: center;
+        vertical-align: middle;
+        overflow-wrap: anywhere;
       }
 
       th:nth-child(1),
-      td:nth-child(1) { width: 30%; }
+      td:nth-child(1) { width: 29%; }
 
-      .history-entry-column { width: 18%; }
+      .history-entry-column { width: 21%; }
       .history-status-cell {
-        width: 30%;
+        width: 25%;
         overflow: hidden;
       }
       .history-action-cell {
-        width: 22%;
+        width: 25%;
         padding-left: 4px;
         padding-right: 4px;
       }
@@ -342,6 +393,8 @@
 
       .status-pill {
         display: inline-flex;
+        align-items: center;
+        justify-content: center;
         max-width: 100%;
         gap: 4px;
         padding: 4px 6px;
@@ -350,8 +403,8 @@
       }
 
       .history-detail-button {
-        width: 100%;
-        min-width: 0;
+        width: 52px;
+        min-width: 52px;
         padding: 5px 3px;
         font-size: 0.7rem;
       }

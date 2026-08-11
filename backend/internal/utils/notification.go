@@ -70,8 +70,6 @@ func sendWebPush(userID uint, role models.Role, title, message string) {
 	url := "/employee/notifications"
 	if role == models.RoleHRD {
 		url = "/admin/dashboard"
-	} else if role == models.RolePimpinan {
-		url = "/executive/dashboard"
 	}
 	payload, err := json.Marshal(map[string]string{"title": title, "body": message, "url": url})
 	if err != nil {

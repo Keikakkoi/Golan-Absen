@@ -1,1 +1,202 @@
-<div class="dashboard-container"><app-shared-sidebar></app-shared-sidebar><main class="main-content"><div class="header"><h2>Statistik Kehadiran</h2><p>Ringkasan sederhana kehadiran selama periode magang.</p></div><section class="golan-card report-toolbar"><label>Mulai<input class="golan-input" type="date" [(ngModel)]="start"></label><label>Selesai<input class="golan-input" type="date" [(ngModel)]="end"></label><button type="button" class="btn-primary report-filter-action" (click)="load()">Filter</button><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="isExportOpen"><button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></section><div class="stats-grid"><section class="golan-card stat-card"><h4>Hadir</h4><div class="value">{{ stats.hadir }} <span class="unit">hari</span></div></section><section class="golan-card stat-card"><h4>Izin Disetujui</h4><div class="value">{{ stats.izin_disetujui }} <span class="unit">pengajuan</span></div></section></div></main></div>
+<div class="dashboard-container">
+  <app-shared-sidebar></app-shared-sidebar>
+
+  <main class="main-content">
+    <div class="header">
+      <h2>Statistik Kehadiran Magang</h2>
+      <p class="subtitle text-dark-lo">Analisis performa, durasi kerja, logbook, dan kepatuhan absensi harian Anda.</p>
+    </div>
+
+    <!-- Filter & Export Toolbar -->
+    <section class="golan-card report-toolbar">
+      <label>Mulai
+        <input class="golan-input" type="date" [(ngModel)]="start">
+      </label>
+      <label>Selesai
+        <input class="golan-input" type="date" [(ngModel)]="end">
+      </label>
+      <button type="button" class="btn-primary report-filter-action" (click)="load()">
+        <i class="fas fa-filter" style="margin-right: 0.4rem;"></i> Filter
+      </button>
+
+      <div class="export-dropdown" style="position: relative;">
+        <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()">
+          <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak 
+          <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
+        </button>
+
+        <div class="dropdown-menu-custom" *ngIf="isExportOpen">
+          <button type="button" class="dropdown-item" (click)="exportCSV()">
+            <i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV
+          </button>
+          <button type="button" class="dropdown-item" (click)="exportExcel()">
+            <i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)
+          </button>
+          <button type="button" class="dropdown-item" (click)="exportJSON()">
+            <i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON
+          </button>
+          <button type="button" class="dropdown-item" (click)="exportPDF()">
+            <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div *ngIf="isLoading" style="padding: 3rem; text-align: center; color: var(--text-dark-lo);">
+      <i class="fas fa-spinner fa-spin" style="margin-right: 8px;"></i> Memuat metrik statistik kehadiran...
+    </div>
+
+    <div *ngIf="!isLoading">
+      <!-- Grid of KPI Cards -->
+      <div class="stats-grid">
+        <!-- Attendance Rate Ring Card -->
+        <div class="golan-card rate-card">
+          <h4>Persentase Kehadiran</h4>
+          <div class="ring-container">
+            <svg class="ring-svg" viewBox="0 0 100 100">
+              <circle class="ring-bg" cx="50" cy="50" r="45"></circle>
+              <circle class="ring-fill" cx="50" cy="50" r="45"
+                      [style.stroke-dashoffset]="strokeDashoffset"></circle>
+            </svg>
+            <div class="ring-text">
+              <span class="rate-value">{{ stats.attendance_rate || 0 }}%</span>
+              <span class="rate-label">Kehadiran</span>
+            </div>
+          </div>
+          <p class="card-hint text-center text-dark-lo">Target minimal kehadiran magang adalah 90%</p>
+        </div>
+
+        <!-- Attendance Status Breakdown -->
+        <div class="golan-card status-breakdown-card">
+          <h4>Rincian Status Kehadiran</h4>
+          <div class="status-list">
+            <div class="status-item">
+              <div class="status-header">
+                <span class="status-bullet status-hadir"></span>
+                <span>Hadir Tepat Waktu</span>
+                <span class="mono-text bold ml-auto">{{ stats.hadir || 0 }} Hari</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill fill-hadir" [style.width.%]="(stats.total_days || 1) > 0 ? ((stats.hadir || 0)/(stats.total_days || 1))*100 : 0"></div>
+              </div>
+            </div>
+
+            <div class="status-item">
+              <div class="status-header">
+                <span class="status-bullet status-terlambat"></span>
+                <span>Terlambat</span>
+                <span class="mono-text bold ml-auto text-warning">{{ stats.terlambat || 0 }} Hari</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill fill-terlambat" [style.width.%]="(stats.total_days || 1) > 0 ? ((stats.terlambat || 0)/(stats.total_days || 1))*100 : 0"></div>
+              </div>
+            </div>
+
+            <div class="status-item">
+              <div class="status-header">
+                <span class="status-bullet status-izin"></span>
+                <span>Izin Disetujui</span>
+                <span class="mono-text bold ml-auto">{{ stats.izin_disetujui || 0 }} Pengajuan</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill fill-izin" [style.width.%]="(stats.total_days || 1) > 0 ? ((stats.izin_disetujui || 0)/(stats.total_days || 1))*100 : 0"></div>
+              </div>
+            </div>
+
+            <div class="status-item">
+              <div class="status-header">
+                <span class="status-bullet status-alpha"></span>
+                <span>Mangkir (Alpha)</span>
+                <span class="mono-text bold ml-auto text-danger">{{ stats.alpha || 0 }} Hari</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill fill-alpha" [style.width.%]="(stats.total_days || 1) > 0 ? ((stats.alpha || 0)/(stats.total_days || 1))*100 : 0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Operational & Logbook Metrics -->
+        <div class="golan-card details-card">
+          <h4>Metrik Operasional Magang</h4>
+          
+          <div class="metric-row">
+            <div class="metric-label">Rata-rata Jam Check-in</div>
+            <div class="metric-value mono-text text-green">{{ stats.average_checkin_time || '-' }}</div>
+            <p class="metric-desc">Batas jam masuk mengikuti jadwal shift harian Anda</p>
+          </div>
+
+          <div class="metric-divider"></div>
+
+          <div class="metric-row">
+            <div class="metric-label">Status Logbook Magang</div>
+            <div class="worktype-pill-grid">
+              <div class="wt-pill">📝 Logbook Submitted: {{ stats.logbooks_submitted || 0 }}</div>
+              <div class="wt-pill" style="background: rgba(40, 167, 69, 0.15); color: #1e7e34;">✅ Approved: {{ stats.logbooks_approved || 0 }}</div>
+            </div>
+          </div>
+
+          <div class="metric-divider"></div>
+
+          <div class="metric-row">
+            <div class="metric-label">Lokasi Absensi Terdaftar</div>
+            <div class="worktype-pill-grid">
+              <div class="wt-pill">🏢 WFO: {{ stats.work_type_stats?.wfo || 0 }}x</div>
+              <div class="wt-pill">🏠 WFH: {{ stats.work_type_stats?.wfh || 0 }}x</div>
+              <div class="wt-pill">✈️ Remote: {{ stats.work_type_stats?.remote || 0 }}x</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Working Hours Bar Chart Card -->
+      <div class="golan-card chart-card mt-4">
+        <h3>Tren Durasi Kerja Magang</h3>
+        <p class="text-dark-lo" style="font-size: 0.9rem; margin-bottom: 24px;">Grafik di bawah ini membandingkan jam kerja harian Anda terhadap target standar 8 jam.</p>
+        
+        <div class="chart-container-flex">
+          <div class="y-axis-labels">
+            <span>12 Jam</span>
+            <span>8 Jam (Target)</span>
+            <span>4 Jam</span>
+            <span>0 Jam</span>
+          </div>
+
+          <div class="chart-content">
+            <!-- Grid lines background -->
+            <div class="chart-grid-lines">
+              <div class="grid-line"></div>
+              <div class="grid-line target-line"></div>
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+            </div>
+
+            <!-- Bars container -->
+            <div class="chart-bars">
+              <div class="bar-column" *ngFor="let item of weeklyTrend">
+                <div class="bar-wrapper">
+                  <div class="bar-tooltip">{{ item.hours }} jam ({{ item.status }})</div>
+                  <div class="bar-fill-element" 
+                       [style.height.%]="item.heightPercent" 
+                       [class.target-met]="item.hoursVal >= 8"
+                       [class.bar-terlambat]="item.status === 'Terlambat'"
+                       [class.bar-alpha]="item.status === 'Alpha'">
+                  </div>
+                </div>
+                <div class="bar-labels">
+                  <span class="bar-day">{{ item.dayName }}</span>
+                  <span class="bar-date">{{ item.dateStr }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div *ngIf="weeklyTrend.length === 0" class="empty-chart-state">
+          Belum ada data durasi kerja yang dapat ditampilkan untuk periode ini.
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+

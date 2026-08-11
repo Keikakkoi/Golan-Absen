@@ -35,9 +35,8 @@ export class AdminLateReportsComponent implements OnInit {
 
   ngOnInit(): void {
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     
-    this.filters.start_date = this.toDateInput(firstDay);
+    this.filters.start_date = this.toDateInput(today);
     this.filters.end_date = this.toDateInput(today);
 
     this.loadDepartments();

@@ -39,6 +39,10 @@ $frontend-theme: mat.define-theme((
   --blue-dark: #1e293b;
   --border-color: #D7EBFF;
   --info: #3b82f6;
+  --surface: #ffffff;
+  --surface-raised: #f8fafc;
+  --surface-muted: #f1f5f9;
+  --border-strong: #cbd5e1;
 
   /* 15.3 TIPOGRAFI */
   --font-display: 'Space Grotesk', sans-serif;
@@ -65,6 +69,10 @@ body.dark-theme {
   --blue-dark: #020617;
   --border-color: #334155;
   --info: #60a5fa;
+  --surface: #1e293b;
+  --surface-raised: #26364d;
+  --surface-muted: #334155;
+  --border-strong: #475569;
 }
 
 body.dark-theme,
@@ -377,7 +385,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Shared action buttons used across HRD, employee, and executive pages. */
+/* Shared action buttons used across HRD, employee, and manager pages. */
 .btn-sm,
 .btn-info,
 .btn-edit,
@@ -479,6 +487,72 @@ h1, h2, h3, h4, h5, h6 {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+/* Standard action for viewing details, documents, and file previews. */
+.btn-view-detail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  min-width: 36px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--mint-2);
+  border-radius: 8px;
+  background: var(--mint-0);
+  color: var(--green-deep);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.btn-view-detail:hover {
+  background: var(--mint-1);
+  border-color: var(--green);
+  color: var(--green-deep);
+  box-shadow: 0 3px 8px rgba(23, 105, 170, 0.14);
+  transform: translateY(-1px);
+}
+
+.btn-view-detail:active { background: var(--mint-2); transform: translateY(0); }
+.btn-view-detail:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--green) 35%, transparent);
+  outline-offset: 2px;
+}
+.btn-view-detail:disabled,
+.btn-view-detail[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+.btn-view-detail.icon-only { width: 40px; height: 40px; padding: 0; }
+.btn-view-detail.compact { min-height: 32px; padding: 6px 10px; font-size: 0.78rem; }
+.btn-view-detail i,
+.btn-view-detail svg { flex: 0 0 auto; width: 15px; height: 15px; font-size: 15px; }
+.btn-view-detail.icon-only svg { width: 18px; height: 18px; }
+body.dark-theme .btn-view-detail { background: var(--mint-0); border-color: var(--mint-2); color: var(--green-deep); }
+body.dark-theme .btn-view-detail:hover { background: var(--mint-1); border-color: var(--green); color: var(--text-dark); }
+@media (max-width: 600px) {
+  .btn-view-detail:not(.icon-only) { min-height: 38px; padding-inline: 10px; }
+}
+
+/* Legacy detail actions whose templates retain their original utility classes. */
+.table-card td button.btn-secondary.btn-small:first-child {
+  min-height: 32px;
+  padding: 6px 10px;
+  border-color: var(--mint-2);
+  background: var(--mint-0);
+  color: var(--green-deep);
 }
 
 /* Icon Buttons for CRUD actions */
@@ -1097,6 +1171,9 @@ h1, h2, h3, h4, h5, h6 {
 
   .sidebar-drawer-overlay.active {
     display: block !important;
+    /* Leaflet controls use a z-index of 1000+, so the drawer backdrop
+       must sit above the map while the drawer itself stays above the backdrop. */
+    z-index: 1990 !important;
   }
 
   /* Drawer Sidebar Layout */
@@ -1106,7 +1183,7 @@ h1, h2, h3, h4, h5, h6 {
     left: -280px;
     width: 260px !important;
     height: 100vh !important;
-    z-index: 101 !important;
+    z-index: 2000 !important;
     transition: left 0.3s ease-in-out !important;
     box-shadow: 4px 0 20px rgba(0,0,0,0.15);
 
@@ -1377,11 +1454,48 @@ body.dark-theme .dropdown-menu-custom .dropdown-item:hover {
   background-color: var(--mint-1);
 }
 
+/* Compatibility styling for legacy detail hooks that remain in templates. */
+.icon-button.btn-view-detail,
+.btn-secondary.btn-view-detail,
+.btn-small.btn-view-detail,
+.btn.btn-view-detail,
+.link-button.btn-view-detail,
+.link-action.btn-view-detail,
+.cert-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  min-width: 36px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--mint-2);
+  border-radius: 8px;
+  background: var(--mint-0);
+  color: var(--green-deep);
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.icon-button.btn-view-detail.icon-only { width: 40px; height: 40px; padding: 0; }
+.btn-view-detail.compact,
+.btn-small.btn-view-detail.compact,
+.btn-secondary.btn-view-detail.compact,
+.link-button.btn-view-detail.compact,
+.link-action.btn-view-detail.compact,
+.cert-link.btn-view-detail.compact {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
 /* Dark-mode compatibility overrides.
    A number of older role-specific components still use hard-coded light
    colors. These rules intentionally come after those shared component rules
    and use !important only for theme-owned surfaces/text, so every employee,
-   HRD, and executive page stays readable in dark mode. */
+   HRD, and manager page stays readable in dark mode. */
 body.dark-theme .sidebar .current-role-badge,
 body.dark-theme .current-role-badge {
   background: #334155 !important;
@@ -1711,6 +1825,73 @@ select.golan-input {
   cursor: pointer;
 }
 
+/* Modern File Input Styling for All Dashboards & Roles */
+input[type="file"],
+.golan-input[type="file"],
+.form-control[type="file"] {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  min-height: 42px;
+  box-sizing: border-box;
+  cursor: pointer;
+  background-color: var(--mint-0, #eaf4ff);
+  border: 1px dashed var(--mint-2, #b9ddf8);
+  border-radius: 9px;
+  color: var(--text-dark);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: var(--green, #2f80ed);
+    background-color: var(--mint-1, #d7ebff);
+  }
+
+  &::file-selector-button,
+  &::-webkit-file-upload-button {
+    background: linear-gradient(135deg, #2f80ed 0%, #1769aa 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 12px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(47, 128, 237, 0.25);
+  }
+
+  &::file-selector-button:hover,
+  &::-webkit-file-upload-button:hover {
+    background: linear-gradient(135deg, #1769aa 0%, #0f4c7d 100%);
+    box-shadow: 0 4px 10px rgba(23, 105, 170, 0.35);
+    transform: translateY(-1px);
+  }
+}
+
+body.dark-theme input[type="file"],
+body.dark-theme .golan-input[type="file"],
+body.dark-theme .form-control[type="file"] {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #e2e8f0 !important;
+
+  &::file-selector-button,
+  &::-webkit-file-upload-button {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  &::file-selector-button:hover,
+  &::-webkit-file-upload-button:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  }
+}
+
 .main-content > .header {
   margin-bottom: 24px;
 }
@@ -1865,6 +2046,135 @@ body.dark-theme .notif-footer {
   color: #bfdbfe !important;
 }
 
+body.dark-theme .schedule-row-icon {
+  border-color: #416b92 !important;
+  background: linear-gradient(145deg, #294866, #203852) !important;
+  color: #8ed0ff !important;
+  box-shadow: 0 3px 10px rgba(2, 8, 23, .3), inset 0 1px 0 rgba(255, 255, 255, .08) !important;
+}
+
+body.dark-theme .schedule-name-cell:hover .schedule-row-icon {
+  border-color: #70b9eb !important;
+  color: #c1e7ff !important;
+  box-shadow: 0 5px 14px rgba(2, 8, 23, .42), 0 0 0 3px rgba(96, 165, 250, .12) !important;
+}
+
+/* Dark-mode surface and control guardrails.
+   Several legacy dashboard views still ship hard-coded light surfaces in
+   component styles. Keep their light-mode appearance intact while mapping
+   those surfaces to the existing theme tokens when dark mode is active. */
+body.dark-theme .main-content {
+  .card,
+  [class$='-card'],
+  [class*='-card '],
+  .panel,
+  [class*='-panel'],
+  .filter-card,
+  .table-card,
+  .table-container,
+  .golan-table-responsive,
+  .dropdown-menu,
+  [class*='-dropdown'],
+  .modal-content,
+  .modal-body,
+  .modal-footer,
+  .modal-actions {
+    background-color: var(--surface) !important;
+    color: var(--text-dark) !important;
+    border-color: var(--border-strong) !important;
+  }
+
+  /* Avoid an accidental white table/list row inside a dark surface. */
+  .card table tbody tr,
+  [class$='-card'] table tbody tr,
+  .table-container tbody tr,
+  .table-card tbody tr,
+  .dropdown-menu > *,
+  [class*='-dropdown'] > * {
+    background-color: transparent !important;
+    color: var(--text-dark) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  button:not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning),
+  a:not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning) {
+    color: var(--text-dark) !important;
+  }
+
+  button:not(:disabled):hover,
+  a:hover {
+    background-color: var(--surface-muted);
+    border-color: var(--border-strong);
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--green) 45%, transparent);
+    outline-offset: 2px;
+  }
+
+  button:disabled,
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    background-color: var(--surface-muted) !important;
+    color: var(--text-dark-lo) !important;
+    border-color: var(--border-color) !important;
+    opacity: 0.65;
+  }
+}
+
+/* FAQ is an older inline-styled template; these selectors intentionally
+   override only its dark palette and leave layout/behavior untouched. */
+body.dark-theme .help-page {
+  .faq-item,
+  .faq-question,
+  .faq-answer,
+  .modal-content,
+  .modal-content > div,
+  .support-card {
+    background: var(--surface) !important;
+    background-image: none !important;
+    color: var(--text-dark) !important;
+    border-color: var(--border-strong) !important;
+  }
+
+  .faq-question:hover,
+  .modal-content button.btn-secondary:hover {
+    background: var(--surface-muted) !important;
+  }
+
+  .faq-category {
+    background: var(--surface-muted) !important;
+    color: var(--text-dark-lo) !important;
+  }
+
+  .faq-question > i,
+  .category-filter-row > span,
+  .modal-content span,
+  .modal-content p,
+  .modal-content h3,
+  .help-page h2,
+  .help-page h3,
+  .help-page h4,
+  .help-page p {
+    color: var(--text-dark) !important;
+  }
+
+  .modal-content .btn-secondary {
+    background: var(--surface-muted) !important;
+    color: var(--text-dark) !important;
+    border-color: var(--border-strong) !important;
+  }
+
+  .category-chip:not(.active) {
+    color: var(--text-dark-lo) !important;
+  }
+}
+
 @media print {
   @page {
     size: landscape;
@@ -1902,6 +2212,27 @@ body.dark-theme .notif-footer {
   .premium-filter, .filter-card, .no-print {
     display: none !important;
   }
+  .golan-card, .stat-card {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  .golan-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+  }
+  .golan-table th, .golan-table td {
+    border: 1px solid #000 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    padding: 4px !important;
+    font-size: 8px !important;
+    color: #000 !important;
+    min-width: 40px !important; 
+  }
+  
   .golan-card, .stat-card {
     box-shadow: none !important;
     border: none !important;
@@ -2097,7 +2428,7 @@ body.dark-theme .notif-footer {
       gap: 0.5rem;
       background: #ffffff;
       border: 1px solid #e5e7eb;
-      color: #ef4444; /* Subtle red for reset */
+      color: #ef4444;
       border-radius: 8px;
       font-weight: 600;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2121,3 +2452,715 @@ body.dark-theme .notif-footer {
   }
 }
 
+/* Shared Calendar & Event Styles for All Dashboards */
+.dashboard-lower-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-top: 24px;
+}
+
+.calendar-card,
+.events-card {
+  min-width: 0;
+  background: white;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 22px;
+
+  h3 {
+    margin: 4px 0 0;
+    color: var(--text-dark, #1e293b);
+    font-size: 1.3rem;
+  }
+}
+
+.today-btn,
+.month-nav {
+  border: 1px solid var(--mint-2, #cbd5e1);
+  color: var(--green-deep, #0f766e);
+  background: var(--mint-0, #f0fdf4);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: var(--mint-1, #dcfce7);
+  }
+}
+
+.today-btn {
+  padding: 7px 11px;
+}
+
+.calendar-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  color: var(--text-dark, #1e293b);
+
+  strong {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+  }
+}
+
+.month-nav {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.weekday {
+  padding: 5px 0;
+  color: var(--text-dark-lo, #64748b);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.calendar-day {
+  position: relative;
+  min-height: 48px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #f8fbff;
+  color: var(--text-dark, #1e293b);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
+  transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--green, #10b981);
+    background: var(--mint-0, #e6f4ea);
+  }
+
+  &.empty {
+    visibility: hidden;
+    cursor: default;
+  }
+
+  &.today {
+    border-color: var(--green, #10b981);
+    font-weight: 700;
+  }
+
+  &.selected {
+    background: var(--green-deep, #0d5c3a);
+    color: white;
+  }
+
+  &.holiday:not(.selected) {
+    background: #ffeded;
+    border-color: #ffcccc;
+    color: #c60000;
+  }
+
+  i {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--stamp, #f59e0b);
+    transform: translateX(-50%);
+  }
+
+  &.selected i {
+    background: white;
+  }
+}
+
+.calendar-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 18px;
+  color: var(--text-dark-lo, #64748b);
+  font-size: 0.72rem;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-dot,
+  .legend-today {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  .legend-dot { background: var(--stamp, #f59e0b); }
+  .legend-today { border: 1px solid var(--green, #10b981); }
+}
+
+.event-heading-icon {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: var(--green-deep, #0d5c3a);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.selected-date-label {
+  margin: -8px 0 16px;
+  color: var(--text-dark-lo, #64748b);
+  font-size: 0.82rem;
+  text-transform: capitalize;
+}
+
+.event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  border-left: 3px solid var(--green, #10b981);
+  border-radius: 8px;
+  background: #f8fbff;
+
+  &.event-meeting { border-left-color: var(--stamp, #f59e0b); }
+  &.event-info { border-left-color: var(--info, #3b82f6); }
+  &.event-holiday { border-left-color: #e74c3c; background: #fff1f1; }
+
+  .event-time {
+    flex: 0 0 48px;
+    color: var(--green-deep, #0d5c3a);
+    font-family: var(--font-mono, monospace);
+    font-size: 0.83rem;
+    font-weight: 700;
+  }
+
+  .event-copy {
+    min-width: 0;
+
+    strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--text-dark, #1e293b);
+      font-size: 0.9rem;
+    }
+
+    p {
+      margin: 0;
+      color: var(--text-dark-lo, #64748b);
+      font-size: 0.79rem;
+      line-height: 1.45;
+    }
+  }
+}
+
+.event-attachment {
+  margin-top: 8px;
+}
+
+.attachment-image-preview {
+  margin-top: 8px;
+  margin-bottom: 8px;
+
+  a {
+    display: inline-block;
+  }
+
+  .event-img-thumb {
+    max-width: 100%;
+    max-height: 240px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      transform: scale(1.015);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+  }
+}
+
+.attachment-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    color: #1e40af;
+  }
+
+  i {
+    font-size: 0.85rem;
+  }
+}
+
+.event-empty {
+  padding: 24px 12px;
+  border: 1px dashed var(--mint-2, #cbd5e1);
+  border-radius: 8px;
+  color: var(--text-dark-lo, #64748b);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@media (max-width: 992px) {
+  .dashboard-lower-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================================
+   Dark-mode surface safety net
+   =====================================================================
+   A number of role pages are legacy templates with component-local light
+   surfaces. Keep their light-mode design intact, but normalize those
+   surfaces whenever the application theme is dark.
+*/
+body.dark-theme .main-content .golan-card,
+body.dark-theme .main-content .stat-card,
+body.dark-theme .main-content .card,
+body.dark-theme .main-content [class*="-card"],
+body.dark-theme .main-content [class*="-panel"],
+body.dark-theme .main-content .table-container,
+body.dark-theme .main-content .golan-table-responsive,
+body.dark-theme .main-content .notification-list,
+body.dark-theme .main-content .notification-toolbar {
+  background: var(--surface) !important;
+  background-color: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .notification-item,
+body.dark-theme .main-content .notif-item,
+body.dark-theme .main-content .topbar-notification-item,
+body.dark-theme .main-content [class*="-list"] > li,
+body.dark-theme .main-content [class*="-list"] > button,
+body.dark-theme .main-content [class*="-item"] {
+  background: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .notification-item.unread,
+body.dark-theme .main-content .notif-item.unread,
+body.dark-theme .main-content .topbar-notification-item.unread,
+body.dark-theme .main-content [class*="-item"].unread {
+  background: var(--surface-raised) !important;
+}
+
+body.dark-theme .main-content .notification-item strong,
+body.dark-theme .main-content .notification-item span,
+body.dark-theme .main-content .notification-item small,
+body.dark-theme .main-content .notif-item strong,
+body.dark-theme .main-content .notif-item span,
+body.dark-theme .main-content .notif-item small,
+body.dark-theme .main-content [class*="-item"] strong,
+body.dark-theme .main-content [class*="-item"] span,
+body.dark-theme .main-content [class*="-item"] small {
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .notification-item span,
+body.dark-theme .main-content .notification-item small,
+body.dark-theme .main-content .notif-item span,
+body.dark-theme .main-content .notif-item small,
+body.dark-theme .main-content [class*="-item"] small {
+  color: var(--text-dark-lo) !important;
+}
+
+body.dark-theme .main-content table,
+body.dark-theme .main-content table tbody,
+body.dark-theme .main-content table tbody tr,
+body.dark-theme .main-content table tbody td,
+body.dark-theme .main-content .list-group-item {
+  background-color: transparent !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content table thead,
+body.dark-theme .main-content table thead tr,
+body.dark-theme .main-content table thead th {
+  background-color: var(--surface-muted) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content input,
+body.dark-theme .main-content textarea,
+body.dark-theme .main-content select,
+body.dark-theme .main-content .form-control,
+body.dark-theme .main-content .golan-input,
+body.dark-theme .main-content .filter-input,
+body.dark-theme .main-content .select-control,
+body.dark-theme .main-content .select-control select {
+  background: #172033 !important;
+  background-color: #172033 !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content input::placeholder,
+body.dark-theme .main-content textarea::placeholder,
+body.dark-theme .main-content .form-control::placeholder,
+body.dark-theme .main-content .filter-input::placeholder {
+  color: var(--text-dark-lo) !important;
+  opacity: 1 !important;
+}
+
+body.dark-theme .main-content .dropdown-menu,
+body.dark-theme .main-content .dropdown-menu-custom,
+body.dark-theme .main-content .notif-dropdown,
+body.dark-theme .main-content .topbar-notification-dropdown,
+body.dark-theme .main-content .modal-content,
+body.dark-theme .main-content .modal-dialog > div {
+  background: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .dropdown-item,
+body.dark-theme .main-content .modal-header,
+body.dark-theme .main-content .modal-body,
+body.dark-theme .main-content .modal-footer,
+body.dark-theme .main-content .alert,
+body.dark-theme .main-content .empty-state,
+body.dark-theme .main-content .loading-state,
+body.dark-theme .main-content .state-message {
+  color: var(--text-dark) !important;
+  border-color: var(--border-strong) !important;
+}
+
+body.dark-theme .main-content .dropdown-item:hover,
+body.dark-theme .main-content table tbody tr:hover,
+body.dark-theme .main-content .list-group-item:hover {
+  background: var(--surface-raised) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .push-hint {
+  color: #fde68a !important;
+  background: #422006 !important;
+  border-color: #92400e !important;
+}
+
+body.dark-theme .main-content .push-hint.active {
+  color: #bbf7d0 !important;
+  background: #052e16 !important;
+  border-color: #166534 !important;
+}
+
+body.dark-theme .main-content .push-error,
+body.dark-theme .main-content .error-state,
+body.dark-theme .main-content .broadcast-error {
+  color: #fecaca !important;
+  background: #450a0a !important;
+  border-color: #991b1b !important;
+}
+
+body.dark-theme .main-content .success-state {
+  color: #bbf7d0 !important;
+  background: #052e16 !important;
+  border-color: #166534 !important;
+}
+
+body.dark-theme .sidebar .current-role-badge,
+body.dark-theme .topbar-header .hamburger-btn,
+body.dark-theme .topbar-notification-dropdown,
+body.dark-theme .topbar-notification-item {
+  background: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .topbar-notification-item.unread,
+body.dark-theme .topbar-header .hamburger-btn:hover {
+  background: var(--surface-raised) !important;
+}
+
+/* Button system for every authenticated dashboard.
+   Component-local rules and inline styles previously left neutral buttons
+   with white/light backgrounds in dark mode. Semantic action buttons keep
+   their role color; all neutral controls use the shared dark surfaces. */
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit),
+body.dark-theme .main-content
+  a.btn-secondary,
+body.dark-theme .main-content
+  a.btn-view-detail,
+body.dark-theme .main-content
+  .btn-outline-primary,
+body.dark-theme .main-content
+  .btn-detail,
+body.dark-theme .main-content
+  .btn-modal-secondary,
+body.dark-theme .main-content
+  .btn-close,
+body.dark-theme .main-content
+  .modal-close,
+body.dark-theme .main-content
+  .icon-button:not(.approve):not(.reject):not(.delete):not(.danger),
+body.dark-theme .main-content
+  .today-btn,
+body.dark-theme .main-content
+  .month-nav,
+body.dark-theme .main-content
+  .section-tabs button,
+body.dark-theme .main-content
+  .view-toggle button,
+body.dark-theme .main-content
+  .calendar-header button,
+body.dark-theme .main-content
+  .file-button,
+body.dark-theme .main-content
+  .dropdown-item {
+  background: var(--surface-muted) !important;
+  background-color: var(--surface-muted) !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-dark) !important;
+  text-shadow: none !important;
+}
+
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(:disabled):hover,
+body.dark-theme .main-content a.btn-secondary:hover,
+body.dark-theme .main-content a.btn-view-detail:hover,
+body.dark-theme .main-content .btn-outline-primary:hover,
+body.dark-theme .main-content .btn-detail:hover,
+body.dark-theme .main-content .btn-modal-secondary:hover,
+body.dark-theme .main-content .btn-close:hover,
+body.dark-theme .main-content .modal-close:hover,
+body.dark-theme .main-content .icon-button:not(.approve):not(.reject):not(.delete):not(.danger):hover,
+body.dark-theme .main-content .today-btn:hover,
+body.dark-theme .main-content .month-nav:hover,
+body.dark-theme .main-content .section-tabs button:hover,
+body.dark-theme .main-content .view-toggle button:hover,
+body.dark-theme .main-content .calendar-header button:hover,
+body.dark-theme .main-content .file-button:hover,
+body.dark-theme .main-content .dropdown-item:hover {
+  background: var(--mint-1) !important;
+  background-color: var(--mint-1) !important;
+  border-color: var(--green) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):active,
+body.dark-theme .main-content a.btn-secondary:active,
+body.dark-theme .main-content a.btn-view-detail:active,
+body.dark-theme .main-content .btn-outline-primary:active,
+body.dark-theme .main-content .section-tabs button.active,
+body.dark-theme .main-content .view-toggle button.active {
+  background: var(--mint-2) !important;
+  background-color: var(--mint-2) !important;
+  border-color: var(--green) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .btn-primary,
+body.dark-theme .main-content .btn-approve,
+body.dark-theme .main-content .btn-success {
+  background: var(--green) !important;
+  background-color: var(--green) !important;
+  border-color: var(--green) !important;
+  color: #ffffff !important;
+}
+
+body.dark-theme .main-content .btn-primary:hover,
+body.dark-theme .main-content .btn-approve:hover,
+body.dark-theme .main-content .btn-success:hover {
+  background: var(--green-deep) !important;
+  background-color: var(--green-deep) !important;
+  border-color: var(--green-deep) !important;
+  color: #ffffff !important;
+}
+
+body.dark-theme .main-content .btn-danger,
+body.dark-theme .main-content .btn-delete,
+body.dark-theme .main-content .btn-reject,
+body.dark-theme .main-content .btn-modal-reject,
+body.dark-theme .main-content .reject {
+  background: var(--absent) !important;
+  background-color: var(--absent) !important;
+  border-color: var(--absent) !important;
+  color: #ffffff !important;
+}
+
+body.dark-theme .main-content .btn-warning {
+  background: var(--warning) !important;
+  background-color: var(--warning) !important;
+  border-color: var(--warning) !important;
+  color: #172b3a !important;
+}
+
+body.dark-theme .main-content .btn-info,
+body.dark-theme .main-content .btn-edit,
+body.dark-theme .main-content .btn-detail,
+body.dark-theme .main-content .view,
+body.dark-theme .main-content .edit {
+  background: var(--mint-1) !important;
+  background-color: var(--mint-1) !important;
+  border-color: var(--mint-2) !important;
+  color: var(--green-deep) !important;
+}
+
+body.dark-theme .main-content .btn-info:hover,
+body.dark-theme .main-content .btn-edit:hover,
+body.dark-theme .main-content .btn-detail:hover,
+body.dark-theme .main-content .view:hover,
+body.dark-theme .main-content .edit:hover {
+  background: var(--mint-2) !important;
+  background-color: var(--mint-2) !important;
+  border-color: var(--green) !important;
+  color: var(--text-dark) !important;
+}
+
+/* Leave approval action icons and document/export actions use component
+   classes that are more specific than the generic button rules. */
+body.dark-theme .main-content .icon-button.approve,
+body.dark-theme .main-content .btn-approve,
+body.dark-theme .main-content .btn-modal-approve {
+  background: var(--green) !important;
+  background-color: var(--green) !important;
+  border-color: var(--green) !important;
+  color: #ffffff !important;
+}
+
+body.dark-theme .main-content .icon-button.approve:hover,
+body.dark-theme .main-content .btn-approve:hover,
+body.dark-theme .main-content .btn-modal-approve:hover {
+  background: var(--green-deep) !important;
+  background-color: var(--green-deep) !important;
+  border-color: var(--green-deep) !important;
+  color: #ffffff !important;
+}
+
+body.dark-theme .main-content .icon-button.view.btn-view-detail,
+body.dark-theme .main-content .btn-view-detail,
+body.dark-theme .main-content .export-dropdown > .btn-secondary,
+body.dark-theme .main-content .golan-dropdown > .btn-secondary {
+  background: var(--surface-muted) !important;
+  background-color: var(--surface-muted) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .icon-button.view.btn-view-detail:hover,
+body.dark-theme .main-content .btn-view-detail:hover,
+body.dark-theme .main-content .export-dropdown > .btn-secondary:hover,
+body.dark-theme .main-content .golan-dropdown > .btn-secondary:hover {
+  background: var(--mint-1) !important;
+  background-color: var(--mint-1) !important;
+  border-color: var(--green) !important;
+  color: var(--text-dark) !important;
+}
+
+/* Agenda attachment/download link. It is an anchor, not a button, and its
+   light blue component style otherwise remains nearly white in dark mode. */
+body.dark-theme .main-content a.attachment-link,
+body.dark-theme .main-content a[download].attachment-link {
+  background: var(--mint-1) !important;
+  background-color: var(--mint-1) !important;
+  border-color: var(--mint-2) !important;
+  color: var(--green-deep) !important;
+  text-decoration: none !important;
+}
+
+body.dark-theme .main-content a.attachment-link:hover,
+body.dark-theme .main-content a[download].attachment-link:hover {
+  background: var(--mint-2) !important;
+  background-color: var(--mint-2) !important;
+  border-color: var(--green) !important;
+  color: var(--text-dark) !important;
+}
+
+/* The profile photo picker is a label wrapping a visually hidden file input,
+   so button-only selectors do not reach it. */
+body.dark-theme .main-content label.btn-secondary.photo-picker,
+body.dark-theme .main-content label.photo-picker {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-muted) !important;
+  background-color: var(--surface-muted) !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-dark) !important;
+  opacity: 1 !important;
+}
+
+body.dark-theme .main-content label.btn-secondary.photo-picker:hover,
+body.dark-theme .main-content label.photo-picker:hover {
+  background: var(--mint-1) !important;
+  background-color: var(--mint-1) !important;
+  border-color: var(--green) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content label.photo-picker.file-selected {
+  background: color-mix(in srgb, var(--green) 18%, var(--surface)) !important;
+  background-color: color-mix(in srgb, var(--green) 18%, var(--surface)) !important;
+  border-color: var(--green) !important;
+  color: var(--green-deep) !important;
+}
+
+body.dark-theme .main-content button:disabled,
+body.dark-theme .main-content a[aria-disabled='true'],
+body.dark-theme .main-content .btn-disabled {
+  background: var(--surface-muted) !important;
+  background-color: var(--surface-muted) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark-lo) !important;
+  opacity: 0.65 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+body.dark-theme .topbar-header button,
+body.dark-theme .sidebar button,
+body.dark-theme app-shared-sidebar button,
+body.dark-theme app-admin-sidebar button {
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .topbar-header button:hover,
+body.dark-theme .sidebar button:hover,
+body.dark-theme app-shared-sidebar button:hover,
+body.dark-theme app-admin-sidebar button:hover {
+  background: var(--surface-raised) !important;
+  border-color: var(--border-strong) !important;
+}

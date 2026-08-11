@@ -32,6 +32,11 @@ type LoginResponse struct {
 	Jabatan string      `json:"jabatan"`
 }
 
+func isHRD(c *fiber.Ctx) bool {
+	role, ok := c.Locals("role").(models.Role)
+	return ok && role == models.RoleHRD
+}
+
 func SetupAuthRoutes(router fiber.Router) {
 	auth := router.Group("/auth")
 	auth.Post("/login", Login)
@@ -62,9 +67,9 @@ func Login(c *fiber.Ctx) error {
 
 	if config.RedisClient != nil {
 		sessionKey := fmt.Sprintf("active_session:%d", user.ID)
-		val, err := config.RedisClient.Get(config.Ctx, sessionKey).Result()
-		if err == nil && val != "" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Akun ini sedang login di perangkat lain. Harap logout terlebih dahulu."})
+		oldToken, err := config.RedisClient.Get(config.Ctx, sessionKey).Result()
+		if err == nil && oldToken != "" {
+			config.RedisClient.Set(config.Ctx, "blacklist:"+oldToken, "true", 24*time.Hour)
 		}
 	}
 

@@ -154,8 +154,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 0);
   }
 
+  shiftStartTime: number = 9 * 3600;
   shiftCheckoutTime: number = 17 * 3600;
   shiftCloseTime: number = 18 * 3600;
+  shiftOvernight = false;
   todayDashboardMessage: string = '';
 
   private checkTodayAttendance(): void {
@@ -182,15 +184,19 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
                 const parts = timeStr.split(':');
                 return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60;
               };
+              if (stats.schedule.start) {
+                this.shiftStartTime = parseTime(stats.schedule.start);
+              }
               if (stats.schedule.end) {
                 this.shiftCheckoutTime = parseTime(stats.schedule.end);
               }
               if (stats.schedule.deadline) {
                 this.shiftCloseTime = parseTime(stats.schedule.deadline);
               }
-              // If the deadline is past midnight (e.g. overnight shift), add 24 hours
-              if (this.shiftCloseTime < this.shiftCheckoutTime) {
-                this.shiftCloseTime += 24 * 3600;
+              this.shiftOvernight = Boolean(stats.schedule.overnight);
+              if (this.shiftOvernight) {
+                if (this.shiftCheckoutTime < this.shiftStartTime) this.shiftCheckoutTime += 24 * 3600;
+                if (this.shiftCloseTime < this.shiftStartTime) this.shiftCloseTime += 24 * 3600;
               }
             }
             if (stats.todayMessage) {
@@ -239,21 +245,15 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       this.scheduleMessage = this.todayDashboardMessage || `Status ${this.leaveStatus} sudah tercatat untuk hari ini.`;
       return;
     }
-    let currentHours = this.currentTime.getHours();
-    // If the shift spans past midnight and we are in the early morning hours,
-    // we logically consider the time as being on the previous day (e.g., 01:00 becomes 25:00)
-    // so we can properly check if it's within the shift CloseTime which was incremented by 24.
-    if (this.shiftCloseTime >= 24 * 3600 && currentHours < 7) {
-      currentHours += 24;
+    let seconds = this.currentTime.getHours() * 3600 + this.currentTime.getMinutes() * 60 + this.currentTime.getSeconds();
+    if (this.shiftOvernight && seconds < this.shiftStartTime) {
+      seconds += 24 * 3600;
     }
 
-    const seconds = currentHours * 3600 + this.currentTime.getMinutes() * 60 + this.currentTime.getSeconds();
-    const resetTime = 7 * 3600;
-
-    if (seconds < resetTime) {
+    if (seconds < this.shiftStartTime) {
       this.canPunchBySchedule = false;
       this.attendanceClosed = false;
-      this.scheduleMessage = this.todayDashboardMessage || 'Absensi hari ini dibuka pukul 07:00.';
+      this.scheduleMessage = this.todayDashboardMessage || `Absensi dibuka pukul ${this.formatSeconds(this.shiftStartTime)}.`;
       return;
     }
 
@@ -269,12 +269,21 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       this.canPunchBySchedule = seconds >= this.shiftCheckoutTime;
       this.scheduleMessage = this.canPunchBySchedule ? '' : (this.todayDashboardMessage || 'Check-out belum dapat dilakukan.');
     } else if (!this.hasCheckedIn) {
-      this.canPunchBySchedule = !this.isCheckoutPage;
-      this.scheduleMessage = this.isCheckoutPage ? 'Belum ada check-in untuk hari ini.' : '';
+      this.canPunchBySchedule = !this.isCheckoutPage && seconds < this.shiftCheckoutTime;
+      this.scheduleMessage = this.isCheckoutPage
+        ? 'Belum ada check-in untuk hari ini.'
+        : (this.canPunchBySchedule ? '' : (this.todayDashboardMessage || 'Batas check-in hari ini sudah lewat.'));
     } else {
       this.canPunchBySchedule = false;
       this.scheduleMessage = '';
     }
+  }
+
+  private formatSeconds(totalSeconds: number): string {
+    const normalized = totalSeconds % (24 * 3600);
+    const hours = Math.floor(normalized / 3600);
+    const minutes = Math.floor((normalized % 3600) / 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
 
   private loadEmployeeProfile(): void {
@@ -395,8 +404,9 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     if (selectedWorkType && selectedWorkType.IsHomeBase && this.employeeProfile?.Employee) {
       const hLat = this.employeeProfile.Employee.HomeLatitude;
       const hLng = this.employeeProfile.Employee.HomeLongitude;
+      const homeUrl = this.employeeProfile.Employee.HomeLocation?.GoogleMapsURL || this.employeeProfile.Employee.HomeLocation?.google_maps_url;
       
-      if (hLat !== 0 && hLng !== 0) {
+      if (homeUrl && hLat !== 0 && hLng !== 0) {
         this.homeCircle = L.circle([hLat, hLng], {
           color: '#3B82F6',
           fillColor: '#3B82F6',
@@ -474,16 +484,17 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       if (this.employeeProfile?.Employee) {
         const hLat = this.employeeProfile.Employee.HomeLatitude;
         const hLng = this.employeeProfile.Employee.HomeLongitude;
-        if (hLat === 0 && hLng === 0 && this.distanceToOffice > this.radius) {
+        const homeUrl = this.employeeProfile.Employee.HomeLocation?.GoogleMapsURL || this.employeeProfile.Employee.HomeLocation?.google_maps_url;
+        if (!homeUrl || hLat === 0 || hLng === 0) {
           this.isLocationValid = false;
-          this.locationError = 'Lokasi rumah belum diatur oleh admin.';
-          this.statusText = 'Lokasi di luar radius · Lokasi rumah belum diatur';
+          this.locationError = 'Anda belum mengatur lokasi rumah untuk absensi WFH.';
+          this.statusText = 'Lokasi rumah belum diatur';
           return;
         }
         const homeLatLng = L.latLng(hLat, hLng);
         const homeDistance = Math.round(userLatLng.distanceTo(homeLatLng));
         const homeRadius = this.employeeProfile.Employee.HomeLocation?.RadiusMeter || 100;
-        this.isLocationValid = homeDistance <= homeRadius || this.distanceToOffice <= this.radius;
+        this.isLocationValid = homeDistance <= homeRadius;
         if (!this.isLocationValid) {
           this.locationError = 'Posisi Anda di luar radius rumah.';
         } else {

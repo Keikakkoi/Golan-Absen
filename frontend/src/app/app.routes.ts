@@ -20,8 +20,6 @@ import { AdminDashboardComponent } from './features/admin/admin-dashboard/admin-
 import { OrganizationComponent } from './features/admin/organization/organization.component';
 import { AdminNotificationSettingsComponent } from './features/admin/admin-notification-settings/admin-notification-settings.component';
 import { AdminAlphaReportsComponent } from './features/admin/admin-alpha-reports/admin-alpha-reports.component';
-import { ExecutiveDepartmentStatsComponent } from './features/executive/executive-department-stats/executive-department-stats.component';
-import { ExecutiveComparisonComponent } from './features/executive/executive-comparison/executive-comparison.component';
 import { AdminBackupComponent } from './features/admin/admin-backup/admin-backup.component';
 import { HelpFaqComponent } from './features/shared/help-faq/help-faq.component';
 import { AboutAppComponent } from './features/shared/about-app/about-app.component';
@@ -69,35 +67,9 @@ export const routes: Routes = [
   { path: 'manager/team/reports', component: TeamReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MANAJER'] } },
   { path: 'manager/team/statistics', component: TeamStatisticsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MANAJER'] } },
   { path: 'manager/leaves', component: ManagerLeaveApprovalComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MANAJER'] } },
-  // Executive / Pimpinan module routes
-  {
-    path: 'executive/dashboard',
-    canActivate: [authGuard, roleGuard],
-    data: { roles: ['Pimpinan'] },
-    loadComponent: () => import('./features/executive/executive-dashboard/executive-dashboard.component').then(m => m.ExecutiveDashboardComponent)
-  },
-  {
-    path: 'executive/reports',
-    canActivate: [authGuard, roleGuard],
-    data: { roles: ['Pimpinan'] },
-    loadComponent: () => import('./features/executive/executive-reports/executive-reports.component').then(m => m.ExecutiveReportsComponent)
-  },
-  {
-    path: 'executive/divisions/stats',
-    component: ExecutiveDepartmentStatsComponent,
-    canActivate: [authGuard, roleGuard],
-    data: { roles: ['Pimpinan'] }
-  },
-  {
-    path: 'executive/divisions/comparison',
-    component: ExecutiveComparisonComponent,
-    canActivate: [authGuard, roleGuard],
-    data: { roles: ['Pimpinan'] }
-  },
   { path: 'admin/dashboard', component: AdminDashboardComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/notifications', component: NotificationsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/employees', component: EmployeeListComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
-  { path: 'admin/roles', component: AdminManagementComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], section: 'roles' } },
   { path: 'admin/schedules', component: AdminManagementComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], section: 'schedules' } },
   { path: 'admin/home-locations', component: AdminManagementComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], section: 'home' } },
   { path: 'admin/leave-quotas', component: AdminManagementComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'], section: 'quotas' } },
@@ -114,15 +86,13 @@ export const routes: Routes = [
   { path: 'admin/reports/alpha', component: AdminAlphaReportsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/settings', component: AdminSettingsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/settings/notifications', component: AdminNotificationSettingsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
-  { path: 'admin/backup', component: AdminBackupComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD', 'Pimpinan'] } },
+  { path: 'admin/backup', component: AdminBackupComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'admin/audit', component: AdminAuditComponent, canActivate: [authGuard, roleGuard], data: { roles: ['HRD'] } },
   { path: 'help', component: HelpFaqComponent, canActivate: [authGuard] },
   { path: 'about', component: AboutAppComponent, canActivate: [authGuard] },
   { path: 'admin/help', redirectTo: 'help', pathMatch: 'full' },
   { path: 'admin/about', redirectTo: 'about', pathMatch: 'full' },
   
-  { path: 'pimpinan/dashboard', redirectTo: 'executive/dashboard', pathMatch: 'full' },
-
   { path: '403', component: ForbiddenComponent },
   { path: 'forbidden', redirectTo: '403', pathMatch: 'full' },
   { path: 'maintenance', component: MaintenanceComponent },

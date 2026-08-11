@@ -8,7 +8,6 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 interface FaqItem {
   category: string;
-  target: 'Karyawan' | 'HRD/Admin' | 'Umum';
   question: string;
   answer: string;
   isOpen: boolean;
@@ -24,17 +23,12 @@ interface FaqItem {
 export class HelpFaqComponent implements OnInit {
   searchTerm = '';
   selectedCategory = 'Semua';
-  selectedTarget = 'Semua';
   userRole: string | null = null;
-
   categories: string[] = [];
-  targets = ['Semua', 'Karyawan', 'HRD/Admin'];
 
   helpdesk: any = {
-    EmailHelpdesk: 'hrd@golan.co.id',
-    EmailIT: 'support@golan.co.id',
-    WhatsAppHRD: '+62 813-2493-7038',
-    WhatsAppIT: '+62 895-3414-40181',
+    EmailHelpdesk: 'hrd@golan.co.id', EmailIT: 'support@golan.co.id',
+    WhatsAppHRD: '+62 813-2493-7038', WhatsAppIT: '+62 895-3414-40181',
     JamLayanan: 'Senin - Jumat: 08:00 - 17:00 WIB'
   };
 
@@ -42,148 +36,75 @@ export class HelpFaqComponent implements OnInit {
 
   ngOnInit() {
     this.userRole = this.authService.getRole();
-    if (this.userRole === 'Karyawan') {
-      this.selectedTarget = 'Karyawan';
-      this.categories = ['Semua', 'Presensi & WFO/WFH', 'Cuti & Izin', 'Profil & Akun'];
-    } else {
-      this.categories = ['Semua', 'Presensi & WFO/WFH', 'Cuti & Izin', 'Role & Akses', 'Sistem & Backup', 'Profil & Akun'];
-    }
-
+    this.categories = this.categoriesForRole;
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
     this.http.get<any>('http://localhost:8080/api/v1/settings/helpdesk', { headers }).subscribe({
-      next: (data) => {
-        if (data) {
-          this.helpdesk = data;
-        }
-      },
-      error: (err) => console.error('Failed to load helpdesk settings', err)
+      next: data => { if (data) this.helpdesk = data; },
+      error: err => console.error('Failed to load helpdesk settings', err)
     });
   }
 
-  faqs: FaqItem[] = [
-    {
-      category: 'Presensi & WFO/WFH',
-      target: 'Karyawan',
-      question: 'Bagaimana cara melakukan absensi check-in?',
-      answer: 'Buka menu Check-in di portal karyawan, pastikan izin lokasi (GPS) pada peramban aktif. Jika berada dalam radius geofence kantor/rumah WFH yang valid, tombol Check-in akan aktif.',
-      isOpen: true
-    },
-    {
-      category: 'Presensi & WFO/WFH',
-      target: 'Karyawan',
-      question: 'Apa yang terjadi jika saya lupa melakukan check-out?',
-      answer: 'Sistem akan mencatat waktu check-out kosong dan durasi kerja tidak terhitung sempurna. Segera laporkan ke HRD untuk penyesuaian data presensi Anda secara manual.',
-      isOpen: false
-    },
-    {
-      category: 'Cuti & Izin',
-      target: 'Karyawan',
-      question: 'Bagaimana alur pengajuan cuti atau izin sakit?',
-      answer: 'Ajukan melalui menu Pengajuan Cuti/Izin dengan melampirkan dokumen pendukung (misal: surat dokter). Setelah HRD menyetujui, status akan berubah dan kuota cuti akan terpotong secara otomatis.',
-      isOpen: false
-    },
-    {
-      category: 'Presensi & WFO/WFH',
-      target: 'Karyawan',
-      question: 'Berapa batas toleransi keterlambatan presensi yang berlaku?',
-      answer: 'Batas standar toleransi keterlambatan adalah 10 menit dari jadwal masuk. Jika lebih dari itu, Anda akan tercatat sebagai terlambat.',
-      isOpen: false
-    },
-    {
-      category: 'Profil & Akun',
-      target: 'Karyawan',
-      question: 'Bagaimana cara mengubah kata sandi (password) akun saya?',
-      answer: 'Anda dapat mengubah kata sandi melalui menu Profil Saya. Pastikan Anda mengingat password lama untuk melakukan perubahan password baru.',
-      isOpen: false
-    },
-    {
-      category: 'Presensi & WFO/WFH',
-      target: 'Karyawan',
-      question: 'Bagaimana jika lokasi GPS saya tidak akurat saat check-in?',
-      answer: 'Pastikan Anda tidak menggunakan VPN, matikan mock location, dan pastikan izin lokasi di browser aktif. Jika masih bermasalah, refresh halaman atau hubungi HRD.',
-      isOpen: false
-    },
-    {
-      category: 'Cuti & Izin',
-      target: 'Karyawan',
-      question: 'Di mana saya bisa melihat sisa kuota cuti tahunan saya?',
-      answer: 'Sisa kuota cuti dapat Anda lihat langsung di widget Sisa Cuti pada Dashboard utama atau di menu Pengajuan Izin & Cuti.',
-      isOpen: false
-    },
-    {
-      category: 'Profil & Akun',
-      target: 'Karyawan',
-      question: 'Apakah saya bisa mengubah foto profil atau data diri lainnya?',
-      answer: 'Ya, beberapa informasi seperti foto profil dan kontak darurat dapat diperbarui melalui menu Profil Saya. Namun untuk perubahan jabatan, harus melalui HRD.',
-      isOpen: false
-    },
-    {
-      category: 'Role & Akses',
-      target: 'HRD/Admin',
-      question: 'Bagaimana cara memberikan akses Dashboard Pimpinan (Executive)?',
-      answer: 'Pada menu Manajemen Karyawan, edit profil karyawan yang bersangkutan dan ubah Role (Peran) menjadi "Pimpinan". Karyawan tersebut akan mendapatkan akses penuh ke Executive Dashboard.',
-      isOpen: false
-    },
-    {
-      category: 'Sistem & Backup',
-      target: 'HRD/Admin',
-      question: 'Bagaimana cara menambahkan atau mengubah lokasi kantor (Geofence)?',
-      answer: 'Masuk ke menu "Pengaturan Umum", lalu sesuaikan Latitude, Longitude, dan Radius Toleransi di panel Konfigurasi Lokasi Kantor. Perubahan akan langsung berlaku untuk semua karyawan.',
-      isOpen: false
-    },
-    {
-      category: 'Cuti & Izin',
-      target: 'HRD/Admin',
-      question: 'Bagaimana cara menyetujui atau menolak pengajuan cuti karyawan?',
-      answer: 'Buka menu Persetujuan Cuti. Anda dapat melihat daftar antrean pengajuan, memeriksa lampiran, lalu menekan tombol Setujui atau Tolak. Karyawan akan menerima notifikasi otomatis terkait status pengajuan mereka.',
-      isOpen: false
-    },
-    {
-      category: 'Sistem & Backup',
-      target: 'HRD/Admin',
-      question: 'Bagaimana cara melakukan backup data presensi dan sistem?',
-      answer: 'Akses menu "Backup Data" dan klik "Mulai Backup Sekarang". Sistem akan mengunduh berkas backup yang berisi data karyawan, presensi harian, dan log audit.',
-      isOpen: false
-    },
-    {
-      category: 'Presensi & WFO/WFH',
-      target: 'HRD/Admin',
-      question: 'Bagaimana cara memantau karyawan yang terlambat atau tidak hadir?',
-      answer: 'Gunakan menu Laporan Keterlambatan atau Executive Dashboard. Anda dapat memfilter laporan berdasarkan tanggal atau divisi untuk memantau kedisiplinan karyawan secara detail.',
-      isOpen: false
-    }
-  ];
+  private readonly faqContent: Record<string, FaqItem[]> = {
+    Karyawan: [
+      this.f('Presensi & WFO/WFH', 'Bagaimana cara melakukan absensi check-in dan check-out?', 'Buka menu Check-in / Out, pilih tipe kerja WFO atau WFH, pastikan GPS dan izin kamera aktif, lalu ikuti proses foto selfie. Check-in hanya dapat dilakukan di area geofence yang diizinkan. Setelah selesai bekerja, buka menu yang sama dan tekan Check-out.', true),
+      this.f('Presensi & WFO/WFH', 'Apa yang terjadi jika saya lupa melakukan check-out?', 'Riwayat presensi akan menunjukkan check-out kosong sehingga durasi kerja tidak tercatat sempurna. Segera laporkan tanggal dan kronologi kepada HRD agar dapat diperiksa sesuai kebijakan perusahaan.'),
+      this.f('Presensi & WFO/WFH', 'Mengapa check-in saya tidak dapat dilakukan?', 'Pastikan GPS, izin lokasi, dan kamera browser aktif, koneksi stabil, serta Anda berada di area geofence kantor atau rumah yang terdaftar. Nonaktifkan VPN atau mock location, kemudian refresh halaman. Jika tetap gagal, simpan pesan error dan hubungi HRD.'),
+      this.f('Cuti & Izin', 'Bagaimana alur pengajuan cuti atau izin sakit?', 'Buka menu Pengajuan Izin, pilih jenis pengajuan, isi tanggal dan alasan dengan lengkap, lalu unggah lampiran dokumen yang wajib disertakan. Cuti hanya dapat diajukan setelah memenuhi masa kerja minimum yang ditetapkan. Pengajuan berstatus Menunggu sampai disetujui atau ditolak, dan kuota cuti berkurang setelah pengajuan disetujui.'),
+      this.f('Cuti & Izin', 'Di mana saya dapat melihat sisa kuota dan status pengajuan?', 'Sisa kuota dapat dilihat pada Dashboard atau menu Pengajuan Izin. Status pengajuan tersedia pada halaman yang sama. Jika data tidak sesuai, hubungi HRD dengan menyebutkan tanggal atau nomor pengajuan.'),
+      this.f('Profil & Akun', 'Bagaimana cara memperbarui profil dan password?', 'Buka Profil Saya untuk memperbarui data yang diizinkan, seperti foto dan kontak. Password diganti dengan memasukkan password lama dan password baru. Perubahan jabatan, divisi, atau data kepegawaian harus diajukan kepada HRD.'),
+      this.f('Laporan Kerja', 'Bagaimana cara membuat dan mengirim laporan kerja?', 'Buka Laporan Kerja, pilih tanggal atau periode, isi pekerjaan secara rinci, lalu simpan dan kirim. Pastikan statusnya sudah Terkirim karena laporan yang masih berupa draf belum dapat ditinjau atasan.')
+    ],
+    MAGANG: [
+      this.f('Presensi & WFO/WFH', 'Bagaimana cara check-in dan check-out sebagai peserta magang?', 'Buka Check-in / Out, pilih WFO atau WFH bila tersedia, aktifkan GPS dan kamera, lalu lakukan selfie. Check-out dilakukan pada menu yang sama setelah kegiatan selesai. Presensi hanya berhasil di area lokasi yang diizinkan.', true),
+      this.f('Presensi & WFO/WFH', 'Mengapa presensi saya gagal atau lokasi tidak terbaca?', 'Aktifkan GPS, izin lokasi dan kamera browser, gunakan koneksi stabil, serta pastikan berada di area geofence. Nonaktifkan VPN atau mock location dan refresh halaman. Hubungi pembimbing atau HRD bila kendala berlanjut.'),
+      this.f('Logbook & Magang', 'Bagaimana cara mengisi logbook harian?', 'Buka Logbook Harian, pilih tanggal kegiatan, tulis aktivitas dan hasilnya secara jelas, kemudian simpan dan kirim untuk ditinjau. Pastikan logbook sesuai kegiatan yang benar-benar dilakukan dan statusnya sudah Terkirim.'),
+      this.f('Logbook & Magang', 'Bagaimana melihat progres dan sisa masa magang?', 'Buka Statistik Kehadiran atau Dashboard Magang untuk melihat ringkasan kehadiran dan progres periode magang. Informasi pembimbing tersedia pada menu Info Manajer.'),
+      this.f('Izin Kehadiran', 'Bagaimana mengajukan izin saat tidak dapat hadir magang?', 'Peserta magang tidak memiliki hak cuti. Jika berhalangan hadir, buka Pengajuan Izin, pilih jenis izin, isi tanggal dan alasan, lalu unggah lampiran dokumen yang wajib disertakan. Pengajuan menunggu pemeriksaan sampai disetujui atau ditolak oleh pihak yang berwenang.'),
+      this.f('Profil & Akun', 'Bagaimana cara memperbarui profil atau password?', 'Gunakan Profil Saya untuk data yang dapat diubah sendiri dan penggantian password. Perubahan penempatan atau pembimbing harus dikonfirmasi kepada HRD.')
+    ],
+    MANAJER: [
+      this.f('Presensi & WFO/WFH', 'Bagaimana cara melakukan presensi pribadi?', 'Buka Check-in / Out, pilih tipe kerja, pastikan GPS dan kamera aktif, lalu lakukan selfie di area geofence. Lakukan Check-out pada menu yang sama setelah selesai bekerja.', true),
+      this.f('Presensi & WFO/WFH', 'Bagaimana memeriksa presensi anggota tim?', 'Buka Absensi Tim untuk melihat status kehadiran anggota tim dan gunakan filter tanggal atau status. Untuk ringkasan lebih luas, gunakan Statistik Kehadiran Tim.'),
+      this.f('Laporan & Tim', 'Bagaimana meninjau laporan kerja anggota tim?', 'Buka Laporan Tim untuk melihat laporan yang dikirim anggota tim, periksa detail pekerjaan dan tanggalnya, lalu lakukan tindak lanjut sesuai proses internal. Laporan pribadi dibuat melalui Laporan Kerja.'),
+      this.f('Laporan & Tim', 'Bagaimana melihat statistik kehadiran tim?', 'Buka Statistik Kehadiran Tim, tentukan periode, lalu gunakan ringkasan dan filter untuk melihat hadir, terlambat, izin, cuti, atau ketidakhadiran.'),
+      this.f('Cuti & Izin', 'Bagaimana memproses pengajuan izin anggota tim?', 'Buka Persetujuan Izin, periksa tanggal, alasan, dan lampiran, lalu pilih Setujui atau Tolak sesuai kebijakan. Pastikan keputusan diberikan setelah informasi cukup.'),
+      this.f('Profil & Akun', 'Bagaimana cara mengubah profil atau password?', 'Gunakan Profil Saya untuk data yang dapat diperbarui sendiri dan penggantian password. Perubahan jabatan, divisi, atau data kepegawaian harus melalui HRD.')
+    ],
+    HRD: [
+      this.f('Presensi & WFO/WFH', 'Bagaimana mengatur lokasi kantor dan validasi WFO/WFH?', 'Buka Pengaturan Umum untuk mengatur koordinat serta radius kantor. Untuk lokasi rumah karyawan, gunakan Lokasi Rumah WFH. Periksa kembali koordinat dan radius sebelum menyimpan karena pengaturan memengaruhi validasi presensi.', true),
+      this.f('Presensi & WFO/WFH', 'Bagaimana memantau presensi, keterlambatan, dan ketidakhadiran?', 'Gunakan Rekap Absensi untuk memfilter periode, tipe kerja, status, atau karyawan. Periksa status Terlambat pada rekap dan gunakan Lap. Ketidakhadiran untuk meninjau data yang tidak hadir.'),
+      this.f('Cuti & Izin', 'Bagaimana menyetujui atau menolak pengajuan cuti dan izin?', 'Buka Persetujuan Cuti, periksa detail dan lampiran, lalu pilih Setujui atau Tolak dengan alasan bila diperlukan. Kuota cuti diperbarui setelah persetujuan.'),
+      this.f('Cuti & Izin', 'Bagaimana mengatur kuota cuti atau izin karyawan?', 'Buka Kuota Izin / Cuti, pilih karyawan dan tahun, tentukan jenis serta sisa kuota, lalu simpan. Periksa nama dan tahun sebelum menyimpan.'),
+      this.f('Operasional Karyawan', 'Bagaimana mengelola data karyawan, jadwal, dan operasional tim?', 'Gunakan Karyawan untuk data personal, Organisasi & Jabatan untuk struktur, Jadwal / Shift untuk jadwal, dan Operasional Magang & Tim untuk penempatan atau operasional. Simpan setelah data diperiksa.'),
+      this.f('Sistem & Backup', 'Bagaimana melakukan backup data dan memeriksa aktivitas sistem?', 'Buka Backup Data lalu mulai proses backup dan simpan berkas di lokasi aman. Untuk menelusuri aktivitas pengguna, gunakan Audit Log. Lakukan backup secara berkala.'),
+      this.f('Sistem & Backup', 'Bagaimana mengatur notifikasi dan informasi helpdesk?', 'Gunakan Pengaturan Notifikasi untuk preferensi notifikasi. Informasi kontak HRD dan IT yang tampil di Bantuan & FAQ diperbarui dari Pengaturan Umum.'),
+      this.f('Profil & Akun', 'Bagaimana cara memperbarui profil akun HRD?', 'Buka Profil Saya untuk mengubah data yang tersedia dan password. Perubahan data kepegawaian yang tidak tersedia di form dilakukan melalui pengelolaan data karyawan.')
+    ]
+  };
 
-  showContactModal = false;
+  private f(category: string, question: string, answer: string, isOpen = false): FaqItem {
+    return { category, question, answer, isOpen };
+  }
+
+  get faqs(): FaqItem[] {
+    return this.faqContent[this.userRole || 'Karyawan'] || this.faqContent['Karyawan'];
+  }
+
+  get categoriesForRole(): string[] {
+    return ['Semua', ...Array.from(new Set(this.faqs.map(faq => faq.category)))];
+  }
 
   get filteredFaqs(): FaqItem[] {
-    return this.faqs.filter(faq => {
-      const matchCat = this.selectedCategory === 'Semua' || faq.category === this.selectedCategory;
-      const matchTarget = this.selectedTarget === 'Semua' || faq.target === this.selectedTarget;
-      const matchQuery = !this.searchTerm || 
-        faq.question.toLowerCase().includes(this.searchTerm.toLowerCase()) || 
-        faq.answer.toLowerCase().includes(this.searchTerm.toLowerCase());
-      return matchCat && matchTarget && matchQuery;
-    });
+    const query = this.searchTerm.toLowerCase();
+    return this.faqs.filter(faq =>
+      (this.selectedCategory === 'Semua' || faq.category === this.selectedCategory) &&
+      (!query || faq.question.toLowerCase().includes(query) || faq.answer.toLowerCase().includes(query))
+    );
   }
 
-  toggleFaq(faq: FaqItem) {
-    faq.isOpen = !faq.isOpen;
-  }
-
-  openContactModal() {
-    this.showContactModal = true;
-  }
-
-  closeContactModal() {
-    this.showContactModal = false;
-  }
-
-  getWhatsappLink(phone: string): string {
-    if (!phone) return '';
-    // Remove all non-digit characters
-    const digits = phone.replace(/\D/g, '');
-    return `https://wa.me/${digits}`;
-  }
+  toggleFaq(faq: FaqItem) { faq.isOpen = !faq.isOpen; }
+  openContactModal() { this.showContactModal = true; }
+  closeContactModal() { this.showContactModal = false; }
+  getWhatsappLink(phone: string): string { return `https://wa.me/${(phone || '').replace(/\D/g, '')}`; }
+  showContactModal = false;
 }
-
