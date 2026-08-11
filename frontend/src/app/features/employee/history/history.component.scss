@@ -22,8 +22,24 @@
     background: white;
   }
 
+  .history-table-responsive {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--mint-2) transparent;
+
+    &::-webkit-scrollbar { height: 8px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb {
+      background: var(--mint-2);
+      border-radius: 999px;
+    }
+  }
+
   .history-table {
     table-layout: auto;
+    min-width: 760px;
 
     th,
     td {
@@ -43,7 +59,15 @@
       justify-content: center;
       white-space: nowrap;
       flex-shrink: 0;
+      max-width: none;
     }
+
+    th:nth-child(1), td:nth-child(1) { min-width: 120px; }
+    th:nth-child(2), td:nth-child(2) { min-width: 105px; }
+    th:nth-child(3), td:nth-child(3) { min-width: 105px; }
+    th:nth-child(4), td:nth-child(4) { min-width: 110px; }
+    th:nth-child(5), td:nth-child(5) { min-width: 180px; }
+    th:nth-child(6), td:nth-child(6) { min-width: 100px; }
 
     .history-detail-button {
       min-width: 52px;
@@ -348,17 +372,12 @@
       padding: 0 !important;
     }
 
-    .history-table-responsive > table.history-table {
-      min-width: 0 !important;
-      width: 100% !important;
-      max-width: 100% !important;
-    }
-
     .history-table {
-      width: 100% !important;
-      min-width: 0 !important;
-      table-layout: fixed;
-      white-space: normal;
+      width: 760px !important;
+      min-width: 760px !important;
+      max-width: none !important;
+      table-layout: auto;
+      white-space: nowrap;
 
       th,
       td {
@@ -366,25 +385,15 @@
         font-size: 0.76rem;
         text-align: center;
         vertical-align: middle;
-        overflow-wrap: anywhere;
+        overflow-wrap: normal;
       }
 
-      th:nth-child(1),
-      td:nth-child(1) { width: 29%; }
-
-      .history-entry-column { width: 21%; }
       .history-status-cell {
-        width: 25%;
-        overflow: hidden;
+        overflow: visible;
       }
       .history-action-cell {
-        width: 25%;
         padding-left: 4px;
         padding-right: 4px;
-      }
-
-      .history-secondary-column {
-        display: none;
       }
 
       .history-entry-column {
@@ -395,11 +404,11 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        max-width: 100%;
         gap: 4px;
         padding: 4px 6px;
         font-size: 0.66rem;
         line-height: 1.2;
+        white-space: nowrap;
       }
 
       .history-detail-button {

@@ -201,15 +201,15 @@
           </thead>
           <tbody>
             <tr *ngFor="let row of certificates">
-              <td>
+              <td data-label="Peserta">
                 <div style="font-weight: 600;">{{ row.nama }}</div>
                 <small class="role-badge" style="font-size: 11px; display: inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); margin-top: 2px; color: var(--muted-color);">
                   🎓 Magang
                 </small>
               </td>
-              <td>{{ row.institution_name || '-' }}</td>
-              <td>{{ row.internship_end_date ? (row.internship_end_date | date:'dd MMM yyyy') : '-' }}</td>
-              <td>
+              <td data-label="Institusi">{{ row.institution_name || '-' }}</td>
+              <td data-label="Tanggal Selesai">{{ row.internship_end_date ? (row.internship_end_date | date:'dd MMM yyyy') : '-' }}</td>
+              <td data-label="Status Sertifikat">
                 <span class="status-pill" [ngClass]="{
                   'status-success': row.uploaded,
                   'status-warning': !row.uploaded && !isInternshipEnded(row),
@@ -218,25 +218,25 @@
                   {{ row.uploaded ? 'Sudah diupload' : (!isInternshipEnded(row) ? 'Masa magang berlangsung' : 'Belum diupload') }}
                 </span>
               </td>
-              <td>
+              <td data-label="File Sertifikat">
                 <a *ngIf="row.file_url" [href]="row.file_url" target="_blank" rel="noopener" class="cert-link btn-view-detail compact" title="Lihat sertifikat">
                   <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 4px;"></i> {{ row.file_name || 'Lihat File' }}
                 </a>
                 <span *ngIf="!row.file_url" style="color: var(--muted-color);">-</span>
               </td>
-              <td>
+              <td data-label="Dokumen Nilai & Keterangan Lulus">
                 <div class="document-file-list">
                   <div *ngFor="let docType of ['nilai_magang', 'keterangan_lulus']"><strong>{{ docType === 'nilai_magang' ? 'Nilai Magang' : 'Keterangan Lulus' }}</strong><a *ngIf="row[docType]?.available && row[docType].file_url" [href]="row[docType].file_url" target="_blank" rel="noopener" class="cert-link" title="Lihat dokumen"><i class="fas fa-file-pdf"></i>{{ row[docType].file_name || 'Lihat File' }}</a><span *ngIf="!row[docType]?.available || !row[docType].file_url" class="muted-file">-</span></div>
                 </div>
               </td>
-              <td>
+              <td data-label="Aksi & Upload">
                 <div class="document-actions">
                   <div class="document-action-row"><strong>Sertifikat</strong><ng-container *ngIf="row.uploaded; else certificateUpload"><button type="button" class="btn-small cert-download-btn" (click)="downloadCertificate(row.user_id)" title="Unduh sertifikat"><i class="fas fa-download"></i> Download</button><button type="button" class="btn-small reject" (click)="deleteCertificate(row.user_id)" title="Hapus sertifikat"><i class="fas fa-trash"></i> Hapus</button></ng-container><ng-template #certificateUpload><ng-container *ngIf="isInternshipEnded(row); else certificateLockedAction"><label class="btn-small btn-secondary cert-upload-btn" [class.file-selected]="selectedCertificateFiles[row.user_id]" title="Pilih file sertifikat PDF"><i class="fas" [ngClass]="selectedCertificateFiles[row.user_id] ? 'fa-check-circle' : 'fa-folder-open'"></i> {{ selectedCertificateFiles[row.user_id] ? 'PDF dipilih' : 'Pilih PDF' }}<input type="file" accept=".pdf,application/pdf" (change)="onCertificateFileSelected($event, row.user_id)" hidden></label><button type="button" class="btn-small btn-primary" *ngIf="selectedCertificateFiles[row.user_id]" [disabled]="uploadingUserId === row.user_id" (click)="uploadCertificate(row.user_id)"><i class="fas" [ngClass]="uploadingUserId === row.user_id ? 'fa-spinner fa-spin' : 'fa-upload'"></i> {{ uploadingUserId === row.user_id ? 'Mengunggah...' : 'Upload' }}</button></ng-container><ng-template #certificateLockedAction><span class="muted-file">Setelah magang berakhir</span></ng-template></ng-template></div>
                   <div class="document-action-row" *ngFor="let docType of ['nilai_magang', 'keterangan_lulus']"><strong>{{ docType === 'nilai_magang' ? 'Nilai Magang' : 'Keterangan Lulus' }}</strong><ng-container *ngIf="row[docType]?.available; else documentUpload"><button type="button" class="btn-small cert-download-btn" (click)="downloadDocument(row.user_id, docType)" title="Unduh dokumen"><i class="fas fa-download"></i> Download</button><button type="button" class="btn-small reject" (click)="deleteDocument(row.user_id, docType)" title="Hapus dokumen"><i class="fas fa-trash"></i> Hapus</button></ng-container><ng-template #documentUpload><ng-container *ngIf="isInternshipEnded(row); else documentLockedAction"><label class="btn-small btn-secondary cert-upload-btn" [class.file-selected]="!!selectedDocumentFiles[documentKey(row.user_id, docType)]" title="Pilih file PDF"><i class="fas" [ngClass]="selectedDocumentFiles[documentKey(row.user_id, docType)] ? 'fa-check-circle' : 'fa-folder-open'"></i> {{ selectedDocumentFiles[documentKey(row.user_id, docType)] ? 'PDF dipilih' : 'Pilih PDF' }}<input type="file" accept=".pdf,application/pdf" (change)="onDocumentFileSelected($event, row.user_id, docType)" hidden></label><button type="button" class="btn-small btn-primary document-upload-btn" *ngIf="selectedDocumentFiles[documentKey(row.user_id, docType)]" [disabled]="uploadingDocumentKey === documentKey(row.user_id, docType)" (click)="$event.stopPropagation(); uploadDocument(row.user_id, docType)"><i class="fas" [ngClass]="uploadingDocumentKey === documentKey(row.user_id, docType) ? 'fa-spinner fa-spin' : 'fa-upload'"></i> {{ uploadingDocumentKey === documentKey(row.user_id, docType) ? 'Mengunggah...' : 'Upload' }}</button></ng-container><ng-template #documentLockedAction><span class="muted-file">Setelah magang berakhir</span></ng-template></ng-template></div>
                 </div>
               </td>
             </tr>
-            <tr *ngIf="!certificates.length">
+            <tr *ngIf="!certificates.length" class="certificate-empty-row">
               <td colspan="7" style="text-align: center; color: var(--muted-color); padding: 24px;">Tidak ada sertifikat magang pada filter ini.</td>
             </tr>
           </tbody>

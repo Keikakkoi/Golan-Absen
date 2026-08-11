@@ -7,6 +7,62 @@
   box-sizing: border-box;
 }
 
+/* The report page contains a deliberately dense filter on desktop. Keep the
+   grid tracks shrinkable so the filter never establishes a wider layout than
+   its card, even though the template has legacy inline grid declarations. */
+.admin-report-page .premium-filter,
+.admin-report-page .premium-filter .filter-grid,
+.admin-report-page .premium-filter .filter-group,
+.admin-report-page .premium-filter .input-wrapper {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-report-page .premium-filter .filter-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.admin-report-page .premium-filter .filter-group {
+  width: 100%;
+  min-width: 0 !important;
+}
+
+.admin-report-page .premium-filter .filter-group.col-span-2 {
+  grid-column: span 2 !important;
+}
+
+.admin-report-page .premium-filter input,
+.admin-report-page .premium-filter select,
+.admin-report-page .premium-filter button,
+.admin-report-page .premium-filter .filter-input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.admin-report-page .premium-filter .filter-header {
+  min-width: 0;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-report-page .premium-filter .filter-header h5,
+.admin-report-page .premium-filter .filter-count {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.admin-report-page .premium-filter .filter-count {
+  text-align: center;
+}
+
 .admin-report-page .report-table-container {
   width: 100%;
   max-width: 100%;
@@ -24,6 +80,27 @@
 }
 
 @media (max-width: 640px) {
+  .admin-report-page .premium-filter {
+    width: 100%;
+    max-width: 100%;
+    padding: 1rem;
+    overflow: hidden;
+  }
+
+  .admin-report-page .premium-filter .filter-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 1rem;
+  }
+
+  .admin-report-page .premium-filter .filter-group.col-span-2 {
+    grid-column: auto !important;
+  }
+
+  .admin-report-page .premium-filter .filter-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .admin-report-page .golan-card > div:first-child,
   .admin-report-page .golan-card > div:first-child form {
     width: 100%;
@@ -41,6 +118,16 @@
     width: 100% !important;
     max-width: 100%;
     box-sizing: border-box;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 820px) {
+  .admin-report-page .premium-filter {
+    padding: 1.125rem;
+  }
+
+  .admin-report-page .premium-filter .filter-grid {
+    gap: 1rem;
   }
 }
 

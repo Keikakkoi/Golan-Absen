@@ -45,7 +45,12 @@
               </select>
             </div>
           </div>
-          <div *ngIf="locationError" class="alert alert-danger">{{ locationError }}</div>
+          <div
+            *ngIf="locationError"
+            class="alert alert-danger"
+            [class.outside-radius-message]="locationError === 'Posisi Anda di luar radius kantor.'">
+            {{ locationError }}
+          </div>
           <div id="map" class="map-container"></div>
           <div class="status-indicator-pill">
             <span class="status-pill" [class.status-hadir]="isGpsActive && isLocationValid" [class.status-alpha]="!isGpsActive || !isLocationValid">

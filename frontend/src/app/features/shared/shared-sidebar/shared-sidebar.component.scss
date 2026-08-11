@@ -426,6 +426,29 @@
     box-sizing: border-box;
   }
 
+  .topbar-header .hamburger-btn,
+  .topbar-header .topbar-actions,
+  .topbar-header .topbar-brand,
+  .topbar-header .topbar-notification {
+    min-width: 0;
+  }
+
+  .topbar-header .topbar-actions {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+  }
+
+  .topbar-header .topbar-brand {
+    max-width: min(42vw, 150px);
+  }
+
+  .topbar-header .topbar-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
@@ -465,5 +488,31 @@
     &.drawer-open {
       left: 0;
     }
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar-header {
+    padding-left: 10px;
+    padding-right: 10px;
+    gap: 8px;
+  }
+
+  .topbar-header .hamburger-btn {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .topbar-header .topbar-actions {
+    gap: 4px;
+  }
+
+  .topbar-header .topbar-brand {
+    gap: 4px;
+    max-width: 112px;
+  }
+
+  .topbar-header .topbar-title {
+    font-size: 0.875rem;
   }
 }

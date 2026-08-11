@@ -91,5 +91,3 @@ pada menu Laporan Tim NAMA/NIK,TANGGAL,SETATUS Field Terlalu jauh dan teks dalam
 pada menu laporan tim saat mengisi tidak ada filter dan tidak muncul hasilnya dalam table (dash manager)
 pada menu Statistik Kehadiran Tim Mulai dan selesai Field Terlalu jauh (dash manager)
 pada menu Laporan Kerja Harian Riwayat Laporan Teks dalam table tidak beraturan (dash magang)
-
-gy

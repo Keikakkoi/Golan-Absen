@@ -50,6 +50,14 @@
   display: flex;
   flex-direction: column;
 
+  /* Keep the office-radius warning readable in both themes without changing
+     the appearance of other location or application alerts. */
+  .outside-radius-message {
+    background-color: #FBEEEE;
+    color: #9B1C2C;
+    border: 1px solid #D98A93;
+  }
+
   .card-header-flex {
     display: flex;
     justify-content: space-between;
@@ -75,6 +83,12 @@
     display: flex;
     justify-content: flex-start;
   }
+}
+
+:host-context(body.dark-theme) .map-card .outside-radius-message {
+  background-color: #3B2026;
+  color: #FDA4AF;
+  border-color: #9F5360;
 }
 
 .camera-card {

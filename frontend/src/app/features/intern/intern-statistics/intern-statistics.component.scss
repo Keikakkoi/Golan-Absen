@@ -1,5 +1,42 @@
 @import '../intern-dashboard/intern-dashboard.component.scss';
 
+/* Keep the date filter compact when the report toolbar stacks on phones. */
+@media (max-width: 768px) {
+  .intern-statistics-filter {
+    align-items: stretch;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .intern-statistics-filter > label,
+  .intern-statistics-filter > .report-filter-action,
+  .intern-statistics-filter > .export-dropdown {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .intern-statistics-filter > label {
+    gap: 5px;
+  }
+
+  .intern-statistics-filter .golan-input,
+  .intern-statistics-filter > .report-filter-action,
+  .intern-statistics-filter > .export-dropdown > button {
+    min-height: 38px;
+    height: 38px;
+    box-sizing: border-box;
+  }
+
+  .intern-statistics-filter > .report-filter-action,
+  .intern-statistics-filter > .export-dropdown > button {
+    width: 100%;
+  }
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -353,4 +390,3 @@
     font-style: italic;
   }
 }
-
