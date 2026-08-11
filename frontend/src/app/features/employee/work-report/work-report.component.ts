@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormArray, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { WorkReportService, WorkReport, WorkReportColumn, ComplianceResult } from '../../../core/services/work-report.service';
+import { WorkReportService, WorkReport, WorkReportColumn, ComplianceResult, WorkReportDeadline } from '../../../core/services/work-report.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { AuthService } from '../../../core/services/auth.service';
 import Swal from 'sweetalert2';
@@ -9,11 +9,12 @@ import { finalize } from 'rxjs/operators';
 
 import { CommonModule } from '@angular/common';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
+import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 
 @Component({
   selector: 'app-work-report',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedSidebarComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent],
   templateUrl: './work-report.component.html',
   styleUrls: ['./work-report.component.scss']
 })
@@ -34,6 +35,8 @@ export class WorkReportComponent implements OnInit {
   userDivisi: string = '';
   selectedScreenshots: File[] = [];
   screenshotPreviews: string[] = [];
+  deadlineInfo: WorkReportDeadline | null = null;
+  deadlineError = '';
 
   constructor(
     private fb: FormBuilder,
@@ -144,11 +147,20 @@ export class WorkReportComponent implements OnInit {
     this.editingReportId = null;
     this.reportForm.reset();
     this.clearScreenshots();
-    if (date) {
-      this.reportForm.patchValue({ tanggal: date });
-    } else {
-      this.reportForm.patchValue({ tanggal: new Date().toISOString().split('T')[0] });
-    }
+    const workDate = date || new Date().toISOString().split('T')[0];
+    this.reportForm.patchValue({ tanggal: workDate });
+    this.loadDeadline(workDate);
+  }
+
+  onReportDateChange(date: string): void { this.loadDeadline(date); }
+
+  private loadDeadline(date: string): void {
+    this.deadlineInfo = null; this.deadlineError = '';
+    if (!date) return;
+    this.workReportService.getDeadline(date).subscribe({
+      next: info => this.deadlineInfo = info,
+      error: err => this.deadlineError = err?.error?.error || 'Informasi batas waktu tidak tersedia.'
+    });
   }
 
   toggleExportDropdown() {
@@ -187,6 +199,7 @@ export class WorkReportComponent implements OnInit {
       catatan_tambahan: r.catatan_tambahan,
       customFieldsForm: customFields
     });
+    this.loadDeadline(this.reportForm.value.tanggal);
     
     // If we want to support updating, we would store the active report ID.
     // For now, let's keep it simple or implement full update logic.

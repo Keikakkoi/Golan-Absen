@@ -62,11 +62,9 @@
           <div *ngIf="refreshError" class="report-refresh-error" role="alert">
             <i class="fas fa-exclamation-circle"></i> {{ refreshError }}
           </div>
-          <div *ngIf="isLoading || isRefreshing" class="report-refresh-loading" role="status" aria-live="polite">
-            <i class="fas fa-spinner fa-spin"></i> Memuat ulang data laporan...
-          </div>
+          <app-ui-skeleton *ngIf="isLoading || isRefreshing" type="table" [rows]="5" [columns]="9" ariaLabel="Memuat riwayat laporan kerja"></app-ui-skeleton>
         <div class="golan-table-responsive report-history-table-wrapper">
-          <table class="golan-table table-bordered table-sm report-history-table" *ngIf="reports.length > 0">
+          <table class="golan-table table-bordered table-sm report-history-table" *ngIf="!isLoading && !isRefreshing && reports.length > 0">
             <thead>
               <tr>
                 <th class="th-yellow">No</th>
@@ -123,7 +121,7 @@
               </tr>
             </tbody>
           </table>
-          <div *ngIf="reports.length === 0" class="empty-state">
+            <div *ngIf="!isLoading && !isRefreshing && reports.length === 0" class="empty-state">
             Belum ada laporan kerja yang dikirim.
           </div>
         </div>
@@ -138,7 +136,7 @@
           <div class="form-row">
             <div class="form-group">
               <label>Tanggal <span class="text-danger">*</span></label>
-              <input type="date" class="form-control" formControlName="tanggal">
+              <input type="date" class="form-control" formControlName="tanggal" (change)="onReportDateChange($any($event.target).value)">
             </div>
             <div class="form-group">
               <label>Judul Golan Nusantara/Education</label>
@@ -182,6 +180,14 @@
             <label>Catatan Tambahan</label>
             <textarea class="form-control" formControlName="catatan_tambahan" rows="2"></textarea>
           </div>
+
+          <div class="golan-card" *ngIf="deadlineInfo" style="margin: 0 0 1rem; padding: 1rem; background: rgba(47,128,237,.08);">
+            <strong>Batas pengumpulan laporan (WIB)</strong>
+            <div>Shift: {{ deadlineInfo.shift_name }} · Selesai: {{ deadlineInfo.shift_end }} WIB</div>
+            <div>Toleransi: {{ deadlineInfo.tolerance_minutes }} menit · Batas akhir: {{ deadlineInfo.deadline_label }}</div>
+            <div>Status saat ini: <strong>{{ deadlineInfo.status === 'terlambat' ? 'Terlambat' : 'Tepat waktu' }}</strong></div>
+          </div>
+          <div class="report-refresh-error" *ngIf="deadlineError" role="alert">{{ deadlineError }}</div>
 
           <div class="form-group">
             <label>Screenshot pekerjaan <small>(opsional, maksimal 3 file; JPG/PNG/WEBP, masing-masing 5MB)</small></label>

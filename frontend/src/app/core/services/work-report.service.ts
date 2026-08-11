@@ -48,6 +48,16 @@ export interface ComplianceResult {
   is_attended?: boolean;
 }
 
+export interface WorkReportDeadline {
+  work_date: string;
+  shift_name: string;
+  shift_end: string;
+  tolerance_minutes: number;
+  deadline: string;
+  deadline_label: string;
+  status: 'tepat_waktu' | 'terlambat';
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -93,6 +103,12 @@ export class WorkReportService {
     if (forceRefresh) params = params.set('_refresh', Date.now().toString());
 
     return this.http.get<ComplianceResult[]>(`${this.apiUrl}/compliance`, { params, headers: this.getHeaders() });
+  }
+
+  getDeadline(date: string): Observable<WorkReportDeadline> {
+    return this.http.get<WorkReportDeadline>(`${this.apiUrl}/deadline`, {
+      params: new HttpParams().set('date', date), headers: this.getHeaders()
+    });
   }
 
   // Work Report Columns

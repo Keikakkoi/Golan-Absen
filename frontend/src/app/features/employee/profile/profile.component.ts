@@ -8,11 +8,12 @@ import { EmployeePreferences, ThemeService } from '../../../core/services/theme.
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import * as L from 'leaflet';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
+import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DatePipe, SharedSidebarComponent],
+  imports: [CommonModule, FormsModule, RouterLink, DatePipe, SharedSidebarComponent, UiSkeletonComponent],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss']
 })

@@ -29,6 +29,7 @@ func SetupWorkReportRoutes(api fiber.Router) {
 	reportGroup.Delete("/columns/:id", DeleteWorkReportColumn)
 
 	reportGroup.Get("/compliance", GetWorkReportCompliance)
+	reportGroup.Get("/deadline", GetWorkReportDeadline)
 	reportGroup.Get("/", GetWorkReports)
 	reportGroup.Post("/", CreateWorkReport)
 	reportGroup.Put("/:id", UpdateWorkReport)
@@ -181,6 +182,9 @@ func CreateWorkReport(c *fiber.Ctx) error {
 	t, err := time.Parse("2006-01-02", input.Tanggal)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid date format"})
+	}
+	if _, ok := getWorkReportSchedule(emp.ID, t); !ok {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Tidak ada shift aktif atau jadwal shift untuk tanggal laporan ini. Hubungi admin untuk penjadwalan shift."})
 	}
 
 	statusLogbook := "submitted"
@@ -542,13 +546,46 @@ func saveWorkReportAttachments(reportID uint, nik string, files []*multipart.Fil
 func isLateWorkReportSubmission(employeeID uint, date time.Time) bool {
 	setting := getGeneralSetting()
 	now := attendanceNow()
+	schedule, assigned := getWorkReportSchedule(employeeID, date)
+	if !assigned {
+		return false
+	}
 	var record models.AttendanceRecord
 	if config.DB.Where("employee_id = ? AND tanggal = ?", employeeID, date.Format("2006-01-02")).First(&record).Error == nil {
-		schedule := getAttendanceSchedule(employeeID, date)
 		deadline := workReportDeadline(record, schedule, setting)
 		return now.After(deadline)
 	}
-	schedule := getAttendanceSchedule(employeeID, date)
-	deadline := scheduleEndTime(schedule, date).Add(time.Duration(setting.BatasLaporanSetelahCheckoutJam) * time.Hour)
+	deadline := scheduleEndTime(schedule, date).Add(time.Duration(setting.BatasLaporanSetelahCheckoutMenit) * time.Minute)
 	return now.After(deadline)
+}
+
+// GetWorkReportDeadline exposes the authoritative WIB deadline used on submit.
+func GetWorkReportDeadline(c *fiber.Ctx) error {
+	userID := c.Locals("user_id").(uint)
+	var employee models.Employee
+	if err := config.DB.Where("user_id = ?", userID).First(&employee).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Employee not found"})
+	}
+	dateText := c.Query("date")
+	if dateText == "" {
+		dateText = attendanceNow().Format("2006-01-02")
+	}
+	date, err := time.ParseInLocation("2006-01-02", dateText, jakartaLocation)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Tanggal harus berformat YYYY-MM-DD"})
+	}
+	schedule, assigned := getWorkReportSchedule(employee.ID, date)
+	if !assigned {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Tidak ada shift aktif atau jadwal shift untuk tanggal laporan ini. Hubungi admin untuk penjadwalan shift."})
+	}
+	setting := getGeneralSetting()
+	deadline := scheduleEndTime(schedule, date).Add(time.Duration(setting.BatasLaporanSetelahCheckoutMenit) * time.Minute)
+	now := attendanceNow()
+	return c.JSON(fiber.Map{
+		"work_date": date.Format("2006-01-02"), "shift_name": schedule.NamaShift,
+		"shift_end":         scheduleEndTime(schedule, date).Format("15:04"),
+		"tolerance_minutes": setting.BatasLaporanSetelahCheckoutMenit,
+		"deadline":          deadline.Format(time.RFC3339), "deadline_label": deadline.Format("02 Jan 2006 15:04 WIB"),
+		"status": map[bool]string{true: "terlambat", false: "tepat_waktu"}[now.After(deadline)],
+	})
 }

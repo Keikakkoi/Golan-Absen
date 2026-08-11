@@ -12,6 +12,7 @@
 
     <div class="golan-card history-card" *ngIf="viewMode === 'table'">
       <div class="golan-table-responsive history-table-responsive">
+        <app-ui-skeleton *ngIf="isLoading" type="table" [rows]="6" [columns]="6" ariaLabel="Memuat riwayat absensi"></app-ui-skeleton>
         <table class="golan-table history-table" *ngIf="!isLoading && records.length > 0">
           <thead>
             <tr>
@@ -44,9 +45,6 @@
           </tbody>
         </table>
 
-        <div *ngIf="isLoading" class="loading-state">
-          Memuat data riwayat absensi...
-        </div>
 
         <div *ngIf="!isLoading && records.length === 0" class="empty-state">
           Belum ada riwayat absensi.

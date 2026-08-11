@@ -7,11 +7,12 @@ import { WorkReportService, WorkReport, WorkReportColumn } from '../../../core/s
 import { AlertService } from '../../../core/services/alert.service';
 import { AuthService } from '../../../core/services/auth.service';
 import Swal from 'sweetalert2';
+import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 
 @Component({
   selector: 'app-work-report-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, SharedSidebarComponent],
+  imports: [CommonModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent],
   templateUrl: './work-report-admin.component.html',
   styleUrls: ['./work-report-admin.component.scss']
 })

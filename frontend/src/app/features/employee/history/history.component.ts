@@ -3,11 +3,12 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
+import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, SharedSidebarComponent],
+  imports: [CommonModule, RouterLink, DatePipe, SharedSidebarComponent, UiSkeletonComponent],
   templateUrl: './history.component.html',
   styleUrls: ['./history.component.scss']
 })

@@ -5,11 +5,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { Subscription } from 'rxjs';
+import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 
 @Component({
   selector: 'app-shared-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink, RouterLinkActive, UiSkeletonComponent],
   templateUrl: './shared-sidebar.component.html',
   styleUrls: ['./shared-sidebar.component.scss']
 })
@@ -22,6 +23,8 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   isDarkMode = false;
   notifications: AppNotification[] = [];
   showNotifications = false;
+  isMenuLoading = true;
+  isNotificationsLoading = true;
   private themeSubscription = new Subscription();
   private disconnectRealtime?: () => void;
 
@@ -34,6 +37,7 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   ngOnInit(): void {
     this.userRole = this.authService.getRole();
     this.authService.currentUser$.subscribe(user => {
+      this.isMenuLoading = false;
       if (user) {
         this.loadNotifications();
         this.disconnectRealtime = this.notificationService.connectRealtime(() => this.loadNotifications());
@@ -66,9 +70,10 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   }
 
   loadNotifications(): void {
+    this.isNotificationsLoading = true;
     this.notificationService.getAll().subscribe({
-      next: data => this.notifications = data || [],
-      error: err => console.error('Failed to load notifications', err)
+      next: data => { this.notifications = data || []; this.isNotificationsLoading = false; },
+      error: err => { this.isNotificationsLoading = false; console.error('Failed to load notifications', err); }
     });
   }
 

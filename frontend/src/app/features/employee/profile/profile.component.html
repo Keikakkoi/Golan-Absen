@@ -29,9 +29,7 @@
 
     <div class="content-grid" style="grid-template-columns: 1fr;">
       <div class="golan-card">
-        <div *ngIf="isLoading" style="padding: 2rem; text-align: center; color: var(--text-dark-lo);">
-          Memuat data profil...
-        </div>
+        <app-ui-skeleton *ngIf="isLoading" type="profile" [rows]="6" ariaLabel="Memuat profil pengguna"></app-ui-skeleton>
         
         <div *ngIf="!isLoading && profileData">
           <div *ngIf="successMessage" class="alert alert-success" style="color: #2F80ED; margin-bottom: 1rem; padding: 12px; background: #E8F2FF; border-radius: 6px;">{{ successMessage }}</div>

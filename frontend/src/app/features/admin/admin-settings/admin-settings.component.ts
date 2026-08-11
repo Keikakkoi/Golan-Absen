@@ -41,7 +41,7 @@ export class AdminSettingsComponent implements OnInit {
     ToleransiTerlambatMenit: 10,
     HariKerja: '',
   };
-  general: any = { MinimumMasaKerjaCutiBulan: 3, BatasLaporanSetelahCheckoutJam: 1 };
+  general: any = { MinimumMasaKerjaCutiBulan: 3, BatasLaporanSetelahCheckoutMenit: 60 };
 
   isLoadingOffice = true;
   isLoadingSchedule = true;
@@ -126,9 +126,21 @@ export class AdminSettingsComponent implements OnInit {
 
   loadGeneral(): void {
     this.http.get<any>(`${this.baseUrl}/settings/general`, { headers: this.getHeaders() }).subscribe({
-      next: data => { this.general = data; this.isLoadingGeneral = false; },
+      next: data => { this.general = this.normalizeGeneral(data); this.isLoadingGeneral = false; },
       error: () => this.isLoadingGeneral = false
     });
+  }
+
+  // Accept both the new minute field and the legacy hour field. This keeps the
+  // control populated while an existing API/database is being upgraded.
+  private normalizeGeneral(data: any): any {
+    const minutes = data?.BatasLaporanSetelahCheckoutMenit ?? data?.batas_laporan_setelah_checkout_menit;
+    const legacyHours = data?.BatasLaporanSetelahCheckoutJam ?? data?.batas_laporan_setelah_checkout_jam;
+    return {
+      ...data,
+      MinimumMasaKerjaCutiBulan: data?.MinimumMasaKerjaCutiBulan ?? data?.minimum_masa_kerja_cuti_bulan ?? 3,
+      BatasLaporanSetelahCheckoutMenit: minutes ?? (legacyHours != null ? Number(legacyHours) * 60 : 60)
+    };
   }
 
   async saveGeneral(): Promise<void> {
@@ -136,10 +148,10 @@ export class AdminSettingsComponent implements OnInit {
     this.isSavingGeneral = true;
     const body = {
       minimum_masa_kerja_cuti_bulan: Number(this.general.MinimumMasaKerjaCutiBulan),
-      batas_laporan_setelah_checkout_jam: Number(this.general.BatasLaporanSetelahCheckoutJam)
+      batas_laporan_setelah_checkout_menit: Number(this.general.BatasLaporanSetelahCheckoutMenit)
     };
     this.http.put(`${this.baseUrl}/settings/general`, body, { headers: this.getHeaders() }).subscribe({
-      next: data => { this.general = data; this.isSavingGeneral = false; this.alert.success('Aturan umum berhasil disimpan'); },
+      next: data => { this.general = this.normalizeGeneral(data); this.isSavingGeneral = false; this.alert.success('Aturan umum berhasil disimpan'); },
       error: err => { this.isSavingGeneral = false; this.alert.error('Gagal menyimpan aturan umum', err.error?.error || 'Gagal menyimpan'); }
     });
   }

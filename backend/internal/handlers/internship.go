@@ -350,6 +350,9 @@ func CreateInternshipLogbook(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Tanggal wajib berformat YYYY-MM-DD"})
 	}
+	if _, ok := getWorkReportSchedule(user.Employee.ID, date); !ok {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Tidak ada shift aktif atau jadwal shift untuk tanggal logbook ini. Hubungi admin untuk penjadwalan shift."})
+	}
 	status := input.Status
 	if status == "" {
 		status = "draft"

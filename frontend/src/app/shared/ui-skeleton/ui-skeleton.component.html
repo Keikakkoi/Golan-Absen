@@ -1,0 +1,13 @@
+<div class="ui-skeleton" [class]="'ui-skeleton ui-skeleton--' + type" role="status" [attr.aria-label]="ariaLabel" aria-live="polite">
+  <ng-container [ngSwitch]="type">
+    <span *ngSwitchCase="'text'" class="sk-line sk-line--text"></span>
+    <span *ngSwitchCase="'button'" class="sk-button"></span>
+    <div *ngSwitchCase="'card'" class="sk-cards"><div *ngFor="let _ of cardItems" class="sk-card"><span class="sk-line sk-line--short"></span><span class="sk-line"></span><span class="sk-line sk-line--medium"></span></div></div>
+    <div *ngSwitchCase="'table'" class="sk-table" [style.--columns]="columns"><div class="sk-table-row sk-table-head"><span *ngFor="let _ of columnItems" class="sk-cell"></span></div><div *ngFor="let _ of rowItems" class="sk-table-row"><span *ngFor="let _ of columnItems" class="sk-cell"></span></div></div>
+    <div *ngSwitchCase="'list'" class="sk-list"><div *ngFor="let _ of rowItems" class="sk-list-row"><span class="sk-avatar"></span><div><span class="sk-line"></span><span class="sk-line sk-line--medium"></span></div></div></div>
+    <div *ngSwitchCase="'navbar'" class="sk-navbar"><span class="sk-button"></span><span class="sk-brand"></span><span class="sk-avatar"></span></div>
+    <div *ngSwitchCase="'profile'" class="sk-profile"><span class="sk-profile-avatar"></span><div class="sk-profile-content"><span class="sk-line sk-line--short"></span><span class="sk-line sk-line--medium"></span><span *ngFor="let _ of rowItems" class="sk-profile-row"><i></i><b></b></span></div></div>
+    <span *ngSwitchCase="'dropdown'" class="sk-dropdown"></span>
+  </ng-container>
+  <span class="sr-only">{{ ariaLabel }}</span>
+</div>

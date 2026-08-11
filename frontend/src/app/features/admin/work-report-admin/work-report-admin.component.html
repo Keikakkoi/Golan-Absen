@@ -136,7 +136,9 @@
         </div>
 
         <div class="golan-table-responsive work-report-table-wrapper">
-          <table class="golan-table table-bordered table-sm work-report-table" *ngIf="reports.length > 0">
+          <app-ui-skeleton *ngIf="isLoading" type="table" [rows]="6" [columns]="16" ariaLabel="Memuat daftar laporan masuk"></app-ui-skeleton>
+          <p *ngIf="isLoading" class="table-scroll-hint">Geser ke samping untuk melihat kolom lainnya.</p>
+          <table class="golan-table table-bordered table-sm work-report-table" *ngIf="!isLoading && reports.length > 0">
             <thead>
               <tr>
                 <th class="th-yellow">No</th>
@@ -202,7 +204,6 @@
           <div *ngIf="reports.length === 0 && !isLoading" class="empty-state">
             Belum ada data laporan.
           </div>
-          <div *ngIf="isLoading" class="loading-state">Memuat data...</div>
         </div>
       </div>
     </ng-container>

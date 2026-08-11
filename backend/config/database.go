@@ -157,6 +157,7 @@ func ConnectDB(cfg *Config) {
 	if generalSettingCount == 0 {
 		DB.Create(&models.GeneralSetting{
 			MinimumMasaKerjaCutiBulan:      3,
+			BatasLaporanSetelahCheckoutMenit: 60,
 			BatasLaporanSetelahCheckoutJam: 1,
 		})
 	}

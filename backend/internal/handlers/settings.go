@@ -56,8 +56,8 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var input struct {
-		MinimumMasaKerjaCutiBulan      int `json:"minimum_masa_kerja_cuti_bulan"`
-		BatasLaporanSetelahCheckoutJam int `json:"batas_laporan_setelah_checkout_jam"`
+		MinimumMasaKerjaCutiBulan        int `json:"minimum_masa_kerja_cuti_bulan"`
+		BatasLaporanSetelahCheckoutMenit int `json:"batas_laporan_setelah_checkout_menit"`
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
@@ -65,15 +65,16 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 	if input.MinimumMasaKerjaCutiBulan < 0 || input.MinimumMasaKerjaCutiBulan > 120 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Minimum masa kerja harus antara 0 dan 120 bulan"})
 	}
-	if input.BatasLaporanSetelahCheckoutJam < 0 || input.BatasLaporanSetelahCheckoutJam > 24 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas laporan harus antara 0 dan 24 jam"})
+	if input.BatasLaporanSetelahCheckoutMenit < 0 || input.BatasLaporanSetelahCheckoutMenit > 24*60 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Toleransi laporan harus antara 0 dan 1.440 menit"})
 	}
 	var setting models.GeneralSetting
 	if err := config.DB.First(&setting).Error; err != nil {
 		setting = models.GeneralSetting{}
 	}
 	setting.MinimumMasaKerjaCutiBulan = input.MinimumMasaKerjaCutiBulan
-	setting.BatasLaporanSetelahCheckoutJam = input.BatasLaporanSetelahCheckoutJam
+	setting.BatasLaporanSetelahCheckoutMenit = input.BatasLaporanSetelahCheckoutMenit
+	setting.BatasLaporanSetelahCheckoutJam = input.BatasLaporanSetelahCheckoutMenit / 60
 	if err := config.DB.Save(&setting).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update general settings"})
 	}

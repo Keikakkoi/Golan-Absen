@@ -28,7 +28,7 @@
     </div>
 
     <div class="golan-card notification-list">
-      <div *ngIf="isLoading" class="state-message">Memuat notifikasi...</div>
+      <app-ui-skeleton *ngIf="isLoading" type="list" [rows]="5" ariaLabel="Memuat notifikasi"></app-ui-skeleton>
       <div *ngIf="!isLoading && filteredNotifications.length === 0" class="state-message">
         Tidak ada notifikasi untuk ditampilkan.
       </div>

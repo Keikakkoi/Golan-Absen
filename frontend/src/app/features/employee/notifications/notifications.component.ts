@@ -2,11 +2,12 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
+import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [CommonModule, DatePipe, SharedSidebarComponent],
+  imports: [CommonModule, DatePipe, SharedSidebarComponent, UiSkeletonComponent],
   templateUrl: './notifications.component.html',
   styleUrls: ['./notifications.component.scss']
 })

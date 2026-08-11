@@ -265,7 +265,9 @@ const (
 // A single row is used so the settings screen can update the rules atomically.
 type GeneralSetting struct {
 	gorm.Model
-	MinimumMasaKerjaCutiBulan      int `gorm:"not null;default:3"`
+	MinimumMasaKerjaCutiBulan        int `gorm:"not null;default:3"`
+	BatasLaporanSetelahCheckoutMenit int `gorm:"not null;default:60"`
+	// Deprecated: retained while existing installations are migrated to minutes.
 	BatasLaporanSetelahCheckoutJam int `gorm:"not null;default:1"`
 }
 

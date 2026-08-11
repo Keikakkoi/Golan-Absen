@@ -88,11 +88,11 @@
       </section>
 
       <section class="golan-card panel-card">
-        <div class="panel-header"><div><h3>Aturan Cuti & Laporan Kerja</h3><p class="panel-description">Aturan ini berlaku untuk Karyawan dan Manajer.</p></div><span class="panel-badge">Kebijakan</span></div>
+        <div class="panel-header"><div><h3>Aturan Cuti & Laporan Kerja</h3><p class="panel-description">Aturan ini berlaku global untuk karyawan, peserta magang, dan manajer.</p></div><span class="panel-badge">Kebijakan</span></div>
         <div *ngIf="isLoadingGeneral" class="loading-state">Memuat...</div>
         <form *ngIf="!isLoadingGeneral" (ngSubmit)="saveGeneral()">
           <div class="form-group"><label>Minimum masa kerja untuk Cuti (bulan)</label><input type="number" min="0" max="120" class="golan-input" [(ngModel)]="general.MinimumMasaKerjaCutiBulan" name="MinimumMasaKerjaCutiBulan" required></div>
-          <div class="form-group"><label>Batas pengisian laporan setelah jam pulang (jam)</label><input type="number" min="0" max="24" class="golan-input" [(ngModel)]="general.BatasLaporanSetelahCheckoutJam" name="BatasLaporanSetelahCheckoutJam" required><p class="input-hint">Dengan jam pulang 17:00 dan nilai 1, batas laporan adalah 18:00. Laporan setelah batas tetap boleh dikirim dan ditandai terlambat.</p></div>
+          <div class="form-group"><label>Toleransi keterlambatan laporan (menit)</label><input type="number" min="0" max="1440" step="1" class="golan-input" [(ngModel)]="general.BatasLaporanSetelahCheckoutMenit" name="BatasLaporanSetelahCheckoutMenit" required><p class="input-hint">Berlaku untuk semua shift. Contoh: 60 menit berarti shift yang selesai 17:00 memiliki batas laporan 18:00 WIB; shift malam 06:00 menjadi 07:00 WIB di hari berikutnya.</p></div>
           <div class="form-actions"><button type="submit" class="btn-primary" [disabled]="isSavingGeneral">{{ isSavingGeneral ? 'Menyimpan...' : 'Simpan Aturan' }}</button></div>
         </form>
       </section>

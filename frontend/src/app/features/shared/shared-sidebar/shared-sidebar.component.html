@@ -21,12 +21,13 @@
       <div class="topbar-notification-dropdown" *ngIf="showNotifications">
         <div class="topbar-notification-heading">Notifikasi</div>
         <div class="topbar-notification-body">
+          <app-ui-skeleton *ngIf="isNotificationsLoading" type="list" [rows]="3" ariaLabel="Memuat notifikasi"></app-ui-skeleton>
           <button class="topbar-notification-item" type="button" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca" (click)="markAsRead(notif)">
             <strong>{{ notif.Judul }}</strong>
             <span>{{ notif.Pesan }}</span>
             <small>{{ notif.Waktu | date:'medium' }}</small>
           </button>
-          <div class="topbar-notification-empty" *ngIf="notifications.length === 0">Tidak ada notifikasi.</div>
+          <div class="topbar-notification-empty" *ngIf="!isNotificationsLoading && notifications.length === 0">Tidak ada notifikasi.</div>
         </div>
         <a class="topbar-notification-footer" [routerLink]="notificationsLink" (click)="showNotifications = false">Lihat semua notifikasi</a>
       </div>
@@ -51,10 +52,11 @@
     </div>
   </div>
 
-  <div class="current-role-badge">
+  <div class="current-role-badge" *ngIf="!isMenuLoading; else roleSkeleton">
     <span class="role-caption">Akses akun</span>
     <strong>{{ userRole === 'HRD' ? 'HRD / Admin' : userRole }}</strong>
   </div>
+  <ng-template #roleSkeleton><app-ui-skeleton type="text" ariaLabel="Memuat akun"></app-ui-skeleton></ng-template>
 
   <div class="theme-switcher" *ngIf="darkModeEnabled">
     <button
@@ -69,7 +71,8 @@
   </div>
 
   <!-- Navigation menus based on the active role -->
-  <nav class="sidebar-nav">
+  <app-ui-skeleton *ngIf="isMenuLoading" type="list" [rows]="8" ariaLabel="Memuat menu navigasi"></app-ui-skeleton>
+  <nav class="sidebar-nav" *ngIf="!isMenuLoading">
     <!-- Karyawan (Employee) Menu -->
     <ng-container *ngIf="userRole === 'Karyawan'">
       <a routerLink="/employee/dashboard" routerLinkActive="active" (click)="closeDrawer()">
