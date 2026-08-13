@@ -4,11 +4,12 @@ import { RouterLink } from '@angular/router';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-history',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, SharedSidebarComponent, UiSkeletonComponent],
+  imports: [CommonModule, RouterLink, DatePipe, SharedSidebarComponent, UiSkeletonComponent, PaginationComponent],
   templateUrl: './history.component.html',
   styleUrls: ['./history.component.scss']
 })
@@ -16,6 +17,11 @@ export class HistoryComponent implements OnInit {
   records: any[] = [];
   isLoading = true;
   viewMode: 'table' | 'calendar' = 'table';
+  page = 1;
+  pageSize = 25;
+  get displayedRecords(): any[] { return this.records.slice((this.page - 1) * this.pageSize, this.page * this.pageSize); }
+  pageChanged(page: number): void { this.page = page; }
+  pageSizeChanged(size: number): void { this.pageSize = size; this.page = 1; }
   
   // Calendar data
   currentMonth: Date = new Date();
@@ -33,6 +39,7 @@ export class HistoryComponent implements OnInit {
     this.attendanceService.getHistory().subscribe({
       next: (data) => {
         this.records = data;
+        this.page = 1;
         this.isLoading = false;
         this.generateCalendar();
       },

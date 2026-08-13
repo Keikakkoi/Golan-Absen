@@ -5,10 +5,12 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
-@Component({ selector: 'app-intern-logbook', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent], templateUrl: './intern-logbook.component.html', styleUrls: ['./intern-logbook.component.scss'] })
+@Component({ selector: 'app-intern-logbook', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent], templateUrl: './intern-logbook.component.html', styleUrls: ['./intern-logbook.component.scss'] })
 export class InternLogbookComponent implements OnInit {
   logbooks: any[] = []; message = ''; error = ''; saving = false;
+  page = 1; pageSize = 25; pageSizeOptions = [10, 25, 50, 100]; isLoading = false;
   editingId: number | null = null; start = ''; end = ''; statusFilter = ''; isExportOpen = false;
   selectedLogbookDetail: any = null;
   deadlineInfo: any = null; deadlineError = '';
@@ -17,7 +19,10 @@ export class InternLogbookComponent implements OnInit {
   constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService) {}
   ngOnInit(): void { this.load(); this.loadDeadline(); }
   loadDeadline(): void { this.deadlineInfo = null; this.deadlineError = ''; if (!this.form.tanggal) return; this.http.get<any>('http://localhost:8080/api/v1/work-reports/deadline', { params: new HttpParams().set('date', this.form.tanggal), headers: this.headers() }).subscribe({ next: data => this.deadlineInfo = data, error: e => this.deadlineError = e.error?.error || 'Informasi batas waktu tidak tersedia.' }); }
-  load(): void { let params = new HttpParams(); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end); if (this.statusFilter) params = params.set('status', this.statusFilter); this.http.get<any[]>('http://localhost:8080/api/v1/internship/logbooks', { params, headers: this.headers() }).subscribe({ next: data => this.logbooks = data || [], error: e => this.error = 'Gagal memuat logbook: ' + (e.error?.error || 'Unknown error') }); }
+  load(): void { this.isLoading = true; let params = new HttpParams(); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end); if (this.statusFilter) params = params.set('status', this.statusFilter); this.http.get<any>('http://localhost:8080/api/v1/internship/logbooks', { params, headers: this.headers() }).subscribe({ next: response => { this.logbooks = Array.isArray(response) ? response : (response.data || []); this.page = 1; this.isLoading = false; }, error: e => { this.error = 'Gagal memuat logbook: ' + (e.error?.error || 'Unknown error'); this.isLoading = false; } }); }
+  get displayedLogbooks(): any[] { return this.logbooks.slice((this.page - 1) * this.pageSize, this.page * this.pageSize); }
+  pageChanged(page: number): void { this.page = page; }
+  pageSizeChanged(size: number): void { this.pageSize = size; this.page = 1; }
   save(targetStatus?: string): void {
     if (!this.form.tanggal || !this.form.deskripsi_kegiatan.trim()) {
       this.error = 'Tanggal dan kegiatan wajib diisi.';

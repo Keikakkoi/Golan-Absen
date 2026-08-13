@@ -183,7 +183,32 @@
     </ng-container>
 
     <ng-container *ngIf="section === 'home'">
-      <div class="golan-card table-container"><table class="golan-table"><thead><tr><th>Karyawan</th><th>Link Google Maps</th><th>Radius</th><th>Alamat</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let row of homeRows"><td>{{ row.employee?.User?.Nama }}<div class="code">{{ row.employee?.NIK }}</div></td><td><a *ngIf="row.location?.GoogleMapsURL" [href]="row.location.GoogleMapsURL" target="_blank" rel="noopener">Buka lokasi</a><span *ngIf="!row.location?.GoogleMapsURL">-</span></td><td>{{ row.location?.RadiusMeter || '-' }} m</td><td>{{ row.location?.AlamatRumah || '-' }}</td><td><button class="icon-button edit" type="button" (click)="editHome(row)" aria-label="Atur lokasi rumah" title="Atur lokasi rumah"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button></td></tr></tbody></table></div>
+      <div class="golan-card table-container">
+        <div class="golan-table-responsive">
+          <table class="golan-table">
+            <thead><tr><th>Karyawan</th><th>Link Google Maps</th><th>Radius</th><th>Alamat</th><th>Aksi</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let row of homeRows">
+                <td>{{ row.employee?.User?.Nama || '-' }}<div class="code">{{ row.employee?.NIK || '-' }}</div></td>
+                <td><a *ngIf="row.location?.GoogleMapsURL" [href]="row.location.GoogleMapsURL" target="_blank" rel="noopener">Buka lokasi</a><span *ngIf="!row.location?.GoogleMapsURL">-</span></td>
+                <td>{{ row.location?.RadiusMeter || '-' }} m</td>
+                <td>{{ row.location?.AlamatRumah || '-' }}</td>
+                <td><button class="icon-button edit" type="button" (click)="editHome(row)" aria-label="Atur lokasi rumah" title="Atur lokasi rumah"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="empty-state" *ngIf="!isLoading && homeTotal === 0">Belum ada data lokasi karyawan.</div>
+        </div>
+        <app-pagination
+          [totalItems]="homeTotal"
+          [currentPage]="homePage"
+          [pageSize]="homePageSize"
+          [loading]="isLoading"
+          [showEmpty]="false"
+          (pageChange)="homePageChanged($event)"
+          (pageSizeChange)="homePageSizeChanged($event)">
+        </app-pagination>
+      </div>
       <div class="modal-overlay" *ngIf="selectedHome">
         <div class="modal-content golan-card" style="max-width: 420px; padding: 24px;">
           <h3 style="margin-top: 0; margin-bottom: 22px; font-size: 1.3rem; color: #1769aa; line-height: 1.4;">Geofence Rumah — {{ selectedHome.User?.Nama }}</h3>

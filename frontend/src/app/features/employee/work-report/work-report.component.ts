@@ -1,11 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormArray, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { WorkReportService, WorkReport, WorkReportColumn, ComplianceResult, WorkReportDeadline } from '../../../core/services/work-report.service';
+import { WorkReportService, WorkReport, WorkReportColumn, ComplianceResult, WorkReportDeadline, PaginatedWorkReports } from '../../../core/services/work-report.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { AuthService } from '../../../core/services/auth.service';
 import Swal from 'sweetalert2';
 import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 import { CommonModule } from '@angular/common';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
@@ -14,7 +15,7 @@ import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.com
 @Component({
   selector: 'app-work-report',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent, PaginationComponent],
   templateUrl: './work-report.component.html',
   styleUrls: ['./work-report.component.scss']
 })
@@ -23,6 +24,8 @@ export class WorkReportComponent implements OnInit {
   isExportOpen = false;
   editingReportId: number | null = null;
   reports: WorkReport[] = [];
+  private allReports: WorkReport[] = [];
+  private serverPaginated = false;
   complianceData: ComplianceResult[] = [];
   columns: WorkReportColumn[] = [];
   reportForm!: FormGroup;
@@ -37,6 +40,10 @@ export class WorkReportComponent implements OnInit {
   screenshotPreviews: string[] = [];
   deadlineInfo: WorkReportDeadline | null = null;
   deadlineError = '';
+  currentPage = 1;
+  pageSize = 25;
+  totalReports = 0;
+  pageSizeOptions = [10, 25, 50, 100];
 
   constructor(
     private fb: FormBuilder,
@@ -76,7 +83,7 @@ export class WorkReportComponent implements OnInit {
 
     forkJoin({
       columns: this.workReportService.getColumns(isRefresh),
-      reports: this.workReportService.getWorkReports(undefined, undefined, undefined, undefined, isRefresh)
+      reports: this.workReportService.getWorkReports(undefined, undefined, undefined, undefined, isRefresh, this.currentPage, this.pageSize)
     }).pipe(
       finalize(() => {
         this.isLoading = false;
@@ -86,7 +93,21 @@ export class WorkReportComponent implements OnInit {
       next: ({ columns, reports }) => {
         this.columns = columns;
         this.buildCustomFieldsForm();
-        this.reports = reports;
+        const response = reports as WorkReport[] | PaginatedWorkReports;
+        if (Array.isArray(response)) {
+          // Backward-compatible fallback for an older API process that still
+          // returns the complete array instead of the pagination envelope.
+          this.allReports = response;
+          this.reports = response.slice((this.currentPage - 1) * this.pageSize, this.currentPage * this.pageSize);
+          this.totalReports = response.length;
+          this.serverPaginated = false;
+        } else {
+          this.allReports = [];
+          this.reports = (response.data || []).slice(0, this.pageSize);
+          this.totalReports = Number(response.total || 0);
+          this.currentPage = Number(response.page || this.currentPage);
+          this.serverPaginated = true;
+        }
         this.loadCompliance(isRefresh);
         if (isRefresh) {
           this.refreshSuccess = 'Data laporan berhasil diperbarui.';
@@ -109,6 +130,18 @@ export class WorkReportComponent implements OnInit {
 
   refreshReports(): void {
     this.loadInitialData(true);
+  }
+
+  pageChanged(page: number): void {
+    if (page === this.currentPage) return;
+    this.currentPage = page;
+    this.loadInitialData();
+  }
+
+  pageSizeChanged(size: number): void {
+    this.pageSize = size;
+    this.currentPage = 1;
+    this.loadInitialData();
   }
 
   loadCompliance(forceRefresh = false) {

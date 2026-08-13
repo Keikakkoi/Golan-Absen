@@ -120,11 +120,7 @@
           </tbody>
         </table>
       </div>
-      <div class="pagination" *ngIf="!isLoading && reports.length > 0">
-        <button class="btn-secondary" type="button" (click)="changePage(-1)" [disabled]="page === 1">Sebelumnya</button>
-        <span>Halaman {{ page }} dari {{ totalPages() }} · {{ reports.length }} laporan</span>
-        <button class="btn-secondary" type="button" (click)="changePage(1)" [disabled]="page === totalPages()">Berikutnya</button>
-      </div>
+      <app-pagination [totalItems]="totalItems" [currentPage]="page" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions" [loading]="isLoading || isRefreshing" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
     </section>
   </main>
 </div>

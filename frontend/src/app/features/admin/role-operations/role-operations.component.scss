@@ -87,8 +87,245 @@
   border-radius: 6px;
 }
 
+.role-operations-page .pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 12px 14px;
+  color: var(--text-dark);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.role-operations-page .pagination-info {
+  color: var(--text-dark-lo);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.role-operations-page .page-size-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.role-operations-page .page-size-control label {
+  margin: 0;
+  color: var(--text-dark-lo);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.role-operations-page .page-size-select {
+  width: auto;
+  min-width: 76px;
+  height: 38px;
+  min-height: 38px;
+  padding: 7px 34px 7px 12px;
+  color: var(--text-dark);
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.role-operations-page .page-size-select:hover,
+.role-operations-page .page-size-select:focus {
+  border-color: var(--blue-dark);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .16);
+}
+
+.role-operations-page .pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.role-operations-page .pagination-button {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-dark);
+  background: var(--surface);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease, opacity .2s ease;
+}
+
+.role-operations-page .pagination-button:hover:not(:disabled) {
+  color: #fff;
+  background: var(--blue-dark);
+  border-color: var(--blue-dark);
+}
+
+.role-operations-page .pagination-button:disabled {
+  opacity: .52;
+  cursor: not-allowed;
+}
+
+.role-operations-page .pagination-button.active {
+  color: #fff;
+  background: #2563eb;
+  border-color: #facc15;
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, .34), 0 6px 16px rgba(37, 99, 235, .28);
+}
+
+.role-operations-page .pagination-button.ellipsis {
+  min-width: 30px;
+  padding-left: 8px;
+  padding-right: 8px;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .role-operations-certificate-table {
-  min-width: 1050px !important;
+  min-width: 1670px !important;
+  table-layout: fixed;
+}
+
+.role-operations-certificate-table .col-certificate-participant { width: 220px; }
+.role-operations-certificate-table .col-certificate-institution { width: 180px; }
+.role-operations-certificate-table .col-certificate-end-date { width: 160px; }
+.role-operations-certificate-table .col-certificate-status { width: 190px; }
+.role-operations-certificate-table .col-certificate-file { width: 220px; }
+.role-operations-certificate-table .col-certificate-score { width: 240px; }
+.role-operations-certificate-table .col-certificate-graduation { width: 220px; }
+.role-operations-certificate-table .col-certificate-actions { width: 240px; }
+
+.role-operations-page .role-operations-certificate-table th,
+.role-operations-page .role-operations-certificate-table td {
+  padding: 18px 18px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.role-operations-page .role-operations-certificate-table th {
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: keep-all !important;
+}
+
+.role-operations-page .role-operations-certificate-table td {
+  min-width: 0;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+}
+
+.role-operations-page .role-operations-certificate-table td:first-child,
+.role-operations-page .role-operations-certificate-table th:first-child,
+.role-operations-page .role-operations-certificate-table td:nth-child(3),
+.role-operations-page .role-operations-certificate-table td:nth-child(4) {
+  white-space: normal !important;
+}
+
+.role-operations-certificate-table .status-pill {
+  max-width: 100%;
+  white-space: normal !important;
+  overflow-wrap: break-word;
+}
+
+.role-operations-certificate-table .certificate-file-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-height: 54px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.25;
+  text-decoration: none;
+  white-space: normal !important;
+  overflow: hidden;
+}
+
+.role-operations-certificate-table .certificate-file-card i {
+  flex: 0 0 auto;
+  color: #dc3545;
+}
+
+.role-operations-certificate-table .certificate-file-card span {
+  display: -webkit-box;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.role-operations-certificate-table .document-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.role-operations-certificate-table .document-action-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.role-operations-certificate-table .document-action-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.role-operations-certificate-table .document-action-row strong {
+  display: block;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+}
+
+.role-operations-certificate-table .document-action-row .btn-small,
+.role-operations-certificate-table .document-action-row .cert-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  box-sizing: border-box;
+  white-space: normal;
+  line-height: 1.2;
 }
 
 /* Certificate rows become self-contained cards on phones. The desktop table
@@ -276,6 +513,35 @@
     width: 56px !important;
     height: 42px !important;
   }
+
+  .role-operations-page .pagination-bar {
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .role-operations-page .pagination-info,
+  .role-operations-page .page-size-control,
+  .role-operations-page .pagination-controls {
+    width: 100%;
+  }
+
+  .role-operations-page .page-size-control {
+    justify-content: space-between;
+  }
+
+  .role-operations-page .pagination-controls {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .role-operations-page .pagination-button {
+    flex: 0 0 auto;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 0.78rem;
+  }
 }
 
 .muted-file {
@@ -416,6 +682,72 @@
   }
   .role-operations-page .section-tabs {
     overflow: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .role-operations-page .golan-table-responsive:has(.role-operations-certificate-table) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+  }
+
+  .role-operations-page .role-operations-certificate-table {
+    display: table !important;
+    width: 100% !important;
+    min-width: 1670px !important;
+    max-width: none !important;
+    table-layout: fixed;
+    font-size: 0.875rem;
+  }
+
+  .role-operations-page .role-operations-certificate-table colgroup {
+    display: table-column-group;
+  }
+
+  .role-operations-page .role-operations-certificate-table thead {
+    display: table-header-group;
+  }
+
+  .role-operations-page .role-operations-certificate-table tbody {
+    display: table-row-group;
+  }
+
+  .role-operations-page .role-operations-certificate-table tr {
+    display: table-row;
+    width: auto;
+  }
+
+  .role-operations-page .role-operations-certificate-table tbody tr:not(.certificate-empty-row) {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .role-operations-page .role-operations-certificate-table th,
+  .role-operations-page .role-operations-certificate-table tbody tr:not(.certificate-empty-row) td {
+    display: table-cell;
+    width: auto;
+    min-width: 0;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    vertical-align: middle;
+    overflow: visible;
+  }
+
+  .role-operations-page .role-operations-certificate-table td::before {
+    content: none;
+    display: none;
+  }
+
+  .role-operations-page .role-operations-certificate-table td > div,
+  .role-operations-page .role-operations-certificate-table td > span,
+  .role-operations-page .role-operations-certificate-table td > a {
+    max-width: 100%;
   }
 }
 

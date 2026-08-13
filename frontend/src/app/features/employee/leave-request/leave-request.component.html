@@ -90,7 +90,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let req of leaveRequests">
+                <tr *ngFor="let req of displayedLeaveRequests">
                   <td>{{ req.JenisIzin }}</td>
                   <td>{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
                   <td>{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
@@ -109,6 +109,7 @@
                 </tr>
               </tbody>
             </table>
+            <app-pagination [totalItems]="leaveRequests.length" [currentPage]="page" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
           </div>
         </div>
       </section>

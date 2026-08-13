@@ -1,3 +1,9 @@
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
 .dashboard-charts {
   --chart-card-bg: #fff;
   --chart-text: #172b3a;

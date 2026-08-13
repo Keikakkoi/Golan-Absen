@@ -1,9 +1,6 @@
 <div class="dashboard-container admin-theme">
   <app-admin-sidebar></app-admin-sidebar>
 
-<div class="dashboard-container admin-theme">
-  <app-admin-sidebar></app-admin-sidebar>
-
   <div class="main-content admin-alpha-report-page">
     <div class="header">
       <h2>Laporan Ketidakhadiran (Alpha)</h2>
@@ -19,20 +16,6 @@
            <h5><i class="fas fa-filter text-primary"></i> Filter Ketidakhadiran (Alpha)</h5>
         </div>
         <form (ngSubmit)="loadReports()" class="filter-grid premium-grid" style="margin: 0;">
-          <div class="filter-group">
-            <label>Dari Tanggal</label>
-            <div class="input-wrapper">
-              <i class="fas fa-calendar icon-left"></i>
-              <input type="date" [(ngModel)]="filters.start_date" name="start_date" class="filter-input has-icon" />
-            </div>
-          </div>
-          <div class="filter-group">
-            <label>Sampai Tanggal</label>
-            <div class="input-wrapper">
-              <i class="fas fa-calendar icon-left"></i>
-              <input type="date" [(ngModel)]="filters.end_date" name="end_date" class="filter-input has-icon" />
-            </div>
-          </div>
           <div class="filter-group">
             <label>Divisi</label>
             <div class="input-wrapper select-wrapper">
@@ -87,7 +70,7 @@
       <div *ngIf="isLoading" class="loading-state">Memuat laporan...</div>
 
       <div class="table-container report-table-container" style="overflow-x: auto;">
-        <table *ngIf="!isLoading && summaries.length > 0" class="golan-table" style="width: 100%; border-collapse: collapse;">
+          <table *ngIf="!isLoading && summaries.length > 0" class="golan-table" style="width: 100%; border-collapse: collapse;">
           <thead>
             <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
               <th style="padding: 1rem;">NIK</th>
@@ -99,7 +82,7 @@
             </tr>
           </thead>
           <tbody>
-            <ng-container *ngFor="let summary of summaries">
+            <ng-container *ngFor="let summary of displayedSummaries">
             <tr style="border-bottom: 1px solid #e5e7eb;">
               <td style="padding: 1rem; font-family: monospace;">{{ summary.nik }}</td>
               <td style="padding: 1rem; font-weight: 500;">{{ summary.nama }}</td>
@@ -126,8 +109,12 @@
         </table>
 
         <div *ngIf="!isLoading && summaries.length === 0" style="padding: 2rem; color: #6b7280; text-align: center;">
-          Tidak ada data ketidakhadiran (alpha) untuk periode ini.
+          Tidak ada data ketidakhadiran (alpha).
         </div>
+      </div>
+
+      <div #paginationBar class="no-print" *ngIf="!isLoading || summaries.length > 0">
+        <app-pagination [totalItems]="summaries.length" [currentPage]="currentPage" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions" [loading]="isLoading" (pageChange)="goToPage($event)" (pageSizeChange)="pageSize = $event; onPageSizeChange()"></app-pagination>
       </div>
     </div>
   </div>

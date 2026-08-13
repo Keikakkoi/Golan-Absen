@@ -111,7 +111,7 @@
             </div>
           </div>
           <div class="event-filter-summary">
-            Menampilkan <strong>{{ tableEvents.length }}</strong> event
+            Menampilkan <strong>{{ tableTotal }}</strong> event
           </div>
         </div>
       </div>
@@ -166,6 +166,15 @@
         </div>
         <ng-template #noEvents><div class="empty-state" *ngIf="!isLoadingTable">Belum ada event pada periode ini.</div></ng-template>
       </div>
+      <app-pagination
+        [totalItems]="tableTotal"
+        [currentPage]="tablePage"
+        [pageSize]="tablePageSize"
+        [pageSizeOptions]="tablePageSizeOptions"
+        [loading]="isLoadingTable"
+        (pageChange)="tablePageChanged($event)"
+        (pageSizeChange)="tablePageSizeChanged($event)">
+      </app-pagination>
     </section>
   </div>
 </div>

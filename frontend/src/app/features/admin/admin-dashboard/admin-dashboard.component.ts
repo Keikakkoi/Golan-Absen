@@ -6,6 +6,7 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
 import { RouterLink } from '@angular/router';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -34,11 +35,18 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   notifications: AppNotification[] = [];
   showNotifications = false;
   private disconnectRealtime?: () => void;
+  private userSubscription?: Subscription;
+  private initialized = false;
 
   constructor(private http: HttpClient, private authService: AuthService, private notificationService: NotificationService) {}
 
   ngOnInit(): void {
-    this.authService.currentUser$.subscribe(user => {
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+      // This component can only be used by HRD. Without this guard, a stale
+      // component instance can repeatedly call the HRD-only endpoint and get
+      // 403 responses for employee/intern/manager sessions.
+      if (user?.role !== 'HRD' || this.initialized) return;
+      this.initialized = true;
       if (user) {
         this.adminName = user.name;
         this.loadStats();
@@ -51,6 +59,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   }
 
   loadStats(): void {
+    if (this.authService.getRole() !== 'HRD') return;
     const token = this.authService.getToken();
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
@@ -70,6 +79,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.disconnectRealtime?.();
+    this.userSubscription?.unsubscribe();
+    this.initialized = false;
   }
 
   loadNotifications(): void {

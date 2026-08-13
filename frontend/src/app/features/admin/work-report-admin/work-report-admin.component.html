@@ -46,7 +46,7 @@
               <label>Pencarian Kata Kunci</label>
               <div class="input-wrapper">
                  <i class="fas fa-search icon-left"></i>
-                 <input type="text" class="filter-input has-icon" [(ngModel)]="filterOptions.search" (ngModelChange)="applyFilters()" placeholder="Cari nama karyawan, judul laporan, atau tugas...">
+                 <input type="text" class="filter-input has-icon" [(ngModel)]="filterOptions.search" (ngModelChange)="onFilterChange()" placeholder="Cari nama karyawan, judul laporan, atau tugas...">
               </div>
             </div>
             
@@ -54,7 +54,7 @@
               <label>Dari Tanggal</label>
               <div class="input-wrapper">
                 <i class="fas fa-calendar icon-left"></i>
-                <input type="date" class="filter-input has-icon" [(ngModel)]="filterOptions.startDate" (ngModelChange)="applyFilters()">
+                <input type="date" class="filter-input has-icon" [(ngModel)]="filterOptions.startDate" (ngModelChange)="onFilterChange()">
               </div>
             </div>
 
@@ -62,7 +62,7 @@
               <label>Sampai Tanggal</label>
               <div class="input-wrapper">
                 <i class="fas fa-calendar icon-left"></i>
-                <input type="date" class="filter-input has-icon" [(ngModel)]="filterOptions.endDate" (ngModelChange)="applyFilters()">
+                <input type="date" class="filter-input has-icon" [(ngModel)]="filterOptions.endDate" (ngModelChange)="onFilterChange()">
               </div>
             </div>
 
@@ -70,7 +70,7 @@
             <div class="filter-group">
               <label>Divisi</label>
               <div class="input-wrapper select-wrapper">
-                <select class="filter-input" [(ngModel)]="filterOptions.division" (ngModelChange)="applyFilters()">
+                <select class="filter-input" [(ngModel)]="filterOptions.division" (ngModelChange)="onFilterChange()">
                   <option value="">Semua Divisi</option>
                   <option *ngFor="let div of uniqueDivisions" [value]="div">{{ div }}</option>
                 </select>
@@ -81,7 +81,7 @@
             <div class="filter-group">
               <label>Project</label>
               <div class="input-wrapper select-wrapper">
-                <select class="filter-input" [(ngModel)]="filterOptions.project_id" (ngModelChange)="loadData()">
+                <select class="filter-input" [(ngModel)]="filterOptions.project_id" (ngModelChange)="onProjectFilterChange()">
                   <option value="">Semua Project</option>
                   <option *ngFor="let project of projects" [value]="project.ID">{{ project.ID }} - {{ project.NamaProject }}</option>
                 </select>
@@ -92,7 +92,7 @@
             <div class="filter-group">
               <label>Jabatan</label>
               <div class="input-wrapper select-wrapper">
-                <select class="filter-input" [(ngModel)]="filterOptions.role" (ngModelChange)="applyFilters()">
+                <select class="filter-input" [(ngModel)]="filterOptions.role" (ngModelChange)="onFilterChange()">
                   <option value="">Semua Jabatan</option>
                   <option *ngFor="let role of uniqueRoles" [value]="role">{{ role }}</option>
                 </select>
@@ -103,7 +103,7 @@
             <div class="filter-group">
               <label>Status Validasi HR</label>
               <div class="input-wrapper select-wrapper">
-                <select class="filter-input" [(ngModel)]="filterOptions.status" (ngModelChange)="applyFilters()">
+                <select class="filter-input" [(ngModel)]="filterOptions.status" (ngModelChange)="onFilterChange()">
                   <option value="">Semua Status</option>
                   <option value="Menunggu">Menunggu</option>
                   <option value="Sesuai">Sesuai</option>
@@ -117,7 +117,7 @@
             <div class="filter-group">
               <label>Urutkan</label>
               <div class="input-wrapper select-wrapper">
-                <select class="filter-input" [(ngModel)]="filterOptions.sort_order" (ngModelChange)="applyFilters()">
+                <select class="filter-input" [(ngModel)]="filterOptions.sort_order" (ngModelChange)="onFilterChange()">
                   <option value="desc">Terbaru (Descending)</option>
                   <option value="asc">Terlama (Ascending)</option>
                   <option value="name_asc">Nama (A-Z)</option>
@@ -160,8 +160,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let r of reports; let i = index">
-                <td>{{ i + 1 }}</td>
+              <tr *ngFor="let r of displayedReports; let i = index">
+                <td>{{ paginationStartIndex + i + 1 }}</td>
                 <td>{{ r.tanggal | date:'EEEE, dd MMM yyyy' }}</td>
                 <td>{{ getEmployeeName(r) }}</td>
                 <td>{{ r.Employee?.Division?.NamaDivisi || '-' }}</td>
@@ -204,6 +204,10 @@
           <div *ngIf="reports.length === 0 && !isLoading" class="empty-state">
             Belum ada data laporan.
           </div>
+        </div>
+
+        <div #paginationBar class="no-print" *ngIf="!isLoading || reports.length > 0">
+          <app-pagination [totalItems]="reports.length" [currentPage]="currentPage" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="goToPage($event)" (pageSizeChange)="pageSize = $event; onPageSizeChange()"></app-pagination>
         </div>
       </div>
     </ng-container>

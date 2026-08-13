@@ -30,12 +30,30 @@ export class AboutAppComponent {
   ];
 
   modules = [
-    { code: 'Modul A', title: 'Autentikasi & Profil Pengguna', pages: '8 Halaman' },
-    { code: 'Modul B', title: 'Presensi Karyawan (Check-in/Out, Geofence)', pages: '12 Halaman' },
-    { code: 'Modul C', title: 'Manajemen Cuti & Izin', pages: '10 Halaman' },
-    { code: 'Modul D', title: 'Laporan HRD & Audit Log', pages: '18 Halaman' },
-    { code: 'Modul E', title: 'Dashboard Manajer', pages: '5 Halaman' },
-    { code: 'Modul F', title: 'Sistem, Backup, & Bantuan', pages: '4 Halaman' }
+    {
+      title: 'Data Karyawan & Struktur Organisasi',
+      description: 'Admin mengelola profil karyawan, divisi, jabatan, status akun, dan relasi kerja yang digunakan dalam proses absensi.'
+    },
+    {
+      title: 'Jadwal, Shift, dan Aturan Kehadiran',
+      description: 'Sistem mengatur jam masuk, jam pulang, toleransi keterlambatan, shift kerja, serta aturan dasar presensi harian.'
+    },
+    {
+      title: 'Presensi Berbasis Lokasi',
+      description: 'Karyawan melakukan check-in dan check-out dengan validasi waktu, lokasi kerja, serta status kehadiran secara otomatis.'
+    },
+    {
+      title: 'Cuti, Izin, dan Persetujuan',
+      description: 'Karyawan dapat mengajukan cuti atau izin, sementara admin atau atasan memproses persetujuan dan memantau riwayatnya.'
+    },
+    {
+      title: 'Rekap Absensi dan Laporan HRD',
+      description: 'HRD dapat melihat rekap kehadiran, keterlambatan, izin, cuti, alfa, serta menyiapkan laporan berdasarkan periode tertentu.'
+    },
+    {
+      title: 'Audit, Backup, dan Bantuan Sistem',
+      description: 'Sistem menyimpan riwayat aktivitas penting, mendukung backup data, dan menyediakan bantuan untuk operasional aplikasi.'
+    }
   ];
 
   systemStatus = {

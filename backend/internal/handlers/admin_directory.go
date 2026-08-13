@@ -26,9 +26,22 @@ func GetHomeLocations(c *fiber.Ctx) error {
 	if !isHRD(c) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
+	paginated := c.Context().QueryArgs().Has("page") || c.Context().QueryArgs().Has("limit") || c.Context().QueryArgs().Has("per_page")
 	var employees []models.Employee
-	if err := config.DB.Preload("User").Preload("Division").Preload("Position").Order("id asc").Find(&employees).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch employees"})
+	query := config.DB.Preload("User").Preload("Division").Preload("Position").Preload("HomeLocation").Order("employees.id asc")
+	var total int64
+	if !paginated {
+		if err := query.Find(&employees).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch employees"})
+		}
+	} else {
+		p := readPagination(c)
+		if err := query.Model(&models.Employee{}).Count(&total).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to count employees"})
+		}
+		if err := query.Offset(p.Offset).Limit(p.Limit).Find(&employees).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to paginate home locations"})
+		}
 	}
 	var locations []models.EmployeeHomeLocation
 	config.DB.Find(&locations)
@@ -45,6 +58,10 @@ func GetHomeLocations(c *fiber.Ctx) error {
 			}
 			return nil
 		}()})
+	}
+	if paginated {
+		p := readPagination(c)
+		return c.JSON(fiber.Map{"data": result, "total": total, "page": p.Page, "limit": p.Limit, "total_pages": (total + int64(p.Limit) - 1) / int64(p.Limit)})
 	}
 	return c.JSON(result)
 }

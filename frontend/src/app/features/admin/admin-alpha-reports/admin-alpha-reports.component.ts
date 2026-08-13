@@ -1,28 +1,32 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-admin-alpha-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent],
+  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent],
   templateUrl: './admin-alpha-reports.component.html',
   styleUrls: ['./admin-alpha-reports.component.scss']
 })
 export class AdminAlphaReportsComponent implements OnInit {
+  @ViewChild('paginationBar') paginationBar?: ElementRef<HTMLElement>;
+
   summaries: any[] = [];
   departments: any[] = [];
   projects: any[] = [];
   isLoading = true;
   errorMessage = '';
   expandedEmployeeId: number | null = null;
+  pageSizeOptions = [10, 25, 50, 100];
+  pageSize = 25;
+  currentPage = 1;
 
   filters = {
-    start_date: '',
-    end_date: '',
     department_id: '',
     project_id: '',
     name: '',
@@ -36,22 +40,16 @@ export class AdminAlphaReportsComponent implements OnInit {
   constructor(private http: HttpClient, private authService: AuthService) {}
 
   ngOnInit(): void {
-    const today = new Date();
-    
-    this.filters.start_date = this.toDateInput(today);
-    this.filters.end_date = this.toDateInput(today);
-
     this.loadDepartments();
     this.loadReports();
   }
 
   loadReports(): void {
+    this.currentPage = 1;
     this.isLoading = true;
     this.errorMessage = '';
     const headers = this.getHeaders();
-    let params = new HttpParams()
-      .set('start_date', this.filters.start_date)
-      .set('end_date', this.filters.end_date);
+    let params = new HttpParams();
     if (this.filters.department_id) params = params.set('division_id', this.filters.department_id);
     if (this.filters.project_id) params = params.set('project_id', this.filters.project_id);
     if (this.filters.name) params = params.set('name', this.filters.name);
@@ -72,6 +70,8 @@ export class AdminAlphaReportsComponent implements OnInit {
 
   applySorting(): void {
     if (!this.summaries) return;
+
+    this.currentPage = 1;
     
     if (this.filters.sort_order === 'name_asc') {
       this.summaries.sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
@@ -82,6 +82,68 @@ export class AdminAlphaReportsComponent implements OnInit {
     } else if (this.filters.sort_order === 'count_asc') {
       this.summaries.sort((a, b) => (a.total || 0) - (b.total || 0));
     }
+  }
+
+  onPageSizeChange(): void {
+    this.currentPage = 1;
+    this.ensureValidPage();
+  }
+
+  goToPage(page: number | string): void {
+    if (typeof page !== 'number') return;
+
+    const target = Math.min(Math.max(page, 1), this.totalPages());
+    if (target === this.currentPage) return;
+
+    this.blurActiveControl();
+    this.currentPage = target;
+    this.keepPaginationVisible();
+  }
+
+  get paginationStartIndex(): number {
+    return this.summaries.length === 0 ? 0 : (this.currentPage - 1) * this.pageSize;
+  }
+
+  get paginationEndIndex(): number {
+    return Math.min(this.paginationStartIndex + this.pageSize, this.summaries.length);
+  }
+
+  get displayedSummaries(): any[] {
+    return this.summaries.slice(this.paginationStartIndex, this.paginationEndIndex);
+  }
+
+  private totalPages(): number {
+    return Math.max(1, Math.ceil(this.summaries.length / this.pageSize));
+  }
+
+  private ensureValidPage(): void {
+    if (this.currentPage > this.totalPages()) {
+      this.currentPage = this.totalPages();
+    }
+  }
+
+  private blurActiveControl(): void {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+  }
+
+  private keepPaginationVisible(): void {
+    if (typeof window === 'undefined') return;
+
+    const scrollToPagination = () => {
+      this.paginationBar?.nativeElement.scrollIntoView({
+        behavior: 'auto',
+        block: 'center',
+        inline: 'nearest'
+      });
+    };
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scrollToPagination);
+    });
+    window.setTimeout(scrollToPagination, 80);
   }
 
   loadDepartments(): void {
@@ -106,12 +168,12 @@ export class AdminAlphaReportsComponent implements OnInit {
   }
 
   exportCSV(): void {
-    let params = new HttpParams().set('start_date', this.filters.start_date).set('end_date', this.filters.end_date);
+    let params = new HttpParams();
     if (this.filters.department_id) params = params.set('division_id', this.filters.department_id);
     if (this.filters.project_id) params = params.set('project_id', this.filters.project_id);
     if (this.filters.name) params = params.set('name', this.filters.name);
     this.http.get(`${this.baseUrl}/export`, { headers: this.getHeaders(), params, responseType: 'blob' }).subscribe({
-      next: blob => this.download(blob, `laporan-alpha_${this.filters.start_date}_${this.filters.end_date}.csv`),
+      next: blob => this.download(blob, 'laporan-alpha.csv'),
       error: err => this.errorMessage = err.error?.error || 'Gagal mengekspor laporan ketidakhadiran.'
     });
   }
@@ -143,10 +205,6 @@ export class AdminAlphaReportsComponent implements OnInit {
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
-  }
-
-  private toDateInput(date: Date): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
   private getHeaders(): HttpHeaders {

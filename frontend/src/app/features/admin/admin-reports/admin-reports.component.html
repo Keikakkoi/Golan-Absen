@@ -162,7 +162,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let req of reports" style="border-bottom: 1px solid #e5e7eb;">
+            <tr *ngFor="let req of displayedReports" style="border-bottom: 1px solid #e5e7eb;">
               <td style="padding: 0.75rem;">{{ req.Tanggal | date:'dd MMM yyyy' }}</td>
               <td style="padding: 0.75rem; font-family: monospace;">{{ req.Employee?.NIK }}</td>
               <td style="padding: 0.75rem; font-weight: 500;">{{ req.Employee?.User?.Nama }}</td>
@@ -191,6 +191,16 @@
         <div *ngIf="isLoadingReports" style="padding: 1rem; color: #6b7280; text-align: center;">Memuat rekap laporan...</div>
         <div *ngIf="!isLoadingReports && reports.length === 0 && !errorMessage" style="padding: 1rem; color: #6b7280; text-align: center;">Tidak ada data absensi untuk filter tersebut.</div>
       </div>
+
+      <app-pagination
+        *ngIf="reports.length > 0 || isLoadingReports"
+        [totalItems]="reports.length"
+        [currentPage]="page"
+        [pageSize]="pageSize"
+        [loading]="isLoadingReports"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)">
+      </app-pagination>
     </div>
   </div>
 </div>

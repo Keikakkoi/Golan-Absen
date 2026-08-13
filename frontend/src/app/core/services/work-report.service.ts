@@ -58,6 +58,15 @@ export interface WorkReportDeadline {
   status: 'tepat_waktu' | 'terlambat';
 }
 
+export interface PaginatedWorkReports {
+  data: WorkReport[];
+  total: number;
+  page: number;
+  limit: number;
+  per_page: number;
+  total_pages: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -72,15 +81,19 @@ export class WorkReportService {
   }
 
   // Work Reports
-  getWorkReports(employeeId?: string, startDate?: string, endDate?: string, projectId?: string, forceRefresh = false): Observable<WorkReport[]> {
+  getWorkReports(employeeId?: string, startDate?: string, endDate?: string, projectId?: string, forceRefresh?: false): Observable<WorkReport[]>;
+  getWorkReports(employeeId?: string, startDate?: string, endDate?: string, projectId?: string, forceRefresh?: boolean, page?: number, limit?: number): Observable<WorkReport[] | PaginatedWorkReports>;
+  getWorkReports(employeeId?: string, startDate?: string, endDate?: string, projectId?: string, forceRefresh = false, page?: number, limit?: number): Observable<WorkReport[] | PaginatedWorkReports> {
     let params = new HttpParams();
     if (employeeId) params = params.set('employee_id', employeeId);
     if (startDate) params = params.set('start_date', startDate);
     if (endDate) params = params.set('end_date', endDate);
     if (projectId) params = params.set('project_id', projectId);
     if (forceRefresh) params = params.set('_refresh', Date.now().toString());
+    if (page !== undefined) params = params.set('page', page);
+    if (limit !== undefined) params = params.set('limit', limit);
     
-    return this.http.get<WorkReport[]>(this.apiUrl, { params, headers: this.getHeaders() });
+    return this.http.get<WorkReport[] | PaginatedWorkReports>(this.apiUrl, { params, headers: this.getHeaders() });
   }
 
   createWorkReport(report: WorkReport | FormData): Observable<WorkReport> {

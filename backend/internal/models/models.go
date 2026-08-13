@@ -36,7 +36,6 @@ type User struct {
 	InternshipStartDate *time.Time `gorm:"type:date"`
 	InternshipEndDate   *time.Time `gorm:"type:date"`
 	MentorName          string     `gorm:"size:100"`
-	MentorContact       string     `gorm:"size:100"`
 	InstitutionName     string     `gorm:"size:150"`
 	Employee            Employee
 }

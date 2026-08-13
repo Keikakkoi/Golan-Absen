@@ -61,11 +61,53 @@ func GetAdminCompanyEvents(c *fiber.Ctx) error {
 	query := config.DB.Model(&models.CompanyEvent{})
 	query = applyEventDateFilter(query, c)
 
+	orderedQuery := query.Order("tanggal asc, jam_mulai asc, id asc")
+	page, pageSize, paginated := eventPaginationParams(c)
+	if !paginated {
+		var events []models.CompanyEvent
+		if err := orderedQuery.Find(&events).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memuat event perusahaan"})
+		}
+		return c.JSON(events)
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menghitung event perusahaan"})
+	}
+	totalPages := int64(1)
+	if total > 0 {
+		totalPages = (total + int64(pageSize) - 1) / int64(pageSize)
+	}
+	if int64(page) > totalPages {
+		page = int(totalPages)
+	}
+
 	var events []models.CompanyEvent
-	if err := query.Order("tanggal asc, jam_mulai asc, id asc").Find(&events).Error; err != nil {
+	if err := orderedQuery.Offset((page - 1) * pageSize).Limit(pageSize).Find(&events).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memuat event perusahaan"})
 	}
-	return c.JSON(events)
+	return c.JSON(fiber.Map{
+		"data": events, "total": total, "page": page, "page_size": pageSize, "total_pages": totalPages,
+	})
+}
+
+func eventPaginationParams(c *fiber.Ctx) (int, int, bool) {
+	pageValue, pageErr := strconv.Atoi(strings.TrimSpace(c.Query("page")))
+	pageSizeValue, pageSizeErr := strconv.Atoi(strings.TrimSpace(c.Query("page_size")))
+	if pageErr != nil && pageSizeErr != nil {
+		return 1, 0, false
+	}
+	if pageErr != nil || pageValue < 1 {
+		pageValue = 1
+	}
+	if pageSizeErr != nil || pageSizeValue < 1 {
+		pageSizeValue = 25
+	}
+	if pageSizeValue > 100 {
+		pageSizeValue = 100
+	}
+	return pageValue, pageSizeValue, true
 }
 
 func getFormField(c *fiber.Ctx, keys ...string) string {

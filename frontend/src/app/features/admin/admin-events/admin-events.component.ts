@@ -1,10 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 interface CompanyEvent {
   ID: number;
@@ -33,10 +34,18 @@ interface HolidayItem {
   description: string;
 }
 
+interface PaginatedEventsResponse {
+  data: CompanyEvent[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 @Component({
   selector: 'app-admin-events',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminSidebarComponent],
+  imports: [CommonModule, FormsModule, AdminSidebarComponent, PaginationComponent],
   templateUrl: './admin-events.component.html',
   styleUrls: ['./admin-events.component.scss']
 })
@@ -64,6 +73,10 @@ export class AdminEventsComponent implements OnInit {
     end_date: ''
   };
   tableEvents: CompanyEvent[] = [];
+  tablePage = 1;
+  tablePageSize = 25;
+  tablePageSizeOptions = [10, 25, 50, 100];
+  tableTotal = 0;
   isLoadingTable = false;
 
   form = this.emptyForm();
@@ -118,11 +131,16 @@ export class AdminEventsComponent implements OnInit {
   loadTableEvents(): void {
     if (!this.tableFilters.start_date || !this.tableFilters.end_date) return;
     this.isLoadingTable = true;
-    const start = this.tableFilters.start_date;
-    const end = this.tableFilters.end_date;
-    this.http.get<CompanyEvent[]>(`${this.baseUrl}?start=${start}&end=${end}`, { headers: this.getHeaders() }).subscribe({
-      next: (data) => {
-        this.tableEvents = data || [];
+    let params = new HttpParams()
+      .set('start', this.tableFilters.start_date)
+      .set('end', this.tableFilters.end_date)
+      .set('page', String(this.tablePage))
+      .set('page_size', String(this.tablePageSize));
+    this.http.get<PaginatedEventsResponse>(this.baseUrl, { headers: this.getHeaders(), params }).subscribe({
+      next: (response) => {
+        this.tableEvents = response?.data || [];
+        this.tableTotal = response?.total || 0;
+        this.tablePage = response?.page || 1;
         this.isLoadingTable = false;
       },
       error: (err) => {
@@ -133,6 +151,18 @@ export class AdminEventsComponent implements OnInit {
   }
 
   onTableFilterChange(): void {
+    this.tablePage = 1;
+    this.loadTableEvents();
+  }
+
+  tablePageChanged(page: number): void {
+    this.tablePage = page;
+    this.loadTableEvents();
+  }
+
+  tablePageSizeChanged(size: number): void {
+    this.tablePageSize = size;
+    this.tablePage = 1;
     this.loadTableEvents();
   }
 

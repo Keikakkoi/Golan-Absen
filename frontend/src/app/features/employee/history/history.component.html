@@ -25,7 +25,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let rec of records">
+            <tr *ngFor="let rec of displayedRecords">
               <td>{{ rec.Tanggal | date:'dd MMM yyyy' }}</td>
               <td class="mono-text history-entry-column">{{ rec.JamMasuk ? (rec.JamMasuk | date:'HH:mm:ss') : '-' }}</td>
               <td class="mono-text history-secondary-column">{{ rec.JamPulang ? (rec.JamPulang | date:'HH:mm:ss') : '-' }}</td>
@@ -44,6 +44,7 @@
             </tr>
           </tbody>
         </table>
+        <app-pagination [totalItems]="records.length" [currentPage]="page" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
 
 
         <div *ngIf="!isLoading && records.length === 0" class="empty-state">

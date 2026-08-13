@@ -23,8 +23,8 @@
 
 .leave-table {
   display: table;
-  width: 1060px !important;
-  min-width: 1060px !important;
+  width: max(100%, 1320px) !important;
+  min-width: 1320px !important;
   max-width: none !important;
   table-layout: fixed;
   border-collapse: collapse;
@@ -52,16 +52,16 @@
   font-weight: 700;
   line-height: 1.25;
   text-align: left;
-  white-space: nowrap;
+  white-space: normal;
 }
 .leave-table td { min-height: 56px; }
 .leave-col-employee { width: 190px; }
 .leave-col-type { width: 90px; }
 .leave-col-date { width: 130px; }
 .leave-col-reason { width: 190px; }
-.leave-col-attachment { width: 125px; }
-.leave-col-status { width: 95px; }
-.leave-col-actions { width: 120px; }
+.leave-col-attachment { width: 160px; }
+.leave-col-status { width: 145px; }
+.leave-col-actions { width: 155px; }
 .leave-employee-cell { font-weight: 500; }
 .leave-employee-name,
 .leave-employee-nik { display: block; }
@@ -93,16 +93,16 @@
 @media (min-width: 769px) {
   .leave-table-container { scrollbar-width: thin; }
   .leave-table {
-    width: 100% !important;
-    min-width: 0 !important;
+    width: max(100%, 1320px) !important;
+    min-width: 1320px !important;
   }
-  .leave-col-employee { width: 18%; }
+  .leave-col-employee { width: 17%; }
   .leave-col-type { width: 8%; }
-  .leave-col-date { width: 12%; }
-  .leave-col-reason { width: 18%; }
-  .leave-col-attachment { width: 12%; }
-  .leave-col-status { width: 9%; }
-  .leave-col-actions { width: 11%; }
+  .leave-col-date { width: 11%; }
+  .leave-col-reason { width: 16%; }
+  .leave-col-attachment { width: 13%; }
+  .leave-col-status { width: 12%; }
+  .leave-col-actions { width: 12%; }
   .leave-date-cell { white-space: normal; }
 }
 
@@ -123,14 +123,17 @@
 
 .table-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
   align-items: center;
+  justify-content: flex-start;
+  min-width: max-content;
 }
 
 .action-group {
   display: flex;
-  gap: 0.5rem;
+  flex: 0 0 auto;
+  gap: 0.45rem;
 }
 
 .btn-action {

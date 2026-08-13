@@ -6,16 +6,19 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { RouterLink } from '@angular/router';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-leave-approval',
   standalone: true,
-  imports: [CommonModule, DatePipe, FormsModule, RouterLink, AdminSidebarComponent],
+  imports: [CommonModule, DatePipe, FormsModule, RouterLink, AdminSidebarComponent, PaginationComponent],
   templateUrl: './leave-approval.component.html',
   styleUrls: ['./leave-approval.component.scss']
 })
 export class LeaveApprovalComponent implements OnInit, OnDestroy {
   leaveRequests: any[] = [];
+  pageSize = 25;
+  currentPage = 1;
   isLoading = true;
   errorMessage = '';
   selectedRequest: any = null;
@@ -57,13 +60,15 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     };
   }
 
-  loadLeaveRequests(): void {
+  loadLeaveRequests(resetPage = true): void {
+    if (resetPage) this.currentPage = 1;
     this.isLoading = true;
     const headers = this.getHeaders();
     const params = this.selectedType ? { params: { jenis_izin: this.selectedType }, headers } : { headers };
     this.http.get<any[]>(this.baseUrl, params).subscribe({
       next: (data) => {
-        this.leaveRequests = data;
+        this.leaveRequests = Array.isArray(data) ? data : [];
+        this.ensureValidPage();
         this.isLoading = false;
       },
       error: (err) => {
@@ -73,6 +78,33 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     });
   }
 
+  get paginationStartIndex(): number {
+    return this.leaveRequests.length === 0 ? 0 : (this.currentPage - 1) * this.pageSize;
+  }
+
+  get paginationEndIndex(): number {
+    return Math.min(this.paginationStartIndex + this.pageSize, this.leaveRequests.length);
+  }
+
+  get displayedLeaveRequests(): any[] {
+    return this.leaveRequests.slice(this.paginationStartIndex, this.paginationEndIndex);
+  }
+
+  goToPage(page: number): void {
+    const totalPages = Math.max(1, Math.ceil(this.leaveRequests.length / this.pageSize));
+    this.currentPage = Math.min(Math.max(page, 1), totalPages);
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize = Number(size) || 25;
+    this.currentPage = 1;
+  }
+
+  private ensureValidPage(): void {
+    const totalPages = Math.max(1, Math.ceil(this.leaveRequests.length / this.pageSize));
+    this.currentPage = Math.min(Math.max(this.currentPage, 1), totalPages);
+  }
+
   async updateStatus(id: number, status: string): Promise<void> {
     if (!await this.alert.confirm('Konfirmasi pengajuan', `Apakah Anda yakin ingin melakukan ${status} pengajuan ini?`, 'Ya, proses')) return;
 
@@ -80,7 +112,7 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     this.http.put<any>(`${this.baseUrl}/${id}/approve`, { status }, { headers }).subscribe({
       next: (res) => {
         this.alert.success(`Pengajuan berhasil di-${status.toLowerCase()}`);
-        this.loadLeaveRequests(); // Reload
+        this.loadLeaveRequests(false); // Reload while preserving the active page when possible
       },
       error: (err) => {
         this.alert.error('Gagal memperbarui status', err.error?.error || 'Unknown error');

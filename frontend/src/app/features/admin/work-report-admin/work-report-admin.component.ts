@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -8,21 +8,28 @@ import { AlertService } from '../../../core/services/alert.service';
 import { AuthService } from '../../../core/services/auth.service';
 import Swal from 'sweetalert2';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-work-report-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent],
+  imports: [CommonModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent, PaginationComponent],
   templateUrl: './work-report-admin.component.html',
   styleUrls: ['./work-report-admin.component.scss']
 })
 export class WorkReportAdminComponent implements OnInit {
+  @ViewChild('paginationBar') paginationBar?: ElementRef<HTMLElement>;
+
   reports: WorkReport[] = [];
   allReports: WorkReport[] = [];
   columns: WorkReportColumn[] = [];
   isLoading = true;
   viewMode: 'reports' | 'columns' = 'reports';
   isExportOpen = false;
+  pageSizeOptions = [10, 25, 50, 100];
+  pageSize = 25;
+  currentPage = 1;
+  printAllReports = false;
 
   // Filters
   filterOptions = {
@@ -62,7 +69,7 @@ export class WorkReportAdminComponent implements OnInit {
       this.workReportService.getWorkReports(undefined, this.filterOptions.startDate, this.filterOptions.endDate, this.filterOptions.project_id).subscribe({
         next: (res) => {
           this.allReports = res;
-          this.applyFilters();
+          this.applyFilters(false);
           this.isLoading = false;
         },
         error: () => this.isLoading = false
@@ -103,8 +110,8 @@ export class WorkReportAdminComponent implements OnInit {
     });
   }
 
-  applyFilters() {
-    let temp = this.allReports;
+  applyFilters(resetPage = true) {
+    let temp = [...this.allReports];
 
     // 1. Search (Name, Tugas, Judul)
     if (this.filterOptions.search) {
@@ -170,6 +177,11 @@ export class WorkReportAdminComponent implements OnInit {
     }
 
     this.reports = temp;
+    if (resetPage) {
+      this.currentPage = 1;
+    } else {
+      this.ensureValidPage();
+    }
   }
 
   resetFilters() {
@@ -183,7 +195,127 @@ export class WorkReportAdminComponent implements OnInit {
       status: '',
       sort_order: 'desc'
     };
+    this.currentPage = 1;
     this.loadData();
+  }
+
+  onFilterChange() {
+    this.applyFilters(true);
+  }
+
+  onProjectFilterChange() {
+    this.currentPage = 1;
+    this.loadData();
+  }
+
+  onPageSizeChange() {
+    this.currentPage = 1;
+    this.ensureValidPage();
+  }
+
+  goToPage(page: number | string) {
+    if (typeof page !== 'number') return;
+    this.changeCurrentPage(page);
+  }
+
+  previousPage() {
+    if (this.currentPage > 1) {
+      this.changeCurrentPage(this.currentPage - 1);
+    }
+  }
+
+  nextPage() {
+    if (this.currentPage < this.totalPages()) {
+      this.changeCurrentPage(this.currentPage + 1);
+    }
+  }
+
+  totalPages(): number {
+    return Math.max(1, Math.ceil(this.reports.length / this.pageSize));
+  }
+
+  pageNumbers(): Array<number | string> {
+    const total = this.totalPages();
+    const current = this.currentPage;
+
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    if (current <= 3) {
+      return [1, 2, 3, 4, '...', total];
+    }
+
+    if (current >= total - 2) {
+      return [1, '...', total - 3, total - 2, total - 1, total];
+    }
+
+    const pages: Array<number | string> = [1];
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+
+    if (start > 2) pages.push('...');
+    for (let page = start; page <= end; page++) {
+      pages.push(page);
+    }
+    if (end < total - 1) pages.push('...');
+    pages.push(total);
+
+    return pages;
+  }
+
+  get paginationStartIndex(): number {
+    return this.reports.length === 0 ? 0 : (this.currentPage - 1) * this.pageSize;
+  }
+
+  get paginationEndIndex(): number {
+    return Math.min(this.paginationStartIndex + this.pageSize, this.reports.length);
+  }
+
+  get displayedReports(): WorkReport[] {
+    if (this.printAllReports) {
+      return this.reports;
+    }
+    return this.reports.slice(this.paginationStartIndex, this.paginationEndIndex);
+  }
+
+  private ensureValidPage() {
+    if (this.currentPage > this.totalPages()) {
+      this.currentPage = this.totalPages();
+    }
+  }
+
+  private changeCurrentPage(page: number) {
+    const target = Math.min(Math.max(page, 1), this.totalPages());
+    if (target === this.currentPage) return;
+
+    this.blurActiveControl();
+    this.currentPage = target;
+    this.keepPaginationVisible();
+  }
+
+  private blurActiveControl() {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+  }
+
+  private keepPaginationVisible() {
+    if (typeof window === 'undefined') return;
+
+    const scrollToPagination = () => {
+      this.paginationBar?.nativeElement.scrollIntoView({
+        behavior: 'auto',
+        block: 'center',
+        inline: 'nearest'
+      });
+    };
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scrollToPagination);
+    });
+    window.setTimeout(scrollToPagination, 80);
   }
 
   switchMode(mode: 'reports' | 'columns') {
@@ -456,12 +588,21 @@ export class WorkReportAdminComponent implements OnInit {
 
   exportPDF() {
     this.isExportOpen = false;
-    window.print();
+    this.printReport();
   }
 
   printReport() {
     this.isExportOpen = false;
-    window.print();
+    this.printAllReports = true;
+    setTimeout(() => {
+      const resetPrintMode = () => {
+        this.printAllReports = false;
+        window.removeEventListener('afterprint', resetPrintMode);
+      };
+      window.addEventListener('afterprint', resetPrintMode);
+      window.print();
+      setTimeout(resetPrintMode, 1000);
+    });
   }
 
   getEmployeeName(report: WorkReport): string {

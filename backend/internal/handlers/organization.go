@@ -41,7 +41,7 @@ func SetupOrganizationRoutes(router fiber.Router) {
 
 func GetAvailableManagers(c *fiber.Ctx) error {
 	var managers []models.User
-	if err := config.DB.Where("role = ? AND status = ?", models.RoleManajer, "aktif").Order("nama asc").Find(&managers).Error; err != nil {
+	if err := config.DB.Preload("Employee").Where("role = ? AND status = ?", models.RoleManajer, "aktif").Order("nama asc").Find(&managers).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch available managers"})
 	}
 	return c.JSON(managers)

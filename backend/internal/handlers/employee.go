@@ -52,7 +52,6 @@ type EmployeeRequest struct {
 	InternshipStartDate string      `json:"internship_start_date"`
 	InternshipEndDate   string      `json:"internship_end_date"`
 	MentorName          string      `json:"mentor_name"`
-	MentorContact       string      `json:"mentor_contact"`
 	InstitutionName     string      `json:"institution_name"`
 }
 
@@ -114,6 +113,11 @@ func validateEmployeeAssignments(db *gorm.DB, req *EmployeeRequest, employeeUser
 			}
 			return fmt.Errorf("gagal memeriksa manager")
 		}
+		if req.Role == models.RoleMagang {
+			req.MentorName = manager.Nama
+		}
+	} else if req.Role == models.RoleMagang {
+		req.MentorName = ""
 	}
 	if req.ProjectID != nil {
 		var project models.Project
@@ -473,7 +477,7 @@ func GetAllEmployees(c *fiber.Ctx) error {
 
 	var users []models.User
 	// Include all users so HRD can manage the complete employee directory.
-	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Preload("Project").Preload("Manager").Find(&users).Error; err != nil {
+	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Preload("Project").Preload("Manager").Preload("Manager.Employee").Find(&users).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch employees"})
 	}
 
@@ -584,7 +588,7 @@ func GetEmployeeDetail(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var user models.User
-	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Preload("Project").Preload("Manager").First(&user, c.Params("id")).Error; err != nil {
+	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Preload("Project").Preload("Manager").Preload("Manager.Employee").First(&user, c.Params("id")).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee not found"})
 	}
 	var quotas []models.LeaveQuota
@@ -666,7 +670,6 @@ func CreateEmployee(c *fiber.Ctx) error {
 		ProjectID:       req.ProjectID,
 		TeamID:          req.TeamID,
 		MentorName:      req.MentorName,
-		MentorContact:   req.MentorContact,
 		InstitutionName: req.InstitutionName,
 	}
 	user.InternshipStartDate = parseOptionalDate(req.InternshipStartDate)
@@ -730,6 +733,12 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	if !models.IsValidRole(req.Role) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid role"})
 	}
+	if req.ManagerID != nil && *req.ManagerID == 0 {
+		req.ManagerID = nil
+	}
+	if req.ProjectID != nil && *req.ProjectID == 0 {
+		req.ProjectID = nil
+	}
 	if err := validateEmployeeProfile(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -780,7 +789,6 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	user.ProjectID = req.ProjectID
 	user.TeamID = req.TeamID
 	user.MentorName = req.MentorName
-	user.MentorContact = req.MentorContact
 	user.InstitutionName = req.InstitutionName
 	user.InternshipStartDate = parseOptionalDate(req.InternshipStartDate)
 	user.InternshipEndDate = parseOptionalDate(req.InternshipEndDate)

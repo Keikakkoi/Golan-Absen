@@ -226,7 +226,7 @@ func GetAllLeaveRequests(c *fiber.Ctx) error {
 	}
 
 	var requests []models.LeaveRequest
-	query := config.DB.Preload("Employee.User").Order("created_at desc")
+	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Order("created_at desc")
 	if role == models.RoleManajer {
 		ids, _ := managerTeamIDs(c.Locals("user_id").(uint))
 		if len(ids) == 0 {

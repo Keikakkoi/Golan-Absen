@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"path/filepath"
 	"strconv"
@@ -134,8 +135,10 @@ func GetWorkReports(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 	userRole := string(c.Locals("role").(models.Role))
 
-	var reports []models.WorkReport
-	query := config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").Order("tanggal desc")
+	reports := make([]models.WorkReport, 0)
+	// Count is executed before Find by the pagination helper, so the model
+	// must be explicit instead of relying on Find to infer it from reports.
+	query := config.DB.Model(&models.WorkReport{}).Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").Order("tanggal desc").Order("work_reports.id desc")
 
 	if userRole != string(models.RoleHRD) {
 		var emp models.Employee
@@ -154,13 +157,33 @@ func GetWorkReports(c *fiber.Ctx) error {
 		}
 	}
 
-	startDate := c.Query("start_date")
-	endDate := c.Query("end_date")
-	if startDate != "" && endDate != "" {
-		query = query.Where("tanggal BETWEEN ? AND ?", startDate, endDate)
+	startDate := strings.TrimSpace(c.Query("start_date"))
+	endDate := strings.TrimSpace(c.Query("end_date"))
+	if startDate != "" {
+		if _, parseErr := time.Parse("2006-01-02", startDate); parseErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start_date; expected YYYY-MM-DD"})
+		}
+		query = query.Where("tanggal >= ?", startDate)
+	}
+	if endDate != "" {
+		if _, parseErr := time.Parse("2006-01-02", endDate); parseErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid end_date; expected YYYY-MM-DD"})
+		}
+		query = query.Where("tanggal <= ?", endDate)
+	}
+	if startDate != "" && endDate != "" && startDate > endDate {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "start_date must be on or before end_date"})
 	}
 
+	if hasPaginationQuery(c) {
+		if err := paginatedQuery(c, query, &reports); err != nil {
+			log.Printf("work reports pagination failed: user_id=%d role=%s start_date=%q end_date=%q employee_id=%q: %v", userID, userRole, startDate, endDate, c.Query("employee_id"), err)
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to paginate reports"})
+		}
+		return nil
+	}
 	if err := query.Find(&reports).Error; err != nil {
+		log.Printf("work reports query failed: user_id=%d role=%s start_date=%q end_date=%q employee_id=%q: %v", userID, userRole, startDate, endDate, c.Query("employee_id"), err)
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch reports"})
 	}
 

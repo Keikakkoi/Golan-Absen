@@ -6,11 +6,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { RouterLink } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-admin-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, RouterLink, AdminSidebarComponent],
+  imports: [CommonModule, FormsModule, DatePipe, RouterLink, AdminSidebarComponent, PaginationComponent],
   templateUrl: './admin-reports.component.html',
   styleUrls: ['./admin-reports.component.scss']
 })
@@ -31,6 +32,8 @@ export class AdminReportsComponent implements OnInit {
   isLoadingReports = false;
   isExportOpen = false;
   errorMessage = '';
+  page = 1;
+  pageSize = 25;
 
   filters = {
     start_date: '',
@@ -121,7 +124,7 @@ export class AdminReportsComponent implements OnInit {
   }
 
   onLocalFilterChange(): void {
-    this.applyFilters();
+    this.applyFilters(true);
   }
 
   private setPeriodDates(period: string): void {
@@ -160,7 +163,7 @@ export class AdminReportsComponent implements OnInit {
     this.http.get<any[]>(`${this.baseReportUrl}${queryParams}`, { headers }).subscribe({
       next: (data) => {
         this.allReports = data || [];
-        this.applyFilters();
+        this.applyFilters(false);
         this.isLoadingReports = false;
       },
       error: (err) => {
@@ -171,8 +174,8 @@ export class AdminReportsComponent implements OnInit {
     });
   }
 
-  applyFilters(): void {
-    let temp = this.allReports;
+  applyFilters(resetPage = true): void {
+    let temp = [...this.allReports];
 
     if (this.filters.search) {
       const q = this.filters.search.toLowerCase();
@@ -198,6 +201,37 @@ export class AdminReportsComponent implements OnInit {
     }
 
     this.reports = temp;
+    if (resetPage) {
+      this.page = 1;
+    } else {
+      this.ensureValidPage();
+    }
+  }
+
+  get paginationStartIndex(): number {
+    return this.reports.length === 0 ? 0 : (this.page - 1) * this.pageSize;
+  }
+
+  get paginationEndIndex(): number {
+    return Math.min(this.paginationStartIndex + this.pageSize, this.reports.length);
+  }
+
+  get displayedReports(): any[] {
+    return this.reports.slice(this.paginationStartIndex, this.paginationEndIndex);
+  }
+
+  onPageChange(page: number): void {
+    this.page = page;
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    this.pageSize = pageSize;
+    this.page = 1;
+  }
+
+  private ensureValidPage(): void {
+    const totalPages = Math.max(1, Math.ceil(this.reports.length / this.pageSize));
+    if (this.page > totalPages) this.page = totalPages;
   }
 
   toggleExportDropdown(): void {

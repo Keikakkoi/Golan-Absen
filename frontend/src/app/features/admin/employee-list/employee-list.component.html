@@ -115,7 +115,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let emp of filteredEmployees">
+            <tr *ngFor="let emp of displayedEmployees">
               <td data-label="ID"><span class="employee-cell-value">{{ emp.ID }}</span></td>
               <td data-label="Foto">
                 <img *ngIf="emp.Employee?.FotoProfilURL" class="employee-photo-thumb" [src]="emp.Employee.FotoProfilURL" [alt]="'Pas foto ' + emp.Nama" />
@@ -155,6 +155,18 @@
         <div *ngIf="!isLoading && employees.length === 0" class="empty-state">
           Tidak ada data karyawan yang ditemukan.
         </div>
+      </div>
+
+      <div class="no-print" *ngIf="!isLoading || filteredEmployees.length > 0">
+        <app-pagination
+          [totalItems]="filteredEmployees.length"
+          [currentPage]="currentPage"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="pageSizeOptions"
+          [loading]="isLoading"
+          (pageChange)="goToPage($event)"
+          (pageSizeChange)="pageSize = $event; onPageSizeChange()">
+        </app-pagination>
       </div>
     </div>
   </div>
@@ -225,10 +237,6 @@
             <strong class="detail-value">{{ selectedDetail.MentorName || '-' }}</strong>
           </div>
           <div class="detail-item">
-            <span class="detail-label">Kontak Manajer</span>
-            <strong class="detail-value">{{ selectedDetail.MentorContact || '-' }}</strong>
-          </div>
-          <div class="detail-item">
             <span class="detail-label">Periode Mulai Magang</span>
             <strong class="detail-value">{{ formatJoinDate(selectedDetail.InternshipStartDate) }}</strong>
           </div>
@@ -283,7 +291,7 @@
         <div class="form-group-row">
           <div class="form-group">
             <label>Role</label>
-            <select [(ngModel)]="formData.role" name="role" class="form-control">
+            <select [(ngModel)]="formData.role" (ngModelChange)="onRoleChange()" name="role" class="form-control">
               <option value="Karyawan">Karyawan</option>
               <option value="HRD">HRD</option>
               <option value="MAGANG">MAGANG</option>
@@ -327,8 +335,8 @@
 
         <div class="form-group-row">
           <div class="form-group">
-            <label>Manager (opsional)</label>
-            <select [(ngModel)]="formData.manager_id" name="manager_id" class="form-control">
+            <label>{{ formData.role === 'MAGANG' ? 'Manager pembimbing' : 'Manager (opsional)' }}</label>
+            <select [(ngModel)]="formData.manager_id" (ngModelChange)="onManagerChange()" name="manager_id" class="form-control">
               <option [ngValue]="null">Tidak ada manager</option>
               <option *ngFor="let manager of managers" [ngValue]="manager.ID">{{ manager.ID }} - {{ manager.Nama }}</option>
             </select>
@@ -345,11 +353,11 @@
         </div>
         <div class="form-group-row" *ngIf="formData.role === 'MAGANG'">
           <div class="form-group"><label>Institusi Pendidikan</label><input [(ngModel)]="formData.institution_name" name="institution_name" class="form-control" /></div>
-          <div class="form-group"><label>Nama Manajer</label><input [(ngModel)]="formData.mentor_name" name="mentor_name" class="form-control" /></div>
+          <div class="form-group"><label>Nama Manajer</label><input [(ngModel)]="formData.mentor_name" name="mentor_name" class="form-control" readonly /></div>
         </div>
-        <div class="form-group-row" *ngIf="formData.role === 'MAGANG'">
-          <div class="form-group"><label>Kontak Manajer</label><input [(ngModel)]="formData.mentor_contact" name="mentor_contact" class="form-control" /></div>
-          <div class="form-group"><label>Periode Magang</label><div class="form-group-row"><input type="date" [(ngModel)]="formData.internship_start_date" name="internship_start_date" class="form-control" /><input type="date" [(ngModel)]="formData.internship_end_date" name="internship_end_date" class="form-control" /></div></div>
+        <div class="form-group" *ngIf="formData.role === 'MAGANG'">
+          <label>Periode Magang</label>
+          <div class="form-group-row"><input type="date" [(ngModel)]="formData.internship_start_date" name="internship_start_date" class="form-control" /><input type="date" [(ngModel)]="formData.internship_end_date" name="internship_end_date" class="form-control" /></div>
         </div>
 
         <div class="form-group">

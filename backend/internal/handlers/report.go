@@ -338,34 +338,6 @@ type AlphaReportSummary struct {
 	Details    []AlphaDetail `json:"details"`
 }
 
-func reportDateRange(c *fiber.Ctx) (time.Time, time.Time, error) {
-	now := attendanceNow()
-	workDate := attendanceBusinessDate(now)
-	startValue := c.Query("start_date")
-	endValue := c.Query("end_date")
-	if startValue == "" {
-		startValue = workDate.Format("2006-01-02")[:8] + "01"
-	}
-	if endValue == "" {
-		endValue = workDate.Format("2006-01-02")
-	}
-	start, err := time.ParseInLocation("2006-01-02", startValue, now.Location())
-	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("start_date harus berformat YYYY-MM-DD")
-	}
-	end, err := time.ParseInLocation("2006-01-02", endValue, now.Location())
-	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("end_date harus berformat YYYY-MM-DD")
-	}
-	if end.Before(start) {
-		return time.Time{}, time.Time{}, fmt.Errorf("end_date tidak boleh lebih awal dari start_date")
-	}
-	if end.Sub(start) > 366*24*time.Hour {
-		return time.Time{}, time.Time{}, fmt.Errorf("periode laporan maksimal 366 hari")
-	}
-	return start, end, nil
-}
-
 func scheduleStartTime(schedule models.WorkSchedule, date time.Time) (time.Time, error) {
 	clock := strings.TrimSpace(schedule.JamMulai)
 	parsed, err := time.Parse("15:04:05", clock)
@@ -385,10 +357,6 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	}
 	_ = closeExpiredAttendanceRecords(attendanceNow())
 
-	startDate, endDate, err := reportDateRange(c)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-	}
 	workingDays := map[int]bool{1: true, 2: true, 3: true, 4: true, 5: true}
 
 	var employees []models.Employee
@@ -425,7 +393,7 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	}
 
 	var records []models.AttendanceRecord
-	if err := config.DB.Where("tanggal::date BETWEEN ? AND ?", startDate.Format("2006-01-02"), endDate.Format("2006-01-02")).Find(&records).Error; err != nil {
+	if err := config.DB.Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch attendance records"})
 	}
 	attendanceByEmployeeDate := make(map[string]models.AttendanceRecord)
@@ -434,13 +402,13 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	}
 
 	var holidays []models.Holiday
-	config.DB.Where("tanggal BETWEEN ? AND ?", startDate, endDate).Find(&holidays)
+	config.DB.Find(&holidays)
 	holidayDates := make(map[string]bool)
 	for _, holiday := range holidays {
 		holidayDates[holiday.Tanggal.Format("2006-01-02")] = true
 	}
 	var leaves []models.LeaveRequest
-	config.DB.Where("status = ? AND tanggal_mulai <= ? AND tanggal_selesai >= ?", models.LeaveStatusApproved, endDate, startDate).Find(&leaves)
+	config.DB.Where("status = ?", models.LeaveStatusApproved).Find(&leaves)
 	leaveDates := make(map[string]bool)
 	for _, leave := range leaves {
 		for day := leave.TanggalMulai; !day.After(leave.TanggalSelesai); day = day.AddDate(0, 0, 1) {
@@ -476,12 +444,13 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 			item.Details = append(item.Details, AlphaDetail{Tanggal: record.Tanggal, Keterangan: "Status Alpha tercatat"})
 		}
 	}
-	today := time.Now().In(startDate.Location())
+	today := attendanceNow()
 	lastCompletedDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location()).AddDate(0, 0, -1)
-	if endDate.Before(lastCompletedDay) {
-		lastCompletedDay = endDate
-	}
 	for _, employee := range employees {
+		startDate := employee.TanggalBergabung
+		if startDate.IsZero() {
+			startDate = lastCompletedDay
+		}
 		for day := startDate; !day.After(lastCompletedDay); day = day.AddDate(0, 0, 1) {
 			// time.Weekday uses Sunday=0, while the persisted schedule uses
 			// the documented Monday=1 ... Sunday=7 convention.
@@ -529,10 +498,6 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	// Fiber handlers write JSON to the response; invoking the calculation again
 	// here would make the CSV diverge, so we calculate the compact CSV inputs
 	// directly from the already authoritative endpoint response shape.
-	startDate, endDate, err := reportDateRange(c)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
-	}
 	divisionID := c.Query("division_id")
 	projectID := c.Query("project_id")
 	var employees []models.Employee
@@ -551,17 +516,17 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	}
 	workingDays := map[int]bool{1: true, 2: true, 3: true, 4: true, 5: true}
 	var records []models.AttendanceRecord
-	if err := config.DB.Where("tanggal::date BETWEEN ? AND ?", startDate.Format("2006-01-02"), endDate.Format("2006-01-02")).Find(&records).Error; err != nil {
+	if err := config.DB.Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to export alpha reports"})
 	}
 	var holidays []models.Holiday
-	config.DB.Where("tanggal BETWEEN ? AND ?", startDate, endDate).Find(&holidays)
+	config.DB.Find(&holidays)
 	holidayDates := make(map[string]bool)
 	for _, holiday := range holidays {
 		holidayDates[holiday.Tanggal.Format("2006-01-02")] = true
 	}
 	var leaves []models.LeaveRequest
-	config.DB.Where("status = ? AND tanggal_mulai <= ? AND tanggal_selesai >= ?", models.LeaveStatusApproved, endDate, startDate).Find(&leaves)
+	config.DB.Where("status = ?", models.LeaveStatusApproved).Find(&leaves)
 	leaveDates := make(map[string]bool)
 	for _, leave := range leaves {
 		for day := leave.TanggalMulai; !day.After(leave.TanggalSelesai); day = day.AddDate(0, 0, 1) {
@@ -572,11 +537,8 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	for _, record := range records {
 		attendance[fmt.Sprintf("%d:%s", record.EmployeeID, record.Tanggal.Format("2006-01-02"))] = record
 	}
-	today := time.Now().In(startDate.Location())
+	today := attendanceNow()
 	lastCompletedDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location()).AddDate(0, 0, -1)
-	if endDate.Before(lastCompletedDay) {
-		lastCompletedDay = endDate
-	}
 	c.Set("Content-Type", "text/csv; charset=utf-8")
 	c.Set("Content-Disposition", `attachment; filename="laporan-ketidakhadiran-alpha.csv"`)
 	writer := csv.NewWriter(c.Response().BodyWriter())
@@ -601,6 +563,10 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 		}
 	}
 	for _, employee := range employees {
+		startDate := employee.TanggalBergabung
+		if startDate.IsZero() {
+			startDate = lastCompletedDay
+		}
 		for day := startDate; !day.After(lastCompletedDay); day = day.AddDate(0, 0, 1) {
 			weekday := int(day.Weekday())
 			if weekday == 0 {

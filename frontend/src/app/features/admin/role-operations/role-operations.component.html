@@ -87,7 +87,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let row of logbooks">
+            <tr *ngFor="let row of displayedLogbooks">
               <td>{{ (row.tanggal || row.Tanggal || row.CreatedAt) | date:'dd MMM yyyy' }}</td>
               <td>
                 <div style="font-weight: 600;">{{ row.Employee?.User?.Nama || row.User?.Nama || '-' }}</div>
@@ -137,6 +137,38 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div #logbookPaginationBar class="pagination-bar no-print" *ngIf="logbooks.length > 0">
+        <div class="pagination-info">
+          Menampilkan {{ logbookPaginationStartIndex + 1 }}-{{ logbookPaginationEndIndex }} dari {{ logbooks.length }} data
+        </div>
+
+        <div class="page-size-control">
+          <label for="logbook-page-size">Data per halaman</label>
+          <select id="logbook-page-size" class="filter-input page-size-select" [(ngModel)]="logbookPageSize" (ngModelChange)="onLogbookPageSizeChange()">
+            <option *ngFor="let size of logbookPageSizeOptions" [ngValue]="size">{{ size }}</option>
+          </select>
+        </div>
+
+        <nav class="pagination-controls" aria-label="Navigasi halaman verifikasi logbook magang">
+          <button class="pagination-button" type="button" (click)="previousLogbookPage()" [disabled]="logbookCurrentPage === 1">
+            Previous
+          </button>
+          <button
+            *ngFor="let page of logbookPageNumbers()"
+            class="pagination-button page-number"
+            type="button"
+            [class.active]="page === logbookCurrentPage"
+            [class.ellipsis]="page === '...'"
+            [disabled]="page === '...'"
+            (click)="goToLogbookPage(page)">
+            {{ page }}
+          </button>
+          <button class="pagination-button" type="button" (click)="nextLogbookPage()" [disabled]="logbookCurrentPage === logbookTotalPages()">
+            Next
+          </button>
+        </nav>
       </div>
     </section>
     <section class="golan-card panel">
@@ -188,6 +220,16 @@
 
       <div class="golan-table-responsive">
         <table class="golan-table role-operations-certificate-table">
+          <colgroup>
+            <col class="col-certificate-participant">
+            <col class="col-certificate-institution">
+            <col class="col-certificate-end-date">
+            <col class="col-certificate-status">
+            <col class="col-certificate-file">
+            <col class="col-certificate-score">
+            <col class="col-certificate-graduation">
+            <col class="col-certificate-actions">
+          </colgroup>
           <thead>
             <tr>
               <th>Peserta</th>
@@ -195,7 +237,8 @@
               <th>Tanggal Selesai</th>
               <th>Status Sertifikat</th>
               <th>File Sertifikat</th>
-              <th>Dokumen Nilai &amp; Keterangan Lulus</th>
+              <th>Dokumen Nilai Magang</th>
+              <th>Keterangan Lulus</th>
               <th>Aksi &amp; Upload</th>
             </tr>
           </thead>
@@ -219,15 +262,25 @@
                 </span>
               </td>
               <td data-label="File Sertifikat">
-                <a *ngIf="row.file_url" [href]="row.file_url" target="_blank" rel="noopener" class="cert-link btn-view-detail compact" title="Lihat sertifikat">
-                  <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 4px;"></i> {{ row.file_name || 'Lihat File' }}
+                <a *ngIf="row.file_url" [href]="row.file_url" target="_blank" rel="noopener" class="cert-link certificate-file-card" title="Lihat sertifikat">
+                  <i class="fas fa-file-pdf"></i>
+                  <span>{{ row.file_name || 'Lihat File' }}</span>
                 </a>
-                <span *ngIf="!row.file_url" style="color: var(--muted-color);">-</span>
+                <span *ngIf="!row.file_url" class="muted-file">-</span>
               </td>
-              <td data-label="Dokumen Nilai & Keterangan Lulus">
-                <div class="document-file-list">
-                  <div *ngFor="let docType of ['nilai_magang', 'keterangan_lulus']"><strong>{{ docType === 'nilai_magang' ? 'Nilai Magang' : 'Keterangan Lulus' }}</strong><a *ngIf="row[docType]?.available && row[docType].file_url" [href]="row[docType].file_url" target="_blank" rel="noopener" class="cert-link" title="Lihat dokumen"><i class="fas fa-file-pdf"></i>{{ row[docType].file_name || 'Lihat File' }}</a><span *ngIf="!row[docType]?.available || !row[docType].file_url" class="muted-file">-</span></div>
-                </div>
+              <td data-label="Dokumen Nilai Magang">
+                <a *ngIf="row.nilai_magang?.available && row.nilai_magang.file_url" [href]="row.nilai_magang.file_url" target="_blank" rel="noopener" class="cert-link certificate-file-card" title="Lihat nilai magang">
+                  <i class="fas fa-file-pdf"></i>
+                  <span>{{ row.nilai_magang.file_name || 'Lihat File' }}</span>
+                </a>
+                <span *ngIf="!row.nilai_magang?.available || !row.nilai_magang.file_url" class="muted-file">-</span>
+              </td>
+              <td data-label="Keterangan Lulus">
+                <a *ngIf="row.keterangan_lulus?.available && row.keterangan_lulus.file_url" [href]="row.keterangan_lulus.file_url" target="_blank" rel="noopener" class="cert-link certificate-file-card" title="Lihat keterangan lulus">
+                  <i class="fas fa-file-pdf"></i>
+                  <span>{{ row.keterangan_lulus.file_name || 'Lihat File' }}</span>
+                </a>
+                <span *ngIf="!row.keterangan_lulus?.available || !row.keterangan_lulus.file_url" class="muted-file">-</span>
               </td>
               <td data-label="Aksi & Upload">
                 <div class="document-actions">
@@ -237,7 +290,7 @@
               </td>
             </tr>
             <tr *ngIf="!certificates.length" class="certificate-empty-row">
-              <td colspan="7" style="text-align: center; color: var(--muted-color); padding: 24px;">Tidak ada sertifikat magang pada filter ini.</td>
+              <td colspan="8" style="text-align: center; color: var(--muted-color); padding: 24px;">Tidak ada sertifikat magang pada filter ini.</td>
             </tr>
           </tbody>
         </table>

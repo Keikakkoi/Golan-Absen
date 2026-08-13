@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/csv"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -168,9 +169,14 @@ func GetManagerTeamReports(c *fiber.Ctx) error {
 		ids = append(ids, employee.ID)
 	}
 	if len(ids) == 0 {
+		if hasPaginationQuery(c) {
+			return c.JSON(fiber.Map{"data": []models.WorkReport{}, "total": 0, "page": 1, "limit": readPagination(c).Limit, "per_page": readPagination(c).Limit, "total_pages": 0})
+		}
 		return c.JSON([]models.WorkReport{})
 	}
-	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Attachments").Where("employee_id IN ?", ids).Order("tanggal desc")
+	// Set the model explicitly. Find can infer it from the destination slice,
+	// but pagination calls Count before Find and GORM cannot infer a model there.
+	query := config.DB.Model(&models.WorkReport{}).Preload("Employee.User").Preload("Employee.Division").Preload("Attachments").Where("employee_id IN ?", ids).Order("tanggal desc").Order("work_reports.id desc")
 	if employeeID := c.Query("employee_id"); employeeID != "" {
 		id, parseErr := strconv.Atoi(employeeID)
 		if parseErr != nil {
@@ -189,15 +195,39 @@ func GetManagerTeamReports(c *fiber.Ctx) error {
 			}
 		}
 		if len(matchingIDs) == 0 {
+			if hasPaginationQuery(c) {
+				return c.JSON(fiber.Map{"data": []models.WorkReport{}, "total": 0, "page": 1, "limit": readPagination(c).Limit, "per_page": readPagination(c).Limit, "total_pages": 0})
+			}
 			return c.JSON([]models.WorkReport{})
 		}
 		query = query.Where("employee_id IN ?", matchingIDs)
 	}
-	if start, end := c.Query("start_date"), c.Query("end_date"); start != "" && end != "" {
-		query = query.Where("tanggal BETWEEN ? AND ?", start, end)
+	start, end := strings.TrimSpace(c.Query("start_date")), strings.TrimSpace(c.Query("end_date"))
+	if start != "" {
+		if _, parseErr := time.Parse("2006-01-02", start); parseErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start_date; expected YYYY-MM-DD"})
+		}
+		query = query.Where("tanggal >= ?", start)
 	}
-	var reports []models.WorkReport
+	if end != "" {
+		if _, parseErr := time.Parse("2006-01-02", end); parseErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid end_date; expected YYYY-MM-DD"})
+		}
+		query = query.Where("tanggal <= ?", end)
+	}
+	if start != "" && end != "" && start > end {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "start_date must be on or before end_date"})
+	}
+	reports := make([]models.WorkReport, 0)
+	if hasPaginationQuery(c) {
+		if err := paginatedQuery(c, query, &reports); err != nil {
+			log.Printf("manager team reports pagination failed: manager_id=%d start_date=%q end_date=%q search=%q: %v", managerID, start, end, c.Query("search"), err)
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to paginate team reports"})
+		}
+		return nil
+	}
 	if err := query.Find(&reports).Error; err != nil {
+		log.Printf("manager team reports query failed: manager_id=%d start_date=%q end_date=%q search=%q: %v", managerID, start, end, c.Query("search"), err)
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to load team reports"})
 	}
 	return c.JSON(reports)

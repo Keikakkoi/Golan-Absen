@@ -5,11 +5,12 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-team-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent],
+  imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent],
   templateUrl: './team-reports.component.html',
   styleUrls: ['./team-reports.component.scss']
 })
@@ -18,12 +19,16 @@ export class TeamReportsComponent implements OnInit {
   end = '';
   search = '';
   reports: any[] = [];
+  private allReports: any[] = [];
+  private serverPaginated = false;
   error = '';
   success = '';
   isLoading = false;
   isRefreshing = false;
   page = 1;
-  readonly pageSize = 10;
+  pageSize = 25;
+  totalItems = 0;
+  pageSizeOptions = [10, 25, 50, 100];
   isExportOpen = false;
   notes: { [id: number]: string } = {};
 
@@ -48,12 +53,25 @@ export class TeamReportsComponent implements OnInit {
     if (this.start) params = params.set('start_date', this.start);
     if (this.end) params = params.set('end_date', this.end);
     if (this.search) params = params.set('search', this.search);
+    params = params.set('page', this.page).set('limit', this.pageSize);
     // Prevent an intermediary/browser cache from returning the old report list.
     params = params.set('_refresh', Date.now().toString());
 
-    this.http.get<any[]>('http://localhost:8080/api/v1/manager/team/reports', { params, headers: this.headers() }).subscribe({
-      next: data => {
-        this.reports = data || [];
+    this.http.get<any>('http://localhost:8080/api/v1/manager/team/reports', { params, headers: this.headers() }).subscribe({
+      next: response => {
+        const paginated = !Array.isArray(response) && Array.isArray(response?.data);
+        if (paginated) {
+          this.reports = (response.data || []).slice(0, this.pageSize);
+          this.allReports = [];
+          this.totalItems = Number(response.total || 0);
+          this.serverPaginated = true;
+        } else {
+          this.allReports = response || [];
+          this.reports = this.allReports.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
+          this.totalItems = this.allReports.length;
+          this.serverPaginated = false;
+        }
+        this.page = paginated ? Number(response.page || this.page) : Math.min(this.page, this.totalPages());
         for (const row of this.reports) {
           const id = row.id || row.ID;
           if (id) {
@@ -91,17 +109,30 @@ export class TeamReportsComponent implements OnInit {
   }
 
   get pagedReports(): any[] {
-    const start = (this.page - 1) * this.pageSize;
-    return this.reports.slice(start, start + this.pageSize);
+    return this.serverPaginated
+      ? this.reports
+      : this.allReports.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
   }
 
   totalPages(): number {
-    return Math.max(1, Math.ceil(this.reports.length / this.pageSize));
+    return Math.max(1, Math.ceil(this.totalItems / this.pageSize));
   }
 
   changePage(delta: number): void {
     const next = this.page + delta;
     if (next >= 1 && next <= this.totalPages()) this.page = next;
+  }
+
+  pageChanged(page: number): void {
+    if (page === this.page) return;
+    this.page = page;
+    this.load();
+  }
+
+  pageSizeChanged(size: number): void {
+    this.pageSize = size;
+    this.page = 1;
+    this.load();
   }
 
   reviewLogbook(id: number, status: 'approved' | 'rejected'): void {

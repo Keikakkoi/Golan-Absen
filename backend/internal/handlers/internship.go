@@ -29,7 +29,7 @@ func SetupInternshipRoutes(api fiber.Router) {
 
 func getInternUser(c *fiber.Ctx) (models.User, error) {
 	var user models.User
-	err := config.DB.Preload("Employee").Where("id = ? AND role = ?", c.Locals("user_id").(uint), models.RoleMagang).First(&user).Error
+	err := config.DB.Preload("Employee").Preload("Manager", "role = ?", models.RoleManajer).Preload("Manager.Employee").Preload("Manager.Employee.Division").Preload("Manager.Employee.Position").Preload("Manager.Employee.HomeLocation").Where("id = ? AND role = ?", c.Locals("user_id").(uint), models.RoleMagang).First(&user).Error
 	return user, err
 }
 
@@ -88,7 +88,67 @@ func GetInternshipMentor(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Intern profile not found"})
 	}
-	return c.JSON(fiber.Map{"name": user.MentorName, "contact": user.MentorContact, "institution": user.InstitutionName})
+	// manager_id is the authoritative relation. Do not fall back to mentor_name,
+	// because that legacy snapshot can be stale after an admin changes a profile.
+	result := fiber.Map{
+		"manager_id":    user.ManagerID,
+		"name":          "",
+		"photo_url":     "",
+		"gender":        "",
+		"phone":         "",
+		"email":         "",
+		"address":       "",
+		"position":      "",
+		"department":    "",
+		"shift":         "",
+		"home_location": "",
+		"institution":   user.InstitutionName,
+	}
+
+	if user.ManagerID == nil {
+		return c.JSON(result)
+	}
+
+	// Load the manager and employee through their concrete keys. This mirrors
+	// Manajemen Data Karyawan and avoids relying on nested self-relation
+	// preloading, which can leave Employee empty while the User row is present.
+	var manager models.User
+	if config.DB.Where("id = ? AND role = ? AND status = ?", *user.ManagerID, models.RoleManajer, "aktif").First(&manager).Error != nil {
+		return c.JSON(result)
+	}
+	result["name"] = manager.Nama
+	result["email"] = manager.Email
+
+	var emp models.Employee
+	if config.DB.Preload("Division").Preload("Position").Preload("HomeLocation").Where("user_id = ?", manager.ID).First(&emp).Error != nil {
+		return c.JSON(result)
+	}
+
+	result["photo_url"] = emp.FotoProfilURL
+	result["gender"] = emp.JenisKelamin
+	result["phone"] = emp.NomorTelepon
+	result["address"] = emp.Alamat
+	result["position"] = emp.Position.NamaJabatan
+	result["department"] = emp.Division.NamaDivisi
+	result["shift"] = emp.ShiftKerja
+	if emp.HomeLocation != nil {
+		result["home_location"] = emp.HomeLocation.AlamatRumah
+		if emp.HomeLocation.AlamatRumah == "" {
+			result["home_location"] = emp.HomeLocation.GoogleMapsURL
+		}
+	}
+
+	// Resolve the latest manager-specific schedule without using a random/global
+	// schedule. The legacy ShiftKerja value remains the safe fallback.
+	var schedule models.WorkSchedule
+	today := attendanceBusinessDate(attendanceNow())
+	if config.DB.Where("employee_id = ? AND (tanggal IS NULL OR tanggal <= ?)", emp.ID, today).Order("tanggal desc NULLS LAST, id desc").First(&schedule).Error == nil {
+		result["shift"] = schedule.NamaShift
+		if schedule.JamMulai != "" && schedule.JamSelesai != "" {
+			result["shift"] = fmt.Sprintf("%s (%s - %s)", schedule.NamaShift, schedule.JamMulai, schedule.JamSelesai)
+		}
+	}
+	return c.JSON(result)
 }
 
 func GetInternshipStatistics(c *fiber.Ctx) error {
@@ -330,6 +390,12 @@ func GetInternshipLogbooks(c *fiber.Ctx) error {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid logbook status"})
 		}
 		query = query.Where("status_logbook = ?", status)
+	}
+	if c.Context().QueryArgs().Has("page") || c.Context().QueryArgs().Has("limit") || c.Context().QueryArgs().Has("per_page") {
+		if err := paginatedQuery(c, query, &reports); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to paginate logbooks"})
+		}
+		return nil
 	}
 	if err := query.Find(&reports).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch logbooks"})

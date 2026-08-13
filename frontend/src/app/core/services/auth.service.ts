@@ -120,7 +120,7 @@ export class AuthService {
     if (!token) return new Observable(sub => sub.complete());
 
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
-    return this.http.get<any>(`http://localhost:8080/api/v1/employees/profile`, { headers }).pipe(
+    return this.http.get<any>(`http://localhost:8080/api/v1/employee/profile`, { headers }).pipe(
       tap(profile => {
         if (profile.permissions) {
           localStorage.setItem('permissions', JSON.stringify(profile.permissions));

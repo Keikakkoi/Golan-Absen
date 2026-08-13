@@ -6,11 +6,12 @@ import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-admin-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminSidebarComponent],
+  imports: [CommonModule, FormsModule, AdminSidebarComponent, PaginationComponent],
   templateUrl: './admin-management.component.html',
   styleUrls: ['./admin-management.component.scss']
 })
@@ -42,6 +43,10 @@ export class AdminManagementComponent implements OnInit {
   ];
 
   homeRows: any[] = [];
+  homeTotal = 0;
+  homePage = 1;
+  homePageSize = 25;
+  homeTotalPages = 1;
   selectedHome: any = null;
   homeForm: any = { latitude_rumah: null, longitude_rumah: null, radius_meter: 100, alamat_rumah: '', google_maps_url: '' };
 
@@ -187,7 +192,34 @@ export class AdminManagementComponent implements OnInit {
   }
 
   loadHomeLocations(): void {
-    this.http.get<any[]>(`${this.api}/admin/home-locations`, { headers: this.headers() }).subscribe({ next: data => { this.homeRows = data || []; this.isLoading = false; }, error: err => this.fail(err) });
+    const params = new HttpParams().set('page', this.homePage).set('limit', this.homePageSize);
+    this.http.get<any>(`${this.api}/admin/home-locations`, { headers: this.headers(), params }).subscribe({
+      next: response => {
+        this.homeRows = response?.data || [];
+        this.homeTotal = Number(response?.total || 0);
+        this.homePage = Math.max(1, Number(response?.page || this.homePage));
+        this.homePageSize = Number(response?.limit || this.homePageSize);
+        this.homeTotalPages = Math.max(1, Number(response?.total_pages || Math.ceil(this.homeTotal / this.homePageSize)));
+        if (this.homePage > this.homeTotalPages) {
+          this.homePage = this.homeTotalPages;
+          this.loadHomeLocations();
+          return;
+        }
+        this.isLoading = false;
+      },
+      error: err => this.fail(err)
+    });
+  }
+
+  homePageChanged(page: number): void {
+    this.homePage = page;
+    this.loadHomeLocations();
+  }
+
+  homePageSizeChanged(size: number): void {
+    this.homePageSize = size;
+    this.homePage = 1;
+    this.loadHomeLocations();
   }
 
   editHome(row: any): void {

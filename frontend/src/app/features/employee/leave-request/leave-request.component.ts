@@ -6,11 +6,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { RouterLink } from '@angular/router';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-leave-request',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, RouterLink, SharedSidebarComponent],
+  imports: [CommonModule, FormsModule, DatePipe, RouterLink, SharedSidebarComponent, PaginationComponent],
   templateUrl: './leave-request.component.html',
   styleUrls: ['./leave-request.component.scss']
 })
@@ -22,6 +23,11 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   leaveRequests: any[] = [];
   isLoading = true;
   isSubmitting = false;
+  page = 1;
+  pageSize = 25;
+  get displayedLeaveRequests(): any[] { return this.leaveRequests.slice((this.page - 1) * this.pageSize, this.page * this.pageSize); }
+  pageChanged(page: number): void { this.page = page; }
+  pageSizeChanged(size: number): void { this.pageSize = size; this.page = 1; }
 
   formData = {
     jenis_izin: 'Sakit',
@@ -97,6 +103,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     this.http.get<any[]>(this.baseUrl, { headers }).subscribe({
       next: (data) => {
         this.leaveRequests = data;
+        this.page = 1;
         this.isLoading = false;
       },
       error: (err) => {

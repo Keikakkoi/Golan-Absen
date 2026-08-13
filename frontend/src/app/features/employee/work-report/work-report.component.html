@@ -87,7 +87,7 @@
             </thead>
             <tbody>
               <tr *ngFor="let r of reports; let i = index">
-                <td>{{ i + 1 }}</td>
+                <td>{{ ((currentPage - 1) * pageSize) + i + 1 }}</td>
                 <td>{{ r.tanggal | date:'dd MMM yyyy' }}</td>
                 <td>{{ userDivisi }}</td>
                 <td style="min-width: 250px; white-space: normal; line-height: 1.4;" [title]="r.tugas || '-'">{{ r.tugas || '-' }}</td>
@@ -125,6 +125,7 @@
             Belum ada laporan kerja yang dikirim.
           </div>
         </div>
+        <app-pagination [totalItems]="totalReports" [currentPage]="currentPage" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions" [loading]="isLoading || isRefreshing" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
       </div>
     </ng-container>
 

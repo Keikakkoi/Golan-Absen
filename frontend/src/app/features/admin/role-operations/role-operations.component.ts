@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
@@ -14,9 +14,14 @@ import { ReportExportService } from '../../../core/services/report-export.servic
   styleUrls: ['./role-operations.component.scss']
 })
 export class RoleOperationsComponent implements OnInit {
+  @ViewChild('logbookPaginationBar') logbookPaginationBar?: ElementRef<HTMLElement>;
+
   activeSection: 'internship' | 'team' = 'internship';
   internshipStats: any = {};
   logbooks: any[] = [];
+  logbookPageSizeOptions = [10, 25, 50, 100];
+  logbookPageSize = 25;
+  logbookCurrentPage = 1;
   certificates: any[] = [];
   teamStats: any = { team_members: 0, hadir_hari_ini: 0, belum_absen_hari_ini: 0, izin_pending: 0, weekly: [] };
   attendanceRows: any[] = [];
@@ -86,6 +91,7 @@ export class RoleOperationsComponent implements OnInit {
   }
 
   loadLogbooks(): void {
+    this.logbookCurrentPage = 1;
     let params = new HttpParams();
     if (this.selectedLogbookStatus) params = params.set('status', this.selectedLogbookStatus);
     if (this.start) params = params.set('start_date', this.start);
@@ -95,6 +101,7 @@ export class RoleOperationsComponent implements OnInit {
     this.http.get<any[]>(`${this.api}/admin/internship/logbooks`, { params, headers: this.headers() }).subscribe({
       next: data => {
         this.logbooks = data || [];
+        this.ensureValidLogbookPage();
         for (const row of this.logbooks) {
           const id = row.id || row.ID;
           if (id) {
@@ -108,6 +115,113 @@ export class RoleOperationsComponent implements OnInit {
 
   reviewLogbook(id: number, status: 'approved' | 'rejected' | 'submitted'): void {
     this.errorMessage = 'Admin tidak memiliki akses untuk mereview logbook magang.';
+  }
+
+  onLogbookPageSizeChange(): void {
+    this.logbookCurrentPage = 1;
+    this.ensureValidLogbookPage();
+  }
+
+  goToLogbookPage(page: number | string): void {
+    if (typeof page !== 'number') return;
+    this.changeLogbookPage(page);
+  }
+
+  previousLogbookPage(): void {
+    if (this.logbookCurrentPage > 1) {
+      this.changeLogbookPage(this.logbookCurrentPage - 1);
+    }
+  }
+
+  nextLogbookPage(): void {
+    if (this.logbookCurrentPage < this.logbookTotalPages()) {
+      this.changeLogbookPage(this.logbookCurrentPage + 1);
+    }
+  }
+
+  logbookTotalPages(): number {
+    return Math.max(1, Math.ceil(this.logbooks.length / this.logbookPageSize));
+  }
+
+  logbookPageNumbers(): Array<number | string> {
+    const total = this.logbookTotalPages();
+    const current = this.logbookCurrentPage;
+
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    if (current <= 3) {
+      return [1, 2, 3, 4, '...', total];
+    }
+
+    if (current >= total - 2) {
+      return [1, '...', total - 3, total - 2, total - 1, total];
+    }
+
+    const pages: Array<number | string> = [1];
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+
+    if (start > 2) pages.push('...');
+    for (let page = start; page <= end; page++) {
+      pages.push(page);
+    }
+    if (end < total - 1) pages.push('...');
+    pages.push(total);
+
+    return pages;
+  }
+
+  get logbookPaginationStartIndex(): number {
+    return this.logbooks.length === 0 ? 0 : (this.logbookCurrentPage - 1) * this.logbookPageSize;
+  }
+
+  get logbookPaginationEndIndex(): number {
+    return Math.min(this.logbookPaginationStartIndex + this.logbookPageSize, this.logbooks.length);
+  }
+
+  get displayedLogbooks(): any[] {
+    return this.logbooks.slice(this.logbookPaginationStartIndex, this.logbookPaginationEndIndex);
+  }
+
+  private ensureValidLogbookPage(): void {
+    if (this.logbookCurrentPage > this.logbookTotalPages()) {
+      this.logbookCurrentPage = this.logbookTotalPages();
+    }
+  }
+
+  private changeLogbookPage(page: number): void {
+    const target = Math.min(Math.max(page, 1), this.logbookTotalPages());
+    if (target === this.logbookCurrentPage) return;
+
+    this.blurActiveControl();
+    this.logbookCurrentPage = target;
+    this.keepLogbookPaginationVisible();
+  }
+
+  private blurActiveControl(): void {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+  }
+
+  private keepLogbookPaginationVisible(): void {
+    if (typeof window === 'undefined') return;
+
+    const scrollToPagination = () => {
+      this.logbookPaginationBar?.nativeElement.scrollIntoView({
+        behavior: 'auto',
+        block: 'center',
+        inline: 'nearest'
+      });
+    };
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(scrollToPagination);
+    });
+    window.setTimeout(scrollToPagination, 80);
   }
 
   downloadCertificate(userId: number): void {

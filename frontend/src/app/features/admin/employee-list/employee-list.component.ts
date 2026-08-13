@@ -7,17 +7,21 @@ import { AlertService } from '../../../core/services/alert.service';
 import { FormsModule } from '@angular/forms';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-employee-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, FormsModule, AdminSidebarComponent],
+  imports: [CommonModule, RouterLink, DatePipe, FormsModule, AdminSidebarComponent, PaginationComponent],
   templateUrl: './employee-list.component.html',
   styleUrls: ['./employee-list.component.scss']
 })
 export class EmployeeListComponent implements OnInit {
   employees: any[] = [];
   filteredEmployees: any[] = [];
+  pageSizeOptions = [10, 25, 50, 100];
+  pageSize = 25;
+  currentPage = 1;
   
   filters = {
     search: '',
@@ -167,7 +171,10 @@ export class EmployeeListComponent implements OnInit {
   loadManagers(): void {
     this.http.get<any[]>('http://localhost:8080/api/v1/organization/managers', { headers: this.getHeaders() })
       .subscribe({
-        next: (data) => this.managers = data || [],
+        next: (data) => {
+          this.managers = data || [];
+          if (this.formData.role === 'MAGANG') this.syncInternManagerName();
+        },
         error: (err) => console.error('Gagal memuat manajer:', err)
       });
   }
@@ -180,6 +187,24 @@ export class EmployeeListComponent implements OnInit {
       });
   }
 
+  onRoleChange(): void {
+    if (this.formData.role === 'MAGANG') {
+      this.syncInternManagerName();
+    }
+  }
+
+  onManagerChange(): void {
+    if (this.formData.role === 'MAGANG') {
+      this.syncInternManagerName();
+    }
+  }
+
+  private syncInternManagerName(): void {
+    const managerID = Number(this.formData.manager_id);
+    const manager = managerID > 0 ? this.managers.find(item => Number(item.ID) === managerID) : null;
+    this.formData.mentor_name = manager?.Nama || '';
+  }
+
   loadEmployees(): void {
     this.isLoading = true;
     this.errorMessage = '';
@@ -187,7 +212,7 @@ export class EmployeeListComponent implements OnInit {
     this.http.get<any[]>(this.baseUrl, { headers: this.getHeaders() })
       .subscribe({
         next: (data) => {
-          this.employees = data;
+          this.employees = Array.isArray(data) ? data : [];
           this.applyFilters();
           this.isLoading = false;
         },
@@ -228,6 +253,28 @@ export class EmployeeListComponent implements OnInit {
     }
 
     this.filteredEmployees = result;
+    this.currentPage = 1;
+  }
+
+  get paginationStartIndex(): number {
+    return this.filteredEmployees.length === 0 ? 0 : (this.currentPage - 1) * this.pageSize;
+  }
+
+  get paginationEndIndex(): number {
+    return Math.min(this.paginationStartIndex + this.pageSize, this.filteredEmployees.length);
+  }
+
+  get displayedEmployees(): any[] {
+    return this.filteredEmployees.slice(this.paginationStartIndex, this.paginationEndIndex);
+  }
+
+  goToPage(page: number): void {
+    const totalPages = Math.max(1, Math.ceil(this.filteredEmployees.length / this.pageSize));
+    this.currentPage = Math.min(Math.max(page, 1), totalPages);
+  }
+
+  onPageSizeChange(): void {
+    this.currentPage = 1;
   }
 
   async importEmployees(): Promise<void> {
@@ -298,7 +345,6 @@ export class EmployeeListComponent implements OnInit {
       internship_start_date: emp.InternshipStartDate ? emp.InternshipStartDate.split('T')[0] : '',
       internship_end_date: emp.InternshipEndDate ? emp.InternshipEndDate.split('T')[0] : '',
       mentor_name: emp.MentorName || '',
-      mentor_contact: emp.MentorContact || '',
       institution_name: emp.InstitutionName || ''
     };
     this.isModalOpen = true;
@@ -449,7 +495,6 @@ export class EmployeeListComponent implements OnInit {
       internship_start_date: '',
       internship_end_date: '',
       mentor_name: '',
-      mentor_contact: '',
       institution_name: ''
     };
   }

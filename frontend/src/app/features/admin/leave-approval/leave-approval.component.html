@@ -44,10 +44,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let req of leaveRequests">
+            <tr *ngFor="let req of displayedLeaveRequests">
               <td class="leave-employee-cell">
-                <span class="leave-employee-name">{{ req.Employee?.User?.Nama }}</span>
-                <span class="leave-employee-nik">{{ req.Employee?.NIK }}</span>
+                <span class="leave-employee-name">{{ req.Employee?.User?.Nama || 'Nama Tidak Tersedia' }}</span>
+                <span class="leave-employee-nik">{{ req.Employee?.NIK || '-' }}</span>
               </td>
               <td>{{ req.JenisIzin }}</td>
               <td class="leave-date-cell">{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
@@ -91,6 +91,14 @@
         <div *ngIf="isLoading" style="padding: 1rem; color: #6b7280;">Memuat pengajuan izin...</div>
         <div *ngIf="!isLoading && leaveRequests.length === 0" style="padding: 1rem; color: #6b7280;">Tidak ada pengajuan izin/cuti.</div>
       </div>
+      <app-pagination
+        [totalItems]="leaveRequests.length"
+        [currentPage]="currentPage"
+        [pageSize]="pageSize"
+        [loading]="isLoading"
+        (pageChange)="goToPage($event)"
+        (pageSizeChange)="onPageSizeChange($event)">
+      </app-pagination>
     </div>
   </div>
 </div>
@@ -115,15 +123,15 @@
       <!-- Employee Profile Banner -->
       <div class="employee-profile-card">
         <div class="avatar-circle">
-          <img *ngIf="selectedRequest.Employee?.User?.FotoProfile" [src]="selectedRequest.Employee.User.FotoProfile" [alt]="selectedRequest.Employee?.User?.Nama">
-          <span *ngIf="!selectedRequest.Employee?.User?.FotoProfile">{{ getInitials(selectedRequest.Employee?.User?.Nama) }}</span>
+          <img *ngIf="selectedRequest.Employee?.FotoProfilURL" [src]="selectedRequest.Employee.FotoProfilURL" [alt]="selectedRequest.Employee?.User?.Nama || 'Profil karyawan'">
+          <span *ngIf="!selectedRequest.Employee?.FotoProfilURL">{{ getInitials(selectedRequest.Employee?.User?.Nama) }}</span>
         </div>
         <div class="employee-info">
           <h4 class="employee-name">{{ selectedRequest.Employee?.User?.Nama || 'Nama Tidak Tersedia' }}</h4>
           <p class="employee-meta">
             <span class="nik-tag">NIK: {{ selectedRequest.Employee?.NIK || '-' }}</span>
-            <span class="dept-tag" *ngIf="selectedRequest.Employee?.Jabatan || selectedRequest.Employee?.Departemen">
-              {{ selectedRequest.Employee?.Jabatan || selectedRequest.Employee?.Departemen }}
+            <span class="dept-tag" *ngIf="selectedRequest.Employee?.Position?.NamaJabatan || selectedRequest.Employee?.Division?.NamaDivisi">
+              {{ selectedRequest.Employee?.Position?.NamaJabatan || selectedRequest.Employee?.Division?.NamaDivisi }}
             </span>
           </p>
         </div>
