@@ -5,12 +5,14 @@ import { pageLoadingInterceptor } from './core/interceptors/page-loading.interce
 
 import { routes } from './app.routes';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { SeoService } from './core/services/seo.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }), 
     provideRouter(routes), 
     provideHttpClient(withInterceptors([pageLoadingInterceptor])),
-    provideAnimationsAsync()
+    provideAnimationsAsync(),
+    SeoService
   ]
 };

@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /employee
+Disallow: /manager
+Disallow: /intern
+Disallow: /help
+Disallow: /about
+Disallow: /403
+Disallow: /forbidden
+Disallow: /maintenance
+
+Sitemap: https://domain-anda-nanti.com/sitemap.xml

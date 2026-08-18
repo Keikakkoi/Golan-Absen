@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Absensi Golan Digital Kreatif</title>
+  <desc id="desc">Sistem absensi digital PT. Golan Digital Kreatif</desc>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7fbff"/><stop offset="1" stop-color="#dff1fc"/></linearGradient></defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1020" cy="90" r="280" fill="#1676bd" opacity=".08"/><circle cx="1120" cy="570" r="210" fill="#35b88a" opacity=".1"/>
+  <rect x="100" y="110" width="72" height="72" rx="18" fill="#1676bd"/><path d="M122 147h28M136 133v28" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  <text x="100" y="280" fill="#16324f" font-family="Arial, sans-serif" font-size="62" font-weight="700">Absensi Golan</text>
+  <text x="100" y="350" fill="#1676bd" font-family="Arial, sans-serif" font-size="34" font-weight="700">Digital Kreatif</text>
+  <text x="100" y="430" fill="#5c7891" font-family="Arial, sans-serif" font-size="25">Sistem absensi digital PT. Golan Digital Kreatif</text>
+</svg>

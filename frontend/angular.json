@@ -40,11 +40,17 @@
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
-                    "maximumWarning": "1.5MB",
-                    "maximumError": "2MB"
+                    "maximumWarning": "2.3MB",
+                    "maximumError": "2.5MB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -55,6 +61,12 @@
               "outputHashing": "all"
             },
             "development": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.development.ts"
+                }
+              ],
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true

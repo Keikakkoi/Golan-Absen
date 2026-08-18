@@ -41,12 +41,22 @@ import { TeamReportsComponent } from './features/manager/team-reports/team-repor
 import { TeamStatisticsComponent } from './features/manager/team-statistics/team-statistics.component';
 import { ManagerLeaveApprovalComponent } from './features/manager/leave-approval/manager-leave-approval.component';
 import { authGuard, roleGuard } from './core/guards/auth.guard';
+import { HomeComponent } from './features/public/home/home.component';
+
+const noIndex = { indexable: false };
+const publicHomeSeo = {
+  title: 'Absensi Golan Digital Kreatif | Sistem Absensi Digital PT. Golan Digital Kreatif',
+  description: 'Absensi Golan Digital Kreatif adalah sistem absensi digital untuk membantu PT. Golan Digital Kreatif mengelola kehadiran karyawan secara mudah, cepat, dan terintegrasi.',
+  indexable: true,
+  type: 'software' as const
+};
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'login', pathMatch: 'full' },
-  { path: 'login', component: LoginComponent },
-  { path: 'forgot-password', component: ForgotPasswordComponent },
-  { path: 'reset-password', component: ResetPasswordComponent },
+  { path: '', component: HomeComponent, data: { seo: publicHomeSeo } },
+  { path: 'home', redirectTo: '', pathMatch: 'full' },
+  { path: 'login', component: LoginComponent, data: { seo: { title: 'Masuk | Absensi Golan Digital Kreatif', ...noIndex } } },
+  { path: 'forgot-password', component: ForgotPasswordComponent, data: { seo: { title: 'Lupa Password | Absensi Golan Digital Kreatif', ...noIndex } } },
+  { path: 'reset-password', component: ResetPasswordComponent, data: { seo: { title: 'Atur Ulang Password | Absensi Golan Digital Kreatif', ...noIndex } } },
   
   { path: 'employee/dashboard', component: DashboardComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
   { path: 'employee/checkin', component: CheckinComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
@@ -93,8 +103,8 @@ export const routes: Routes = [
   { path: 'admin/help', redirectTo: 'help', pathMatch: 'full' },
   { path: 'admin/about', redirectTo: 'about', pathMatch: 'full' },
   
-  { path: '403', component: ForbiddenComponent },
+  { path: '403', component: ForbiddenComponent, data: { seo: { title: 'Akses Ditolak | Absensi Golan Digital Kreatif', ...noIndex } } },
   { path: 'forbidden', redirectTo: '403', pathMatch: 'full' },
-  { path: 'maintenance', component: MaintenanceComponent },
-  { path: '**', component: NotFoundComponent }
+  { path: 'maintenance', component: MaintenanceComponent, data: { seo: { title: 'Pemeliharaan Sistem | Absensi Golan Digital Kreatif', ...noIndex } } },
+  { path: '**', component: NotFoundComponent, data: { seo: { title: 'Halaman Tidak Ditemukan | Absensi Golan Digital Kreatif', ...noIndex } } }
 ];
