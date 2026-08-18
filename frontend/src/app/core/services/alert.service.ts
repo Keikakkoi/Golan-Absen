@@ -50,6 +50,24 @@ export class AlertService {
     });
   }
 
+  async input(title: string, text: string, confirmButtonText = 'Oke', placeholder = ''): Promise<string | null> {
+    const sweetAlert = await this.load();
+    const result = await sweetAlert.fire({
+      icon: 'warning',
+      title,
+      text,
+      input: 'text',
+      inputPlaceholder: placeholder,
+      inputAttributes: { autocomplete: 'off', autocapitalize: 'off' },
+      showCancelButton: true,
+      confirmButtonText,
+      cancelButtonText: 'Batal',
+      reverseButtons: true,
+      focusCancel: true
+    });
+    return result.isConfirmed ? (result.value || '') : null;
+  }
+
   private async load(): Promise<typeof Swal> {
     const module = await import('sweetalert2');
     return module.default;

@@ -206,126 +206,83 @@
 }
 
 .role-operations-certificate-table {
-  min-width: 1670px !important;
-  table-layout: fixed;
+  min-width: 1050px !important;
 }
 
-.role-operations-certificate-table .col-certificate-participant { width: 220px; }
-.role-operations-certificate-table .col-certificate-institution { width: 180px; }
-.role-operations-certificate-table .col-certificate-end-date { width: 160px; }
-.role-operations-certificate-table .col-certificate-status { width: 190px; }
-.role-operations-certificate-table .col-certificate-file { width: 220px; }
-.role-operations-certificate-table .col-certificate-score { width: 240px; }
-.role-operations-certificate-table .col-certificate-graduation { width: 220px; }
-.role-operations-certificate-table .col-certificate-actions { width: 240px; }
-
-.role-operations-page .role-operations-certificate-table th,
-.role-operations-page .role-operations-certificate-table td {
-  padding: 18px 18px;
-  text-align: center;
-  vertical-align: middle;
-}
-
-.role-operations-page .role-operations-certificate-table th {
-  white-space: normal !important;
-  overflow-wrap: normal !important;
-  word-break: keep-all !important;
-}
-
-.role-operations-page .role-operations-certificate-table td {
-  min-width: 0;
-  overflow-wrap: break-word !important;
-  word-break: normal !important;
-}
-
-.role-operations-page .role-operations-certificate-table td:first-child,
-.role-operations-page .role-operations-certificate-table th:first-child,
-.role-operations-page .role-operations-certificate-table td:nth-child(3),
-.role-operations-page .role-operations-certificate-table td:nth-child(4) {
-  white-space: normal !important;
-}
-
-.role-operations-certificate-table .status-pill {
-  max-width: 100%;
-  white-space: normal !important;
-  overflow-wrap: break-word;
-}
-
-.role-operations-certificate-table .certificate-file-card {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  max-width: 100%;
-  min-height: 54px;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border-radius: 8px;
-  line-height: 1.25;
-  text-decoration: none;
-  white-space: normal !important;
-  overflow: hidden;
-}
-
-.role-operations-certificate-table .certificate-file-card i {
-  flex: 0 0 auto;
-  color: #dc3545;
-}
-
-.role-operations-certificate-table .certificate-file-card span {
-  display: -webkit-box;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.role-operations-certificate-table .document-actions {
+/* Keep the two document columns readable on desktop. Each document gets its
+   own compact row instead of inheriting the table's inline button spacing. */
+.role-operations-page .role-operations-certificate-table .document-file-list,
+.role-operations-page .role-operations-certificate-table .document-actions {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 14px;
+  gap: 10px;
   width: 100%;
   min-width: 0;
 }
 
-.role-operations-certificate-table .document-action-row {
+.role-operations-page .role-operations-certificate-table .document-file-list > div,
+.role-operations-page .role-operations-certificate-table .document-action-row {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 0 0 9px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
 }
 
-.role-operations-certificate-table .document-action-row:last-child {
+.role-operations-page .role-operations-certificate-table .document-file-list > div:last-child,
+.role-operations-page .role-operations-certificate-table .document-action-row:last-child {
   padding-bottom: 0;
   border-bottom: 0;
 }
 
-.role-operations-certificate-table .document-action-row strong {
-  display: block;
-  line-height: 1.25;
-  overflow-wrap: break-word;
+.role-operations-page .role-operations-certificate-table .document-file-list strong,
+.role-operations-page .role-operations-certificate-table .document-action-row strong {
+  flex: 0 0 100%;
+  color: var(--text-dark);
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
 }
 
-.role-operations-certificate-table .document-action-row .btn-small,
-.role-operations-certificate-table .document-action-row .cert-upload-btn {
+.role-operations-page .role-operations-certificate-table .document-file-list .cert-link {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  width: 100%;
-  min-height: 40px;
+  max-width: 100%;
+  padding: 6px 9px;
+  border-radius: 7px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.role-operations-page .role-operations-certificate-table .document-action-row .btn-small,
+.role-operations-page .role-operations-certificate-table .document-action-row .cert-upload-btn {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  max-width: 100%;
   margin: 0;
+  padding: 6px 9px;
   box-sizing: border-box;
-  white-space: normal;
-  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.role-operations-page .role-operations-certificate-table .cert-upload-btn {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.role-operations-page .role-operations-certificate-table .document-action-row .muted-file {
+  display: block;
+  flex: 1 1 100%;
+  text-align: left;
+  line-height: 1.3;
 }
 
 /* Certificate rows become self-contained cards on phones. The desktop table
@@ -685,72 +642,6 @@
   }
 }
 
-@media (max-width: 760px) {
-  .role-operations-page .golan-table-responsive:has(.role-operations-certificate-table) {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto !important;
-    overflow-y: hidden;
-  }
-
-  .role-operations-page .role-operations-certificate-table {
-    display: table !important;
-    width: 100% !important;
-    min-width: 1670px !important;
-    max-width: none !important;
-    table-layout: fixed;
-    font-size: 0.875rem;
-  }
-
-  .role-operations-page .role-operations-certificate-table colgroup {
-    display: table-column-group;
-  }
-
-  .role-operations-page .role-operations-certificate-table thead {
-    display: table-header-group;
-  }
-
-  .role-operations-page .role-operations-certificate-table tbody {
-    display: table-row-group;
-  }
-
-  .role-operations-page .role-operations-certificate-table tr {
-    display: table-row;
-    width: auto;
-  }
-
-  .role-operations-page .role-operations-certificate-table tbody tr:not(.certificate-empty-row) {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .role-operations-page .role-operations-certificate-table th,
-  .role-operations-page .role-operations-certificate-table tbody tr:not(.certificate-empty-row) td {
-    display: table-cell;
-    width: auto;
-    min-width: 0;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border-color);
-    text-align: center;
-    vertical-align: middle;
-    overflow: visible;
-  }
-
-  .role-operations-page .role-operations-certificate-table td::before {
-    content: none;
-    display: none;
-  }
-
-  .role-operations-page .role-operations-certificate-table td > div,
-  .role-operations-page .role-operations-certificate-table td > span,
-  .role-operations-page .role-operations-certificate-table td > a {
-    max-width: 100%;
-  }
-}
-
 @media print {
   app-admin-sidebar,
   .section-tabs,
@@ -766,5 +657,71 @@
   .panel {
     box-shadow: none;
     break-inside: avoid;
+  }
+}
+
+/* Keep the admin team filters balanced inside each panel. */
+.team-filter-panel .panel-heading {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 2.3fr);
+  align-items: start;
+  gap: 28px;
+}
+
+.team-filter-panel .panel-heading > h3 {
+  margin: 4px 0 0;
+}
+
+.team-filter-panel .report-toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr)) max-content max-content;
+  align-items: end;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+
+.team-filter-panel .report-toolbar > .golan-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.team-filter-panel .report-toolbar > .report-filter-action,
+.team-filter-panel .report-toolbar > .export-dropdown {
+  width: auto;
+  min-width: max-content;
+}
+
+.team-filter-panel .export-dropdown > button {
+  white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+  .team-filter-panel .panel-heading {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 760px) {
+  .team-filter-panel .report-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .team-filter-panel .report-toolbar > .report-filter-action,
+  .team-filter-panel .report-toolbar > .export-dropdown {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .team-filter-panel .report-toolbar > .export-dropdown > button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .team-filter-panel .report-toolbar {
+    grid-template-columns: 1fr;
   }
 }

@@ -139,37 +139,7 @@
         </table>
       </div>
 
-      <div #logbookPaginationBar class="pagination-bar no-print" *ngIf="logbooks.length > 0">
-        <div class="pagination-info">
-          Menampilkan {{ logbookPaginationStartIndex + 1 }}-{{ logbookPaginationEndIndex }} dari {{ logbooks.length }} data
-        </div>
-
-        <div class="page-size-control">
-          <label for="logbook-page-size">Data per halaman</label>
-          <select id="logbook-page-size" class="filter-input page-size-select" [(ngModel)]="logbookPageSize" (ngModelChange)="onLogbookPageSizeChange()">
-            <option *ngFor="let size of logbookPageSizeOptions" [ngValue]="size">{{ size }}</option>
-          </select>
-        </div>
-
-        <nav class="pagination-controls" aria-label="Navigasi halaman verifikasi logbook magang">
-          <button class="pagination-button" type="button" (click)="previousLogbookPage()" [disabled]="logbookCurrentPage === 1">
-            Previous
-          </button>
-          <button
-            *ngFor="let page of logbookPageNumbers()"
-            class="pagination-button page-number"
-            type="button"
-            [class.active]="page === logbookCurrentPage"
-            [class.ellipsis]="page === '...'"
-            [disabled]="page === '...'"
-            (click)="goToLogbookPage(page)">
-            {{ page }}
-          </button>
-          <button class="pagination-button" type="button" (click)="nextLogbookPage()" [disabled]="logbookCurrentPage === logbookTotalPages()">
-            Next
-          </button>
-        </nav>
-      </div>
+      <app-pagination [totalItems]="logbooks.length" [currentPage]="logbookCurrentPage" [pageSize]="logbookPageSize" [pageSizeOptions]="logbookPageSizeOptions" (pageChange)="goToLogbookPage($event)" (pageSizeChange)="logbookPageSize = $event; onLogbookPageSizeChange()"></app-pagination>
     </section>
     <section class="golan-card panel">
       <div class="panel-heading">
@@ -220,16 +190,6 @@
 
       <div class="golan-table-responsive">
         <table class="golan-table role-operations-certificate-table">
-          <colgroup>
-            <col class="col-certificate-participant">
-            <col class="col-certificate-institution">
-            <col class="col-certificate-end-date">
-            <col class="col-certificate-status">
-            <col class="col-certificate-file">
-            <col class="col-certificate-score">
-            <col class="col-certificate-graduation">
-            <col class="col-certificate-actions">
-          </colgroup>
           <thead>
             <tr>
               <th>Peserta</th>
@@ -237,8 +197,7 @@
               <th>Tanggal Selesai</th>
               <th>Status Sertifikat</th>
               <th>File Sertifikat</th>
-              <th>Dokumen Nilai Magang</th>
-              <th>Keterangan Lulus</th>
+              <th>Dokumen Nilai &amp; Keterangan Lulus</th>
               <th>Aksi &amp; Upload</th>
             </tr>
           </thead>
@@ -268,19 +227,10 @@
                 </a>
                 <span *ngIf="!row.file_url" class="muted-file">-</span>
               </td>
-              <td data-label="Dokumen Nilai Magang">
-                <a *ngIf="row.nilai_magang?.available && row.nilai_magang.file_url" [href]="row.nilai_magang.file_url" target="_blank" rel="noopener" class="cert-link certificate-file-card" title="Lihat nilai magang">
-                  <i class="fas fa-file-pdf"></i>
-                  <span>{{ row.nilai_magang.file_name || 'Lihat File' }}</span>
-                </a>
-                <span *ngIf="!row.nilai_magang?.available || !row.nilai_magang.file_url" class="muted-file">-</span>
-              </td>
-              <td data-label="Keterangan Lulus">
-                <a *ngIf="row.keterangan_lulus?.available && row.keterangan_lulus.file_url" [href]="row.keterangan_lulus.file_url" target="_blank" rel="noopener" class="cert-link certificate-file-card" title="Lihat keterangan lulus">
-                  <i class="fas fa-file-pdf"></i>
-                  <span>{{ row.keterangan_lulus.file_name || 'Lihat File' }}</span>
-                </a>
-                <span *ngIf="!row.keterangan_lulus?.available || !row.keterangan_lulus.file_url" class="muted-file">-</span>
+              <td data-label="Dokumen Nilai & Keterangan Lulus">
+                <div class="document-file-list">
+                  <div *ngFor="let docType of ['nilai_magang', 'keterangan_lulus']"><strong>{{ docType === 'nilai_magang' ? 'Nilai Magang' : 'Keterangan Lulus' }}</strong><a *ngIf="row[docType]?.available && row[docType].file_url" [href]="row[docType].file_url" target="_blank" rel="noopener" class="cert-link" title="Lihat dokumen"><i class="fas fa-file-pdf"></i>{{ row[docType].file_name || 'Lihat File' }}</a><span *ngIf="!row[docType]?.available || !row[docType].file_url" class="muted-file">-</span></div>
+                </div>
               </td>
               <td data-label="Aksi & Upload">
                 <div class="document-actions">
@@ -290,7 +240,7 @@
               </td>
             </tr>
             <tr *ngIf="!certificates.length" class="certificate-empty-row">
-              <td colspan="8" style="text-align: center; color: var(--muted-color); padding: 24px;">Tidak ada sertifikat magang pada filter ini.</td>
+              <td colspan="7" style="text-align: center; color: var(--muted-color); padding: 24px;">Tidak ada sertifikat magang pada filter ini.</td>
             </tr>
           </tbody>
         </table>
@@ -300,10 +250,10 @@
 
   <ng-container *ngIf="activeSection === 'team'">
     <div class="stats-grid"><div class="golan-card stat-card"><h4>Total Anggota Tim</h4><div class="value">{{ teamStats.team_members || 0 }}</div></div><div class="golan-card stat-card"><h4>Hadir Hari Ini</h4><div class="value">{{ teamStats.hadir_hari_ini || 0 }}</div></div><div class="golan-card stat-card"><h4>Belum Absen Hari Ini</h4><div class="value">{{ teamStats.belum_absen_hari_ini || 0 }}</div></div><div class="golan-card stat-card"><h4>Izin Pending</h4><div class="value">{{ teamStats.izin_pending || 0 }}</div></div></div>
-    <section class="golan-card panel"><div class="panel-heading"><h3>Absensi Tim</h3><div class="toolbar report-toolbar"><input class="golan-input" [(ngModel)]="teamSearch" placeholder="Cari nama/NIK"><input type="date" class="golan-input" [(ngModel)]="date"><select class="golan-input" [(ngModel)]="attendanceStatus"><option value="">Semua status</option><option value="Hadir">Hadir</option><option value="Terlambat">Terlambat</option><option value="Tidak hadir">Tidak hadir</option></select><button class="btn-primary report-filter-action" (click)="loadAttendance()">Filter</button><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('attendance')"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="openExportMenu === 'attendance'"><button type="button" class="dropdown-item" (click)="exportAttendance()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportAttendanceExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportAttendanceJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportAttendancePDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Nama</th><th>Tanggal</th><th>Status</th><th>Masuk</th><th>Pulang</th></tr></thead><tbody><tr *ngFor="let row of attendanceRows"><td>{{ row.nama }}</td><td>{{ row.tanggal }}</td><td><span class="status-pill">{{ row.status }}</span></td><td>{{ row.jam_masuk || '-' }}</td><td>{{ row.jam_pulang || '-' }}</td></tr></tbody></table></div></section>
-    <section class="golan-card panel"><div class="panel-heading"><h3>Laporan Tim / Logbook</h3><div class="toolbar report-toolbar"><input class="golan-input" [(ngModel)]="teamSearch" placeholder="Cari anggota/NIK"><input type="date" class="golan-input" [(ngModel)]="start"><input type="date" class="golan-input" [(ngModel)]="end"><button class="btn-primary report-filter-action" (click)="loadReports()">Filter</button><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('reports')"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="openExportMenu === 'reports'"><button type="button" class="dropdown-item" (click)="exportReports()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportReportsExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportReportsJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportReportsPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Tanggal</th><th>Anggota</th><th>Tugas</th><th>Kegiatan</th><th>Status</th></tr></thead><tbody><tr *ngFor="let row of teamReports"><td>{{ (row.tanggal || row.Tanggal) | date:'dd MMM yyyy' }}</td><td>{{ row.Employee?.User?.Nama || '-' }}</td><td>{{ row.tugas || row.Tugas || '-' }}</td><td>{{ row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-' }}</td><td><span class="status-pill">{{ row.status_logbook || row.StatusLogbook || row.status_sesuai || row.StatusSesuai || '-' }}</span></td></tr></tbody></table></div></section>
+    <section class="golan-card panel team-filter-panel"><div class="panel-heading"><h3>Absensi Tim</h3><div class="toolbar report-toolbar"><input class="golan-input" [(ngModel)]="teamSearch" placeholder="Cari nama/NIK"><input type="date" class="golan-input" [(ngModel)]="date"><select class="golan-input" [(ngModel)]="attendanceStatus"><option value="">Semua status</option><option value="Hadir">Hadir</option><option value="Terlambat">Terlambat</option><option value="Tidak hadir">Tidak hadir</option></select><button class="btn-primary report-filter-action" (click)="loadAttendance()" [disabled]="attendanceLoading">Filter</button><button class="btn btn-secondary" type="button" (click)="exportAttendance()">Unduh</button></div></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Nama</th><th>Tanggal</th><th>Status</th><th>Masuk</th><th>Pulang</th></tr></thead><tbody><tr *ngFor="let row of displayedAttendanceRows"><td>{{ row.nama }}</td><td>{{ row.tanggal }}</td><td><span class="status-pill">{{ row.status }}</span></td><td>{{ row.jam_masuk || '-' }}</td><td>{{ row.jam_pulang || '-' }}</td></tr><tr *ngIf="!attendanceRows.length && !attendanceLoading"><td colspan="5" class="empty-state">Tidak ada data absensi tim.</td></tr></tbody></table></div><app-pagination [totalItems]="attendanceTotalItems" [currentPage]="attendancePage" [pageSize]="attendancePageSize" [pageSizeOptions]="attendancePageSizeOptions" [loading]="attendanceLoading" (pageChange)="attendancePageChanged($event)" (pageSizeChange)="attendancePageSizeChanged($event)"></app-pagination></section>
+    <section class="golan-card panel team-filter-panel"><div class="panel-heading"><h3>Laporan Tim / Logbook</h3><div class="toolbar report-toolbar"><input class="golan-input" [(ngModel)]="teamSearch" placeholder="Cari anggota/NIK"><input type="date" class="golan-input" [(ngModel)]="start"><input type="date" class="golan-input" [(ngModel)]="end"><button class="btn-primary report-filter-action" (click)="loadReports()" [disabled]="reportsLoading">Filter</button><button class="btn btn-secondary" type="button" (click)="exportReports()">Unduh</button></div></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Tanggal</th><th>Anggota</th><th>Tugas</th><th>Kegiatan</th><th>Status</th></tr></thead><tbody><tr *ngFor="let row of displayedTeamReports"><td>{{ (row.tanggal || row.Tanggal) | date:'dd MMM yyyy' }}</td><td>{{ row.Employee?.User?.Nama || '-' }}</td><td>{{ row.tugas || row.Tugas || '-' }}</td><td>{{ row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-' }}</td><td><span class="status-pill">{{ row.status_logbook || row.StatusLogbook || row.status_sesuai || row.StatusSesuai || '-' }}</span></td></tr><tr *ngIf="!teamReports.length && !reportsLoading"><td colspan="5" class="empty-state">Tidak ada laporan tim.</td></tr></tbody></table></div><app-pagination [totalItems]="reportsTotalItems" [currentPage]="reportsPage" [pageSize]="reportsPageSize" [pageSizeOptions]="reportsPageSizeOptions" [loading]="reportsLoading" (pageChange)="reportsPageChanged($event)" (pageSizeChange)="reportsPageSizeChanged($event)"></app-pagination></section>
     <section class="golan-card panel"><div class="panel-heading"><h3>Statistik Kehadiran Tim</h3><div class="toolbar report-toolbar"><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('statistics')"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="openExportMenu === 'statistics'"><button type="button" class="dropdown-item" (click)="exportTeamStatistics()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportTeamStatisticsExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportTeamStatisticsJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportTeamStatisticsPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="member-stat" *ngFor="let member of teamStatistics.members"><strong>{{ member.Name }}</strong><div class="bar-line"><span class="present" [style.width.%]="member.Total ? member.Hadir / member.Total * 100 : 0"></span><span class="late" [style.width.%]="member.Total ? member.Terlambat / member.Total * 100 : 0"></span></div><small>{{ member.Hadir }} hadir Ã‚Â· {{ member.Terlambat }} terlambat</small></div></section>
-    <section class="golan-card panel"><div class="panel-heading"><h3>Persetujuan Izin Tim</h3><button class="btn-secondary" (click)="loadTeam()">Refresh</button></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Anggota</th><th>Jenis</th><th>Periode</th><th>Alasan</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let request of leaveRequests"><td>{{ request.Employee?.User?.Nama || '-' }}</td><td>{{ request.JenisIzin }}</td><td>{{ request.TanggalMulai | date:'dd MMM' }} – {{ request.TanggalSelesai | date:'dd MMM yyyy' }}</td><td>{{ request.Alasan }}</td><td><input class="golan-input note-input" [(ngModel)]="notes[request.ID]"></td><td><ng-container *ngIf="request.Status === 'Pending'; else leaveDone"><button class="btn-small approve" (click)="decideLeave(request.ID, 'Approved')">Approve</button><button class="btn-small reject" (click)="decideLeave(request.ID, 'Rejected')">Reject</button></ng-container><ng-template #leaveDone><span class="status-pill">{{ request.Status }}</span></ng-template></td></tr></tbody></table></div><p class="muted" *ngIf="!leaveRequests.length">Tidak ada pengajuan izin.</p></section>
+    <section class="golan-card panel"><div class="panel-heading"><h3>Persetujuan Izin Tim</h3><button class="btn-secondary" (click)="loadLeaveRequests()" [disabled]="leaveLoading">{{ leaveLoading ? 'Memuat...' : 'Refresh' }}</button></div><div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Anggota</th><th>Jenis</th><th>Periode</th><th>Alasan</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let request of displayedLeaveRequests"><td>{{ request.Employee?.User?.Nama || '-' }}</td><td>{{ request.JenisIzin }}</td><td>{{ request.TanggalMulai | date:'dd MMM' }} – {{ request.TanggalSelesai | date:'dd MMM yyyy' }}</td><td>{{ request.Alasan }}</td><td><input class="golan-input note-input" [(ngModel)]="notes[request.ID]" [disabled]="leaveLoading"></td><td><ng-container *ngIf="request.Status === 'Pending'; else leaveDone"><button class="btn-small approve" [disabled]="leaveLoading" (click)="decideLeave(request.ID, 'Approved')">Approve</button><button class="btn-small reject" [disabled]="leaveLoading" (click)="decideLeave(request.ID, 'Rejected')">Reject</button></ng-container><ng-template #leaveDone><span class="status-pill">{{ request.Status }}</span></ng-template></td></tr><tr *ngIf="!leaveRequests.length && !leaveLoading"><td colspan="6" class="empty-state">Tidak ada pengajuan izin.</td></tr></tbody></table></div><app-pagination [totalItems]="leaveTotalItems" [currentPage]="leavePage" [pageSize]="leavePageSize" [pageSizeOptions]="leavePageSizeOptions" [loading]="leaveLoading" (pageChange)="leavePageChanged($event)" (pageSizeChange)="leavePageSizeChanged($event)"></app-pagination></section>
   </ng-container>
 </main></div>
 

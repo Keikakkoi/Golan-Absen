@@ -257,13 +257,18 @@ func UploadAdminInternshipCertificate(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal menyimpan file sertifikat"})
 	}
 	var certificate models.InternshipCertificate
-	findErr := config.DB.Where("user_id = ?", user.ID).First(&certificate).Error
+	// Include soft-deleted metadata rows. The unique user_id constraint remains
+	// active after a soft delete, so inserting a replacement would fail.
+	findErr := config.DB.Unscoped().Where("user_id = ?", user.ID).First(&certificate).Error
 	if findErr == nil && certificate.StorageKey != "" {
 		_ = storage.Client.RemoveObject(context.Background(), storage.BucketName, certificate.StorageKey, minio.RemoveObjectOptions{})
 	}
 	now := time.Now()
 	if findErr != nil {
 		certificate = models.InternshipCertificate{UserID: user.ID, IssuedAt: now, CertificateNo: fmt.Sprintf("MAGANG-%06d", user.ID)}
+	} else {
+		// Reuse the existing row and make it visible again.
+		certificate.DeletedAt.Valid = false
 	}
 	uploader := c.Locals("user_id").(uint)
 	cfg := config.LoadConfig()

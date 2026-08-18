@@ -1,20 +1,21 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
+import Swal from 'sweetalert2';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-admin-role-operations',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent],
+  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent],
   templateUrl: './role-operations.component.html',
   styleUrls: ['./role-operations.component.scss']
 })
 export class RoleOperationsComponent implements OnInit {
-  @ViewChild('logbookPaginationBar') logbookPaginationBar?: ElementRef<HTMLElement>;
 
   activeSection: 'internship' | 'team' = 'internship';
   internshipStats: any = {};
@@ -22,12 +23,21 @@ export class RoleOperationsComponent implements OnInit {
   logbookPageSizeOptions = [10, 25, 50, 100];
   logbookPageSize = 25;
   logbookCurrentPage = 1;
+  attendancePage = 1; attendancePageSize = 25; attendancePageSizeOptions = [10, 25, 50, 100]; attendanceTotalItems = 0; attendanceLoading = false;
+  reportsPage = 1; reportsPageSize = 25; reportsPageSizeOptions = [10, 25, 50, 100]; reportsTotalItems = 0; reportsLoading = false;
+  private attendanceServerPaginated = false; private reportsServerPaginated = false;
   certificates: any[] = [];
   teamStats: any = { team_members: 0, hadir_hari_ini: 0, belum_absen_hari_ini: 0, izin_pending: 0, weekly: [] };
   attendanceRows: any[] = [];
   teamReports: any[] = [];
   teamStatistics: any = { members: [] };
   leaveRequests: any[] = [];
+  leavePage = 1;
+  leavePageSize = 25;
+  leavePageSizeOptions = [10, 25, 50, 100];
+  leaveTotalItems = 0;
+  leaveLoading = false;
+  private leaveServerPaginated = false;
   notes: Record<number, string> = {};
   date = new Date().toISOString().slice(0, 10);
   start = '';
@@ -207,22 +217,7 @@ export class RoleOperationsComponent implements OnInit {
     }
   }
 
-  private keepLogbookPaginationVisible(): void {
-    if (typeof window === 'undefined') return;
-
-    const scrollToPagination = () => {
-      this.logbookPaginationBar?.nativeElement.scrollIntoView({
-        behavior: 'auto',
-        block: 'center',
-        inline: 'nearest'
-      });
-    };
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(scrollToPagination);
-    });
-    window.setTimeout(scrollToPagination, 80);
-  }
+  private keepLogbookPaginationVisible(): void {}
 
   downloadCertificate(userId: number): void {
     const cert = this.certificates.find(c => c.user_id === userId);
@@ -263,13 +258,19 @@ export class RoleOperationsComponent implements OnInit {
         this.selectedCertificateFile = null;
         this.uploadingUserId = null;
         this.loadInternship();
+        void Swal.fire({ icon: 'success', title: 'Upload berhasil', text: 'Sertifikat magang berhasil disimpan.', timer: 1800, showConfirmButton: false });
       },
       error: e => { this.uploadingUserId = null; this.fail(e); }
     });
   }
   deleteCertificate(userId: number): void {
-    if (!window.confirm('Hapus file sertifikat manual ini?')) return;
-    this.http.delete(`${this.api}/admin/internship/certificates/${userId}/upload`, { headers: this.headers() }).subscribe({ next: () => this.loadInternship(), error: e => this.fail(e) });
+    void Swal.fire({ title: 'Hapus sertifikat?', text: 'File sertifikat akan dihapus dari daftar.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, hapus', cancelButtonText: 'Batal', reverseButtons: true }).then(result => {
+      if (!result.isConfirmed) return;
+      this.http.delete(`${this.api}/admin/internship/certificates/${userId}/upload`, { headers: this.headers() }).subscribe({
+        next: () => { this.loadInternship(); void Swal.fire({ icon: 'success', title: 'Berhasil dihapus', text: 'Sertifikat magang berhasil dihapus.', timer: 1800, showConfirmButton: false }); },
+        error: e => this.fail(e)
+      });
+    });
   }
   documentKey(userId: number, type: string): string { return `${userId}_${type}`; }
   onDocumentFileSelected(event: Event, userId: number, type: string): void {
@@ -280,7 +281,7 @@ export class RoleOperationsComponent implements OnInit {
       if (ext !== 'pdf' || (file.type && file.type !== 'application/pdf')) {
         input.value = '';
         this.errorMessage = 'Format file tidak valid. Nilai Magang dan Keterangan Lulus wajib berupa PDF.';
-        window.alert('Format file tidak valid. Silakan pilih file PDF untuk dokumen magang.');
+        void Swal.fire({ icon: 'error', title: 'Format file tidak valid', text: 'Silakan pilih file PDF untuk dokumen magang.' });
         return;
       }
       this.selectedDocumentFiles[this.documentKey(userId, type)] = file;
@@ -302,6 +303,7 @@ export class RoleOperationsComponent implements OnInit {
         this.uploadingDocumentKey = null;
         this.errorMessage = '';
         this.loadInternship();
+        void Swal.fire({ icon: 'success', title: 'Upload berhasil', text: `${type === 'nilai_magang' ? 'Nilai magang' : 'Keterangan lulus'} berhasil disimpan.`, timer: 1800, showConfirmButton: false });
       },
       error: e => { this.uploadingDocumentKey = null; this.fail(e); }
     });
@@ -314,8 +316,14 @@ export class RoleOperationsComponent implements OnInit {
     }, e => this.fail(e));
   }
   deleteDocument(userId: number, type: string): void {
-    if (!window.confirm(`Hapus ${type === 'nilai_magang' ? 'nilai magang' : 'keterangan lulus'} ini?`)) return;
-    this.http.delete(`${this.api}/admin/internship/documents/${userId}/${type}`, { headers: this.headers() }).subscribe({ next: () => this.loadInternship(), error: e => this.fail(e) });
+    const label = type === 'nilai_magang' ? 'Nilai magang' : 'Keterangan lulus';
+    void Swal.fire({ title: `Hapus ${label.toLowerCase()}?`, text: 'File ini akan dihapus dari daftar.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, hapus', cancelButtonText: 'Batal', reverseButtons: true }).then(result => {
+      if (!result.isConfirmed) return;
+      this.http.delete(`${this.api}/admin/internship/documents/${userId}/${type}`, { headers: this.headers() }).subscribe({
+        next: () => { this.loadInternship(); void Swal.fire({ icon: 'success', title: 'Berhasil dihapus', text: `${label} berhasil dihapus.`, timer: 1800, showConfirmButton: false }); },
+        error: e => this.fail(e)
+      });
+    });
   }
   exportRows(filename: string, headers: string[], rows: any[][]): void {
     this.reportExport.downloadCsv(filename, headers, rows);
@@ -346,19 +354,51 @@ export class RoleOperationsComponent implements OnInit {
     const headers = this.headers();
     this.http.get<any>(`${this.api}/manager/dashboard`, { headers }).subscribe({ next: data => this.teamStats = data, error: e => this.fail(e) });
     this.loadAttendance(); this.loadReports(); this.loadStatistics();
-    this.http.get<any[]>(`${this.api}/manager/leaves`, { headers }).subscribe({ next: data => this.leaveRequests = data || [], error: e => this.fail(e) });
+    this.loadLeaveRequests();
   }
 
-  loadAttendance(): void {
-    let params = new HttpParams().set('date', this.date); if (this.teamSearch) params = params.set('search', this.teamSearch); if (this.attendanceStatus) params = params.set('status', this.attendanceStatus);
-    this.http.get<any[]>(`${this.api}/manager/team/attendance`, { params, headers: this.headers() }).subscribe({ next: data => this.attendanceRows = data || [], error: e => this.fail(e) });
+  loadLeaveRequests(page = 1): void {
+    this.leavePage = page;
+    this.leaveLoading = true;
+    const params = new HttpParams().set('page', page).set('limit', this.leavePageSize);
+    this.http.get<any>(`${this.api}/manager/leaves`, { params, headers: this.headers() }).subscribe({
+      next: response => {
+        this.leaveServerPaginated = !Array.isArray(response) && Array.isArray(response?.data);
+        this.leaveRequests = this.leaveServerPaginated ? response.data : (response || []);
+        this.leaveTotalItems = this.leaveServerPaginated ? Number(response.total || this.leaveRequests.length) : this.leaveRequests.length;
+        this.leavePage = Number(response?.page || page);
+        this.leaveLoading = false;
+      },
+      error: e => { this.leaveLoading = false; this.fail(e); }
+    });
   }
 
-  loadReports(): void {
-    let params = new HttpParams(); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end);
+  get displayedLeaveRequests(): any[] {
+    return this.leaveServerPaginated
+      ? this.leaveRequests
+      : this.leaveRequests.slice((this.leavePage - 1) * this.leavePageSize, this.leavePage * this.leavePageSize);
+  }
+
+  leavePageChanged(page: number): void { this.loadLeaveRequests(page); }
+  leavePageSizeChanged(size: number): void { this.leavePageSize = size; this.loadLeaveRequests(1); }
+
+  loadAttendance(page = 1): void {
+    this.attendancePage = page; this.attendanceLoading = true; let params = new HttpParams().set('date', this.date).set('page', page).set('limit', this.attendancePageSize); if (this.teamSearch) params = params.set('search', this.teamSearch); if (this.attendanceStatus) params = params.set('status', this.attendanceStatus);
+    this.http.get<any>(`${this.api}/manager/team/attendance`, { params, headers: this.headers() }).subscribe({ next: response => { this.attendanceServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.attendanceRows = this.attendanceServerPaginated ? response.data : (response || []); this.attendanceTotalItems = this.attendanceServerPaginated ? Number(response.total || this.attendanceRows.length) : this.attendanceRows.length; this.attendancePage = Number(response?.page || 1); this.attendanceLoading = false; }, error: e => { this.attendanceLoading = false; this.fail(e); } });
+  }
+
+  loadReports(page = 1): void {
+    this.reportsPage = page; this.reportsLoading = true; let params = new HttpParams().set('page', page).set('limit', this.reportsPageSize); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end);
     if (this.teamSearch) params = params.set('search', this.teamSearch);
-    this.http.get<any[]>(`${this.api}/manager/team/reports`, { params, headers: this.headers() }).subscribe({ next: data => this.teamReports = data || [], error: e => this.fail(e) });
+    this.http.get<any>(`${this.api}/manager/team/reports`, { params, headers: this.headers() }).subscribe({ next: response => { this.reportsServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.teamReports = this.reportsServerPaginated ? response.data : (response || []); this.reportsTotalItems = this.reportsServerPaginated ? Number(response.total || this.teamReports.length) : this.teamReports.length; this.reportsPage = Number(response?.page || 1); this.reportsLoading = false; }, error: e => { this.reportsLoading = false; this.fail(e); } });
   }
+
+  get displayedAttendanceRows(): any[] { return this.attendanceServerPaginated ? this.attendanceRows : this.attendanceRows.slice((this.attendancePage - 1) * this.attendancePageSize, this.attendancePage * this.attendancePageSize); }
+  get displayedTeamReports(): any[] { return this.reportsServerPaginated ? this.teamReports : this.teamReports.slice((this.reportsPage - 1) * this.reportsPageSize, this.reportsPage * this.reportsPageSize); }
+  attendancePageChanged(page: number): void { this.loadAttendance(page); }
+  attendancePageSizeChanged(size: number): void { this.attendancePageSize = size; this.loadAttendance(1); }
+  reportsPageChanged(page: number): void { this.loadReports(page); }
+  reportsPageSizeChanged(size: number): void { this.reportsPageSize = size; this.loadReports(1); }
 
   loadStatistics(): void {
     let params = new HttpParams(); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end);
