@@ -8,11 +8,12 @@ import { FormsModule } from '@angular/forms';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 
 @Component({
   selector: 'app-employee-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, FormsModule, AdminSidebarComponent, PaginationComponent],
+  imports: [CommonModule, RouterLink, DatePipe, FormsModule, AdminSidebarComponent, PaginationComponent, FilePreviewComponent],
   templateUrl: './employee-list.component.html',
   styleUrls: ['./employee-list.component.scss']
 })
@@ -315,6 +316,16 @@ export class EmployeeListComponent implements OnInit {
     if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) { this.alert.error('Foto tidak valid', 'Gunakan JPG, PNG, atau GIF dengan ukuran maksimal 5 MB.'); input.value = ''; return; }
     const reader = new FileReader(); reader.onload = () => this.formData.foto_profil_url = String(reader.result); reader.readAsDataURL(file);
   }
+
+  onPhotoFilesChange(files: File[]): void {
+    const file = files[0];
+    if (!file) { this.formData.foto_profil_url = ''; return; }
+    const reader = new FileReader();
+    reader.onload = () => this.formData.foto_profil_url = String(reader.result);
+    reader.readAsDataURL(file);
+  }
+
+  onImportFilesChange(files: File[]): void { this.selectedImportFile = files[0] || null; }
 
   openAddModal(): void {
     this.isEditMode = false;

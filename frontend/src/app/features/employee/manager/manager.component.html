@@ -1,0 +1,40 @@
+<div class="dashboard-container">
+  <app-shared-sidebar></app-shared-sidebar>
+  <main class="main-content">
+    <div class="header">
+      <h2>Info Manajer</h2>
+      <p>Informasi manajer sesuai penetapan admin.</p>
+    </div>
+
+    <section class="golan-card manager-card" *ngIf="!loading && !error && manager; else state">
+      <div class="manager-identity">
+        <img class="manager-photo" [src]="manager.photo_url || 'assets/icon_golan.png'" (error)="imageError($event)" alt="Foto profil manajer">
+        <div>
+          <span class="eyebrow">ID Manajer</span>
+          <strong class="manager-id">{{ value(manager.manager_id) }}</strong>
+          <h3>{{ value(manager.name) }}</h3>
+          <span class="role-label">Manajer</span>
+        </div>
+      </div>
+      <div class="info-grid">
+        <div class="info-row"><span>Jenis kelamin</span><strong>{{ value(manager.gender) }}</strong></div>
+        <div class="info-row"><span>Nomor telepon</span><strong>{{ value(manager.phone) }}</strong></div>
+        <div class="info-row"><span>Email</span><strong>{{ value(manager.email) }}</strong></div>
+        <div class="info-row"><span>Alamat</span><strong>{{ value(manager.address) }}</strong></div>
+        <div class="info-row"><span>Jabatan</span><strong>{{ value(manager.position) }}</strong></div>
+        <div class="info-row"><span>Departemen/divisi</span><strong>{{ value(manager.department) }}</strong></div>
+        <div class="info-row"><span>Shift kerja</span><strong>{{ value(manager.shift) }}</strong></div>
+        <div class="info-row"><span>Lokasi rumah</span><strong>{{ value(manager.home_location) }}</strong></div>
+      </div>
+    </section>
+
+    <ng-template #state>
+      <section class="golan-card state-card" *ngIf="!loading && !error">
+        <h3>Belum memiliki manajer</h3>
+        <p>Silakan hubungi HRD untuk penetapan manajer.</p>
+      </section>
+      <section class="golan-card state-card" *ngIf="loading">Memuat informasi manajer...</section>
+      <p class="error-message" *ngIf="error">Informasi manajer belum dapat dimuat. Silakan coba lagi.</p>
+    </ng-template>
+  </main>
+</div>

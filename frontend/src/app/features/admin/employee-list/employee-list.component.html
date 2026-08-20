@@ -5,7 +5,7 @@
     <div class="header employee-page-header" style="display: flex; justify-content: space-between; align-items: center;">
       <h2>Manajemen Data Karyawan</h2>
       <div class="employee-actions">
-        <input #importInput type="file" accept=".csv,text/csv" hidden (change)="onImportFileChange($event)">
+        <app-file-preview [files]="selectedImportFile ? [selectedImportFile] : []" accept=".csv,text/csv" [maxSizeMb]="10" label="Pilih CSV" (filesChange)="onImportFilesChange($event)"></app-file-preview><input #importInput type="file" accept=".csv,text/csv" hidden (change)="onImportFileChange($event)">
         <button class="btn-secondary" (click)="importInput.click()" style="margin-right: 10px;">Pilih CSV</button>
         <button class="btn-secondary" (click)="importEmployees()" style="margin-right: 10px;" [disabled]="!selectedImportFile">Import CSV</button>
         <button class="btn-primary" (click)="openAddModal()">+ Tambah Karyawan</button>
@@ -264,7 +264,7 @@
           <input type="text" [(ngModel)]="formData.nama" name="nama" required class="form-control" />
         </div>
 
-        <div class="form-group"><label>Foto (opsional)</label><input type="file" accept="image/jpeg,image/png,image/gif" (change)="onPhotoSelected($event)" class="form-control" /><small class="form-help">JPG, PNG, atau GIF maksimal 5 MB.</small></div>
+        <div class="form-group"><label>Foto (opsional)</label><app-file-preview [files]="[]" accept="image/jpeg,image/png,image/gif" [maxSizeMb]="5" label="Pilih foto" (filesChange)="onPhotoFilesChange($event)"></app-file-preview><small class="form-help">JPG, PNG, atau GIF maksimal 5 MB.</small></div>
         <div class="form-group-row">
           <div class="form-group"><label>NIK/NIP <span class="required-mark">*</span></label><input type="text" [(ngModel)]="formData.nik" (input)="onNikInput($event)" name="nik" required minlength="16" maxlength="16" pattern="[0-9]{16}" inputmode="numeric" class="form-control" /></div>
           <div class="form-group"><label>Jenis kelamin (opsional)</label><select [(ngModel)]="formData.jenis_kelamin" name="jenis_kelamin" class="form-control"><option value="">Pilih jenis kelamin</option><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>

@@ -9,11 +9,12 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import * as L from 'leaflet';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
+import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DatePipe, SharedSidebarComponent, UiSkeletonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, DatePipe, SharedSidebarComponent, UiSkeletonComponent, FilePreviewComponent],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss']
 })
@@ -247,20 +248,20 @@ export class ProfileComponent implements OnInit, OnDestroy {
     });
   }
 
-  onProfilePhotoSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+  onProfilePhotoSelected(event: Event | File[]): void {
+    const input = Array.isArray(event) ? null : event.target as HTMLInputElement;
+    const file = Array.isArray(event) ? event[0] : input?.files?.[0];
     this.photoError = '';
 
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
       this.photoError = 'Pilih file JPG, PNG, atau GIF.';
-      input.value = '';
+      if (input) input.value = '';
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       this.photoError = 'Ukuran pas foto maksimal 5 MB.';
-      input.value = '';
+      if (input) input.value = '';
       return;
     }
 
@@ -273,7 +274,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.photoError = 'Pas foto harus berorientasi portrait dengan rasio 3:4.';
         this.selectedPhoto = null;
         this.profilePhotoPreviewUrl = '';
-        input.value = '';
+        if (input) input.value = '';
         return;
       }
 
@@ -284,7 +285,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     image.onerror = () => {
       URL.revokeObjectURL(previewUrl);
       this.photoError = 'Pas foto tidak dapat dibaca.';
-      input.value = '';
+      if (input) input.value = '';
     };
     image.src = previewUrl;
   }

@@ -59,19 +59,19 @@
               </td>
               <td class="leave-status-cell">
                 <span class="status-badge" [ngClass]="{
-                  'status-pending': req.Status === 'Pending',
-                  'status-hadir': req.Status === 'Approved',
-                  'status-alpha': req.Status === 'Rejected'
+                  'status-pending': req.Status === 'Pending' || req.Status === 'pending_hrd_approval' || req.Status === 'pending_manager_approval',
+                  'status-hadir': req.Status === 'Approved' || req.Status === 'manager_approved' || req.Status === 'hrd_approved',
+                  'status-alpha': req.Status === 'Rejected' || req.Status === 'manager_rejected' || req.Status === 'hrd_rejected'
                 }"
                 [style.background-color]="req.Status === 'Pending' ? '#fef3c7' : (req.Status === 'Approved' ? '#dbeafe' : '#fee2e2')"
                 [style.color]="req.Status === 'Pending' ? '#d97706' : (req.Status === 'Approved' ? '#2563eb' : '#dc2626')">
-                  {{ req.Status }}
+                  {{ statusLabel(req.Status) }}
                 </span>
               </td>
               <td class="leave-actions-cell">
                 <div class="table-actions">
                   <button class="icon-button view btn-view-detail icon-only" type="button" aria-label="Lihat detail" title="Lihat detail" (click)="openDetail(req)"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
-                  <div *ngIf="req.Status === 'Pending'" class="action-group">
+                  <div *ngIf="canDecide(req)" class="action-group">
                     <button class="icon-button approve" type="button" aria-label="Setuju" title="Setuju" (click)="updateStatus(req.ID, 'Approved')">
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
                     </button>
@@ -79,7 +79,7 @@
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#x"></use></svg>
                     </button>
                   </div>
-                  <button *ngIf="req.Status !== 'Pending'" class="icon-button" disabled type="button" aria-label="Selesai" title="Selesai">
+                  <button *ngIf="!canDecide(req)" class="icon-button" disabled type="button" aria-label="Selesai" title="Selesai">
                     <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
                   </button>
                 </div>
@@ -136,12 +136,12 @@
           </p>
         </div>
         <div class="status-pill-badge" [ngClass]="{
-          'status-pending': selectedRequest.Status === 'Pending',
-          'status-approved': selectedRequest.Status === 'Approved',
-          'status-rejected': selectedRequest.Status === 'Rejected'
+          'status-pending': selectedRequest.Status === 'Pending' || selectedRequest.Status === 'pending_hrd_approval',
+          'status-approved': selectedRequest.Status === 'Approved' || selectedRequest.Status === 'manager_approved' || selectedRequest.Status === 'hrd_approved',
+          'status-rejected': selectedRequest.Status === 'Rejected' || selectedRequest.Status === 'manager_rejected' || selectedRequest.Status === 'hrd_rejected'
         }">
           <span class="status-dot"></span>
-          {{ selectedRequest.Status }}
+          {{ statusLabel(selectedRequest.Status) }}
         </div>
       </div>
 
@@ -227,22 +227,18 @@
           <p>{{ selectedRequest.Notes }}</p>
         </div>
       </div>
+      <div class="detail-section" *ngIf="selectedRequest.ApprovalHistory?.length">
+        <span class="section-label">Riwayat Persetujuan</span>
+        <div class="notes-box" *ngFor="let history of selectedRequest.ApprovalHistory">
+          <p><strong>{{ history.DecidedByUser?.Nama || history.Role }}</strong> · {{ statusLabel(history.Status) }} · {{ history.CreatedAt | date:'dd MMM yyyy HH:mm' }}</p>
+          <p *ngIf="history.Notes">{{ history.Notes }}</p>
+        </div>
+      </div>
     </div>
 
     <!-- Modal Footer -->
     <div class="modal-footer">
       <button class="btn-modal-secondary" type="button" (click)="closeDetail()">Tutup</button>
-      
-      <div *ngIf="selectedRequest.Status === 'Pending'" class="footer-action-group">
-        <button class="btn-modal-reject" type="button" (click)="updateStatusFromModal(selectedRequest.ID, 'Rejected')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-bottom;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          Tolak
-        </button>
-        <button class="btn-modal-approve" type="button" (click)="updateStatusFromModal(selectedRequest.ID, 'Approved')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-bottom;"><polyline points="20 6 9 17 4 12"/></svg>
-          Setujui
-        </button>
-      </div>
     </div>
   </div>
 </div>

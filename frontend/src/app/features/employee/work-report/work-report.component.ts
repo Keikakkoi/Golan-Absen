@@ -11,11 +11,12 @@ import { PaginationComponent } from '../../../shared/pagination/pagination.compo
 import { CommonModule } from '@angular/common';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
+import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 
 @Component({
   selector: 'app-work-report',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent, PaginationComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent, PaginationComponent, FilePreviewComponent],
   templateUrl: './work-report.component.html',
   styleUrls: ['./work-report.component.scss']
 })
@@ -255,6 +256,12 @@ export class WorkReportComponent implements OnInit {
       return;
     }
     this.selectedScreenshots = files;
+    this.screenshotPreviews = files.map(file => URL.createObjectURL(file));
+  }
+
+  onScreenshotFilesChange(files: File[]): void {
+    this.selectedScreenshots = files;
+    this.screenshotPreviews.forEach(url => URL.revokeObjectURL(url));
     this.screenshotPreviews = files.map(file => URL.createObjectURL(file));
   }
 

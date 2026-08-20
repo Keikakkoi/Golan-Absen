@@ -56,3 +56,4 @@
 </div>
 
 
+<app-file-preview [files]="selectedScreenshots" accept="image/jpeg,image/png,image/webp" [maxSizeMb]="5" [maxFiles]="3" label="Pilih screenshot (preview)" (filesChange)="onScreenshotFilesChange($event)"></app-file-preview>

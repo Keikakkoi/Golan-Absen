@@ -6,8 +6,9 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 
-@Component({ selector: 'app-intern-logbook', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent], templateUrl: './intern-logbook.component.html', styleUrls: ['./intern-logbook.component.scss'] })
+@Component({ selector: 'app-intern-logbook', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent, FilePreviewComponent], templateUrl: './intern-logbook.component.html', styleUrls: ['./intern-logbook.component.scss'] })
 export class InternLogbookComponent implements OnInit {
   logbooks: any[] = []; message = ''; error = ''; saving = false;
   page = 1; pageSize = 25; pageSizeOptions = [10, 25, 50, 100]; isLoading = false;
@@ -52,6 +53,7 @@ export class InternLogbookComponent implements OnInit {
     });
   }
   onScreenshotsSelected(event: Event): void { const input = event.target as HTMLInputElement; const files = Array.from(input.files || []); if (files.length > 3 || files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) { this.error = 'Maksimal 3 screenshot JPG/PNG/WEBP, masing-masing 5MB.'; input.value = ''; return; } this.selectedScreenshots = files; this.screenshotPreviews = files.map(file => URL.createObjectURL(file)); }
+  onScreenshotFilesChange(files: File[]): void { this.selectedScreenshots = files; this.screenshotPreviews = files.map(file => URL.createObjectURL(file)); }
   edit(item: any): void { const status = item.status_logbook || item.StatusLogbook || 'draft'; if (status === 'approved' || status === 'submitted') return; this.editingId = item.id || item.ID; this.form = { tanggal: String(item.tanggal || item.Tanggal || '').slice(0, 10), tugas: item.tugas || item.Tugas || '', deskripsi_kegiatan: item.deskripsi_kegiatan || item.DeskripsiKegiatan || '', kendala: item.kendala || item.Kendala || '', status: status }; this.loadDeadline(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   cancelEdit(): void { this.editingId = null; this.form = { tanggal: new Date().toISOString().slice(0, 10), tugas: '', deskripsi_kegiatan: '', kendala: '', status: 'draft' }; this.screenshotPreviews.forEach(url => URL.revokeObjectURL(url)); this.selectedScreenshots = []; this.screenshotPreviews = []; this.loadDeadline(); }
   viewDetail(item: any): void { this.selectedLogbookDetail = item; }

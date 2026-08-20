@@ -7,11 +7,12 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
 import { ReportExportService } from '../../../core/services/report-export.service';
 import Swal from 'sweetalert2';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 
 @Component({
   selector: 'app-admin-role-operations',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent],
+  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent, FilePreviewComponent],
   templateUrl: './role-operations.component.html',
   styleUrls: ['./role-operations.component.scss']
 })
@@ -272,6 +273,7 @@ export class RoleOperationsComponent implements OnInit {
       });
     });
   }
+  onCertificatePreviewChange(files: File[], userId: number): void { this.selectedCertificateFiles[userId] = files[0] || null; }
   documentKey(userId: number, type: string): string { return `${userId}_${type}`; }
   onDocumentFileSelected(event: Event, userId: number, type: string): void {
     const input = event.target as HTMLInputElement;

@@ -35,6 +35,7 @@ import { InternLogbookComponent } from './features/intern/intern-logbook/intern-
 import { InternMentorComponent } from './features/intern/intern-mentor/intern-mentor.component';
 import { InternCertificateComponent } from './features/intern/intern-certificate/intern-certificate.component';
 import { InternStatisticsComponent } from './features/intern/intern-statistics/intern-statistics.component';
+import { ManagerComponent } from './features/employee/manager/manager.component';
 import { ManagerDashboardComponent } from './features/manager/manager-dashboard/manager-dashboard.component';
 import { TeamAttendanceComponent } from './features/manager/team-attendance/team-attendance.component';
 import { TeamReportsComponent } from './features/manager/team-reports/team-reports.component';
@@ -67,6 +68,7 @@ export const routes: Routes = [
   { path: 'employee/statistics', component: StatisticsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
   { path: 'employee/notifications', component: NotificationsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
   { path: 'employee/profile', component: ProfileComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
+  { path: 'employee/manager', component: ManagerComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
   { path: 'intern/dashboard', component: InternDashboardComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
   { path: 'intern/logbooks', component: InternLogbookComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
   { path: 'intern/statistics', component: InternStatisticsComponent, canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },

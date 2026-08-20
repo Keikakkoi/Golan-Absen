@@ -75,8 +75,43 @@
 .admin-report-page .report-table {
   display: table;
   width: 100% !important;
-  min-width: 760px !important;
+  min-width: 1080px !important;
   max-width: none !important;
+}
+
+.checkin-photo-thumb {
+  width: 60px;
+  height: 60px;
+  display: block;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
+.photo-placeholder { color: #94a3b8; font-size: .75rem; white-space: nowrap; }
+.location-cell { max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn-detail { padding: .45rem .7rem; white-space: nowrap; }
+.attendance-detail-backdrop { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: 1rem; background: rgba(15, 23, 42, .58); }
+.attendance-detail-modal { width: min(760px, 100%); max-height: min(92vh, 820px); overflow: auto; border-radius: 16px; background: var(--card-bg, #fff); box-shadow: 0 24px 70px rgba(15, 23, 42, .3); }
+.attendance-detail-header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; padding: 1.25rem 1.5rem; border-bottom: 1px solid #e5e7eb; }
+.attendance-detail-header h3, .attendance-detail-header p { margin: 0; }
+.attendance-detail-header p { margin-top: .3rem; color: #64748b; font-size: .9rem; }
+.modal-close { border: 0; background: transparent; color: #64748b; font-size: 1.75rem; line-height: 1; cursor: pointer; }
+.attendance-detail-content { display: grid; grid-template-columns: minmax(220px, .9fr) minmax(220px, 1.1fr); gap: 1.25rem; padding: 1.5rem; }
+.attendance-detail-photo-wrap { min-height: 220px; display: grid; place-items: center; border-radius: 12px; overflow: hidden; background: #f8fafc; }
+.attendance-detail-photo { width: 100%; max-height: 360px; object-fit: contain; }
+.detail-placeholder { padding: 3rem 1rem; }
+.attendance-detail-info dl { margin: 0; }
+.attendance-detail-info dt { margin-top: .8rem; color: #64748b; font-size: .78rem; }
+.attendance-detail-info dt:first-child { margin-top: 0; }
+.attendance-detail-info dd { margin: .2rem 0 0; overflow-wrap: anywhere; }
+.map-link { display: inline-block; margin-top: 1.25rem; }
+.attendance-detail-map { width: calc(100% - 3rem); height: 260px; margin: 0 1.5rem 1.5rem; border: 0; border-radius: 12px; }
+
+@media (max-width: 640px) {
+  .attendance-detail-content { grid-template-columns: 1fr; padding: 1rem; }
+  .attendance-detail-map { width: calc(100% - 2rem); margin: 0 1rem 1rem; height: 220px; }
+  .attendance-detail-header { padding: 1rem; }
 }
 
 @media (max-width: 640px) {

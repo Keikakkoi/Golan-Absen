@@ -26,7 +26,7 @@
               <select [(ngModel)]="formData.jenis_izin" name="jenis_izin" class="golan-input" required>
                 <option *ngFor="let type of leaveTypes" [value]="type" [disabled]="type === 'Cuti' && !canRequestCuti">{{ type }}</option>
               </select>
-              <small class="input-hint" *ngIf="!isIntern && !canRequestCuti">Cuti dapat diajukan setelah bekerja {{ minimumMasaKerjaCutiBulan }} bulan.</small>
+              <small class="input-hint" *ngIf="!isIntern && !canRequestCuti">Cuti tersedia setelah minimal {{ minimumMasaKerjaCutiBulan }} bulan kerja<span *ngIf="tanggalCutiTersedia"> ({{ tanggalCutiTersedia | date:'dd MMMM yyyy' }}).</span></small>
             </label>
 
             <label class="field-group">
@@ -48,7 +48,7 @@
           <label class="field-group field-group-full file-field">
             <span>Lampiran Dokumen (Surat Dokter, dll) <span class="text-danger">*</span></span>
             <div class="file-input-wrapper" [class.file-selected]="selectedFile">
-              <input type="file" id="leave-file" (change)="onFileSelected($event)" accept="image/*,.pdf" required />
+              <app-file-preview [files]="selectedFile ? [selectedFile] : []" accept="image/jpeg,image/png,image/webp,application/pdf" [maxSizeMb]="10" label="Pilih lampiran" (filesChange)="onAttachmentChange($event)"></app-file-preview>
               <label for="leave-file" class="file-button" [class.file-selected]="selectedFile">
                 <i class="fas" [ngClass]="selectedFile ? 'fa-check-circle' : 'fa-paperclip'" style="margin-right: 6px;"></i>
                 Pilih File
@@ -95,8 +95,8 @@
                   <td>{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
                   <td>{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
                   <td>
-                    <span class="status-pill" [class.status-menunggu]="req.Status === 'Pending'" [class.status-hadir]="req.Status === 'Approved'" [class.status-alpha]="req.Status === 'Rejected'">
-                      {{ req.Status }}
+                    <span class="status-pill" [class.status-menunggu]="req.Status === 'Pending'" [class.status-hadir]="req.Status === 'Approved'" [class.status-alpha]="req.Status === 'Rejected' || req.Status === 'Cancelled'">
+                      {{ statusLabel(req.Status) }}
                     </span>
                   </td>
                   <td>
@@ -105,6 +105,7 @@
                   </td>
                   <td>
                     <button type="button" class="btn-secondary btn-sm btn-view-detail compact" (click)="openDetail(req)">Detail</button>
+                    <button *ngIf="req.Status === 'Pending' || req.Status === 'Approved' || req.Status === 'pending_manager_approval' || req.Status === 'manager_approved'" type="button" class="btn-secondary btn-sm compact" (click)="cancelRequest(req)">Batal</button>
                   </td>
                 </tr>
               </tbody>
@@ -135,8 +136,8 @@
       <div class="detail-row">
         <span>Status</span>
         <strong>
-          <span class="status-pill" [class.status-menunggu]="selectedLeave.Status === 'Pending'" [class.status-hadir]="selectedLeave.Status === 'Approved'" [class.status-alpha]="selectedLeave.Status === 'Rejected'">
-            {{ selectedLeave.Status }}
+          <span class="status-pill" [class.status-menunggu]="selectedLeave.Status === 'Pending'" [class.status-hadir]="selectedLeave.Status === 'Approved'" [class.status-alpha]="selectedLeave.Status === 'Rejected' || selectedLeave.Status === 'Cancelled'">
+            {{ statusLabel(selectedLeave.Status) }}
           </span>
         </strong>
       </div>

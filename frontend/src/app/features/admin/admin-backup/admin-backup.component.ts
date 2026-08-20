@@ -5,10 +5,11 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 
 interface BackupHistory { name: string; type: string; modules: number; size: string; createdBy: string; createdAt: string; status: string; }
 
-@Component({ selector: 'app-admin-backup', standalone: true, imports: [CommonModule, FormsModule, AdminSidebarComponent], templateUrl: './admin-backup.component.html', styleUrls: ['./admin-backup.component.scss'] })
+@Component({ selector: 'app-admin-backup', standalone: true, imports: [CommonModule, FormsModule, AdminSidebarComponent, FilePreviewComponent], templateUrl: './admin-backup.component.html', styleUrls: ['./admin-backup.component.scss'] })
 export class AdminBackupComponent {
   isLoading = false; isValidating = false; errorMessage = ''; successMessage = '';
   backupName = `backup-absensi-golan-${new Date().toISOString().slice(0, 10)}`;
@@ -42,6 +43,7 @@ export class AdminBackupComponent {
     }, error: err => { this.isLoading = false; this.errorMessage = err.status === 403 ? 'Anda tidak memiliki izin untuk membuat backup.' : 'Backup gagal dibuat. Silakan coba lagi.'; } });
   }
   onFileSelected(event: Event): void { const input = event.target as HTMLInputElement; if (input.files?.[0]) this.validateFile(input.files[0]); }
+  onBackupFilesChange(files: File[]): void { if (files[0]) this.validateFile(files[0]); else { this.selectedFile = null; this.validationState = 'empty'; this.preview = null; } }
   onDrop(event: DragEvent): void { event.preventDefault(); const file = event.dataTransfer?.files?.[0]; if (file) this.validateFile(file); }
   validateFile(file: File): void {
     this.selectedFile = file; this.preview = null; this.validationState = 'empty'; this.isValidating = true; this.validationMessage = 'Memvalidasi file backup…';

@@ -7,6 +7,7 @@ import { RouterLink } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-admin-reports',
@@ -34,6 +35,7 @@ export class AdminReportsComponent implements OnInit {
   errorMessage = '';
   page = 1;
   pageSize = 25;
+  selectedReport: any | null = null;
 
   filters = {
     start_date: '',
@@ -53,7 +55,8 @@ export class AdminReportsComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -232,6 +235,56 @@ export class AdminReportsComponent implements OnInit {
   private ensureValidPage(): void {
     const totalPages = Math.max(1, Math.ceil(this.reports.length / this.pageSize));
     if (this.page > totalPages) this.page = totalPages;
+  }
+
+  openReportDetail(report: any): void {
+    this.selectedReport = report;
+  }
+
+  closeReportDetail(): void {
+    this.selectedReport = null;
+  }
+
+  checkInPhoto(report: any): string {
+    return report?.FotoSelfieMasukURL || report?.foto_selfie_masuk_url || '';
+  }
+
+  checkInLatitude(report: any): number | null {
+    return this.coordinate(report?.LatitudeMasuk ?? report?.latitude_masuk);
+  }
+
+  checkInLongitude(report: any): number | null {
+    return this.coordinate(report?.LongitudeMasuk ?? report?.longitude_masuk);
+  }
+
+  locationSummary(report: any): string {
+    const latitude = this.checkInLatitude(report);
+    const longitude = this.checkInLongitude(report);
+    return latitude !== null && longitude !== null
+      ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
+      : 'Tidak ada lokasi';
+  }
+
+  mapEmbedUrl(report: any): SafeResourceUrl | null {
+    const latitude = this.checkInLatitude(report);
+    const longitude = this.checkInLongitude(report);
+    if (latitude === null || longitude === null) return null;
+    const delta = 0.003;
+    const url = `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - delta}%2C${latitude - delta}%2C${longitude + delta}%2C${latitude + delta}&layer=mapnik&marker=${latitude}%2C${longitude}`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
+  mapsUrl(report: any): string | null {
+    const latitude = this.checkInLatitude(report);
+    const longitude = this.checkInLongitude(report);
+    return latitude !== null && longitude !== null
+      ? `https://www.google.com/maps?q=${latitude},${longitude}`
+      : null;
+  }
+
+  private coordinate(value: unknown): number | null {
+    const number = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(number) && number !== 0 ? number : null;
   }
 
   toggleExportDropdown(): void {

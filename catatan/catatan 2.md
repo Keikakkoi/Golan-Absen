@@ -97,3 +97,4 @@ lanjut tambahin fitur Pagination di tabel pada dash magang dan karyawan✅
 seo(search engine optimization) jadi kalau di google ketik nama perusahaan muncul website nya
 bug kemungkinan berada di backend/database saat membaca salah satu tabel, bukan pada file backup yang di-upload. Perlu melihat error database sebenarnya atau mengecek seluruh tabel hasil AutoMigrate, terutama tabel model baru seperti work_reports, internship_documents, certificate_issuance_logs, dan general_settings.
 (dash magang)benerin tampilan Info Manajer agar juga nampilin foto dan beberapa macam boidata manajer yang sudah ada di database✅
+cek fungsi dari backup apakah sudah berfungsi semua terutama pada data tertentu❓

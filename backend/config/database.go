@@ -38,6 +38,7 @@ func ConnectDB(cfg *Config) {
 		&models.OfficeLocation{},
 		&models.WorkSchedule{},
 		&models.LeaveRequest{},
+		&models.LeaveApprovalHistory{},
 		&models.LeaveQuota{},
 		&models.Notification{},
 		&models.PushSubscription{},
@@ -156,9 +157,9 @@ func ConnectDB(cfg *Config) {
 	DB.Model(&models.GeneralSetting{}).Count(&generalSettingCount)
 	if generalSettingCount == 0 {
 		DB.Create(&models.GeneralSetting{
-			MinimumMasaKerjaCutiBulan:      3,
+			MinimumMasaKerjaCutiBulan:        3,
 			BatasLaporanSetelahCheckoutMenit: 60,
-			BatasLaporanSetelahCheckoutJam: 1,
+			BatasLaporanSetelahCheckoutJam:   1,
 		})
 	}
 

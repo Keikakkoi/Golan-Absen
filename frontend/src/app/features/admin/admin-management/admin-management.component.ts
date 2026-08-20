@@ -255,7 +255,7 @@ export class AdminManagementComponent implements OnInit {
   }
 
   async saveQuota(): Promise<void> {
-    if (!await this.alert.confirm('Simpan kuota?', 'Perubahan kuota izin/cuti akan disimpan.')) return;
+    if (!await this.alert.confirm('Simpan kuota?', 'Perubahan kuota cuti akan disimpan.')) return;
     this.isSaving = true;
     this.http.put(`${this.api}/admin/leave-quotas/${this.quotaForm.employee_id}`, this.quotaForm, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.loadQuotaRows(); this.alert.success('Kuota berhasil disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan kuota', err.error?.error || 'Gagal menyimpan kuota'); } });
   }

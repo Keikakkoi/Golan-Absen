@@ -93,6 +93,9 @@
       <a routerLink="/employee/leaves" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#mail"></use></svg> Pengajuan Izin
       </a>
+      <a routerLink="/employee/manager" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#user"></use></svg> Info Manajer
+      </a>
       <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi
       </a>
@@ -165,7 +168,7 @@
       <a routerLink="/admin/reports/alpha" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#x"></use></svg> Lap. Ketidakhadiran
       </a>
-      <a routerLink="/admin/leave-quotas" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Kuota Izin / Cuti</a>
+      <a routerLink="/admin/leave-quotas" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Kuota Cuti</a>
       <a routerLink="/admin/settings" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#settings"></use></svg> Pengaturan Umum
       </a>

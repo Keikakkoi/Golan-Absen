@@ -289,8 +289,18 @@ func containsUint(values []uint, target uint) bool {
 	return false
 }
 
-func GetManagerLeaveRequests(c *fiber.Ctx) error    { return GetAllLeaveRequests(c) }
-func ApproveManagerLeaveRequest(c *fiber.Ctx) error { return ApproveRejectLeaveRequest(c) }
+func GetManagerLeaveRequests(c *fiber.Ctx) error {
+	if c.Locals("role").(models.Role) != models.RoleManajer {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Only managers can access team leave approvals"})
+	}
+	return GetAllLeaveRequests(c)
+}
+func ApproveManagerLeaveRequest(c *fiber.Ctx) error {
+	if c.Locals("role").(models.Role) != models.RoleManajer {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Only managers can approve team leave requests"})
+	}
+	return ApproveRejectLeaveRequest(c)
+}
 
 func ReviewManagerLogbook(c *fiber.Ctx) error {
 	managerID := c.Locals("user_id").(uint)

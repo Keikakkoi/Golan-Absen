@@ -133,6 +133,7 @@ func validateEmployeeAssignments(db *gorm.DB, req *EmployeeRequest, employeeUser
 
 func SetupEmployeeRoutes(router fiber.Router) {
 	employee := router.Group("/employee", middleware.Protected())
+	employee.Get("/manager", middleware.RequireRoles(models.RoleKaryawan), GetEmployeeManager)
 	employee.Get("/profile", GetProfile)
 	employee.Put("/profile", UpdateMyProfile)
 	employee.Post("/profile/photo", UploadProfilePhoto)
@@ -147,6 +148,74 @@ func SetupEmployeeRoutes(router fiber.Router) {
 	admin.Put("/employees/:id", UpdateEmployee)
 	admin.Delete("/employees/:id", DeleteEmployee)
 	admin.Put("/employees/:id/shift", UpdateEmployeeShift)
+}
+
+// GetEmployeeManager returns the active manager assigned to the authenticated
+// employee. The user_id comes from the JWT; no client-supplied employee ID is
+// accepted, so this endpoint cannot be used to inspect another employee's
+// manager.
+func GetEmployeeManager(c *fiber.Ctx) error {
+	result := fiber.Map{
+		"has_manager":   false,
+		"manager_id":    nil,
+		"name":          "",
+		"photo_url":     "",
+		"gender":        "",
+		"phone":         "",
+		"email":         "",
+		"address":       "",
+		"position":      "",
+		"department":    "",
+		"shift":         "",
+		"home_location": "",
+	}
+
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User is missing"})
+	}
+
+	var user models.User
+	if err := config.DB.Select("id", "manager_id").Where("id = ? AND role = ?", userID, models.RoleKaryawan).First(&user).Error; err != nil || user.ManagerID == nil {
+		return c.JSON(result)
+	}
+
+	var manager models.User
+	if err := config.DB.Where("id = ? AND role = ? AND status = ?", *user.ManagerID, models.RoleManajer, "aktif").First(&manager).Error; err != nil {
+		return c.JSON(result)
+	}
+
+	var employee models.Employee
+	if err := config.DB.Preload("Division").Preload("Position").Preload("HomeLocation").Where("user_id = ?", manager.ID).First(&employee).Error; err != nil {
+		return c.JSON(result)
+	}
+
+	result["has_manager"] = true
+	result["manager_id"] = manager.ID
+	result["name"] = manager.Nama
+	result["email"] = manager.Email
+	result["photo_url"] = employee.FotoProfilURL
+	result["gender"] = employee.JenisKelamin
+	result["phone"] = employee.NomorTelepon
+	result["address"] = employee.Alamat
+	result["position"] = employee.Position.NamaJabatan
+	result["department"] = employee.Division.NamaDivisi
+	result["shift"] = employee.ShiftKerja
+	if employee.HomeLocation != nil {
+		result["home_location"] = employee.HomeLocation.AlamatRumah
+		if employee.HomeLocation.AlamatRumah == "" {
+			result["home_location"] = employee.HomeLocation.GoogleMapsURL
+		}
+	}
+
+	if schedule, found := findEffectiveSchedule(employee.ID, attendanceBusinessDate(attendanceNow())); found {
+		result["shift"] = schedule.NamaShift
+		if schedule.JamMulai != "" && schedule.JamSelesai != "" {
+			result["shift"] = fmt.Sprintf("%s (%s - %s)", schedule.NamaShift, schedule.JamMulai, schedule.JamSelesai)
+		}
+	}
+
+	return c.JSON(result)
 }
 
 func getOrCreateEmployee(userID uint) (models.Employee, error) {

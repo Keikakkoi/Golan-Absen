@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -132,6 +133,15 @@ func GetLeaveQuotas(c *fiber.Ctx) error {
 	if year == 0 {
 		year = time.Now().Year()
 	}
+	setting := getGeneralSetting()
+	var employees []models.Employee
+	if err := config.DB.Preload("User").Find(&employees).Error; err == nil {
+		for _, employee := range employees {
+			if employee.User != nil && employee.User.Role != models.RoleMagang {
+				_ = ensureCutiQuota(config.DB, employee, year, attendanceNow(), setting.MinimumMasaKerjaCutiBulan)
+			}
+		}
+	}
 	var quotas []models.LeaveQuota
 	query := config.DB.Preload("Employee.User").Where("tahun = ?", year).Order("employee_id asc")
 	if err := query.Find(&quotas).Error; err != nil {
@@ -157,6 +167,17 @@ func UpsertLeaveQuota(c *fiber.Ctx) error {
 	var input leaveQuotaInput
 	if err := c.BodyParser(&input); err != nil || input.Tahun < 2000 || input.JenisCuti == "" || input.SisaKuota < 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Data kuota tidak valid"})
+	}
+	if normalizeLeaveType(input.JenisCuti) == models.LeaveTypeCuti {
+		var employee models.Employee
+		if err := config.DB.First(&employee, uint(employeeID)).Error; err != nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee not found"})
+		}
+		setting := getGeneralSetting()
+		if !isEligibleForCuti(employee, attendanceNow(), setting.MinimumMasaKerjaCutiBulan) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fmt.Sprintf("Kuota cuti hanya dapat diberikan setelah karyawan memenuhi masa kerja minimal %d bulan", setting.MinimumMasaKerjaCutiBulan)})
+		}
+		input.JenisCuti = models.LeaveTypeCuti
 	}
 	var quota models.LeaveQuota
 	err = config.DB.Where("employee_id = ? AND tahun = ? AND jenis_cuti = ?", uint(employeeID), input.Tahun, input.JenisCuti).First(&quota).Error

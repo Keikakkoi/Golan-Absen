@@ -59,7 +59,7 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 	// Leave Quota for this year
 	var quota models.LeaveQuota
 	sisaCuti := 12 // Default
-	if err := config.DB.Where("employee_id = ? AND jenis_cuti = ? AND tahun = ?", employee.ID, "Cuti Tahunan", now.Year()).Limit(1).Find(&quota).Error; err == nil && quota.ID != 0 {
+	if err := config.DB.Where("employee_id = ? AND jenis_cuti IN ? AND tahun = ?", employee.ID, []string{models.LeaveTypeCuti, "Cuti Tahunan"}, now.Year()).Limit(1).Find(&quota).Error; err == nil && quota.ID != 0 {
 		sisaCuti = quota.SisaKuota
 	}
 

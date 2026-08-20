@@ -205,7 +205,7 @@
       <!-- FILE UPLOAD FIELD -->
       <div class="form-group">
         <label for="event-file">Upload File Pengumuman / Lampiran <span>(opsional, maks 10MB)</span></label>
-        <input id="event-file" type="file" class="golan-input" (change)="onFileSelected($event)" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*">
+        <app-file-preview [files]="selectedFile ? [selectedFile] : []" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,image/*" [maxSizeMb]="10" label="Pilih lampiran" (filesChange)="onAttachmentFilesChange($event)"></app-file-preview>
         
         <div *ngIf="selectedFile" style="margin-top: 6px; font-size: 0.85rem; color: #1e293b; display: flex; align-items: center; gap: 8px;">
           <span>📄 File baru dipilih: <strong>{{ selectedFile.name }}</strong></span>

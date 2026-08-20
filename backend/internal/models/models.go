@@ -234,23 +234,50 @@ type WorkSchedule struct {
 type LeaveStatus string
 
 const (
-	LeaveStatusPending  LeaveStatus = "Pending"
-	LeaveStatusApproved LeaveStatus = "Approved"
-	LeaveStatusRejected LeaveStatus = "Rejected"
+	LeaveStatusPending         LeaveStatus = "Pending"
+	LeaveStatusApproved        LeaveStatus = "Approved"
+	LeaveStatusRejected        LeaveStatus = "Rejected"
+	LeaveStatusCancelled       LeaveStatus = "Cancelled"
+	LeaveStatusPendingManager  LeaveStatus = "pending_manager_approval"
+	LeaveStatusManagerApproved LeaveStatus = "manager_approved"
+	LeaveStatusManagerRejected LeaveStatus = "manager_rejected"
+	LeaveStatusPendingHRD      LeaveStatus = "pending_hrd_approval"
+	LeaveStatusHRDApproved     LeaveStatus = "hrd_approved"
+	LeaveStatusHRDRejected     LeaveStatus = "hrd_rejected"
 )
 
 type LeaveRequest struct {
 	gorm.Model
-	EmployeeID     uint `gorm:"not null;index"`
-	Employee       Employee
-	JenisIzin      string      `gorm:"size:50;not null"` // Cuti, Sakit, Lainnya
-	TanggalMulai   time.Time   `gorm:"type:date;not null"`
-	TanggalSelesai time.Time   `gorm:"type:date;not null"`
-	Alasan         string      `gorm:"type:text;not null"`
-	LampiranURL    string      `gorm:"type:text"`
-	Status         LeaveStatus `gorm:"type:varchar(20);default:'Pending'"`
-	ApprovedBy     *uint       // UserID of HRD/Admin/Manager who approved
-	ApprovedAt     *time.Time  `gorm:"type:timestamp"`
+	EmployeeID        uint `gorm:"not null;index"`
+	Employee          Employee
+	JenisIzin         string                 `gorm:"size:50;not null"` // Cuti, Sakit, Lainnya
+	TanggalMulai      time.Time              `gorm:"type:date;not null"`
+	TanggalSelesai    time.Time              `gorm:"type:date;not null"`
+	Alasan            string                 `gorm:"type:text;not null"`
+	LampiranURL       string                 `gorm:"type:text"`
+	Status            LeaveStatus            `gorm:"type:varchar(40);default:'pending_manager_approval'"`
+	ApprovedBy        *uint                  // UserID of HRD/Admin/Manager who approved
+	ApprovedAt        *time.Time             `gorm:"type:timestamp"`
+	Notes             string                 `gorm:"type:text"`
+	ManagerApprovedBy *uint                  `gorm:"index"`
+	ManagerApprovedAt *time.Time             `gorm:"type:timestamp"`
+	ManagerNotes      string                 `gorm:"type:text"`
+	ApprovalHistory   []LeaveApprovalHistory `gorm:"foreignKey:LeaveRequestID"`
+	// QuotaDays/QuotaReserved make quota accounting idempotent across the
+	// pending -> approved/rejected/cancelled lifecycle.
+	QuotaDays     int  `gorm:"not null;default:0"`
+	QuotaReserved bool `gorm:"not null;default:false"`
+}
+
+// LeaveApprovalHistory keeps every workflow decision auditable.
+type LeaveApprovalHistory struct {
+	gorm.Model
+	LeaveRequestID uint `gorm:"not null;index"`
+	LeaveRequest   LeaveRequest
+	DecidedBy      uint        `gorm:"not null;index"`
+	DecidedByUser  User        `gorm:"foreignKey:DecidedBy"`
+	Role           Role        `gorm:"type:varchar(20);not null"`
+	Status         LeaveStatus `gorm:"type:varchar(40);not null"`
 	Notes          string      `gorm:"type:text"`
 }
 

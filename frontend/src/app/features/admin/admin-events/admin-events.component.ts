@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 
 interface CompanyEvent {
   ID: number;
@@ -45,7 +46,7 @@ interface PaginatedEventsResponse {
 @Component({
   selector: 'app-admin-events',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminSidebarComponent, PaginationComponent],
+  imports: [CommonModule, FormsModule, AdminSidebarComponent, PaginationComponent, FilePreviewComponent],
   templateUrl: './admin-events.component.html',
   styleUrls: ['./admin-events.component.scss']
 })
@@ -298,6 +299,8 @@ export class AdminEventsComponent implements OnInit {
       this.removeExistingFile = false;
     }
   }
+
+  onAttachmentFilesChange(files: File[]): void { this.selectedFile = files[0] || null; this.removeExistingFile = !this.selectedFile && !!this.existingAttachmentUrl; }
 
   removeFile(): void {
     this.selectedFile = null;

@@ -37,12 +37,35 @@ func getGeneralSetting() models.GeneralSetting {
 }
 
 func isEligibleForCuti(employee models.Employee, asOf time.Time, minimumMonths int) bool {
-	if employee.TanggalBergabung.IsZero() || minimumMonths < 0 {
+	cutoff, ok := cutiAvailabilityDate(employee, minimumMonths)
+	if !ok {
 		return false
 	}
-	joined := employee.TanggalBergabung.In(jakartaLocation)
-	cutoff := joined.AddDate(0, minimumMonths, 0)
 	return !asOf.In(jakartaLocation).Before(cutoff)
+}
+
+func cutiAvailabilityDate(employee models.Employee, minimumMonths int) (time.Time, bool) {
+	if employee.TanggalBergabung.IsZero() || minimumMonths < 0 {
+		return time.Time{}, false
+	}
+	return employee.TanggalBergabung.In(jakartaLocation).AddDate(0, minimumMonths, 0), true
+}
+
+// ensureCutiQuota creates only a missing current-year quota for an eligible
+// employee. Existing or used quotas are never modified.
+func ensureCutiQuota(db *gorm.DB, employee models.Employee, year int, asOf time.Time, minimumMonths int) error {
+	if db == nil || !isEligibleForCuti(employee, asOf, minimumMonths) {
+		return nil
+	}
+	var quota models.LeaveQuota
+	result := db.Where("employee_id = ? AND tahun = ? AND jenis_cuti = ?", employee.ID, year, models.LeaveTypeCuti).First(&quota)
+	if result.Error == nil {
+		return nil
+	}
+	if result.Error != gorm.ErrRecordNotFound {
+		return result.Error
+	}
+	return db.Create(&models.LeaveQuota{EmployeeID: employee.ID, Tahun: year, JenisCuti: models.LeaveTypeCuti, SisaKuota: 12}).Error
 }
 
 func workReportDeadline(record models.AttendanceRecord, schedule models.WorkSchedule, setting models.GeneralSetting) time.Time {

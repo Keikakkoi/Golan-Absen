@@ -192,7 +192,7 @@
 
           <div class="form-group">
             <label>Screenshot pekerjaan <small>(opsional, maksimal 3 file; JPG/PNG/WEBP, masing-masing 5MB)</small></label>
-            <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onScreenshotsSelected($event)" class="form-control">
+            <app-file-preview [files]="selectedScreenshots" accept="image/jpeg,image/png,image/webp" [maxSizeMb]="5" [maxFiles]="3" label="Pilih screenshot" (filesChange)="onScreenshotFilesChange($event)"></app-file-preview>
             <div class="screenshot-preview-grid" *ngIf="screenshotPreviews.length">
               <img *ngFor="let preview of screenshotPreviews" [src]="preview" alt="Preview screenshot">
             </div>

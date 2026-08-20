@@ -7,11 +7,12 @@ import { AlertService } from '../../../core/services/alert.service';
 import { RouterLink } from '@angular/router';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 
 @Component({
   selector: 'app-leave-request',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, RouterLink, SharedSidebarComponent, PaginationComponent],
+  imports: [CommonModule, FormsModule, DatePipe, RouterLink, SharedSidebarComponent, PaginationComponent, FilePreviewComponent],
   templateUrl: './leave-request.component.html',
   styleUrls: ['./leave-request.component.scss']
 })
@@ -20,6 +21,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   leaveTypes: string[] = ['Sakit', 'Lainnya'];
   canRequestCuti = false;
   minimumMasaKerjaCutiBulan = 3;
+  tanggalCutiTersedia = '';
   leaveRequests: any[] = [];
   isLoading = true;
   isSubmitting = false;
@@ -45,6 +47,10 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   private destroyed = false;
 
   private baseUrl = 'http://localhost:8080/api/v1/leave';
+
+  statusLabel(status: string): string {
+    return ({pending_manager_approval: 'Menunggu Persetujuan Manajer', manager_approved: 'Disetujui Manajer', manager_rejected: 'Ditolak Manajer', pending_hrd_approval: 'Menunggu Persetujuan HRD', hrd_approved: 'Disetujui HRD', hrd_rejected: 'Ditolak HRD', Pending: 'Menunggu Persetujuan Manajer', Approved: 'Disetujui', Rejected: 'Ditolak', Cancelled: 'Dibatalkan'} as any)[status] || status || '-';
+  }
 
   constructor(
     private http: HttpClient,
@@ -74,6 +80,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
         this.leaveTypes = policy.leave_types || ['Sakit', 'Lainnya'];
         this.canRequestCuti = !!policy.can_request_cuti;
         this.minimumMasaKerjaCutiBulan = policy.minimum_masa_kerja_cuti_bulan || 3;
+        this.tanggalCutiTersedia = policy.tanggal_cuti_tersedia || '';
         if (!this.leaveTypes.includes(this.formData.jenis_izin)) this.formData.jenis_izin = this.leaveTypes[0] || 'Sakit';
       }
     });
@@ -90,7 +97,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     this.socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.event === 'leave_status_updated') this.loadMyLeaves();
+        if (message.event === 'leave_status_updated') { this.loadMyLeaves(); this.loadLeavePolicy(); }
       } catch { /* Ignore malformed broadcast messages. */ }
     };
     this.socket.onclose = () => {
@@ -119,6 +126,8 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     }
   }
 
+  onAttachmentChange(files: File[]): void { this.selectedFile = files[0] || null; }
+
   async submitRequest(): Promise<void> {
     if (!this.formData.tanggal_mulai || !this.formData.tanggal_selesai || !this.formData.alasan.trim()) {
       this.errorMessage = 'Jenis, tanggal, dan alasan pengajuan wajib diisi.';
@@ -134,6 +143,10 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     }
     if (this.formData.tanggal_selesai < this.formData.tanggal_mulai) {
       this.errorMessage = 'Tanggal selesai tidak boleh lebih awal dari tanggal mulai.';
+      return;
+    }
+    if (this.formData.tanggal_mulai.slice(0, 4) !== this.formData.tanggal_selesai.slice(0, 4)) {
+      this.errorMessage = 'Periode pengajuan harus berada dalam tahun yang sama.';
       return;
     }
 
@@ -160,6 +173,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
         this.isSubmitting = false;
         this.resetForm();
         this.loadMyLeaves(); // Reload table
+        this.loadLeavePolicy();
         this.alert.success('Pengajuan izin berhasil dikirim');
       },
       error: (err) => {
@@ -178,6 +192,15 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
       alasan: ''
     };
     this.selectedFile = null;
+  }
+
+  cancelRequest(request: any): void {
+    if (request.Status !== 'Pending' && request.Status !== 'Approved') return;
+    if (!confirm('Batalkan pengajuan ini? Kuota akan dikembalikan.')) return;
+    this.http.delete<any>(`${this.baseUrl}/${request.ID}/cancel`, { headers: this.getHeaders() }).subscribe({
+      next: () => { this.loadMyLeaves(); this.loadLeavePolicy(); },
+      error: err => { this.alert.error('Gagal membatalkan pengajuan', err.error?.error || 'Gagal membatalkan pengajuan'); }
+    });
   }
 
   private getHeaders(): HttpHeaders {

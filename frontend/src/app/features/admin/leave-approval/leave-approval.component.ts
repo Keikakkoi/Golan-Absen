@@ -120,6 +120,12 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     });
   }
 
+  isManagerRequest(request: any): boolean { return request?.Employee?.User?.Role === 'MANAJER' || request?.Employee?.User?.role === 'MANAJER'; }
+  canDecide(request: any): boolean { return this.isManagerRequest(request) && request?.Status === 'pending_hrd_approval'; }
+  statusLabel(status: string): string {
+    return ({pending_manager_approval: 'Menunggu Persetujuan Manajer', manager_approved: 'Disetujui Manajer', manager_rejected: 'Ditolak Manajer', pending_hrd_approval: 'Menunggu Persetujuan HRD', hrd_approved: 'Disetujui HRD', hrd_rejected: 'Ditolak HRD', Pending: 'Menunggu Persetujuan Manajer', Approved: 'Disetujui', Rejected: 'Ditolak'} as any)[status] || status || '-';
+  }
+
   openDetail(request: any): void { this.selectedRequest = request; }
   closeDetail(): void { this.selectedRequest = null; }
 
@@ -144,13 +150,6 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     if (!url) return false;
     const cleanUrl = url.split('?')[0].toLowerCase();
     return cleanUrl.endsWith('.png') || cleanUrl.endsWith('.jpg') || cleanUrl.endsWith('.jpeg') || cleanUrl.endsWith('.webp') || cleanUrl.endsWith('.gif');
-  }
-
-  async updateStatusFromModal(id: number, status: string): Promise<void> {
-    await this.updateStatus(id, status);
-    if (this.selectedRequest && this.selectedRequest.ID === id) {
-      this.closeDetail();
-    }
   }
 
   private getHeaders(): HttpHeaders {
