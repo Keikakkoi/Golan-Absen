@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 export interface FilePreviewValidation {
@@ -22,6 +22,7 @@ export class FilePreviewComponent implements OnChanges, OnDestroy {
   @Input() label = 'Pilih file';
   @Output() filesChange = new EventEmitter<File[]>();
   @Output() validationChange = new EventEmitter<FilePreviewValidation>();
+  @ViewChild('fileInput') private fileInput?: ElementRef<HTMLInputElement>;
 
   previews: Array<{ file: File; url: string; safeUrl: SafeResourceUrl; kind: 'image' | 'pdf' | 'generic' }> = [];
   error = '';
@@ -35,6 +36,8 @@ export class FilePreviewComponent implements OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void { this.revokeUrls(); }
+
+  openFilePicker(): void { this.fileInput?.nativeElement.click(); }
 
   onInput(event: Event): void {
     const input = event.target as HTMLInputElement;

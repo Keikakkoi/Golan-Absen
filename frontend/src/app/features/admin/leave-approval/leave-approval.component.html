@@ -14,7 +14,18 @@
             <option value="">Semua jenis</option>
             <option value="Cuti">Cuti</option>
             <option value="Sakit">Sakit</option>
-            <option value="Lainnya">Lainnya</option>
+          <option value="Lainnya">Lainnya</option>
+          </select>
+        </label>
+        <label>Filter Status
+          <select class="golan-input" [(ngModel)]="selectedStatus" (change)="loadLeaveRequests()">
+            <option value="">Semua status</option>
+            <option value="pending_manager_approval">Menunggu Persetujuan Manajer</option>
+            <option value="manager_approved">Menunggu Persetujuan Admin</option>
+            <option value="pending_hrd_approval">Menunggu Persetujuan Admin</option>
+            <option value="hrd_approved">Disetujui</option>
+            <option value="hrd_rejected">Ditolak</option>
+            <option value="Cancelled">Dibatalkan</option>
           </select>
         </label>
       </div>
@@ -61,10 +72,10 @@
                 <span class="status-badge" [ngClass]="{
                   'status-pending': req.Status === 'Pending' || req.Status === 'pending_hrd_approval' || req.Status === 'pending_manager_approval',
                   'status-hadir': req.Status === 'Approved' || req.Status === 'manager_approved' || req.Status === 'hrd_approved',
-                  'status-alpha': req.Status === 'Rejected' || req.Status === 'manager_rejected' || req.Status === 'hrd_rejected'
+                  'status-alpha': req.Status === 'Rejected' || req.Status === 'manager_rejected' || req.Status === 'hrd_rejected',
+                  'status-cancelled': req.Status === 'Cancelled'
                 }"
-                [style.background-color]="req.Status === 'Pending' ? '#fef3c7' : (req.Status === 'Approved' ? '#dbeafe' : '#fee2e2')"
-                [style.color]="req.Status === 'Pending' ? '#d97706' : (req.Status === 'Approved' ? '#2563eb' : '#dc2626')">
+                >
                   {{ statusLabel(req.Status) }}
                 </span>
               </td>
@@ -136,9 +147,10 @@
           </p>
         </div>
         <div class="status-pill-badge" [ngClass]="{
-          'status-pending': selectedRequest.Status === 'Pending' || selectedRequest.Status === 'pending_hrd_approval',
+          'status-pending': selectedRequest.Status === 'Pending' || selectedRequest.Status === 'pending_hrd_approval' || selectedRequest.Status === 'pending_manager_approval',
           'status-approved': selectedRequest.Status === 'Approved' || selectedRequest.Status === 'manager_approved' || selectedRequest.Status === 'hrd_approved',
-          'status-rejected': selectedRequest.Status === 'Rejected' || selectedRequest.Status === 'manager_rejected' || selectedRequest.Status === 'hrd_rejected'
+          'status-rejected': selectedRequest.Status === 'Rejected' || selectedRequest.Status === 'manager_rejected' || selectedRequest.Status === 'hrd_rejected',
+          'status-cancelled': selectedRequest.Status === 'Cancelled'
         }">
           <span class="status-dot"></span>
           {{ statusLabel(selectedRequest.Status) }}

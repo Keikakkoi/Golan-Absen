@@ -23,6 +23,7 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   errorMessage = '';
   selectedRequest: any = null;
   selectedType = '';
+  selectedStatus = '';
   private refreshTimer?: ReturnType<typeof setInterval>;
   private socket?: WebSocket;
   private destroyed = false;
@@ -64,10 +65,19 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     if (resetPage) this.currentPage = 1;
     this.isLoading = true;
     const headers = this.getHeaders();
-    const params = this.selectedType ? { params: { jenis_izin: this.selectedType }, headers } : { headers };
+    const requestParams: Record<string, string> = {};
+    if (this.selectedType) requestParams['jenis_izin'] = this.selectedType;
+    if (this.selectedStatus) requestParams['status'] = this.selectedStatus;
+    const params = Object.keys(requestParams).length ? { params: requestParams, headers } : { headers };
     this.http.get<any[]>(this.baseUrl, params).subscribe({
       next: (data) => {
-        this.leaveRequests = Array.isArray(data) ? data : [];
+        // The API returns one row per leave_requests.id. Keep the UI stable
+        // even if an older proxy/cache accidentally repeats a row.
+        const unique = new Map<number, any>();
+        (Array.isArray(data) ? data : []).forEach(request => {
+          if (request?.ID != null && !unique.has(request.ID)) unique.set(request.ID, request);
+        });
+        this.leaveRequests = Array.from(unique.values());
         this.ensureValidPage();
         this.isLoading = false;
       },
@@ -123,7 +133,18 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   isManagerRequest(request: any): boolean { return request?.Employee?.User?.Role === 'MANAJER' || request?.Employee?.User?.role === 'MANAJER'; }
   canDecide(request: any): boolean { return this.isManagerRequest(request) && request?.Status === 'pending_hrd_approval'; }
   statusLabel(status: string): string {
-    return ({pending_manager_approval: 'Menunggu Persetujuan Manajer', manager_approved: 'Disetujui Manajer', manager_rejected: 'Ditolak Manajer', pending_hrd_approval: 'Menunggu Persetujuan HRD', hrd_approved: 'Disetujui HRD', hrd_rejected: 'Ditolak HRD', Pending: 'Menunggu Persetujuan Manajer', Approved: 'Disetujui', Rejected: 'Ditolak'} as any)[status] || status || '-';
+    return ({
+      pending_manager_approval: 'Menunggu Persetujuan Manajer',
+      manager_approved: 'Disetujui Manajer',
+      manager_rejected: 'Ditolak',
+      pending_hrd_approval: 'Menunggu Persetujuan Admin',
+      hrd_approved: 'Disetujui',
+      hrd_rejected: 'Ditolak',
+      Pending: 'Menunggu Persetujuan Manajer',
+      Approved: 'Disetujui',
+      Rejected: 'Ditolak',
+      Cancelled: 'Dibatalkan'
+    } as any)[status] || status || '-';
   }
 
   openDetail(request: any): void { this.selectedRequest = request; }

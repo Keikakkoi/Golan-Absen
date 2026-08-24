@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/csv"
+	"bytes"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -81,13 +82,20 @@ func validateEmployeeProfile(req *EmployeeRequest) error {
 			}
 		}
 	}
-	if req.FotoProfilURL != "" && strings.HasPrefix(req.FotoProfilURL, "data:image/") {
+	if strings.HasPrefix(req.FotoProfilURL, "data:") {
+		if !strings.HasPrefix(req.FotoProfilURL, "data:image/") {
+			return fmt.Errorf("foto harus berupa gambar JPG, PNG, atau GIF")
+		}
 		parts := strings.SplitN(req.FotoProfilURL, ",", 2)
 		if len(parts) != 2 {
 			return fmt.Errorf("foto tidak valid")
 		}
-		if decoded, err := base64.StdEncoding.DecodeString(parts[1]); err != nil || len(decoded) > 5*1024*1024 {
+		decoded, err := base64.StdEncoding.DecodeString(parts[1])
+		if err != nil || len(decoded) > 5*1024*1024 {
 			return fmt.Errorf("foto harus berupa gambar maksimal 5 MB")
+		}
+		if err := validateProfilePhotoDimensions(decoded); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -446,8 +454,8 @@ func UploadProfilePhoto(c *fiber.Ctx) error {
 	if decodeErr != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File harus berupa gambar JPG, PNG, atau GIF yang valid"})
 	}
-	if imageConfig.Width <= 0 || imageConfig.Height <= 0 || absFloat(float64(imageConfig.Width)/float64(imageConfig.Height)-0.75) > 0.05 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Rasio pas foto harus 3:4 (portrait)"})
+	if err := validateProfilePhotoDimensions(imageConfig); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	var employee models.Employee
@@ -467,11 +475,24 @@ func UploadProfilePhoto(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Pas foto berhasil diperbarui", "foto_profil_url": photoURL})
 }
 
-func absFloat(value float64) float64 {
-	if value < 0 {
-		return -value
+func validateProfilePhotoDimensions(value interface{}) error {
+	var width, height int
+	switch imageConfig := value.(type) {
+	case image.Config:
+		width, height = imageConfig.Width, imageConfig.Height
+	case []byte:
+		config, _, err := image.DecodeConfig(bytes.NewReader(imageConfig))
+		if err != nil {
+			return fmt.Errorf("File harus berupa gambar JPG, PNG, atau GIF yang valid")
+		}
+		width, height = config.Width, config.Height
+	default:
+		return fmt.Errorf("Pas foto harus memiliki ukuran 3x4.")
 	}
-	return value
+	if width <= 0 || height <= 0 || width*4 != height*3 {
+		return fmt.Errorf("Pas foto harus memiliki ukuran 3x4.")
+	}
+	return nil
 }
 
 // UpdateMyEmail changes the authenticated employee's login email directly on

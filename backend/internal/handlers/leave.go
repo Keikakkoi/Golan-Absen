@@ -42,6 +42,13 @@ func managerCanProcessLeaveStatus(status models.LeaveStatus) bool {
 	return status == models.LeaveStatusPendingManager || status == models.LeaveStatusPending
 }
 
+// HRD must be able to see the complete workflow for employee and intern
+// requests.  The current approval step is represented by Status and must not
+// determine whether the request is visible in the admin list.
+func isAdminLeaveWorkflowRole(role models.Role) bool {
+	return role == models.RoleKaryawan || role == models.RoleMagang || role == models.RoleManajer
+}
+
 func calendarLeaveDays(start, end time.Time) int {
 	startDate := time.Date(start.In(jakartaLocation).Year(), start.In(jakartaLocation).Month(), start.In(jakartaLocation).Day(), 0, 0, 0, 0, jakartaLocation)
 	endDate := time.Date(end.In(jakartaLocation).Year(), end.In(jakartaLocation).Month(), end.In(jakartaLocation).Day(), 0, 0, 0, 0, jakartaLocation)
@@ -286,9 +293,10 @@ func GetAllLeaveRequests(c *fiber.Ctx) error {
 		}
 		query = query.Where("employee_id IN ?", ids)
 	} else {
-		// HRD receives employee/intern requests only after manager approval,
-		// while manager requests are sent directly to HRD for a decision.
-		query = query.Joins("JOIN employees workflow_employees ON workflow_employees.id = leave_requests.employee_id").Joins("JOIN users workflow_users ON workflow_users.id = workflow_employees.user_id").Where("(workflow_users.role IN (?, ?) AND leave_requests.status = ?) OR (workflow_users.role = ?)", models.RoleKaryawan, models.RoleMagang, models.LeaveStatusManagerApproved, models.RoleManajer)
+		// Keep all workflow states visible to HRD, including requests that are
+		// still waiting for the manager.  EXISTS avoids multiplying rows when
+		// optional search/filter joins are added later.
+		query = query.Where("EXISTS (SELECT 1 FROM employees workflow_employees JOIN users workflow_users ON workflow_users.id = workflow_employees.user_id WHERE workflow_employees.id = leave_requests.employee_id AND workflow_users.role IN ?)", []models.Role{models.RoleKaryawan, models.RoleMagang, models.RoleManajer})
 	}
 	if status := c.Query("status"); status != "" {
 		query = query.Where("leave_requests.status = ?", status)
@@ -297,7 +305,8 @@ func GetAllLeaveRequests(c *fiber.Ctx) error {
 		query = query.Where("leave_requests.jenis_izin = ?", leaveType)
 	}
 	if search := strings.TrimSpace(c.Query("search")); search != "" {
-		query = query.Joins("JOIN employees ON employees.id = leave_requests.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("LOWER(users.nama) LIKE ? OR LOWER(employees.nik) LIKE ?", "%"+strings.ToLower(search)+"%", "%"+strings.ToLower(search)+"%")
+		pattern := "%" + strings.ToLower(search) + "%"
+		query = query.Where("EXISTS (SELECT 1 FROM employees search_employees JOIN users search_users ON search_users.id = search_employees.user_id WHERE search_employees.id = leave_requests.employee_id AND (LOWER(search_users.nama) LIKE ? OR LOWER(search_employees.nik) LIKE ?))", pattern, pattern)
 	}
 	if err := query.Find(&requests).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch leave requests"})

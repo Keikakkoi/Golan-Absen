@@ -128,6 +128,11 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
 
   onAttachmentChange(files: File[]): void { this.selectedFile = files[0] || null; }
 
+  private isValidAttachment(file: File): boolean {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    return allowedTypes.includes(file.type.toLowerCase()) && file.size <= 10 * 1024 * 1024;
+  }
+
   async submitRequest(): Promise<void> {
     if (!this.formData.tanggal_mulai || !this.formData.tanggal_selesai || !this.formData.alasan.trim()) {
       this.errorMessage = 'Jenis, tanggal, dan alasan pengajuan wajib diisi.';
@@ -135,6 +140,10 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     }
     if (!this.selectedFile) {
       this.errorMessage = 'Lampiran dokumen wajib diunggah sebelum mengirim pengajuan.';
+      return;
+    }
+    if (!this.isValidAttachment(this.selectedFile)) {
+      this.errorMessage = 'Lampiran harus berupa JPG, PNG, WEBP, atau PDF dengan ukuran maksimal 10 MB.';
       return;
     }
     if (this.formData.tanggal_mulai < this.getJakartaDateString()) {

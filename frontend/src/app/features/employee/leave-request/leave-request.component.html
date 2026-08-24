@@ -48,12 +48,7 @@
           <label class="field-group field-group-full file-field">
             <span>Lampiran Dokumen (Surat Dokter, dll) <span class="text-danger">*</span></span>
             <div class="file-input-wrapper" [class.file-selected]="selectedFile">
-              <app-file-preview [files]="selectedFile ? [selectedFile] : []" accept="image/jpeg,image/png,image/webp,application/pdf" [maxSizeMb]="10" label="Pilih lampiran" (filesChange)="onAttachmentChange($event)"></app-file-preview>
-              <label for="leave-file" class="file-button" [class.file-selected]="selectedFile">
-                <i class="fas" [ngClass]="selectedFile ? 'fa-check-circle' : 'fa-paperclip'" style="margin-right: 6px;"></i>
-                Pilih File
-              </label>
-              <span class="file-name">{{ selectedFile?.name || 'Belum ada file yang dipilih (wajib diunggah)' }}</span>
+              <app-file-preview [files]="selectedFile ? [selectedFile] : []" accept="image/jpeg,image/png,image/webp,application/pdf" [maxSizeMb]="10" label="Pilih Lampiran" (filesChange)="onAttachmentChange($event)"></app-file-preview>
             </div>
           </label>
 

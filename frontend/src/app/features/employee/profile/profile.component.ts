@@ -10,6 +10,7 @@ import * as L from 'leaflet';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
+import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
 
 @Component({
   selector: 'app-profile',
@@ -43,6 +44,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   isSubmitting = false;
   isUploadingPhoto = false;
   selectedPhoto: File | null = null;
+  photoPreviewFile: File | null = null;
   profilePhotoPreviewUrl = '';
   photoError = '';
   successMessage = '';
@@ -248,46 +250,37 @@ export class ProfileComponent implements OnInit, OnDestroy {
     });
   }
 
-  onProfilePhotoSelected(event: Event | File[]): void {
+  async onProfilePhotoSelected(event: Event | File[]): Promise<void> {
     const input = Array.isArray(event) ? null : event.target as HTMLInputElement;
     const file = Array.isArray(event) ? event[0] : input?.files?.[0];
     this.photoError = '';
 
-    if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
-      this.photoError = 'Pilih file JPG, PNG, atau GIF.';
-      if (input) input.value = '';
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      this.photoError = 'Ukuran pas foto maksimal 5 MB.';
-      if (input) input.value = '';
+    if (!file) {
+      this.photoPreviewFile = null;
+      this.selectedPhoto = null;
+      this.profilePhotoPreviewUrl = '';
       return;
     }
 
+    // Keep the selected file in the picker preview even while its dimensions
+    // are being checked. Only selectedPhoto may be uploaded after validation.
+    this.photoPreviewFile = file;
+    if (this.profilePhotoPreviewUrl) {
+      URL.revokeObjectURL(this.profilePhotoPreviewUrl);
+      this.profilePhotoPreviewUrl = '';
+    }
+    const validationError = await validateProfilePhoto(file);
+    if (validationError) {
+      this.photoError = validationError;
+      this.selectedPhoto = null;
+      this.profilePhotoPreviewUrl = '';
+      if (input) input.value = '';
+      return;
+    }
     const previewUrl = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      const ratio = image.width / image.height;
-      if (Math.abs(ratio - 0.75) > 0.05) {
-        URL.revokeObjectURL(previewUrl);
-        this.photoError = 'Pas foto harus berorientasi portrait dengan rasio 3:4.';
-        this.selectedPhoto = null;
-        this.profilePhotoPreviewUrl = '';
-        if (input) input.value = '';
-        return;
-      }
-
-      if (this.profilePhotoPreviewUrl) URL.revokeObjectURL(this.profilePhotoPreviewUrl);
-      this.selectedPhoto = file;
-      this.profilePhotoPreviewUrl = previewUrl;
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(previewUrl);
-      this.photoError = 'Pas foto tidak dapat dibaca.';
-      if (input) input.value = '';
-    };
-    image.src = previewUrl;
+    if (this.profilePhotoPreviewUrl) URL.revokeObjectURL(this.profilePhotoPreviewUrl);
+    this.selectedPhoto = file;
+    this.profilePhotoPreviewUrl = previewUrl;
   }
 
   async uploadProfilePhoto(): Promise<void> {
@@ -308,6 +301,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
           this.profileData.Employee.FotoProfilURL = res.foto_profil_url;
         }
         this.selectedPhoto = null;
+        this.photoPreviewFile = null;
         this.profilePhotoPreviewUrl = '';
         this.isUploadingPhoto = false;
         this.successMessage = 'Pas foto berhasil diperbarui.';

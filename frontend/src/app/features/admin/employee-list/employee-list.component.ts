@@ -9,6 +9,7 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
+import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
 
 @Component({
   selector: 'app-employee-list',
@@ -29,7 +30,7 @@ export class EmployeeListComponent implements OnInit {
     division_id: '',
     position_id: '',
     project_id: '',
-    sort_order: 'asc'
+    sort_order: 'name_asc'
   };
   isLoading = true;
   errorMessage = '';
@@ -38,6 +39,9 @@ export class EmployeeListComponent implements OnInit {
   isEditMode = false;
   isSaving = false;
   selectedImportFile: File | null = null;
+  selectedPhotoFile: File | null = null;
+  photoError = '';
+  isPhotoValidationPending = false;
   isExportMenuOpen = false;
   
   divisions: any[] = [];
@@ -247,14 +251,35 @@ export class EmployeeListComponent implements OnInit {
       result = result.filter(emp => emp.ProjectID == this.filters.project_id);
     }
 
-    if (this.filters.sort_order === 'asc') {
-      result.sort((a, b) => (a.Nama || '').localeCompare(b.Nama || ''));
-    } else {
-      result.sort((a, b) => (b.Nama || '').localeCompare(a.Nama || ''));
-    }
+    this.sortEmployees(result);
 
     this.filteredEmployees = result;
     this.currentPage = 1;
+  }
+
+  private sortEmployees(employees: any[]): void {
+    const order = this.filters.sort_order;
+    const descending = order.endsWith('_desc');
+
+    employees.sort((a, b) => {
+      let comparison = 0;
+
+      if (order === 'name_asc' || order === 'name_desc') {
+        comparison = String(a.Nama || '').localeCompare(String(b.Nama || ''), 'id');
+      } else if (order === 'employee_id_asc' || order === 'employee_id_desc') {
+        comparison = Number(a.ID || 0) - Number(b.ID || 0);
+      } else if (order === 'join_date_asc' || order === 'join_date_desc') {
+        comparison = this.dateValue(a.Employee?.TanggalBergabung) - this.dateValue(b.Employee?.TanggalBergabung);
+      }
+
+      return descending ? -comparison : comparison;
+    });
+  }
+
+  private dateValue(value: string | null | undefined): number {
+    if (!value || String(value).startsWith('0001-01-01')) return Number.MAX_SAFE_INTEGER;
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
   }
 
   get paginationStartIndex(): number {
@@ -278,23 +303,19 @@ export class EmployeeListComponent implements OnInit {
     this.currentPage = 1;
   }
 
-  async importEmployees(): Promise<void> {
-    if (!this.selectedImportFile) {
-      this.alert.info('File belum dipilih', 'Pilih file CSV terlebih dahulu.');
-      return;
-    }
-    if (!await this.alert.confirm('Import data karyawan?', 'Data dari file CSV akan ditambahkan ke sistem.')) return;
+  private async uploadEmployeesCsv(file: File): Promise<void> {
+    if (!await this.alert.confirm('Unggah data karyawan?', 'Data dari file CSV akan ditambahkan ke sistem.')) return;
     const body = new FormData();
-    body.append('file', this.selectedImportFile);
+    body.append('file', file);
     this.http.post<any>(`${this.baseUrl}/import`, body, { headers: this.getHeaders() })
       .subscribe({
         next: (res) => {
-          this.alert.success('Import selesai', `Berhasil: ${res.imported}. Gagal: ${(res.errors || []).length}`);
+          this.alert.success('Unggah selesai', `Berhasil: ${res.imported}. Gagal: ${(res.errors || []).length}`);
           this.selectedImportFile = null;
           this.loadEmployees();
         },
         error: (err) => {
-          this.alert.error('Import gagal', err.error?.error || 'Unknown error');
+          this.alert.error('Unggah gagal', err.error?.error || 'Unknown error');
         }
       });
   }
@@ -313,19 +334,45 @@ export class EmployeeListComponent implements OnInit {
 
   onPhotoSelected(event: Event): void {
     const input = event.target as HTMLInputElement; const file = input.files?.[0]; if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/gif'].includes(file.type) || file.size > 5 * 1024 * 1024) { this.alert.error('Foto tidak valid', 'Gunakan JPG, PNG, atau GIF dengan ukuran maksimal 5 MB.'); input.value = ''; return; }
-    const reader = new FileReader(); reader.onload = () => this.formData.foto_profil_url = String(reader.result); reader.readAsDataURL(file);
+    void validateProfilePhoto(file).then(error => {
+      if (error) {
+        this.photoError = error;
+        this.formData.foto_profil_url = '';
+        this.selectedPhotoFile = null;
+        input.value = '';
+        return;
+      }
+      const reader = new FileReader(); reader.onload = () => this.formData.foto_profil_url = String(reader.result); reader.readAsDataURL(file);
+    });
   }
 
-  onPhotoFilesChange(files: File[]): void {
+  async onPhotoFilesChange(files: File[]): Promise<void> {
     const file = files[0];
-    if (!file) { this.formData.foto_profil_url = ''; return; }
-    const reader = new FileReader();
-    reader.onload = () => this.formData.foto_profil_url = String(reader.result);
-    reader.readAsDataURL(file);
+    this.photoError = '';
+    if (!file) { this.selectedPhotoFile = null; this.formData.foto_profil_url = ''; return; }
+    this.isPhotoValidationPending = true;
+    try {
+      const validationError = await validateProfilePhoto(file);
+      if (validationError) {
+        this.selectedPhotoFile = null;
+        this.formData.foto_profil_url = '';
+        this.photoError = validationError;
+        return;
+      }
+      this.selectedPhotoFile = file;
+      const reader = new FileReader();
+      reader.onload = () => this.formData.foto_profil_url = String(reader.result);
+      reader.readAsDataURL(file);
+    } finally {
+      this.isPhotoValidationPending = false;
+    }
   }
 
-  onImportFilesChange(files: File[]): void { this.selectedImportFile = files[0] || null; }
+  onImportFilesChange(files: File[]): void {
+    const file = files[0] || null;
+    this.selectedImportFile = file;
+    if (file) void this.uploadEmployeesCsv(file);
+  }
 
   openAddModal(): void {
     this.isEditMode = false;
@@ -358,6 +405,8 @@ export class EmployeeListComponent implements OnInit {
       mentor_name: emp.MentorName || '',
       institution_name: emp.InstitutionName || ''
     };
+    this.selectedPhotoFile = null;
+    this.photoError = '';
     this.isModalOpen = true;
   }
 
@@ -392,12 +441,24 @@ export class EmployeeListComponent implements OnInit {
   }
 
   async saveEmployee(): Promise<void> {
+    if (this.isPhotoValidationPending) {
+      await this.alert.error('Validasi pas foto belum selesai', 'Tunggu sampai pemeriksaan dimensi foto selesai sebelum menyimpan.');
+      return;
+    }
+    if (this.photoError) {
+      await this.alert.error('Pas foto tidak valid', 'Pas foto harus memiliki ukuran 3x4. Pilih foto yang sesuai sebelum menyimpan.');
+      return;
+    }
     if (!this.formData.division_id || this.formData.division_id === 0) {
       await this.alert.error('Divisi belum dipilih', 'Silakan pilih divisi karyawan terlebih dahulu.');
       return;
     }
     if (!this.formData.position_id || this.formData.position_id === 0) {
       await this.alert.error('Jabatan belum dipilih', 'Silakan pilih jabatan karyawan terlebih dahulu.');
+      return;
+    }
+    if (!String(this.formData.home_google_maps_url || '').trim()) {
+      await this.alert.error('Link Google Maps belum diisi', 'Link Google Maps rumah wajib diisi untuk keperluan absensi WFH.');
       return;
     }
 
@@ -485,6 +546,9 @@ export class EmployeeListComponent implements OnInit {
   }
 
   private resetForm(): void {
+    this.selectedPhotoFile = null;
+    this.photoError = '';
+    this.isPhotoValidationPending = false;
     this.formData = {
       id: null,
       nama: '',

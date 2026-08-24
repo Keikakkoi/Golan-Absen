@@ -58,7 +58,7 @@
                 <h4>Pas Foto Profil</h4>
                 <p class="text-dark-lo">Gunakan foto 3×4 portrait, background merah, dengan pakaian rapi. Format JPG/PNG/GIF, maksimal 5 MB.</p>
               </div>
-              <app-file-preview [files]="selectedPhoto ? [selectedPhoto] : []" accept="image/jpeg,image/png,image/gif" [maxSizeMb]="5" label="Pilih Pas Foto" (filesChange)="onProfilePhotoSelected($event)"></app-file-preview><label class="btn-secondary photo-picker" [class.file-selected]="false" style="display:none">
+              <app-file-preview [files]="photoPreviewFile ? [photoPreviewFile] : []" accept="image/jpeg,image/png,image/gif" [maxSizeMb]="5" label="Pilih Pas Foto" (filesChange)="onProfilePhotoSelected($event)"></app-file-preview><label class="btn-secondary photo-picker" [class.file-selected]="false" style="display:none">
                 <i class="fas" [ngClass]="selectedPhoto ? 'fa-check-circle' : 'fa-camera'" style="margin-right: 6px;"></i>
                 <span style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle;">
                   {{ selectedPhoto ? selectedPhoto.name : 'Pilih Pas Foto' }}

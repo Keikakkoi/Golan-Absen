@@ -1,5 +1,6 @@
 <div class="file-preview">
-  <label class="file-preview-picker"><i class="fas fa-folder-open"></i> {{ label }}<input type="file" [accept]="accept" [multiple]="maxFiles > 1" (change)="onInput($event)"></label>
+  <button type="button" class="file-preview-picker" (click)="openFilePicker()"><i class="fas fa-folder-open"></i> {{ label }}</button>
+  <input #fileInput class="file-preview-input" type="file" [accept]="accept" [multiple]="maxFiles > 1" (change)="onInput($event)">
   <small class="file-preview-help">{{ accept || 'Semua tipe file' }} · maksimal {{ maxSizeMb }} MB<span *ngIf="maxFiles > 1"> · {{ maxFiles }} file</span></small>
   <p class="file-preview-error" *ngIf="error" role="alert"><i class="fas fa-circle-exclamation"></i> {{ error }}</p>
   <div class="file-preview-list" *ngIf="previews.length">

@@ -49,3 +49,14 @@ func TestManagerCanOnlyProcessPendingManagerApproval(t *testing.T) {
 		}
 	}
 }
+
+func TestAdminLeaveWorkflowIncludesEmployeesAndInterns(t *testing.T) {
+	for _, role := range []models.Role{models.RoleKaryawan, models.RoleMagang, models.RoleManajer} {
+		if !isAdminLeaveWorkflowRole(role) {
+			t.Fatalf("role %q should be visible in the admin leave workflow", role)
+		}
+	}
+	if isAdminLeaveWorkflowRole(models.RoleHRD) {
+		t.Fatal("HRD must not be treated as a leave requester in the admin workflow")
+	}
+}

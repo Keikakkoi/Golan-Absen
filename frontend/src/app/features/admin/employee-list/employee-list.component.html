@@ -2,13 +2,13 @@
   <app-admin-sidebar></app-admin-sidebar>
 
   <div class="main-content employee-list-page">
-    <div class="header employee-page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="header employee-page-header">
       <h2>Manajemen Data Karyawan</h2>
-      <div class="employee-actions">
-        <app-file-preview [files]="selectedImportFile ? [selectedImportFile] : []" accept=".csv,text/csv" [maxSizeMb]="10" label="Pilih CSV" (filesChange)="onImportFilesChange($event)"></app-file-preview><input #importInput type="file" accept=".csv,text/csv" hidden (change)="onImportFileChange($event)">
-        <button class="btn-secondary" (click)="importInput.click()" style="margin-right: 10px;">Pilih CSV</button>
-        <button class="btn-secondary" (click)="importEmployees()" style="margin-right: 10px;" [disabled]="!selectedImportFile">Import CSV</button>
-        <button class="btn-primary" (click)="openAddModal()">+ Tambah Karyawan</button>
+      <div class="employee-actions" aria-label="Aksi data karyawan">
+        <div class="employee-csv-upload">
+          <app-file-preview [files]="selectedImportFile ? [selectedImportFile] : []" accept=".csv,text/csv" [maxSizeMb]="10" label="Pilih CSV" (filesChange)="onImportFilesChange($event)"></app-file-preview>
+        </div>
+        <button class="btn-primary employee-add-button" type="button" (click)="openAddModal()">+ Tambah Karyawan</button>
       </div>
     </div>
 
@@ -59,11 +59,15 @@
         </div>
         
         <div class="filter-group">
-          <label>Urutkan (Nama)</label>
+          <label>Urutan</label>
           <div class="input-wrapper select-wrapper">
-            <select class="filter-input" [(ngModel)]="filters.sort_order" (change)="applyFilters()">
-              <option value="asc">A - Z (Menaik)</option>
-              <option value="desc">Z - A (Menurun)</option>
+            <select class="filter-input" [(ngModel)]="filters.sort_order" (change)="applyFilters()" name="sort_order">
+              <option value="name_asc">Nama A–Z (Menaik)</option>
+              <option value="name_desc">Nama Z–A (Menurun)</option>
+              <option value="employee_id_asc">ID Karyawan (Menaik)</option>
+              <option value="employee_id_desc">ID Karyawan (Menurun)</option>
+              <option value="join_date_asc">Tanggal Masuk (Menaik)</option>
+              <option value="join_date_desc">Tanggal Masuk (Menurun)</option>
             </select>
             <i class="fas fa-sort icon-right"></i>
           </div>
@@ -264,7 +268,7 @@
           <input type="text" [(ngModel)]="formData.nama" name="nama" required class="form-control" />
         </div>
 
-        <div class="form-group"><label>Foto (opsional)</label><app-file-preview [files]="[]" accept="image/jpeg,image/png,image/gif" [maxSizeMb]="5" label="Pilih foto" (filesChange)="onPhotoFilesChange($event)"></app-file-preview><small class="form-help">JPG, PNG, atau GIF maksimal 5 MB.</small></div>
+        <div class="form-group"><label>Foto (opsional)</label><app-file-preview [files]="selectedPhotoFile ? [selectedPhotoFile] : []" accept="image/jpeg,image/png,image/gif" [maxSizeMb]="5" label="Pilih foto" (filesChange)="onPhotoFilesChange($event)"></app-file-preview><small class="form-help">JPG, PNG, atau GIF maksimal 5 MB, rasio portrait 3:4.</small><div *ngIf="photoError" class="photo-error">{{ photoError }}</div></div>
         <div class="form-group-row">
           <div class="form-group"><label>NIK/NIP <span class="required-mark">*</span></label><input type="text" [(ngModel)]="formData.nik" (input)="onNikInput($event)" name="nik" required minlength="16" maxlength="16" pattern="[0-9]{16}" inputmode="numeric" class="form-control" /></div>
           <div class="form-group"><label>Jenis kelamin (opsional)</label><select [(ngModel)]="formData.jenis_kelamin" name="jenis_kelamin" class="form-control"><option value="">Pilih jenis kelamin</option><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
@@ -361,8 +365,8 @@
         </div>
 
         <div class="form-group">
-          <label>Link Google Maps Rumah - Untuk WFH</label>
-          <input type="url" [(ngModel)]="formData.home_google_maps_url" name="home_google_maps_url" class="form-control" placeholder="https://maps.app.goo.gl/..." />
+          <label>Link Google Maps Rumah - Untuk WFH <span class="required-mark">*</span></label>
+          <input type="url" [(ngModel)]="formData.home_google_maps_url" name="home_google_maps_url" class="form-control" placeholder="https://maps.app.goo.gl/..." required />
           <small class="form-help">Buka lokasi rumah di Google Maps, pilih Bagikan, lalu tempel link-nya di sini. Koordinat akan diambil otomatis.</small>
         </div>
 
