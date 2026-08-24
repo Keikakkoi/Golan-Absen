@@ -281,7 +281,6 @@
             <span>Sisa kuota</span>
             <div class="quota-number-input">
               <input id="quota-balance" type="number" class="golan-input" [(ngModel)]="quotaForm.sisa_kuota" name="kuota" min="0" required>
-              <span>hari</span>
             </div>
           </label>
           <button type="submit" class="btn-primary quota-submit" [disabled]="isSaving || !quotaForm.employee_id">
@@ -314,7 +313,7 @@
                 <td><div class="quota-employee-name">{{ quota.Employee?.User?.Nama || 'Nama belum tersedia' }}</div><div class="code">{{ quota.Employee?.NIK || '—' }}</div></td>
                 <td><span class="year-label">{{ quota.Tahun }}</span></td>
                 <td><span class="quota-type-pill">{{ quota.JenisCuti }}</span></td>
-                <td><strong class="quota-balance">{{ quota.SisaKuota }}</strong> <span class="quota-unit">hari</span></td>
+                <td><strong class="quota-balance">{{ quota.SisaKuota }}</strong></td>
                 <td class="quota-actions">
                   <button class="icon-button view btn-view-detail icon-only" type="button" (click)="viewQuota(quota)" aria-label="Lihat kuota" title="Lihat detail kuota"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
                   <button class="icon-button edit quota-edit" type="button" (click)="editQuota(quota)" aria-label="Edit kuota" title="Edit kuota"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>

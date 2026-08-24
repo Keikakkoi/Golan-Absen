@@ -22,6 +22,9 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   canRequestCuti = false;
   minimumMasaKerjaCutiBulan = 3;
   tanggalCutiTersedia = '';
+  quotaLoading = true;
+  quotaError = '';
+  leaveQuota: { tahun: number; total_kuota: number; terpakai: number; sedang_diproses: number; sisa_kuota: number } | null = null;
   leaveRequests: any[] = [];
   isLoading = true;
   isSubmitting = false;
@@ -52,6 +55,8 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     return ({pending_manager_approval: 'Menunggu Persetujuan Manajer', manager_approved: 'Disetujui Manajer', manager_rejected: 'Ditolak Manajer', pending_hrd_approval: 'Menunggu Persetujuan HRD', hrd_approved: 'Disetujui HRD', hrd_rejected: 'Ditolak HRD', Pending: 'Menunggu Persetujuan Manajer', Approved: 'Disetujui', Rejected: 'Ditolak', Cancelled: 'Dibatalkan'} as any)[status] || status || '-';
   }
 
+  rejectionReason(request: any): string { return request?.RejectionReason || request?.rejection_reason || '-'; }
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
@@ -75,15 +80,44 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   }
 
   private loadLeavePolicy(): void {
+    this.quotaLoading = true;
+    this.quotaError = '';
     this.http.get<any>(`${this.baseUrl}/policy`, { headers: this.getHeaders() }).subscribe({
       next: policy => {
         this.leaveTypes = policy.leave_types || ['Sakit', 'Lainnya'];
         this.canRequestCuti = !!policy.can_request_cuti;
         this.minimumMasaKerjaCutiBulan = policy.minimum_masa_kerja_cuti_bulan || 3;
         this.tanggalCutiTersedia = policy.tanggal_cuti_tersedia || '';
+        this.leaveQuota = policy.kuota_cuti || null;
+        this.quotaLoading = false;
         if (!this.leaveTypes.includes(this.formData.jenis_izin)) this.formData.jenis_izin = this.leaveTypes[0] || 'Sakit';
+      },
+      error: err => {
+        this.quotaLoading = false;
+        this.quotaError = err.error?.error || 'Gagal memuat informasi kuota cuti.';
       }
     });
+  }
+
+  get isQuotaLeaveSelected(): boolean { return this.formData.jenis_izin === 'Cuti' || this.formData.jenis_izin === 'Lainnya'; }
+
+  get requestedWorkingDays(): number {
+    if (!this.formData.tanggal_mulai || !this.formData.tanggal_selesai || this.formData.tanggal_selesai < this.formData.tanggal_mulai) return 0;
+    const start = new Date(`${this.formData.tanggal_mulai}T00:00:00`);
+    const end = new Date(`${this.formData.tanggal_selesai}T00:00:00`);
+    let days = 0;
+    for (const day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
+      if (day.getDay() >= 1 && day.getDay() <= 5) days++;
+    }
+    return days;
+  }
+
+  onDateChange(): void {
+    if (this.isQuotaLeaveSelected && this.requestedWorkingDays > 0 && this.leaveQuota && this.requestedWorkingDays > this.leaveQuota.sisa_kuota) {
+      this.errorMessage = `Pengajuan ${this.formData.jenis_izin.toLowerCase()} ${this.requestedWorkingDays} hari melebihi sisa kuota ${this.leaveQuota.sisa_kuota} hari.`;
+    } else if (this.errorMessage.startsWith('Pengajuan cuti') || this.errorMessage.startsWith('Pengajuan lainnya')) {
+      this.errorMessage = '';
+    }
   }
 
   ngOnDestroy(): void {
@@ -158,6 +192,20 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
       this.errorMessage = 'Periode pengajuan harus berada dalam tahun yang sama.';
       return;
     }
+    if (this.isQuotaLeaveSelected) {
+      if (this.requestedWorkingDays <= 0) {
+        this.errorMessage = 'Periode pengajuan harus memiliki minimal satu hari kerja.';
+        return;
+      }
+      if (!this.leaveQuota) {
+        this.errorMessage = 'Informasi kuota cuti belum tersedia. Silakan coba lagi.';
+        return;
+      }
+      if (this.requestedWorkingDays > this.leaveQuota.sisa_kuota) {
+        this.errorMessage = `Pengajuan ${this.formData.jenis_izin.toLowerCase()} ${this.requestedWorkingDays} hari melebihi sisa kuota ${this.leaveQuota.sisa_kuota} hari.`;
+        return;
+      }
+    }
 
     if (!await this.alert.confirm('Kirim pengajuan izin?', 'Pengajuan akan dikirim ke HRD untuk diproses.')) return;
 
@@ -195,7 +243,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
 
   resetForm(): void {
     this.formData = {
-      jenis_izin: 'Sakit',
+      jenis_izin: this.leaveTypes[0] || 'Sakit',
       tanggal_mulai: '',
       tanggal_selesai: '',
       alasan: ''

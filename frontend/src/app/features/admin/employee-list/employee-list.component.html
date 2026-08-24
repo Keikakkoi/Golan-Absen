@@ -64,8 +64,8 @@
             <select class="filter-input" [(ngModel)]="filters.sort_order" (change)="applyFilters()" name="sort_order">
               <option value="name_asc">Nama A–Z (Menaik)</option>
               <option value="name_desc">Nama Z–A (Menurun)</option>
-              <option value="employee_id_asc">ID Karyawan (Menaik)</option>
-              <option value="employee_id_desc">ID Karyawan (Menurun)</option>
+              <option value="employee_id_asc">Kode (Menaik)</option>
+              <option value="employee_id_desc">Kode (Menurun)</option>
               <option value="join_date_asc">Tanggal Masuk (Menaik)</option>
               <option value="join_date_desc">Tanggal Masuk (Menurun)</option>
             </select>
@@ -99,7 +99,7 @@
         <table class="golan-table employee-table" *ngIf="!isLoading && filteredEmployees.length > 0" style="min-width: 800px;">
           <thead>
             <tr>
-              <th>ID</th>
+              <th>Kode</th>
               <th>Foto</th>
               <th>NIK/NIP</th>
               <th>Nama lengkap</th>
@@ -120,7 +120,7 @@
           </thead>
           <tbody>
             <tr *ngFor="let emp of displayedEmployees">
-              <td data-label="ID"><span class="employee-cell-value">{{ emp.ID }}</span></td>
+              <td data-label="Kode"><span class="employee-cell-value">{{ emp.Employee?.employee_code || '-' }}</span></td>
               <td data-label="Foto">
                 <img *ngIf="emp.Employee?.FotoProfilURL" class="employee-photo-thumb" [src]="emp.Employee.FotoProfilURL" [alt]="'Pas foto ' + emp.Nama" />
                 <span *ngIf="!emp.Employee?.FotoProfilURL" class="photo-placeholder">-</span>
@@ -204,8 +204,8 @@
       <div class="detail-section-title">Informasi akun dan pekerjaan</div>
       <div class="detail-grid">
         <div class="detail-item">
-          <span class="detail-label">ID Karyawan</span>
-          <strong class="detail-value detail-value-mono">#{{ selectedDetail.ID || '-' }}</strong>
+          <span class="detail-label">Kode Karyawan</span>
+          <strong class="detail-value detail-value-mono">{{ selectedDetail.Employee?.employee_code || '-' }}</strong>
         </div>
         <div class="detail-item">
           <span class="detail-label">Role</span>

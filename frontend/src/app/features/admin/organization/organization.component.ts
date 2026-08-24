@@ -20,8 +20,8 @@ export class OrganizationComponent implements OnInit {
   
   activeTab: 'divisions' | 'positions' | 'projects' = 'divisions';
 
-  deptForm = { ID: 0, NamaDivisi: '', Deskripsi: '' };
-  posForm = { ID: 0, NamaJabatan: '', Deskripsi: '' };
+  deptForm = { ID: 0, NamaDivisi: '', division_code: '', Deskripsi: '' };
+  posForm = { ID: 0, NamaJabatan: '', position_code: '', Deskripsi: '' };
   projectForm = { ID: 0, NamaProject: '', Deskripsi: '', StatusAktif: true };
   
   showDeptModal = false;
@@ -53,7 +53,7 @@ export class OrganizationComponent implements OnInit {
     if (dept) {
       this.deptForm = { ...dept };
     } else {
-      this.deptForm = { ID: 0, NamaDivisi: '', Deskripsi: '' };
+      this.deptForm = { ID: 0, NamaDivisi: '', division_code: '', Deskripsi: '' };
     }
     this.showDeptModal = true;
   }
@@ -109,7 +109,7 @@ export class OrganizationComponent implements OnInit {
     if (pos) {
       this.posForm = { ...pos };
     } else {
-      this.posForm = { ID: 0, NamaJabatan: '', Deskripsi: '' };
+      this.posForm = { ID: 0, NamaJabatan: '', position_code: '', Deskripsi: '' };
     }
     this.showPosModal = true;
   }

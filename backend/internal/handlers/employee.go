@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/csv"
-	"bytes"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -20,6 +20,7 @@ import (
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/middleware"
 	"absensi-golan-backend/internal/models"
+	"absensi-golan-backend/internal/services"
 	"absensi-golan-backend/internal/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -564,6 +565,9 @@ func GetAllEmployees(c *fiber.Ctx) error {
 	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
+	if err := services.BackfillCodes(config.DB); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal membuat employee code"})
+	}
 
 	var users []models.User
 	// Include all users so HRD can manage the complete employee directory.
@@ -790,6 +794,10 @@ func CreateEmployee(c *fiber.Ctx) error {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create employee"})
 	}
+	if err := services.AssignEmployeeCode(tx, &employee, user.Role); err != nil {
+		tx.Rollback()
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal membuat employee code"})
+	}
 	if hasHomeLocation(req.HomeLatitude, req.HomeLongitude) {
 		if err := saveEmployeeHomeLocation(tx, employee.ID, req.HomeLatitude, req.HomeLongitude, req.HomeGoogleMapsURL); err != nil {
 			tx.Rollback()
@@ -846,6 +854,8 @@ func UpdateEmployee(c *fiber.Ctx) error {
 		tx.Rollback()
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
 	}
+	oldRole := user.Role
+	oldDivisionID := user.Employee.DivisionID
 
 	// Cek ketersediaan Email
 	var emailOwner models.User
@@ -914,6 +924,12 @@ func UpdateEmployee(c *fiber.Ctx) error {
 			fmt.Println("Error saving employee:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
+		if oldRole != user.Role || oldDivisionID != user.Employee.DivisionID || user.Employee.EmployeeCode == "" {
+			if err := services.AssignEmployeeCode(tx, &user.Employee, user.Role); err != nil {
+				tx.Rollback()
+				return c.Status(500).JSON(fiber.Map{"error": "Gagal memperbarui employee code"})
+			}
+		}
 		if hasHomeLocation(req.HomeLatitude, req.HomeLongitude) {
 			if err := saveEmployeeHomeLocation(tx, user.Employee.ID, req.HomeLatitude, req.HomeLongitude, req.HomeGoogleMapsURL); err != nil {
 				tx.Rollback()
@@ -937,6 +953,10 @@ func UpdateEmployee(c *fiber.Ctx) error {
 		if err := tx.Create(&newEmp).Error; err != nil {
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create employee details"})
+		}
+		if err := services.AssignEmployeeCode(tx, &newEmp, user.Role); err != nil {
+			tx.Rollback()
+			return c.Status(500).JSON(fiber.Map{"error": "Gagal membuat employee code"})
 		}
 		if hasHomeLocation(req.HomeLatitude, req.HomeLongitude) {
 			if err := saveEmployeeHomeLocation(tx, newEmp.ID, req.HomeLatitude, req.HomeLongitude, req.HomeGoogleMapsURL); err != nil {
@@ -1017,6 +1037,12 @@ func DeleteEmployee(c *fiber.Ctx) error {
 	}
 
 	if user.Employee.ID != 0 {
+		// Release the display code before soft-deleting the row. The internal ID
+		// remains in history, while the code becomes available for reuse.
+		if err := tx.Model(&user.Employee).Update("employee_code", nil).Error; err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to release employee code"})
+		}
 		if err := tx.Delete(&user.Employee).Error; err != nil {
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete employee"})

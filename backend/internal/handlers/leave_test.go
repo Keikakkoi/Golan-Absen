@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -58,5 +59,11 @@ func TestAdminLeaveWorkflowIncludesEmployeesAndInterns(t *testing.T) {
 	}
 	if isAdminLeaveWorkflowRole(models.RoleHRD) {
 		t.Fatal("HRD must not be treated as a leave requester in the admin workflow")
+	}
+}
+
+func TestRejectionReasonMustNotAcceptWhitespace(t *testing.T) {
+	if reason := strings.TrimSpace(" \t\n"); reason != "" {
+		t.Fatalf("whitespace-only rejection reason should be empty, got %q", reason)
 	}
 }

@@ -116,10 +116,15 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   }
 
   async updateStatus(id: number, status: string): Promise<void> {
-    if (!await this.alert.confirm('Konfirmasi pengajuan', `Apakah Anda yakin ingin melakukan ${status} pengajuan ini?`, 'Ya, proses')) return;
+    let rejectionReason = '';
+    if (status === 'Rejected') {
+      const reason = await this.alert.textarea('Alasan Penolakan', 'Tuliskan alasan penolakan pengajuan ini.', 'Lanjutkan Penolakan', 'Alasan Penolakan');
+      if (reason === null) return;
+      rejectionReason = reason;
+    } else if (!await this.alert.confirm('Konfirmasi pengajuan', `Apakah Anda yakin ingin melakukan ${status} pengajuan ini?`, 'Ya, proses')) return;
 
     const headers = this.getHeaders();
-    this.http.put<any>(`${this.baseUrl}/${id}/approve`, { status }, { headers }).subscribe({
+    this.http.put<any>(`${this.baseUrl}/${id}/approve`, { status, rejection_reason: rejectionReason }, { headers }).subscribe({
       next: (res) => {
         this.alert.success(`Pengajuan berhasil di-${status.toLowerCase()}`);
         this.loadLeaveRequests(false); // Reload while preserving the active page when possible

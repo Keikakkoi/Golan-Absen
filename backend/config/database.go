@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"absensi-golan-backend/internal/models"
+	"absensi-golan-backend/internal/services"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -33,6 +34,7 @@ func ConnectDB(cfg *Config) {
 		&models.Division{},
 		&models.Position{},
 		&models.Employee{},
+		&models.CodeGenerator{},
 		&models.EmployeeHomeLocation{},
 		&models.AttendanceRecord{},
 		&models.OfficeLocation{},
@@ -59,6 +61,7 @@ func ConnectDB(cfg *Config) {
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schemas: %v", err)
 	}
+	if err := services.BackfillCodes(DB); err != nil { log.Printf("Code backfill failed: %v", err) }
 	if err := DB.Exec("UPDATE employees SET shift_kerja = 'Reguler' WHERE shift_kerja IS NULL OR BTRIM(shift_kerja) = ''").Error; err != nil {
 		log.Printf("Failed to backfill employee shifts: %v", err)
 	}

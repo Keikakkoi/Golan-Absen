@@ -19,11 +19,40 @@
         <div *ngIf="successMessage" class="alert alert-success">{{ successMessage }}</div>
         <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
 
+        <aside class="leave-quota-panel" *ngIf="isQuotaLeaveSelected">
+          <ng-container *ngIf="quotaLoading">
+            <p class="quota-title">Sisa Kuota Cuti Anda</p>
+            <p class="quota-loading">Memuat informasi kuota...</p>
+          </ng-container>
+          <ng-container *ngIf="!quotaLoading && quotaError">
+            <p class="quota-title">Sisa Kuota Cuti Anda</p>
+            <p class="quota-error">{{ quotaError }}</p>
+          </ng-container>
+          <ng-container *ngIf="!quotaLoading && !quotaError && leaveQuota as quota">
+            <div class="quota-main">
+              <div>
+                <p class="quota-title">Sisa Kuota Cuti Anda</p>
+                <strong class="quota-value">{{ quota.sisa_kuota }} hari</strong>
+              </div>
+              <span class="quota-year">{{ quota.tahun }}</span>
+            </div>
+            <div class="quota-meta">
+              <span>Total: <strong>{{ quota.total_kuota }} hari</strong></span>
+              <span>Terpakai: <strong>{{ quota.terpakai }} hari</strong></span>
+              <span>Diproses: <strong>{{ quota.sedang_diproses }} hari</strong></span>
+            </div>
+            <p class="quota-warning" *ngIf="requestedWorkingDays > quota.sisa_kuota">
+              Pengajuan ini melebihi sisa kuota dan tidak dapat dikirim.
+            </p>
+          </ng-container>
+          <p class="quota-empty" *ngIf="!quotaLoading && !quotaError && !leaveQuota">Kuota cuti belum tersedia untuk akun ini.</p>
+        </aside>
+
         <form (ngSubmit)="submitRequest()" class="leave-form">
           <div class="field-row">
             <label class="field-group">
               <span>Jenis Izin</span>
-              <select [(ngModel)]="formData.jenis_izin" name="jenis_izin" class="golan-input" required>
+              <select [(ngModel)]="formData.jenis_izin" (ngModelChange)="onDateChange()" name="jenis_izin" class="golan-input" required>
                 <option *ngFor="let type of leaveTypes" [value]="type" [disabled]="type === 'Cuti' && !canRequestCuti">{{ type }}</option>
               </select>
               <small class="input-hint" *ngIf="!isIntern && !canRequestCuti">Cuti tersedia setelah minimal {{ minimumMasaKerjaCutiBulan }} bulan kerja<span *ngIf="tanggalCutiTersedia"> ({{ tanggalCutiTersedia | date:'dd MMMM yyyy' }}).</span></small>
@@ -31,12 +60,12 @@
 
             <label class="field-group">
               <span>Tanggal Mulai</span>
-              <input type="date" [(ngModel)]="formData.tanggal_mulai" name="tanggal_mulai" required class="golan-input" />
+              <input type="date" [(ngModel)]="formData.tanggal_mulai" (ngModelChange)="onDateChange()" name="tanggal_mulai" required class="golan-input" />
             </label>
 
             <label class="field-group">
               <span>Tanggal Selesai</span>
-              <input type="date" [(ngModel)]="formData.tanggal_selesai" name="tanggal_selesai" required class="golan-input" />
+              <input type="date" [(ngModel)]="formData.tanggal_selesai" (ngModelChange)="onDateChange()" name="tanggal_selesai" required class="golan-input" />
             </label>
           </div>
 
@@ -53,7 +82,7 @@
           </label>
 
           <div class="form-actions">
-            <button type="submit" class="btn-primary btn-submit" [disabled]="isSubmitting">
+            <button type="submit" class="btn-primary btn-submit" [disabled]="isSubmitting || (isQuotaLeaveSelected && (!leaveQuota || requestedWorkingDays > leaveQuota.sisa_kuota))">
               {{ isSubmitting ? 'Mengirim...' : 'Kirim Pengajuan' }}
             </button>
           </div>
@@ -80,6 +109,7 @@
                   <th>Mulai</th>
                   <th>Selesai</th>
                   <th>Status</th>
+                  <th>Alasan Penolakan</th>
                   <th>Lampiran</th>
                   <th>Aksi</th>
                 </tr>
@@ -94,6 +124,7 @@
                       {{ statusLabel(req.Status) }}
                     </span>
                   </td>
+                  <td>{{ rejectionReason(req) }}</td>
                   <td>
                     <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="link-action btn-view-detail compact">Lihat</a>
                     <span *ngIf="!req.LampiranURL" class="text-muted">-</span>
@@ -139,6 +170,10 @@
       <div class="detail-block">
         <span>Alasan Pengajuan</span>
         <p>{{ selectedLeave.Alasan }}</p>
+      </div>
+      <div class="detail-block" *ngIf="selectedLeave.Status === 'Rejected' || selectedLeave.Status === 'manager_rejected' || selectedLeave.Status === 'hrd_rejected'">
+        <span>Alasan Penolakan</span>
+        <p>{{ rejectionReason(selectedLeave) }}</p>
       </div>
       <div *ngIf="selectedLeave.LampiranURL" class="detail-block">
         <span>Dokumen Lampiran</span>

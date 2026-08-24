@@ -93,16 +93,18 @@ type CertificateIssuanceLog struct {
 
 type Division struct {
 	gorm.Model
-	NamaDivisi string `gorm:"size:100;not null"`
-	Deskripsi  string `gorm:"type:text"`
-	Employees  []Employee
+	NamaDivisi   string `gorm:"size:100;not null"`
+	DivisionCode string `gorm:"size:20;uniqueIndex" json:"division_code"`
+	Deskripsi    string `gorm:"type:text"`
+	Employees    []Employee
 }
 
 type Position struct {
 	gorm.Model
-	NamaJabatan string `gorm:"size:100;not null"`
-	Deskripsi   string `gorm:"type:text"`
-	Employees   []Employee
+	NamaJabatan  string `gorm:"size:100;not null"`
+	PositionCode string `gorm:"size:20;uniqueIndex" json:"position_code"`
+	Deskripsi    string `gorm:"type:text"`
+	Employees    []Employee
 }
 
 type Employee struct {
@@ -110,6 +112,7 @@ type Employee struct {
 	UserID           uint       `gorm:"uniqueIndex;not null"`
 	User             *User      `gorm:"foreignKey:UserID"`
 	NIK              string     `gorm:"size:50;uniqueIndex;not null"`
+	EmployeeCode     string     `gorm:"size:40;uniqueIndex" json:"employee_code"`
 	JenisKelamin     string     `gorm:"size:20"`
 	TempatLahir      string     `gorm:"size:100"`
 	TanggalLahir     *time.Time `gorm:"type:date"`
@@ -133,6 +136,16 @@ type Employee struct {
 	HomeLatitude    float64               `gorm:"default:0"`
 	HomeLongitude   float64               `gorm:"default:0"`
 	HomeLocation    *EmployeeHomeLocation `gorm:"foreignKey:EmployeeID"`
+}
+
+// CodeGenerator is deliberately retained after employees are deleted so codes
+// are never reused. One row is advanced under a PostgreSQL row lock per
+// role/division combination.
+type CodeGenerator struct {
+	gorm.Model
+	RoleCode     string `gorm:"size:2;not null;uniqueIndex:idx_code_generator_scope"`
+	DivisionCode string `gorm:"size:20;not null;uniqueIndex:idx_code_generator_scope"`
+	NextNumber   int    `gorm:"not null;default:1"`
 }
 
 type AttendanceStatus string
@@ -262,6 +275,9 @@ type LeaveRequest struct {
 	ManagerApprovedBy *uint                  `gorm:"index"`
 	ManagerApprovedAt *time.Time             `gorm:"type:timestamp"`
 	ManagerNotes      string                 `gorm:"type:text"`
+	RejectionReason   string                 `gorm:"type:text" json:"rejection_reason"`
+	RejectedBy        *uint                  `gorm:"index" json:"rejected_by"`
+	RejectedAt        *time.Time             `gorm:"type:timestamp" json:"rejected_at"`
 	ApprovalHistory   []LeaveApprovalHistory `gorm:"foreignKey:LeaveRequestID"`
 	// QuotaDays/QuotaReserved make quota accounting idempotent across the
 	// pending -> approved/rejected/cancelled lifecycle.

@@ -29,7 +29,7 @@
         </colgroup>
         <thead>
           <tr>
-            <th>ID</th>
+            <th>Kode</th>
             <th>Nama Divisi</th>
             <th class="w-100">Deskripsi</th>
             <th>Aksi</th>
@@ -37,7 +37,7 @@
         </thead>
         <tbody>
           <tr *ngFor="let d of divisions">
-            <td>{{ d.ID }}</td>
+            <td>{{ d.division_code || '-' }}</td>
             <td>{{ d.NamaDivisi }}</td>
             <td>{{ d.Deskripsi }}</td>
             <td class="actions">
@@ -66,7 +66,7 @@
         </colgroup>
         <thead>
           <tr>
-            <th>ID</th>
+            <th>Kode</th>
             <th>Nama Jabatan</th>
             <th class="w-100">Deskripsi</th>
             <th>Aksi</th>
@@ -74,7 +74,7 @@
         </thead>
         <tbody>
           <tr *ngFor="let p of positions">
-            <td>{{ p.ID }}</td>
+            <td>{{ p.position_code || '-' }}</td>
             <td>{{ p.NamaJabatan }}</td>
             <td>{{ p.Deskripsi }}</td>
             <td class="actions">
@@ -130,6 +130,10 @@
       <input type="text" class="form-control" name="nama_divisi" [(ngModel)]="deptForm.NamaDivisi" required>
       </div>
       <div class="form-group">
+        <label>Kode Divisi</label>
+        <input type="text" class="form-control" name="division_code" [(ngModel)]="deptForm.division_code" placeholder="Otomatis saat dibuat">
+      </div>
+      <div class="form-group">
         <label>Deskripsi</label>
         <textarea class="form-control" name="deskripsi_divisi" [(ngModel)]="deptForm.Deskripsi" rows="3"></textarea>
       </div>
@@ -162,6 +166,10 @@
       <div class="form-group">
         <label>Nama Jabatan</label>
       <input type="text" class="form-control" name="nama_jabatan" [(ngModel)]="posForm.NamaJabatan" required>
+      </div>
+      <div class="form-group">
+        <label>Kode Jabatan</label>
+        <input type="text" class="form-control" name="position_code" [(ngModel)]="posForm.position_code" placeholder="Otomatis saat dibuat">
       </div>
       <div class="form-group">
         <label>Deskripsi</label>

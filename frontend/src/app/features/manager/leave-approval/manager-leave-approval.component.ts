@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { AlertService } from '../../../core/services/alert.service';
 
 @Component({ selector: 'app-manager-leave-approval', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent], templateUrl: './manager-leave-approval.component.html', styleUrls: ['./manager-leave-approval.component.scss'] })
 export class ManagerLeaveApprovalComponent implements OnInit {
@@ -20,7 +21,7 @@ export class ManagerLeaveApprovalComponent implements OnInit {
   pageSize = 25;
   currentPage = 1;
 
-  constructor(private http: HttpClient, private auth: AuthService) {}
+  constructor(private http: HttpClient, private auth: AuthService, private alert: AlertService) {}
 
   ngOnInit(): void { this.load(); }
 
@@ -71,8 +72,14 @@ export class ManagerLeaveApprovalComponent implements OnInit {
 
   totalPages(): number { return Math.max(1, Math.ceil(this.requests.length / this.pageSize)); }
 
-  decide(id: number, nextStatus: 'Approved' | 'Rejected'): void {
-    this.http.put(`http://localhost:8080/api/v1/manager/leaves/${id}/approve`, { status: nextStatus, notes: this.notes[id] || '' }, { headers: this.headers() }).subscribe({
+  async decide(id: number, nextStatus: 'Approved' | 'Rejected'): Promise<void> {
+    let rejectionReason = '';
+    if (nextStatus === 'Rejected') {
+      const reason = await this.alert.textarea('Alasan Penolakan', 'Tuliskan alasan penolakan pengajuan ini.', 'Lanjutkan Penolakan', 'Alasan Penolakan');
+      if (reason === null) return;
+      rejectionReason = reason;
+    } else if (!await this.alert.confirm('Konfirmasi pengajuan', 'Apakah Anda yakin ingin menyetujui pengajuan ini?', 'Ya, setujui')) return;
+    this.http.put(`http://localhost:8080/api/v1/manager/leaves/${id}/approve`, { status: nextStatus, notes: this.notes[id] || '', rejection_reason: rejectionReason }, { headers: this.headers() }).subscribe({
       next: () => this.load(false),
       error: e => this.error = e.error?.error || 'Gagal memproses pengajuan'
     });
@@ -86,6 +93,7 @@ export class ManagerLeaveApprovalComponent implements OnInit {
   employeeName(request: any): string { return request?.Employee?.User?.Nama || request?.Employee?.User?.nama || '-'; }
   leaveType(request: any): string { return request?.JenisIzin || request?.jenis_izin || '-'; }
   reason(request: any): string { return request?.Alasan || request?.alasan || '-'; }
+  rejectionReason(request: any): string { return request?.RejectionReason || request?.rejection_reason || '-'; }
 
   private ensureValidPage(): void {
     if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();

@@ -68,6 +68,56 @@ func SetupLeaveRoutes(router fiber.Router) {
 	leave.Delete("/:id/cancel", CancelLeaveRequest)
 }
 
+// workingLeaveDays follows the application's attendance calendar: Monday to
+// Friday, excluding configured holidays. The backend remains authoritative
+// for this calculation when a request is submitted.
+func workingLeaveDays(start, end time.Time) (int, error) {
+	start = normalizeAttendanceDate(start)
+	end = normalizeAttendanceDate(end)
+	var holidays []models.Holiday
+	if err := config.DB.Where("tanggal BETWEEN ? AND ?", start.Format("2006-01-02"), end.Format("2006-01-02")).Find(&holidays).Error; err != nil {
+		return 0, err
+	}
+	holidayDates := make(map[string]bool, len(holidays))
+	for _, holiday := range holidays {
+		holidayDates[normalizeAttendanceDate(holiday.Tanggal).Format("2006-01-02")] = true
+	}
+	days := 0
+	for day := start; !day.After(end); day = day.AddDate(0, 0, 1) {
+		if day.Weekday() >= time.Monday && day.Weekday() <= time.Friday && !holidayDates[day.Format("2006-01-02")] {
+			days++
+		}
+	}
+	return days, nil
+}
+
+func leaveQuotaSummary(employeeID uint, year int) (fiber.Map, error) {
+	var quota models.LeaveQuota
+	if err := config.DB.Where("employee_id = ? AND tahun = ? AND jenis_cuti IN ?", employeeID, year, annualLeaveQuotaTypes).Order("id asc").First(&quota).Error; err != nil {
+		return nil, err
+	}
+	var reserved int64
+	if err := config.DB.Model(&models.LeaveRequest{}).
+		Where("employee_id = ? AND jenis_izin IN ? AND EXTRACT(YEAR FROM tanggal_mulai) = ? AND quota_reserved = ?", employeeID, annualLeaveQuotaTypes, year, true).
+		Select("COALESCE(SUM(quota_days), 0)").Scan(&reserved).Error; err != nil {
+		return nil, err
+	}
+	var pending int64
+	if err := config.DB.Model(&models.LeaveRequest{}).
+		Where("employee_id = ? AND jenis_izin IN ? AND EXTRACT(YEAR FROM tanggal_mulai) = ? AND status IN ?", employeeID, annualLeaveQuotaTypes, year, []models.LeaveStatus{models.LeaveStatusPending, models.LeaveStatusPendingManager, models.LeaveStatusManagerApproved, models.LeaveStatusPendingHRD}).
+		Select("COALESCE(SUM(quota_days), 0)").Scan(&pending).Error; err != nil {
+		return nil, err
+	}
+	total := quota.SisaKuota + int(reserved)
+	return fiber.Map{
+		"tahun":           year,
+		"total_kuota":     total,
+		"terpakai":        total - quota.SisaKuota,
+		"sedang_diproses": int(pending),
+		"sisa_kuota":      quota.SisaKuota,
+	}, nil
+}
+
 func normalizeLeaveType(value string) string {
 	switch strings.TrimSpace(value) {
 	case "Cuti", "Cuti Tahunan":
@@ -105,12 +155,17 @@ func GetLeavePolicy(c *fiber.Ctx) error {
 	if hasAvailableDate {
 		availableDateValue = availableDate.Format("2006-01-02")
 	}
+	var quota any
+	if eligible {
+		quota, _ = leaveQuotaSummary(employee.ID, attendanceNow().In(jakartaLocation).Year())
+	}
 	return c.JSON(fiber.Map{
 		"leave_types":                   policy,
 		"can_request_cuti":              eligible,
 		"minimum_masa_kerja_cuti_bulan": setting.MinimumMasaKerjaCutiBulan,
 		"tanggal_bergabung":             employee.TanggalBergabung,
 		"tanggal_cuti_tersedia":         availableDateValue,
+		"kuota_cuti":                    quota,
 	})
 }
 
@@ -207,7 +262,13 @@ func SubmitLeaveRequest(c *fiber.Ctx) error {
 	cfg := config.LoadConfig()
 	lampiranURL = fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, minio.BucketName, fileName)
 
-	days := calendarLeaveDays(tglMulai, tglSelesai)
+	days, err := workingLeaveDays(tglMulai, tglSelesai)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memvalidasi hari kerja"})
+	}
+	if days <= 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Periode pengajuan tidak memiliki hari kerja"})
+	}
 	initialStatus := initialLeaveStatus(role)
 	leaveReq := models.LeaveRequest{
 		EmployeeID:     employee.ID,
@@ -327,8 +388,10 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 	id, _ := strconv.Atoi(idParam)
 
 	var req struct {
-		Status string `json:"status"` // "Approved" or "Rejected"
-		Notes  string `json:"notes"`
+		Status          string `json:"status"` // "Approved" or "Rejected"
+		Notes           string `json:"notes"`
+		RejectionReason string `json:"rejection_reason"`
+		AlasanPenolakan string `json:"alasan_penolakan"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
@@ -367,6 +430,13 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 	if newStatus != models.LeaveStatusApproved && newStatus != models.LeaveStatusRejected {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid status"})
 	}
+	rejectionReason := strings.TrimSpace(req.RejectionReason)
+	if rejectionReason == "" {
+		rejectionReason = strings.TrimSpace(req.AlasanPenolakan)
+	}
+	if newStatus == models.LeaveStatusRejected && rejectionReason == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Alasan penolakan wajib diisi"})
+	}
 
 	days := 0
 	if newStatus == models.LeaveStatusApproved && consumesAnnualLeaveQuota(leaveReq.JenisIzin) {
@@ -379,7 +449,11 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": fmt.Sprintf("Pengajuan cuti tidak dapat disetujui karena masa kerja karyawan belum mencapai minimal %d bulan", setting.MinimumMasaKerjaCutiBulan)})
 			}
 		}
-		days = calendarLeaveDays(leaveReq.TanggalMulai, leaveReq.TanggalSelesai)
+		var daysErr error
+		days, daysErr = workingLeaveDays(leaveReq.TanggalMulai, leaveReq.TanggalSelesai)
+		if daysErr != nil || days <= 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Periode pengajuan tidak memiliki hari kerja yang valid"})
+		}
 	}
 
 	finalStatus := newStatus
@@ -405,6 +479,12 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 	approvedAt := time.Now()
 	leaveReq.ApprovedAt = &approvedAt
 	leaveReq.Notes = req.Notes
+	if newStatus == models.LeaveStatusRejected {
+		rejectedAt := time.Now()
+		leaveReq.RejectionReason = rejectionReason
+		leaveReq.RejectedBy = &decisionUserID
+		leaveReq.RejectedAt = &rejectedAt
+	}
 
 	tx := config.DB.Begin()
 	if tx.Error != nil {
@@ -429,7 +509,11 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update leave request"})
 	}
-	if err := tx.Create(&models.LeaveApprovalHistory{LeaveRequestID: leaveReq.ID, DecidedBy: decisionUserID, Role: role, Status: finalStatus, Notes: req.Notes}).Error; err != nil {
+	historyNotes := req.Notes
+	if newStatus == models.LeaveStatusRejected {
+		historyNotes = rejectionReason
+	}
+	if err := tx.Create(&models.LeaveApprovalHistory{LeaveRequestID: leaveReq.ID, DecidedBy: decisionUserID, Role: role, Status: finalStatus, Notes: historyNotes}).Error; err != nil {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save approval history"})
 	}
@@ -506,7 +590,11 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 	if userRole == "" {
 		userRole = models.RoleKaryawan
 	}
-	if err := utils.CreateNotification(tx, leaveReq.Employee.UserID, userRole, "Status Pengajuan", "Status Pengajuan Izin", fmt.Sprintf("Pengajuan %s Anda telah %s", leaveReq.JenisIzin, statusLabel(finalStatus))); err != nil {
+	notificationMessage := fmt.Sprintf("Pengajuan %s Anda (%s s/d %s) telah %s", leaveReq.JenisIzin, leaveReq.TanggalMulai.Format("02 Jan 2006"), leaveReq.TanggalSelesai.Format("02 Jan 2006"), statusLabel(finalStatus))
+	if newStatus == models.LeaveStatusRejected {
+		notificationMessage += fmt.Sprintf(". Alasan penolakan: %s", rejectionReason)
+	}
+	if err := utils.CreateNotification(tx, leaveReq.Employee.UserID, userRole, "Status Pengajuan", "Status Pengajuan Izin", notificationMessage); err != nil {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create notification"})
 	}
@@ -516,7 +604,13 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 
 	utils.LogAction(decisionUserID, "UPDATE", "LeaveRequest", leaveReq.ID, fmt.Sprintf("%s %s leave request for %s", role, finalStatus, leaveReq.Employee.NIK))
 
-	return c.JSON(fiber.Map{"message": "Leave request processed successfully", "status": finalStatus})
+	return c.JSON(fiber.Map{
+		"message":          "Leave request processed successfully",
+		"status":           finalStatus,
+		"rejection_reason": leaveReq.RejectionReason,
+		"rejected_by":      leaveReq.RejectedBy,
+		"rejected_at":      leaveReq.RejectedAt,
+	})
 }
 
 func statusLabel(status models.LeaveStatus) string {

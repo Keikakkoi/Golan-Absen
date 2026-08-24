@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/middleware"
 	"absensi-golan-backend/internal/models"
+	"absensi-golan-backend/internal/services"
 	"absensi-golan-backend/internal/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -121,6 +123,11 @@ func DeleteProject(c *fiber.Ctx) error {
 // --- DIVISIS ---
 
 func GetAllDivisions(c *fiber.Ctx) error {
+	// Backfill legacy rows so installations created before the CODE migration
+	// immediately receive codes on their first organization-page request.
+	if err := services.BackfillCodes(config.DB); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate organization codes"})
+	}
 	var depts []models.Division
 	if err := config.DB.Find(&depts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch divisions"})
@@ -137,6 +144,10 @@ func CreateDivision(c *fiber.Ctx) error {
 	if err := config.DB.Create(&dept).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create division"})
 	}
+	dept.DivisionCode = strconv.FormatUint(uint64(dept.ID), 10)
+	if err := config.DB.Model(&dept).Update("division_code", dept.DivisionCode).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to create division code"})
+	}
 	utils.LogAction(c.Locals("user_id").(uint), "CREATE", "Division", dept.ID, "Created division: "+dept.NamaDivisi)
 
 	return c.Status(fiber.StatusCreated).JSON(dept)
@@ -150,13 +161,42 @@ func UpdateDivision(c *fiber.Ctx) error {
 	if err := config.DB.First(&dept, id).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Division not found"})
 	}
+	oldCode := dept.DivisionCode
 
 	if err := c.BodyParser(&dept); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
+	if strings.TrimSpace(dept.DivisionCode) == "" {
+		dept.DivisionCode = oldCode
+	}
+	if dept.DivisionCode != oldCode {
+		var conflict models.Division
+		if err := config.DB.Where("division_code = ? AND id <> ?", dept.DivisionCode, dept.ID).First(&conflict).Error; err == nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Division code sudah digunakan"})
+		}
+	}
 
-	if err := config.DB.Save(&dept).Error; err != nil {
+	tx := config.DB.Begin()
+	if err := tx.Save(&dept).Error; err != nil {
+		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update division"})
+	}
+	if dept.DivisionCode != oldCode {
+		var employees []models.Employee
+		if err := tx.Where("division_id = ?", dept.ID).Find(&employees).Error; err != nil {
+			tx.Rollback()
+			return c.Status(500).JSON(fiber.Map{"error": "Failed to update employee codes"})
+		}
+		for i := range employees {
+			var user models.User
+			if err := tx.First(&user, employees[i].UserID).Error; err != nil || services.AssignEmployeeCode(tx, &employees[i], user.Role) != nil {
+				tx.Rollback()
+				return c.Status(500).JSON(fiber.Map{"error": "Failed to update employee codes"})
+			}
+		}
+	}
+	if err := tx.Commit().Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to update division"})
 	}
 	utils.LogAction(c.Locals("user_id").(uint), "UPDATE", "Division", dept.ID, "Updated division: "+dept.NamaDivisi)
 
@@ -182,6 +222,9 @@ func DeleteDivision(c *fiber.Ctx) error {
 // --- POSITIONS ---
 
 func GetAllPositions(c *fiber.Ctx) error {
+	if err := services.BackfillCodes(config.DB); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate organization codes"})
+	}
 	var pos []models.Position
 	if err := config.DB.Find(&pos).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch positions"})
@@ -197,6 +240,10 @@ func CreatePosition(c *fiber.Ctx) error {
 
 	if err := config.DB.Create(&pos).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create position"})
+	}
+	pos.PositionCode = fmt.Sprintf("%03d", pos.ID)
+	if err := config.DB.Model(&pos).Update("position_code", pos.PositionCode).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to create position code"})
 	}
 	utils.LogAction(c.Locals("user_id").(uint), "CREATE", "Position", pos.ID, "Created position: "+pos.NamaJabatan)
 
@@ -214,6 +261,13 @@ func UpdatePosition(c *fiber.Ctx) error {
 
 	if err := c.BodyParser(&pos); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+	if strings.TrimSpace(pos.PositionCode) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Position code wajib diisi"})
+	}
+	var conflict models.Position
+	if err := config.DB.Where("position_code = ? AND id <> ?", pos.PositionCode, pos.ID).First(&conflict).Error; err == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Position code sudah digunakan"})
 	}
 
 	if err := config.DB.Save(&pos).Error; err != nil {

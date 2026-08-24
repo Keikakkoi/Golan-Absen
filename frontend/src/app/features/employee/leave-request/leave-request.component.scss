@@ -26,6 +26,31 @@
   max-width: 620px;
 }
 
+.leave-quota-panel {
+  margin: 0 0 22px;
+  padding: 18px 20px;
+  border: 1px solid #cfe3f8;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f0f7ff, #f8fbff);
+  color: #315778;
+}
+
+.quota-main,
+.quota-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.quota-title { margin: 0 0 5px; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #527a9e; }
+.quota-value { display: block; color: #1769aa; font-size: 1.8rem; line-height: 1.15; }
+.quota-year { padding: 5px 10px; border-radius: 999px; background: #dceeff; color: #1769aa; font-size: .8rem; font-weight: 700; }
+.quota-meta { justify-content: flex-start; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid #d9eaf8; font-size: .82rem; }
+.quota-loading, .quota-error, .quota-empty { margin: 0; font-size: .9rem; }
+.quota-error, .quota-warning { color: #b45309; }
+.quota-warning { margin: 12px 0 0; font-size: .85rem; font-weight: 700; }
+
 .eyebrow {
   display: inline-block;
   margin: 0 0 10px;
