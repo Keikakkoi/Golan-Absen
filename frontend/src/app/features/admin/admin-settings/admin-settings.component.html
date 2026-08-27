@@ -30,10 +30,9 @@
       <section class="golan-card panel-card">
         <div class="panel-header">
           <div>
-            <h3>Jam & Toleransi Kerja</h3>
+            <h3>Jadwal Reguler</h3>
             <p class="panel-description">
-              Atur jam kerja standar dan toleransi keterlambatan untuk semua
-              karyawan.
+              Jadwal ini digunakan oleh karyawan yang tidak memiliki jadwal khusus.
             </p>
           </div>
           <span class="panel-badge">Umum</span>
@@ -41,49 +40,18 @@
 
         <div *ngIf="isLoadingSchedule" class="loading-state">Memuat...</div>
 
-        <form *ngIf="!isLoadingSchedule" (ngSubmit)="saveSchedule()">
-          <div class="form-group">
-            <label>Jam Masuk Standar</label>
-            <input
-              type="time"
-              [(ngModel)]="schedule.JamMulai"
-              name="JamMulai"
-              required
-              class="golan-input"
-            />
+        <form *ngIf="!isLoadingSchedule" (ngSubmit)="saveRegularSchedule()">
+          <div class="regular-schedule-table">
+            <div class="regular-schedule-row regular-schedule-head"><span>Hari</span><span>Hari kerja</span><span>Jam masuk</span><span>Jam pulang</span><span>Toleransi (menit)</span></div>
+            <div class="regular-schedule-row" *ngFor="let row of regularSchedules; let i = index">
+              <strong>{{ row.day_name || regularDayNames[i] }}</strong>
+              <input type="checkbox" [(ngModel)]="row.is_working_day" [name]="'working_' + row.day_of_week" [attr.aria-label]="'Hari kerja ' + row.day_name">
+              <input type="time" class="golan-input" [(ngModel)]="row.start_time" [name]="'start_' + row.day_of_week" [disabled]="!row.is_working_day">
+              <input type="time" class="golan-input" [(ngModel)]="row.end_time" [name]="'end_' + row.day_of_week" [disabled]="!row.is_working_day">
+              <input type="number" min="0" class="golan-input" [(ngModel)]="row.late_tolerance_minutes" [name]="'tolerance_' + row.day_of_week" [disabled]="!row.is_working_day">
+            </div>
           </div>
-
-          <div class="form-group">
-            <label>Jam Pulang Standar</label>
-            <input
-              type="time"
-              [(ngModel)]="schedule.JamSelesai"
-              name="JamSelesai"
-              required
-              class="golan-input"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>Batas Toleransi Keterlambatan (Menit)</label>
-            <input
-              type="number"
-              [(ngModel)]="schedule.ToleransiTerlambatMenit"
-              name="ToleransiTerlambatMenit"
-              required
-              class="golan-input"
-            />
-          </div>
-
-          <div class="form-actions">
-            <button
-              type="submit"
-              class="btn-primary"
-              [disabled]="isSavingSchedule"
-            >
-              {{ isSavingSchedule ? "Menyimpan..." : "Simpan Jam Kerja" }}
-            </button>
-          </div>
+          <div class="form-actions"><button type="submit" class="btn-primary" [disabled]="isSavingSchedule">{{ isSavingSchedule ? 'Menyimpan...' : 'Simpan Jadwal Reguler' }}</button></div>
         </form>
       </section>
 
@@ -263,10 +231,15 @@
             Kelola hari libur nasional dan khusus yang tidak termasuk weekend.
           </p>
         </div>
-        <button type="button" class="btn-primary" (click)="openHolidayModal()">
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <input type="number" class="golan-input" style="width:100px" [(ngModel)]="holidayYear" (change)="loadHolidays()" min="2000" max="2100" aria-label="Tahun kalender">
+          <button type="button" class="btn-secondary" (click)="syncNationalHolidays()" [disabled]="isSyncingHolidays">{{ isSyncingHolidays ? 'Menyinkronkan...' : 'Sinkronkan Nasional' }}</button>
+          <button type="button" class="btn-primary" (click)="openHolidayModal()">
           + Tambah Hari Libur
-        </button>
+          </button>
+        </div>
       </div>
+      <p class="panel-description" *ngIf="holidaySyncMessage">{{ holidaySyncMessage }}</p>
 
       <div class="table-container" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
         <table class="golan-table" style="min-width: 600px;">
@@ -274,6 +247,7 @@
             <tr>
               <th>Tanggal</th>
               <th>Keterangan / Deskripsi</th>
+              <th>Jenis</th>
               <th>Aksi</th>
             </tr>
           </thead>
@@ -281,6 +255,7 @@
             <tr *ngFor="let h of holidays">
               <td>{{ h.Tanggal | date: "dd MMM yyyy" }}</td>
               <td>{{ h.Keterangan }}</td>
+              <td>{{ h.type === 'national' ? 'Nasional' : (h.type === 'joint_leave' ? 'Cuti bersama' : 'Khusus perusahaan') }}</td>
               <td class="actions">
                 <button type="button" class="icon-button edit" (click)="openHolidayModal(h)" aria-label="Edit hari libur" title="Edit hari libur">
                   <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
@@ -291,7 +266,7 @@
               </td>
             </tr>
             <tr *ngIf="holidays.length === 0">
-              <td colspan="3" class="empty-state-row">Belum ada hari libur.</td>
+              <td colspan="4" class="empty-state-row">Belum ada hari libur untuk tahun ini. Jika ketetapan pemerintah belum tersedia, kalender ditandai belum tersedia.</td>
             </tr>
           </tbody>
         </table>

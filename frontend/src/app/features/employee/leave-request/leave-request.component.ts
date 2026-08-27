@@ -56,6 +56,10 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   }
 
   rejectionReason(request: any): string { return request?.RejectionReason || request?.rejection_reason || '-'; }
+  approverLabel(request: any): string {
+    const approver = request?.AssignedApprover || request?.assigned_approver;
+    return approver?.Nama || (request?.AssignedApproverRole === 'HRD' ? 'HRD' : request?.Status === 'pending_manager_approval' ? 'Manajer utama' : '-');
+  }
 
   constructor(
     private http: HttpClient,

@@ -31,6 +31,7 @@ export class TeamReportsComponent implements OnInit {
   pageSizeOptions = [10, 25, 50, 100];
   isExportOpen = false;
   notes: { [id: number]: string } = {};
+  private reviewingIds = new Set<number>();
 
   constructor(
     private http: HttpClient,
@@ -136,29 +137,53 @@ export class TeamReportsComponent implements OnInit {
   }
 
   reviewLogbook(id: number, status: 'approved' | 'rejected'): void {
-    if (!id) return;
-    const found = this.reports.find(r => (r.id || r.ID) === id);
-    if (found && (found.status_logbook || found.StatusLogbook) !== 'submitted') {
+    if (!id || this.reviewingIds.has(id)) return;
+    const found = this.findReport(id);
+    if (found && this.logbookStatus(found) !== 'submitted') {
       this.error = 'Review hanya dapat dilakukan pada laporan berstatus Submitted.';
       return;
     }
     this.error = '';
     this.success = '';
     const noteText = this.notes[id] || '';
+    this.reviewingIds.add(id);
 
     this.http.put(`http://localhost:8080/api/v1/manager/team/logbooks/${id}/review`, { status, notes: noteText }, { headers: this.headers() }).subscribe({
       next: (res: any) => {
-        this.success = status === 'approved' ? 'Logbook berhasil disetujui (Approved)' : 'Logbook berhasil ditolak (Rejected)';
+        const latestStatus = this.normalizeStatus(res?.status_logbook || res?.status || status);
         if (found) {
-          found.status_logbook = status;
-          found.StatusLogbook = status;
+          found.status_logbook = latestStatus;
+          found.StatusLogbook = latestStatus;
           found.review_notes = noteText;
           found.ReviewNotes = noteText;
         }
+        this.success = latestStatus === 'approved' ? 'Logbook berhasil disetujui (Approved)' : 'Logbook berhasil ditolak (Rejected)';
+        this.reviewingIds.delete(id);
         setTimeout(() => this.success = '', 4000);
       },
-      error: e => this.error = 'Gagal memperbarui review logbook: ' + (e.error?.error || 'Unknown error')
+      error: e => {
+        this.reviewingIds.delete(id);
+        this.error = 'Gagal memperbarui review logbook: ' + (e.error?.error || 'Unknown error');
+      }
     });
+  }
+
+  logbookStatus(row: any): string {
+    return this.normalizeStatus(row?.status_logbook || row?.StatusLogbook);
+  }
+
+  canReview(row: any): boolean {
+    const id = row?.id || row?.ID;
+    return this.logbookStatus(row) === 'submitted' && !this.reviewingIds.has(id);
+  }
+
+  private findReport(id: number): any {
+    return this.reports.find(row => (row.id || row.ID) === id)
+      || this.allReports.find(row => (row.id || row.ID) === id);
+  }
+
+  private normalizeStatus(status: any): string {
+    return String(status || '').trim().toLowerCase();
   }
 
   toggleExportDropdown(): void {

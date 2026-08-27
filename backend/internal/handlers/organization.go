@@ -181,20 +181,8 @@ func UpdateDivision(c *fiber.Ctx) error {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update division"})
 	}
-	if dept.DivisionCode != oldCode {
-		var employees []models.Employee
-		if err := tx.Where("division_id = ?", dept.ID).Find(&employees).Error; err != nil {
-			tx.Rollback()
-			return c.Status(500).JSON(fiber.Map{"error": "Failed to update employee codes"})
-		}
-		for i := range employees {
-			var user models.User
-			if err := tx.First(&user, employees[i].UserID).Error; err != nil || services.AssignEmployeeCode(tx, &employees[i], user.Role) != nil {
-				tx.Rollback()
-				return c.Status(500).JSON(fiber.Map{"error": "Failed to update employee codes"})
-			}
-		}
-	}
+	// Employee codes are historical identifiers. Changing a division must not
+	// silently change them; an HRD admin may edit one manually.
 	if err := tx.Commit().Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update division"})
 	}

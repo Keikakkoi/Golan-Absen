@@ -305,3 +305,16 @@
     border: 1px solid #ef4444;
   }
 }
+
+.home-location-profile-section {
+  border-top: 1px solid var(--mint-1);
+  padding-top: 2rem;
+  margin-bottom: 2rem;
+
+  h4 { color: var(--green-deep); margin: 1.5rem 0 1rem; }
+  .home-location-active { padding: 1rem; background: var(--mint-0); border: 1px solid var(--mint-1); border-radius: 8px; }
+  .home-location-request-form, .home-location-status, .home-location-history { margin-top: 1.5rem; }
+  .status-active { color: var(--green); }
+  .required { color: #b42318; }
+  .empty-state { color: var(--text-dark-lo); padding: 1rem; background: var(--mint-0); border-radius: 8px; }
+}

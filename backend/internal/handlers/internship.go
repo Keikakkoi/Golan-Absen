@@ -138,15 +138,11 @@ func GetInternshipMentor(c *fiber.Ctx) error {
 		}
 	}
 
-	// Resolve the latest manager-specific schedule without using a random/global
-	// schedule. The legacy ShiftKerja value remains the safe fallback.
-	var schedule models.WorkSchedule
-	today := attendanceBusinessDate(attendanceNow())
-	if config.DB.Where("employee_id = ? AND (tanggal IS NULL OR tanggal <= ?)", emp.ID, today).Order("tanggal desc NULLS LAST, id desc").First(&schedule).Error == nil {
-		result["shift"] = schedule.NamaShift
-		if schedule.JamMulai != "" && schedule.JamSelesai != "" {
-			result["shift"] = fmt.Sprintf("%s (%s - %s)", schedule.NamaShift, schedule.JamMulai, schedule.JamSelesai)
-		}
+	// Use the same centralized resolver as attendance and employee profiles.
+	resolved := ResolveEffectiveSchedule(emp.ID, attendanceBusinessDate(attendanceNow()))
+	result["shift"] = resolved.ShiftName
+	if resolved.StartTime != "" && resolved.EndTime != "" {
+		result["shift"] = fmt.Sprintf("%s (%s - %s)", resolved.ShiftName, resolved.StartTime, resolved.EndTime)
 	}
 	return c.JSON(result)
 }

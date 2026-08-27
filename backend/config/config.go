@@ -8,31 +8,33 @@ import (
 )
 
 type Config struct {
-	AppEnv            string
-	AppPort           string
-	JWTSecret         string
-	DBHost            string
-	DBUser            string
-	DBPassword        string
-	DBName            string
-	DBPort            string
-	RedisHost         string
-	RedisPort         string
-	RedisPassword     string
-	MinIOEndpoint     string
-	MinIORootUser     string
-	MinIORootPassword string
-	MinIOUseSSL       bool
-	MinIOBucketName   string
-	SMTPHost          string
-	SMTPPort          string
-	SMTPUser          string
-	SMTPPassword      string
-	SMTPFrom          string
-	FrontendURL       string
-	VAPIDPublicKey    string
-	VAPIDPrivateKey   string
-	VAPIDSubject      string
+	AppEnv                string
+	AppPort               string
+	JWTSecret             string
+	DBHost                string
+	DBUser                string
+	DBPassword            string
+	DBName                string
+	DBPort                string
+	RedisHost             string
+	RedisPort             string
+	RedisPassword         string
+	MinIOEndpoint         string
+	MinIORootUser         string
+	MinIORootPassword     string
+	MinIOUseSSL           bool
+	MinIOBucketName       string
+	SMTPHost              string
+	SMTPPort              string
+	SMTPUser              string
+	SMTPPassword          string
+	SMTPFrom              string
+	FrontendURL           string
+	VAPIDPublicKey        string
+	VAPIDPrivateKey       string
+	VAPIDSubject          string
+	NationalHolidayURL    string
+	NationalHolidayAPIKey string
 }
 
 func LoadConfig() *Config {
@@ -67,6 +69,10 @@ func LoadConfig() *Config {
 		VAPIDPublicKey:    getEnv("VAPID_PUBLIC_KEY", ""),
 		VAPIDPrivateKey:   getEnv("VAPID_PRIVATE_KEY", ""),
 		VAPIDSubject:      getEnv("VAPID_SUBJECT", "mailto:admin@example.com"),
+		// Public mirror of the SKB 3 Menteri calendar; no API key required.
+		// Operators may override this with API Indonesia using an API key.
+		NationalHolidayURL:    getEnv("NATIONAL_HOLIDAY_URL", "https://api.kemendesa.link/libur-nasional/api/holidays/%d.json"),
+		NationalHolidayAPIKey: getEnv("NATIONAL_HOLIDAY_API_KEY", ""),
 	}
 }
 

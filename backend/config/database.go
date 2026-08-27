@@ -36,9 +36,12 @@ func ConnectDB(cfg *Config) {
 		&models.Employee{},
 		&models.CodeGenerator{},
 		&models.EmployeeHomeLocation{},
+		&models.HomeLocationChangeRequest{},
+		&models.EmployeeHomeLocationHistory{},
 		&models.AttendanceRecord{},
 		&models.OfficeLocation{},
 		&models.WorkSchedule{},
+		&models.RegularWorkSchedule{},
 		&models.LeaveRequest{},
 		&models.LeaveApprovalHistory{},
 		&models.LeaveQuota{},
@@ -61,13 +64,26 @@ func ConnectDB(cfg *Config) {
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schemas: %v", err)
 	}
-	if err := services.BackfillCodes(DB); err != nil { log.Printf("Code backfill failed: %v", err) }
+	if err := services.BackfillCodes(DB); err != nil {
+		log.Printf("Code backfill failed: %v", err)
+	}
 	if err := DB.Exec("UPDATE employees SET shift_kerja = 'Reguler' WHERE shift_kerja IS NULL OR BTRIM(shift_kerja) = ''").Error; err != nil {
 		log.Printf("Failed to backfill employee shifts: %v", err)
 	}
 	if err := DB.Exec("ALTER TABLE employees ALTER COLUMN shift_kerja SET DEFAULT 'Reguler', ALTER COLUMN shift_kerja SET NOT NULL").Error; err != nil {
 		log.Printf("Failed to enforce employee shift constraint: %v", err)
 	}
+	if err := DB.Exec("UPDATE work_schedules SET hari_kerja = '[1,2,3,4,5,6]' WHERE hari_kerja IS NULL OR BTRIM(hari_kerja) = '' OR hari_kerja = '[]'").Error; err != nil {
+		log.Printf("Failed to backfill work schedule days: %v", err)
+	}
+	seedRegularWorkSchedules()
+	// The old unique date index prevented a national and company holiday from
+	// sharing a date. Keep all legacy rows and replace it with date/type uniqueness.
+	_ = DB.Exec("ALTER TABLE holidays DROP CONSTRAINT IF EXISTS holidays_tanggal_key")
+	_ = DB.Exec("DROP INDEX IF EXISTS idx_holidays_tanggal")
+	_ = DB.Exec("DROP INDEX IF EXISTS uni_holidays_tanggal")
+	_ = DB.Exec("UPDATE holidays SET type = 'company' WHERE type IS NULL OR BTRIM(type) = ''")
+	_ = DB.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_holiday_date_type ON holidays (tanggal, type)")
 
 	log.Println("Database migration completed")
 
@@ -101,18 +117,11 @@ func ConnectDB(cfg *Config) {
 		log.Println("Seeded default office location")
 	}
 
-	// Seed WorkSchedule
+	// Legacy global schedules remain readable for compatibility; regular hours
+	// are now seeded in regular_work_schedules.
 	var wsCount int64
 	DB.Model(&models.WorkSchedule{}).Count(&wsCount)
-	if wsCount == 0 {
-		DB.Create(&models.WorkSchedule{
-			NamaShift:               "Reguler",
-			JamMulai:                "09:00:00",
-			JamSelesai:              "17:00:00",
-			ToleransiTerlambatMenit: 10,
-		})
-		log.Println("Seeded default work schedule")
-	}
+	_ = wsCount
 
 	// Seed WorkTypes
 	var wtCount int64
@@ -181,6 +190,30 @@ func ConnectDB(cfg *Config) {
 	}
 }
 
+func seedRegularWorkSchedules() {
+	names := []string{"", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"}
+	start, end, tolerance := "09:00:00", "17:00:00", 10
+	var legacy models.WorkSchedule
+	if DB.Where("employee_id IS NULL AND LOWER(TRIM(nama_shift)) = ?", "reguler").Order("id desc").First(&legacy).Error == nil {
+		if legacy.JamMulai != "" {
+			start = legacy.JamMulai
+		}
+		if legacy.JamSelesai != "" {
+			end = legacy.JamSelesai
+		}
+		if legacy.ToleransiTerlambatMenit >= 0 {
+			tolerance = legacy.ToleransiTerlambatMenit
+		}
+	}
+	for day := 1; day <= 7; day++ {
+		var row models.RegularWorkSchedule
+		if DB.Where("day_of_week = ?", day).First(&row).Error == nil {
+			continue
+		}
+		DB.Create(&models.RegularWorkSchedule{DayOfWeek: day, DayName: names[day], IsWorkingDay: day <= 6, StartTime: start, EndTime: end, LateToleranceMinutes: tolerance})
+	}
+}
+
 func seedNotificationSettings() {
 	defaults := []models.NotificationSetting{
 		{TipeNotifikasi: "Info Admin", Role: models.RoleKaryawan, IsEmailEnabled: false, IsInAppEnabled: true},
@@ -191,6 +224,7 @@ func seedNotificationSettings() {
 		{TipeNotifikasi: "Jadwal Shift", Role: models.RoleMagang, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Jadwal Shift", Role: models.RoleManajer, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Pengajuan Izin", Role: models.RoleHRD, IsEmailEnabled: true, IsInAppEnabled: true},
+		{TipeNotifikasi: "Pengajuan Lokasi WFH", Role: models.RoleHRD, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Persetujuan Izin Tim", Role: models.RoleManajer, IsEmailEnabled: true, IsInAppEnabled: true},
 		{TipeNotifikasi: "Status Pengajuan", Role: models.RoleKaryawan, IsEmailEnabled: true, IsInAppEnabled: true},
 		{TipeNotifikasi: "Status Pengajuan", Role: models.RoleMagang, IsEmailEnabled: true, IsInAppEnabled: true},

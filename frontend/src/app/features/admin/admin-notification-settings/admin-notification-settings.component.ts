@@ -6,6 +6,20 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 
+interface NotificationSetting {
+  TipeNotifikasi: string;
+  Role: string;
+  IsEmailEnabled: boolean;
+  IsInAppEnabled: boolean;
+}
+
+interface NotificationRole {
+  value: string;
+  label: string;
+  description: string;
+  initials: string;
+}
+
 @Component({
   selector: 'app-admin-notification-settings',
   standalone: true,
@@ -14,7 +28,17 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
   styleUrls: ['./admin-notification-settings.component.scss']
 })
 export class AdminNotificationSettingsComponent implements OnInit {
-  settings: any[] = [];
+  settings: NotificationSetting[] = [];
+  readonly roles: NotificationRole[] = [
+    { value: 'HRD', label: 'HRD', description: 'Human Resources', initials: 'HR' },
+    { value: 'Karyawan', label: 'Karyawan', description: 'Pegawai tetap', initials: 'K' },
+    { value: 'MAGANG', label: 'Magang', description: 'Peserta magang', initials: 'M' },
+    { value: 'MANAJER', label: 'Manajer', description: 'Pemimpin tim', initials: 'MN' }
+  ];
+  selectedRole = 'HRD';
+  searchTerm = '';
+  statusFilter: 'all' | 'active' | 'inactive' = 'all';
+  private savedState = '';
   isLoading = true;
   isSaving = false;
   errorMessage = '';
@@ -30,6 +54,57 @@ export class AdminNotificationSettingsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSettings();
+  }
+
+  get selectedRoleInfo(): NotificationRole {
+    return this.roles.find(role => role.value === this.selectedRole) || this.roles[0];
+  }
+
+  get roleSettings(): NotificationSetting[] {
+    return this.settings.filter(setting => setting.Role === this.selectedRole);
+  }
+
+  get visibleSettings(): NotificationSetting[] {
+    const query = this.searchTerm.trim().toLowerCase();
+    return this.roleSettings.filter(setting => {
+      const matchesSearch = !query || `${setting.TipeNotifikasi} ${this.descriptionFor(setting.TipeNotifikasi)}`.toLowerCase().includes(query);
+      const isActive = setting.IsEmailEnabled || setting.IsInAppEnabled;
+      const matchesStatus = this.statusFilter === 'all' || (this.statusFilter === 'active' ? isActive : !isActive);
+      return matchesSearch && matchesStatus;
+    });
+  }
+
+  get activeCount(): number { return this.roleSettings.filter(setting => setting.IsEmailEnabled || setting.IsInAppEnabled).length; }
+  get emailCount(): number { return this.roleSettings.filter(setting => setting.IsEmailEnabled).length; }
+  get inAppCount(): number { return this.roleSettings.filter(setting => setting.IsInAppEnabled).length; }
+  get hasUnsavedChanges(): boolean { return this.settingsState() !== this.savedState; }
+
+  selectRole(role: string): void {
+    this.selectedRole = role;
+    this.searchTerm = '';
+    this.statusFilter = 'all';
+  }
+
+  setAllChannels(enabled: boolean): void {
+    this.roleSettings.forEach(setting => {
+      setting.IsEmailEnabled = enabled;
+      setting.IsInAppEnabled = enabled;
+    });
+  }
+
+  descriptionFor(type: string): string {
+    const descriptions: Record<string, string> = {
+      'Info Admin': 'Informasi dan pengumuman penting dari admin.',
+      'Kehadiran WFH': 'Pemberitahuan terkait kehadiran saat bekerja dari rumah.',
+      'Keterlambatan': 'Pemberitahuan ketika terjadi keterlambatan kehadiran.',
+      'Pengajuan Izin': 'Pengajuan izin yang membutuhkan perhatian HRD.',
+      'Pengajuan Lokasi WFH': 'Permintaan perubahan atau pengajuan lokasi WFH.',
+      'Jadwal Shift': 'Pembaruan jadwal shift dan jam kerja.',
+      'Status Pengajuan': 'Pembaruan status pengajuan izin atau permintaan.',
+      'Laporan Mingguan': 'Pengingat dan pembaruan laporan mingguan.',
+      'Persetujuan Izin Tim': 'Permintaan persetujuan izin anggota tim.'
+    };
+    return descriptions[type] || 'Pemberitahuan aktivitas terbaru dalam sistem.';
   }
 
   async sendBroadcast(): Promise<void> {
@@ -63,13 +138,14 @@ export class AdminNotificationSettingsComponent implements OnInit {
       this.isLoading = false;
       return;
     }
-    this.http.get<any[]>(this.baseUrl, { headers }).subscribe({
+    this.http.get<NotificationSetting[]>(this.baseUrl, { headers }).subscribe({
       next: (data) => {
         if (data && data.length > 0) {
           this.settings = data;
         } else {
           this.settings = [];
         }
+        this.savedState = this.settingsState();
         this.isLoading = false;
       },
       error: (err) => {
@@ -83,7 +159,7 @@ export class AdminNotificationSettingsComponent implements OnInit {
   async saveSettings(): Promise<void> {
     this.errorMessage = '';
     this.successMessage = '';
-    if (this.settings.length === 0) {
+    if (this.roleSettings.length === 0) {
       this.errorMessage = 'Tidak ada pengaturan yang dapat disimpan.';
       this.alert.info('Tidak ada perubahan', this.errorMessage);
       return;
@@ -91,9 +167,10 @@ export class AdminNotificationSettingsComponent implements OnInit {
     if (!await this.alert.confirm('Simpan pengaturan notifikasi?', 'Perubahan pengaturan notifikasi akan diterapkan.')) return;
     this.isSaving = true;
     const headers = this.getHeaders();
-    this.http.put<any[]>(this.baseUrl, this.settings, { headers }).subscribe({
+    this.http.put<NotificationSetting[]>(this.baseUrl, this.roleSettings, { headers }).subscribe({
       next: (data) => {
         this.settings = data;
+        this.savedState = this.settingsState();
         this.isSaving = false;
         this.successMessage = 'Pengaturan notifikasi berhasil disimpan.';
         this.alert.success('Pengaturan notifikasi disimpan');
@@ -110,5 +187,14 @@ export class AdminNotificationSettingsComponent implements OnInit {
   private getHeaders(): HttpHeaders {
     const token = this.authService.getToken();
     return new HttpHeaders().set('Authorization', `Bearer ${token}`);
+  }
+
+  private settingsState(): string {
+    return JSON.stringify(this.settings.map(setting => ({
+      role: setting.Role,
+      type: setting.TipeNotifikasi,
+      email: !!setting.IsEmailEnabled,
+      inApp: !!setting.IsInAppEnabled
+    })).sort((a, b) => `${a.role}-${a.type}`.localeCompare(`${b.role}-${b.type}`)));
   }
 }

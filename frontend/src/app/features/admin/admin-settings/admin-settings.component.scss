@@ -280,3 +280,6 @@
     }
   }
 }
+.regular-schedule-table { display: grid; gap: 8px; overflow-x: auto; }
+.regular-schedule-row { display: grid; grid-template-columns: 100px 90px repeat(2, minmax(105px, 1fr)) 130px; gap: 10px; align-items: center; min-width: 560px; }
+.regular-schedule-head { color: var(--text-dark-lo); font-size: .78rem; font-weight: 700; }

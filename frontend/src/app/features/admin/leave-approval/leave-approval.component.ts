@@ -136,13 +136,17 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   }
 
   isManagerRequest(request: any): boolean { return request?.Employee?.User?.Role === 'MANAJER' || request?.Employee?.User?.role === 'MANAJER'; }
-  canDecide(request: any): boolean { return this.isManagerRequest(request) && request?.Status === 'pending_hrd_approval'; }
+  canDecide(request: any): boolean { return request?.Status === 'pending_hrd_approval'; }
+  approverLabel(request: any): string {
+    const approver = request?.AssignedApprover || request?.assigned_approver;
+    return approver?.Nama || (request?.AssignedApproverRole === 'HRD' ? 'HRD' : request?.Status === 'pending_manager_approval' ? 'Manajer utama' : '—');
+  }
   statusLabel(status: string): string {
     return ({
       pending_manager_approval: 'Menunggu Persetujuan Manajer',
       manager_approved: 'Disetujui Manajer',
       manager_rejected: 'Ditolak',
-      pending_hrd_approval: 'Menunggu Persetujuan Admin',
+      pending_hrd_approval: 'Menunggu Persetujuan HRD',
       hrd_approved: 'Disetujui',
       hrd_rejected: 'Ditolak',
       Pending: 'Menunggu Persetujuan Manajer',

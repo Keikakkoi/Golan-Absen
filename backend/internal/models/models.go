@@ -213,6 +213,61 @@ type EmployeeHomeLocation struct {
 	GoogleMapsURL  string   `gorm:"type:text"`
 }
 
+type HomeLocationChangeStatus string
+
+const (
+	HomeLocationPending   HomeLocationChangeStatus = "Menunggu Persetujuan"
+	HomeLocationApproved  HomeLocationChangeStatus = "Disetujui"
+	HomeLocationRejected  HomeLocationChangeStatus = "Ditolak"
+	HomeLocationCancelled HomeLocationChangeStatus = "Dibatalkan"
+)
+
+// HomeLocationChangeRequest keeps the proposed location immutable so the
+// approval decision can be audited independently from the active location.
+type HomeLocationChangeRequest struct {
+	gorm.Model
+	EmployeeID       uint     `gorm:"not null;index"`
+	Employee         Employee `gorm:"foreignKey:EmployeeID" json:"-"`
+	OldAddress       string   `gorm:"type:text"`
+	OldLatitude      float64
+	OldLongitude     float64
+	OldRadiusMeter   float64
+	OldGoogleMapsURL string                   `gorm:"type:text"`
+	NewAddress       string                   `gorm:"type:text;not null"`
+	NewLatitude      float64                  `gorm:"not null"`
+	NewLongitude     float64                  `gorm:"not null"`
+	NewRadiusMeter   float64                  `gorm:"not null"`
+	NewGoogleMapsURL string                   `gorm:"type:text"`
+	EffectiveDate    time.Time                `gorm:"type:date;not null;index"`
+	Reason           string                   `gorm:"type:text;not null"`
+	AttachmentURL    string                   `gorm:"type:text"`
+	AttachmentName   string                   `gorm:"size:255"`
+	Status           HomeLocationChangeStatus `gorm:"type:varchar(30);not null;index"`
+	ReviewedBy       *uint                    `gorm:"index"`
+	Reviewer         *User                    `gorm:"foreignKey:ReviewedBy" json:"-"`
+	ReviewedAt       *time.Time               `gorm:"type:timestamp"`
+	RejectionReason  string                   `gorm:"type:text"`
+}
+
+type EmployeeHomeLocationHistory struct {
+	gorm.Model
+	EmployeeID       uint                     `gorm:"not null;index"`
+	RequestID        *uint                    `gorm:"index"`
+	ChangedBy        uint                     `gorm:"not null;index"`
+	Status           HomeLocationChangeStatus `gorm:"type:varchar(30);not null"`
+	EffectiveDate    time.Time                `gorm:"type:date;not null;index"`
+	OldAddress       string                   `gorm:"type:text"`
+	NewAddress       string                   `gorm:"type:text"`
+	OldLatitude      float64
+	OldLongitude     float64
+	NewLatitude      float64
+	NewLongitude     float64
+	NewGoogleMapsURL string `gorm:"type:text"`
+	OldRadiusMeter   float64
+	NewRadiusMeter   float64
+	Notes            string `gorm:"type:text"`
+}
+
 type AuditLog struct {
 	gorm.Model
 	UserID        uint `gorm:"not null;index"`
@@ -242,6 +297,21 @@ type WorkSchedule struct {
 	JamMulai                string     `gorm:"type:varchar(10);not null"` // e.g., 09:00:00
 	JamSelesai              string     `gorm:"type:varchar(10);not null"` // e.g., 17:00:00
 	ToleransiTerlambatMenit int        `gorm:"not null;default:10"`
+	// HariKerja stores ISO-like weekday numbers as JSON: 1=Senin ... 7=Minggu.
+	// An empty value is treated as the legacy default Senin-Sabtu.
+	HariKerja string `gorm:"type:text;not null;default:'[1,2,3,4,5,6]'" json:"hari_kerja"`
+}
+
+// RegularWorkSchedule is the single source of truth for the default weekly
+// schedule. WorkSchedule remains reserved for dated employee/custom shifts.
+type RegularWorkSchedule struct {
+	gorm.Model
+	DayOfWeek            int    `gorm:"not null;uniqueIndex:idx_regular_schedule_day" json:"day_of_week"`
+	DayName              string `gorm:"size:20;not null" json:"day_name"`
+	IsWorkingDay         bool   `gorm:"not null;default:true" json:"is_working_day"`
+	StartTime            string `gorm:"size:8" json:"start_time"`
+	EndTime              string `gorm:"size:8" json:"end_time"`
+	LateToleranceMinutes int    `gorm:"not null;default:10" json:"late_tolerance_minutes"`
 }
 
 type LeaveStatus string
@@ -261,28 +331,43 @@ const (
 
 type LeaveRequest struct {
 	gorm.Model
-	EmployeeID        uint `gorm:"not null;index"`
-	Employee          Employee
-	JenisIzin         string                 `gorm:"size:50;not null"` // Cuti, Sakit, Lainnya
-	TanggalMulai      time.Time              `gorm:"type:date;not null"`
-	TanggalSelesai    time.Time              `gorm:"type:date;not null"`
-	Alasan            string                 `gorm:"type:text;not null"`
-	LampiranURL       string                 `gorm:"type:text"`
-	Status            LeaveStatus            `gorm:"type:varchar(40);default:'pending_manager_approval'"`
-	ApprovedBy        *uint                  // UserID of HRD/Admin/Manager who approved
-	ApprovedAt        *time.Time             `gorm:"type:timestamp"`
-	Notes             string                 `gorm:"type:text"`
-	ManagerApprovedBy *uint                  `gorm:"index"`
-	ManagerApprovedAt *time.Time             `gorm:"type:timestamp"`
-	ManagerNotes      string                 `gorm:"type:text"`
-	RejectionReason   string                 `gorm:"type:text" json:"rejection_reason"`
-	RejectedBy        *uint                  `gorm:"index" json:"rejected_by"`
-	RejectedAt        *time.Time             `gorm:"type:timestamp" json:"rejected_at"`
-	ApprovalHistory   []LeaveApprovalHistory `gorm:"foreignKey:LeaveRequestID"`
+	EmployeeID     uint `gorm:"not null;index"`
+	Employee       Employee
+	JenisIzin      string      `gorm:"size:50;not null"` // Cuti, Sakit, Lainnya
+	TanggalMulai   time.Time   `gorm:"type:date;not null"`
+	TanggalSelesai time.Time   `gorm:"type:date;not null"`
+	Alasan         string      `gorm:"type:text;not null"`
+	LampiranURL    string      `gorm:"type:text"`
+	Status         LeaveStatus `gorm:"type:varchar(40);default:'pending_manager_approval'"`
+	// Immutable routing snapshot captured when the request is created.
+	AssignedApproverID   *uint                  `gorm:"index" json:"assigned_approver_id"`
+	AssignedApproverRole Role                   `gorm:"type:varchar(20)" json:"assigned_approver_role"`
+	AssignedApprover     *User                  `gorm:"foreignKey:AssignedApproverID" json:"assigned_approver,omitempty"`
+	ApprovedBy           *uint                  // UserID of HRD/Admin/Manager who approved
+	ApprovedAt           *time.Time             `gorm:"type:timestamp"`
+	Notes                string                 `gorm:"type:text"`
+	ManagerApprovedBy    *uint                  `gorm:"index"`
+	ManagerApprovedAt    *time.Time             `gorm:"type:timestamp"`
+	ManagerNotes         string                 `gorm:"type:text"`
+	RejectionReason      string                 `gorm:"type:text" json:"rejection_reason"`
+	RejectedBy           *uint                  `gorm:"index" json:"rejected_by"`
+	RejectedAt           *time.Time             `gorm:"type:timestamp" json:"rejected_at"`
+	ApprovalHistory      []LeaveApprovalHistory `gorm:"foreignKey:LeaveRequestID"`
 	// QuotaDays/QuotaReserved make quota accounting idempotent across the
 	// pending -> approved/rejected/cancelled lifecycle.
 	QuotaDays     int  `gorm:"not null;default:0"`
 	QuotaReserved bool `gorm:"not null;default:false"`
+}
+
+// ApprovalDelegation stores a manager's approved temporary replacement.
+type ApprovalDelegation struct {
+	gorm.Model
+	ManagerID  uint      `gorm:"not null;index"`
+	DelegateID uint      `gorm:"not null;index"`
+	StartDate  time.Time `gorm:"type:date;not null"`
+	EndDate    time.Time `gorm:"type:date;not null"`
+	Reason     string    `gorm:"type:text"`
+	Status     string    `gorm:"size:20;not null;default:'scheduled';index"`
 }
 
 // LeaveApprovalHistory keeps every workflow decision auditable.
@@ -352,8 +437,13 @@ type PushSubscription struct {
 
 type Holiday struct {
 	gorm.Model
-	Tanggal    time.Time `gorm:"type:date;not null;uniqueIndex"`
+	Tanggal    time.Time `gorm:"type:date;not null;index:idx_holiday_date_type,priority:1"`
 	Keterangan string    `gorm:"size:255;not null"`
+	// Type is national, joint_leave, or company. Legacy rows are preserved as company holidays.
+	Type       string     `gorm:"size:20;not null;default:'company';index:idx_holiday_date_type,priority:2" json:"type"`
+	Source     string     `gorm:"size:255" json:"source,omitempty"`
+	ExternalID string     `gorm:"size:120;uniqueIndex" json:"external_id,omitempty"`
+	SyncedAt   *time.Time `gorm:"type:timestamp" json:"synced_at,omitempty"`
 }
 
 // CompanyEvent stores company activities that are shown on employee and HRD calendars.

@@ -72,36 +72,9 @@ func workReportDeadline(record models.AttendanceRecord, schedule models.WorkSche
 	return scheduleEndTime(schedule, record.Tanggal).Add(time.Duration(setting.BatasLaporanSetelahCheckoutMenit) * time.Minute)
 }
 
-// getWorkReportSchedule deliberately has no regular-hours fallback: a report
-// must be evaluated against an actual active assignment for its work date.
 func getWorkReportSchedule(employeeID uint, date time.Time) (models.WorkSchedule, bool) {
-	if config.DB == nil {
-		return models.WorkSchedule{}, false
-	}
-	dateStr := date.In(jakartaLocation).Format("2006-01-02")
-	var schedule models.WorkSchedule
-	queries := []func() *gorm.DB{
-		func() *gorm.DB {
-			return config.DB.Where("employee_id = ? AND DATE(tanggal) = ?", employeeID, dateStr).Order("id desc")
-		},
-		func() *gorm.DB {
-			return config.DB.Where("employee_id = ? AND tanggal <= ?", employeeID, dateStr).Order("tanggal desc").Order("id desc")
-		},
-		func() *gorm.DB {
-			return config.DB.Where("employee_id IS NULL AND DATE(tanggal) = ?", dateStr).Order("id desc")
-		},
-		func() *gorm.DB {
-			return config.DB.Where("employee_id IS NULL AND tanggal <= ?", dateStr).Order("tanggal desc").Order("id desc")
-		},
-		func() *gorm.DB { return config.DB.Where("employee_id IS NULL AND tanggal IS NULL").Order("id desc") },
-	}
-	for _, query := range queries {
-		result := query().Limit(1).Find(&schedule)
-		if result.Error == nil && result.RowsAffected > 0 {
-			return schedule, true
-		}
-	}
-	return models.WorkSchedule{}, false
+	resolved := ResolveEffectiveSchedule(employeeID, date)
+	return resolved.Schedule, resolved.Source != "system_fallback"
 }
 
 func missingWorkReportRows(employeeIDs []uint, now time.Time) []fiber.Map {

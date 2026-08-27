@@ -33,14 +33,8 @@ export class AdminSettingsComponent implements OnInit {
     RadiusMeter: 100,
     Alamat: '',
   };
-  schedule: any = {
-    ID: null,
-    NamaShift: '',
-    JamMulai: '',
-    JamSelesai: '',
-    ToleransiTerlambatMenit: 10,
-    HariKerja: '',
-  };
+  regularSchedules: any[] = [];
+  readonly regularDayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
   general: any = { MinimumMasaKerjaCutiBulan: 3, BatasLaporanSetelahCheckoutMenit: 60 };
 
   isLoadingOffice = true;
@@ -64,6 +58,9 @@ export class AdminSettingsComponent implements OnInit {
 
   // Holidays
   holidays: any[] = [];
+  holidayYear = new Date().getFullYear();
+  isSyncingHolidays = false;
+  holidaySyncMessage = '';
   holidayForm = { id: 0, tanggal: '', keterangan: '' };
   showHolidayModal = false;
 
@@ -77,7 +74,7 @@ export class AdminSettingsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadOffice();
-    this.loadSchedule();
+    this.loadRegularSchedule();
     this.loadGeneral();
     this.loadHelpdesk();
     this.loadHolidays();
@@ -106,18 +103,20 @@ export class AdminSettingsComponent implements OnInit {
       });
   }
 
-  loadSchedule(): void {
+  loadRegularSchedule(): void {
     this.http
-      .get<any>(`${this.baseUrl}/settings/schedule`, {
+      .get<any[]>(`${this.baseUrl}/settings/regular-schedule`, {
         headers: this.getHeaders(),
       })
       .subscribe({
         next: (data) => {
-          this.schedule = data;
-          if (this.schedule.JamMulai)
-            this.schedule.JamMulai = this.schedule.JamMulai.substring(0, 5);
-          if (this.schedule.JamSelesai)
-            this.schedule.JamSelesai = this.schedule.JamSelesai.substring(0, 5);
+          this.regularSchedules = (data || []).sort((a, b) => a.day_of_week - b.day_of_week).map((row: any, i: number) => ({
+            ...row,
+            day_name: row.day_name || this.regularDayNames[i],
+            start_time: (row.start_time || '').substring(0, 5),
+            end_time: (row.end_time || '').substring(0, 5),
+            late_tolerance_minutes: Number(row.late_tolerance_minutes ?? 10)
+          }));
           this.isLoadingSchedule = false;
         },
         error: () => (this.isLoadingSchedule = false),
@@ -188,40 +187,32 @@ export class AdminSettingsComponent implements OnInit {
       });
   }
 
-  async saveSchedule(): Promise<void> {
+  async saveRegularSchedule(): Promise<void> {
     if (
       !(await this.alert.confirm(
-        'Simpan pengaturan jam kerja?',
-        'Perubahan jadwal kerja akan diterapkan ke sistem.',
+        'Simpan Jadwal Reguler?',
+        'Jadwal ini digunakan oleh karyawan yang tidak memiliki jadwal khusus.',
       ))
     )
       return;
     this.isSavingSchedule = true;
-    const body = {
-      ...this.schedule,
-      JamMulai:
-        this.schedule.JamMulai.length === 5
-          ? `${this.schedule.JamMulai}:00`
-          : this.schedule.JamMulai,
-      JamSelesai:
-        this.schedule.JamSelesai.length === 5
-          ? `${this.schedule.JamSelesai}:00`
-          : this.schedule.JamSelesai,
-      ToleransiTerlambatMenit: Number(this.schedule.ToleransiTerlambatMenit),
-    };
+    if (this.regularSchedules.some(r => r.is_working_day && (!r.start_time || !r.end_time || Number(r.late_tolerance_minutes) < 0))) {
+      this.alert.error('Jadwal belum lengkap', 'Jam masuk/pulang wajib diisi dan toleransi tidak boleh negatif.'); return;
+    }
+    const body = { schedules: this.regularSchedules.map(r => ({ ...r, start_time: r.start_time ? `${r.start_time}:00` : '', end_time: r.end_time ? `${r.end_time}:00` : '', late_tolerance_minutes: Number(r.late_tolerance_minutes) })) };
 
     this.http
-      .put(`${this.baseUrl}/settings/schedule`, body, {
+      .put(`${this.baseUrl}/settings/regular-schedule`, body, {
         headers: this.getHeaders(),
       })
       .subscribe({
         next: () => {
-          this.alert.success('Pengaturan jam kerja disimpan');
+          this.alert.success('Jadwal Reguler berhasil disimpan');
           this.isSavingSchedule = false;
         },
         error: (err) => {
           this.alert.error(
-            'Gagal menyimpan jam kerja',
+            'Gagal menyimpan Jadwal Reguler',
             err.error?.error || 'Gagal menyimpan',
           );
           this.isSavingSchedule = false;
@@ -286,7 +277,7 @@ export class AdminSettingsComponent implements OnInit {
     this.http
       .get<
         any[]
-      >('http://localhost:8080/api/v1/holidays', { headers: this.getHeaders() })
+      >(`http://localhost:8080/api/v1/holidays?year=${this.holidayYear}`, { headers: this.getHeaders() })
       .subscribe({
         next: (data) => (this.holidays = data),
         error: (err) => console.error(err),
@@ -294,6 +285,10 @@ export class AdminSettingsComponent implements OnInit {
   }
 
   openHolidayModal(h: any = null) {
+    if (h && h.type && h.type !== 'company') {
+      this.alert.error('Kalender nasional', 'Hari libur nasional dan cuti bersama hanya dapat diperbarui melalui sinkronisasi.');
+      return;
+    }
     if (h) {
       let tgl = '';
       if (h.Tanggal) tgl = new Date(h.Tanggal).toISOString().split('T')[0];
@@ -310,10 +305,10 @@ export class AdminSettingsComponent implements OnInit {
 
   async saveHoliday(): Promise<void> {
     // Make sure we parse the date properly to save
-    const tglParsed = new Date(this.holidayForm.tanggal).toISOString();
     const payload = {
       ID: this.holidayForm.id,
-      tanggal: tglParsed,
+      // Send a date-only value so the browser timezone cannot shift it.
+      tanggal: this.holidayForm.tanggal,
       keterangan: this.holidayForm.keterangan,
     };
     const wasEdit = !!this.holidayForm.id;
@@ -362,6 +357,15 @@ export class AdminSettingsComponent implements OnInit {
             ),
         });
     }
+  }
+
+  syncNationalHolidays(): void {
+    this.isSyncingHolidays = true;
+    this.holidaySyncMessage = '';
+    this.http.post<any>(`${this.baseUrl}/holidays/sync?year=${this.holidayYear}`, {}, { headers: this.getHeaders() }).subscribe({
+      next: (result) => { this.isSyncingHolidays = false; this.holidaySyncMessage = `Sinkronisasi ${result.year} selesai (${result.created} baru, ${result.updated} diperbarui).`; this.loadHolidays(); },
+      error: (err) => { this.isSyncingHolidays = false; this.holidaySyncMessage = err.error?.error || 'Sumber kalender tidak dapat diakses. Data lama tetap dipertahankan.'; }
+    });
   }
 
   async deleteHoliday(id: number): Promise<void> {

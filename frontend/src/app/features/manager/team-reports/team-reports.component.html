@@ -91,11 +91,11 @@
               </td>
               <td>
                 <span class="status-pill" [ngClass]="{
-                  'status-success': (row.status_logbook || row.StatusLogbook) === 'approved',
-                  'status-warning': (row.status_logbook || row.StatusLogbook) === 'submitted',
-                  'status-danger': (row.status_logbook || row.StatusLogbook) === 'rejected'
+                  'status-success': logbookStatus(row) === 'approved',
+                  'status-warning': logbookStatus(row) === 'submitted',
+                  'status-danger': logbookStatus(row) === 'rejected'
                 }">
-                  {{ row.status_logbook || row.StatusLogbook || '-' }}
+                  {{ logbookStatus(row) || '-' }}
                 </span>
               </td>
               <td>
@@ -107,10 +107,10 @@
               </td>
               <td>
                 <div style="display: flex; gap: 6px; align-items: center;">
-                  <button type="button" class="btn-small approve" [disabled]="(row.status_logbook || row.StatusLogbook) !== 'submitted'" (click)="reviewLogbook(row.id || row.ID, 'approved')" title="Setujui logbook">
+                  <button *ngIf="canReview(row)" type="button" class="btn-small approve" (click)="reviewLogbook(row.id || row.ID, 'approved')" title="Setujui logbook">
                     <i class="fas fa-check"></i> Approve
                   </button>
-                  <button type="button" class="btn-small reject" [disabled]="(row.status_logbook || row.StatusLogbook) !== 'submitted'" (click)="reviewLogbook(row.id || row.ID, 'rejected')" title="Tolak logbook">
+                  <button *ngIf="canReview(row)" type="button" class="btn-small reject" (click)="reviewLogbook(row.id || row.ID, 'rejected')" title="Tolak logbook">
                     <i class="fas fa-times"></i> Reject
                   </button>
                 </div>

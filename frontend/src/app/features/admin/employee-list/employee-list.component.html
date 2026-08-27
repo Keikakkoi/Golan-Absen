@@ -216,7 +216,7 @@
           <strong class="detail-value detail-value-mono">{{ selectedDetail.Employee?.NIK || '-' }}</strong>
         </div>
         <div class="detail-item">
-          <span class="detail-label">Tanggal Bergabung</span>
+          <span class="detail-label">Tanggal Masuk</span>
           <strong class="detail-value">{{ formatJoinDate(selectedDetail.Employee?.TanggalBergabung) }}</strong>
         </div>
         <div class="detail-item">
@@ -269,6 +269,12 @@
         </div>
 
         <div class="form-group"><label>Foto (opsional)</label><app-file-preview [files]="selectedPhotoFile ? [selectedPhotoFile] : []" accept="image/jpeg,image/png,image/gif" [maxSizeMb]="5" label="Pilih foto" (filesChange)="onPhotoFilesChange($event)"></app-file-preview><small class="form-help">JPG, PNG, atau GIF maksimal 5 MB, rasio portrait 3:4.</small><div *ngIf="photoError" class="photo-error">{{ photoError }}</div></div>
+        <div class="form-group">
+          <label>Kode Karyawan</label>
+          <input type="text" [(ngModel)]="formData.employee_code" name="employee_code" class="form-control" [readonly]="!isEditMode" />
+          <small class="form-help">Kode dibuat otomatis berdasarkan tahun masuk. Admin dapat mengubahnya secara manual saat edit.</small>
+        </div>
+
         <div class="form-group-row">
           <div class="form-group"><label>NIK/NIP <span class="required-mark">*</span></label><input type="text" [(ngModel)]="formData.nik" (input)="onNikInput($event)" name="nik" required minlength="16" maxlength="16" pattern="[0-9]{16}" inputmode="numeric" class="form-control" /></div>
           <div class="form-group"><label>Jenis kelamin (opsional)</label><select [(ngModel)]="formData.jenis_kelamin" name="jenis_kelamin" class="form-control"><option value="">Pilih jenis kelamin</option><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
@@ -329,7 +335,7 @@
         </div>
 
         <div class="form-group">
-          <label>Tanggal Bergabung</label>
+          <label>Tanggal Masuk <span class="required-mark">*</span></label>
           <input type="date" [(ngModel)]="formData.tanggal_bergabung" name="tanggal_bergabung" required class="form-control" />
         </div>
 

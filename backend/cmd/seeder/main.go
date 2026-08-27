@@ -39,6 +39,7 @@ func main() {
 			JamMulai:                "09:00:00",
 			JamSelesai:              "17:00:00",
 			ToleransiTerlambatMenit: 10,
+			HariKerja:               "[1,2,3,4,5,6]",
 		})
 		log.Println("Seeded work schedule")
 	}
@@ -55,7 +56,7 @@ func main() {
 			Role:         models.RoleHRD,
 		}
 		db.Create(&adminUser)
-		
+
 		hashKaryawan, _ := bcrypt.GenerateFromPassword([]byte("karyawan123"), bcrypt.DefaultCost)
 		karyawanUser := models.User{
 			Nama:         "Karyawan Dummy",
@@ -64,7 +65,7 @@ func main() {
 			Role:         models.RoleKaryawan,
 		}
 		db.Create(&karyawanUser)
-		
+
 		// Seed Division
 		divisions := []models.Division{
 			{NamaDivisi: "Golan Education", Deskripsi: "Platform Edukasi dan Pelatihan Online"},
@@ -76,15 +77,15 @@ func main() {
 			{NamaDivisi: "Golan Jurnal", Deskripsi: "Layanan Publikasi Jurnal Ilmiah"},
 			{NamaDivisi: "Golan SDM", Deskripsi: "Layanan Perekrutan Tenaga Kerja"},
 		}
-		
+
 		for i, d := range divisions {
 			db.Create(&d)
 			divisions[i] = d // update with ID
 		}
-		
+
 		pos := models.Position{NamaJabatan: "Software Engineer"}
 		db.Create(&pos)
-		
+
 		db.Create(&models.Employee{
 			UserID:           karyawanUser.ID,
 			NIK:              "EMP-001",

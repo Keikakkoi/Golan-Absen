@@ -12,39 +12,44 @@
       <div *ngIf="!isLoading">
         <p *ngIf="errorMessage" class="error-state">{{ errorMessage }}</p>
         <p *ngIf="successMessage" class="success-state">{{ successMessage }}</p>
-        <p style="color: #6b7280; margin-bottom: 1.5rem;">Atur preferensi pengiriman notifikasi untuk berbagai modul dan role dalam sistem.</p>
-        
-        <div class="table-container" *ngIf="settings.length > 0" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-        <table class="golan-table" style="width: 100%; border-collapse: collapse; min-width: 600px;">
-          <thead>
-            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
-              <th style="padding: 1rem;">Tipe Notifikasi</th>
-              <th style="padding: 1rem;">Target Role</th>
-              <th style="padding: 1rem; text-align: center;">Notifikasi Email</th>
-              <th style="padding: 1rem; text-align: center;">Notifikasi In-App</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let setting of settings" style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 1rem; font-weight: 500;">{{ setting.TipeNotifikasi }}</td>
-              <td style="padding: 1rem;">{{ setting.Role }}</td>
-              <td style="padding: 1rem; text-align: center;">
-                <input type="checkbox" [(ngModel)]="setting.IsEmailEnabled" style="width: 18px; height: 18px;" />
-              </td>
-              <td style="padding: 1rem; text-align: center;">
-                <input type="checkbox" [(ngModel)]="setting.IsInAppEnabled" style="width: 18px; height: 18px;" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        </div>
-        <div *ngIf="settings.length === 0" class="empty-state">Belum ada konfigurasi notifikasi.</div>
+        <p class="settings-intro">Atur preferensi pengiriman notifikasi berdasarkan role penerima.</p>
 
-        <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-          <button class="btn-primary" (click)="saveSettings()" [disabled]="isSaving">
-            {{ isSaving ? 'Menyimpan...' : 'Simpan Pengaturan' }}
+        <div class="role-tabs" role="tablist" aria-label="Pilih role">
+          <button *ngFor="let role of roles" type="button" class="role-tab" [class.selected]="selectedRole === role.value" (click)="selectRole(role.value)" role="tab" [attr.aria-selected]="selectedRole === role.value">
+            <span class="role-avatar">{{ role.initials }}</span><span class="role-tab-copy"><strong>{{ role.label }}</strong><small>{{ role.description }}</small></span>
           </button>
         </div>
+
+        <div class="role-heading">
+          <div><span class="eyebrow">Konfigurasi role</span><h3>{{ selectedRoleInfo.label }}</h3><p>Pengaturan notifikasi yang diterima oleh {{ selectedRoleInfo.label }}.</p></div>
+          <div class="unsaved-indicator" *ngIf="hasUnsavedChanges"><span></span> Perubahan belum disimpan</div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card"><span class="stat-icon purple">✦</span><div><strong>{{ activeCount }}</strong><span>Notifikasi aktif</span></div></div>
+          <div class="stat-card"><span class="stat-icon blue">✉</span><div><strong>{{ emailCount }}</strong><span>Email aktif</span></div></div>
+          <div class="stat-card"><span class="stat-icon green">●</span><div><strong>{{ inAppCount }}</strong><span>In-app aktif</span></div></div>
+        </div>
+
+        <div class="settings-toolbar">
+          <label class="search-box"><span aria-hidden="true">⌕</span><input type="search" [(ngModel)]="searchTerm" placeholder="Cari tipe notifikasi..." aria-label="Cari tipe notifikasi"></label>
+          <div class="filter-group" aria-label="Filter status"><button type="button" [class.active]="statusFilter === 'all'" (click)="statusFilter = 'all'">Semua <b>{{ roleSettings.length }}</b></button><button type="button" [class.active]="statusFilter === 'active'" (click)="statusFilter = 'active'">Aktif <b>{{ activeCount }}</b></button><button type="button" [class.active]="statusFilter === 'inactive'" (click)="statusFilter = 'inactive'">Nonaktif <b>{{ roleSettings.length - activeCount }}</b></button></div>
+          <div class="bulk-actions"><button type="button" class="btn-light" (click)="setAllChannels(true)" [disabled]="roleSettings.length === 0">Aktifkan Semua</button><button type="button" class="btn-light danger-text" (click)="setAllChannels(false)" [disabled]="roleSettings.length === 0">Nonaktifkan Semua</button></div>
+        </div>
+
+        <div class="settings-table-wrap" *ngIf="roleSettings.length > 0; else noRoleSettings">
+          <table class="settings-table"><thead><tr><th>Tipe Notifikasi</th><th>Deskripsi singkat</th><th>Email</th><th>In-App</th><th>Status</th></tr></thead>
+            <tbody><tr *ngFor="let setting of visibleSettings">
+              <td><strong>{{ setting.TipeNotifikasi }}</strong></td><td class="description-cell">{{ descriptionFor(setting.TipeNotifikasi) }}</td>
+              <td><label class="switch-label"><span class="switch"><input type="checkbox" [(ngModel)]="setting.IsEmailEnabled" [attr.aria-label]="'Email untuk ' + setting.TipeNotifikasi"><span class="slider"></span></span><span [class.enabled-text]="setting.IsEmailEnabled">{{ setting.IsEmailEnabled ? 'Aktif' : 'Nonaktif' }}</span></label></td>
+              <td><label class="switch-label"><span class="switch"><input type="checkbox" [(ngModel)]="setting.IsInAppEnabled" [attr.aria-label]="'In-app untuk ' + setting.TipeNotifikasi"><span class="slider"></span></span><span [class.enabled-text]="setting.IsInAppEnabled">{{ setting.IsInAppEnabled ? 'Aktif' : 'Nonaktif' }}</span></label></td>
+              <td><span class="status-pill" [class.active]="setting.IsEmailEnabled || setting.IsInAppEnabled">{{ setting.IsEmailEnabled || setting.IsInAppEnabled ? 'Aktif' : 'Nonaktif' }}</span></td>
+            </tr><tr *ngIf="visibleSettings.length === 0"><td colspan="5" class="filtered-empty">Tidak ada tipe notifikasi yang cocok dengan filter.</td></tr></tbody>
+          </table>
+        </div>
+        <ng-template #noRoleSettings><div class="empty-state"><strong>Belum ada konfigurasi untuk {{ selectedRoleInfo.label }}</strong><span>Konfigurasi notifikasi untuk role ini belum tersedia.</span></div></ng-template>
+
+        <div class="settings-footer"><span *ngIf="hasUnsavedChanges" class="footer-warning">Simpan perubahan sebelum berpindah halaman.</span><button class="btn-primary" (click)="saveSettings()" [disabled]="isSaving || !hasUnsavedChanges || roleSettings.length === 0">{{ isSaving ? 'Menyimpan...' : 'Simpan Pengaturan' }}</button></div>
       </div>
     </div>
 

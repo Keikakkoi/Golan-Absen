@@ -26,9 +26,18 @@ func SetupManagerRoutes(api fiber.Router) {
 	manager.Put("/team/logbooks/:id/review", ReviewManagerLogbook)
 }
 
+// hasManagerOperationsAccess is the backend authorization rule for the
+// operational team dashboard and its leave approval actions.  In this
+// application an "Admin" account is stored with RoleHRD, so RoleHRD covers
+// both the HRD and HRD/Admin labels shown in the UI.
+func hasManagerOperationsAccess(role models.Role) bool {
+	return role == models.RoleManajer || role == models.RoleHRD
+}
+
 func managerTeamEmployees(managerID uint) ([]models.Employee, error) {
 	var manager models.User
-	if err := config.DB.First(&manager, managerID).Error; err != nil {
+	if err := config.DB.Where("id = ? AND status = ? AND role IN ?", managerID, "aktif", []models.Role{models.RoleManajer, models.RoleHRD}).First(&manager).Error; err != nil {
+		log.Printf("manager routing: manager_id=%d is not an active manager/HRD configuration: %v", managerID, err)
 		return nil, err
 	}
 	if manager.Role == models.RoleHRD {
@@ -44,6 +53,7 @@ func managerTeamEmployees(managerID uint) ([]models.Employee, error) {
 	}
 	var employees []models.Employee
 	err := config.DB.Preload("User").Preload("Division").Preload("Position").Joins("JOIN users ON users.id = employees.user_id").Where("("+condition+")", args...).Find(&employees).Error
+	log.Printf("manager routing: manager_id=%d team_members_found=%d err=%v", managerID, len(employees), err)
 	return employees, err
 }
 
@@ -290,14 +300,15 @@ func containsUint(values []uint, target uint) bool {
 }
 
 func GetManagerLeaveRequests(c *fiber.Ctx) error {
-	if c.Locals("role").(models.Role) != models.RoleManajer {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Only managers can access team leave approvals"})
+	if !hasManagerOperationsAccess(c.Locals("role").(models.Role)) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Only managers or HRD/Admin can access team leave approvals"})
 	}
+	log.Printf("manager approval inbox: manager_id=%d", c.Locals("user_id").(uint))
 	return GetAllLeaveRequests(c)
 }
 func ApproveManagerLeaveRequest(c *fiber.Ctx) error {
-	if c.Locals("role").(models.Role) != models.RoleManajer {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Only managers can approve team leave requests"})
+	if !hasManagerOperationsAccess(c.Locals("role").(models.Role)) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Only managers or HRD/Admin can approve team leave requests"})
 	}
 	return ApproveRejectLeaveRequest(c)
 }
@@ -315,9 +326,6 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 	if !containsUint(ids, report.EmployeeID) {
 		return c.Status(403).JSON(fiber.Map{"error": "Logbook is outside your team"})
 	}
-	if report.StatusLogbook != "submitted" {
-		return c.Status(400).JSON(fiber.Map{"error": "Manager hanya dapat melakukan review jika status Submitted"})
-	}
 	var input struct {
 		Status string `json:"status"`
 		Notes  string `json:"notes"`
@@ -330,11 +338,15 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 	}
 	now := time.Now()
 	updates := map[string]interface{}{"status_logbook": input.Status, "reviewed_by": managerID, "reviewed_at": now, "review_notes": input.Notes}
-	if err := config.DB.Model(&report).Updates(updates).Error; err != nil {
+	result := config.DB.Model(&models.WorkReport{}).Where("id = ? AND employee_id = ? AND status_logbook = ?", report.ID, report.EmployeeID, "submitted").Updates(updates)
+	if result.Error != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to review logbook"})
+	}
+	if result.RowsAffected == 0 {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Logbook sudah diproses atau tidak lagi berstatus Submitted"})
 	}
 	if report.Employee.User != nil {
 		_ = utils.CreateNotification(config.DB, report.Employee.UserID, report.Employee.User.Role, "Logbook Magang", "Status Logbook Diperbarui", "Logbook harian Anda telah diperbarui menjadi "+input.Status)
 	}
-	return c.JSON(fiber.Map{"message": "Logbook reviewed", "status": input.Status})
+	return c.JSON(fiber.Map{"message": "Logbook reviewed", "status": input.Status, "status_logbook": input.Status, "review_notes": input.Notes})
 }

@@ -38,6 +38,41 @@ func initialLeaveStatus(role models.Role) models.LeaveStatus {
 	return models.LeaveStatusPendingManager
 }
 
+// resolveLeaveApprover is called only when a request is created. Its result is
+// stored on the request and is never recalculated for existing requests.
+func resolveLeaveApprover(db *gorm.DB, requester models.User, now time.Time) (*models.User, models.LeaveStatus, error) {
+	if requester.Role == models.RoleManajer || requester.ManagerID == nil {
+		return firstActiveHRD(db)
+	}
+	var manager models.User
+	if err := db.Where("id = ? AND role = ?", *requester.ManagerID, models.RoleManajer).First(&manager).Error; err != nil || !managerCanReceiveLeave(manager, false) {
+		return firstActiveHRD(db)
+	}
+	var onLeave int64
+	day := dateOnly(now)
+	if err := db.Model(&models.LeaveRequest{}).
+		Where("employee_id = (SELECT id FROM employees WHERE user_id = ?) AND status IN ? AND tanggal_mulai <= ? AND tanggal_selesai >= ?", manager.ID, []models.LeaveStatus{models.LeaveStatusApproved, models.LeaveStatusHRDApproved}, day, day).
+		Count(&onLeave).Error; err != nil {
+		return nil, "", err
+	}
+	if onLeave > 0 || !managerCanReceiveLeave(manager, onLeave > 0) {
+		return firstActiveHRD(db)
+	}
+	return &manager, models.LeaveStatusPendingManager, nil
+}
+
+func managerCanReceiveLeave(manager models.User, onLeave bool) bool {
+	return manager.ID != 0 && manager.Role == models.RoleManajer && manager.Status == "aktif" && !onLeave
+}
+
+func firstActiveHRD(db *gorm.DB) (*models.User, models.LeaveStatus, error) {
+	var hrd models.User
+	if err := db.Where("role = ? AND status = ?", models.RoleHRD, "aktif").Order("id asc").First(&hrd).Error; err != nil {
+		return nil, "", err
+	}
+	return &hrd, models.LeaveStatusPendingHRD, nil
+}
+
 func managerCanProcessLeaveStatus(status models.LeaveStatus) bool {
 	return status == models.LeaveStatusPendingManager || status == models.LeaveStatusPending
 }
@@ -68,10 +103,10 @@ func SetupLeaveRoutes(router fiber.Router) {
 	leave.Delete("/:id/cancel", CancelLeaveRequest)
 }
 
-// workingLeaveDays follows the application's attendance calendar: Monday to
-// Friday, excluding configured holidays. The backend remains authoritative
-// for this calculation when a request is submitted.
-func workingLeaveDays(start, end time.Time) (int, error) {
+// workingLeaveDays follows the employee's active shift calendar, excluding
+// configured holidays. This keeps leave quota and approval consistent with
+// attendance for non-standard shifts (including Sunday work).
+func workingLeaveDaysForEmployee(employeeID uint, start, end time.Time) (int, error) {
 	start = normalizeAttendanceDate(start)
 	end = normalizeAttendanceDate(end)
 	var holidays []models.Holiday
@@ -84,11 +119,16 @@ func workingLeaveDays(start, end time.Time) (int, error) {
 	}
 	days := 0
 	for day := start; !day.After(end); day = day.AddDate(0, 0, 1) {
-		if day.Weekday() >= time.Monday && day.Weekday() <= time.Friday && !holidayDates[day.Format("2006-01-02")] {
+		schedule := getAttendanceSchedule(employeeID, day)
+		if schedule.IsWorkingDay(day) && !holidayDates[day.Format("2006-01-02")] {
 			days++
 		}
 	}
 	return days, nil
+}
+
+func workingLeaveDays(start, end time.Time) (int, error) {
+	return workingLeaveDaysForEmployee(0, start, end)
 }
 
 func leaveQuotaSummary(employeeID uint, year int) (fiber.Map, error) {
@@ -175,7 +215,7 @@ func GetLeaveRequestDetail(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var request models.LeaveRequest
-	if err := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("ApprovalHistory.DecidedByUser").First(&request, c.Params("id")).Error; err != nil {
+	if err := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("AssignedApprover").Preload("ApprovalHistory.DecidedByUser").First(&request, c.Params("id")).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Leave request not found"})
 	}
 	if role == models.RoleManajer {
@@ -262,23 +302,32 @@ func SubmitLeaveRequest(c *fiber.Ctx) error {
 	cfg := config.LoadConfig()
 	lampiranURL = fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, minio.BucketName, fileName)
 
-	days, err := workingLeaveDays(tglMulai, tglSelesai)
+	days, err := workingLeaveDaysForEmployee(employee.ID, tglMulai, tglSelesai)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memvalidasi hari kerja"})
 	}
 	if days <= 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Periode pengajuan tidak memiliki hari kerja"})
 	}
-	initialStatus := initialLeaveStatus(role)
+	var requester models.User
+	if err := config.DB.First(&requester, userID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
+	}
+	approver, initialStatus, err := resolveLeaveApprover(config.DB, requester, attendanceNow())
+	if err != nil || approver == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Tidak ada approver aktif yang tersedia"})
+	}
 	leaveReq := models.LeaveRequest{
-		EmployeeID:     employee.ID,
-		JenisIzin:      jenisIzin,
-		TanggalMulai:   tglMulai,
-		TanggalSelesai: tglSelesai,
-		Alasan:         alasan,
-		LampiranURL:    lampiranURL,
-		Status:         initialStatus,
-		QuotaDays:      days,
+		EmployeeID:           employee.ID,
+		JenisIzin:            jenisIzin,
+		TanggalMulai:         tglMulai,
+		TanggalSelesai:       tglSelesai,
+		Alasan:               alasan,
+		LampiranURL:          lampiranURL,
+		Status:               initialStatus,
+		AssignedApproverID:   &approver.ID,
+		AssignedApproverRole: approver.Role,
+		QuotaDays:            days,
 	}
 
 	tx := config.DB.Begin()
@@ -301,17 +350,7 @@ func SubmitLeaveRequest(c *fiber.Ctx) error {
 	utils.LogAction(userID, "CREATE", "LeaveRequest", leaveReq.ID, fmt.Sprintf("Pengajuan %s oleh %s", jenisIzin, employee.NIK))
 
 	var recipients []models.User
-	if role == models.RoleMagang || role == models.RoleKaryawan {
-		var owner models.User
-		if config.DB.First(&owner, userID).Error == nil && owner.ManagerID != nil {
-			var manager models.User
-			if config.DB.First(&manager, *owner.ManagerID).Error == nil {
-				recipients = append(recipients, manager)
-			}
-		}
-	} else if role == models.RoleManajer {
-		config.DB.Where("role = ?", models.RoleHRD).Find(&recipients)
-	}
+	recipients = append(recipients, *approver)
 	for _, recipient := range recipients {
 		_ = utils.CreateNotification(config.DB, recipient.ID, recipient.Role, "Pengajuan Izin", "Pengajuan Izin Baru", fmt.Sprintf("Ada pengajuan %s baru dari %s", jenisIzin, employee.NIK))
 	}
@@ -332,7 +371,7 @@ func GetMyLeaveRequests(c *fiber.Ctx) error {
 	}
 
 	var requests []models.LeaveRequest
-	if err := config.DB.Where("employee_id = ?", employee.ID).Order("created_at desc").Find(&requests).Error; err != nil {
+	if err := config.DB.Preload("AssignedApprover").Where("employee_id = ?", employee.ID).Order("created_at desc").Find(&requests).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch leave requests"})
 	}
 
@@ -346,13 +385,10 @@ func GetAllLeaveRequests(c *fiber.Ctx) error {
 	}
 
 	var requests []models.LeaveRequest
-	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("ApprovalHistory.DecidedByUser").Order("created_at desc")
+	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("AssignedApprover").Preload("ApprovalHistory.DecidedByUser").Order("created_at desc")
 	if role == models.RoleManajer {
 		ids, _ := managerTeamIDs(c.Locals("user_id").(uint))
-		if len(ids) == 0 {
-			return c.JSON([]models.LeaveRequest{})
-		}
-		query = query.Where("employee_id IN ?", ids)
+		query = query.Where("(employee_id IN ? OR assigned_approver_id = ?)", ids, c.Locals("user_id").(uint))
 	} else {
 		// Keep all workflow states visible to HRD, including requests that are
 		// still waiting for the manager.  EXISTS avoids multiplying rows when
@@ -413,14 +449,14 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 		if !managerCanProcessLeaveStatus(leaveReq.Status) {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Pengajuan tidak sedang menunggu persetujuan manajer"})
 		}
+		if leaveReq.AssignedApproverID != nil && *leaveReq.AssignedApproverID != decisionUserID {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Pengajuan ini ditujukan kepada manajer utama lain atau HRD"})
+		}
 		ids, _ := managerTeamIDs(decisionUserID)
-		if !containsUint(ids, leaveReq.EmployeeID) {
+		if leaveReq.AssignedApproverID == nil && !containsUint(ids, leaveReq.EmployeeID) {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Leave request is outside your team"})
 		}
 	} else {
-		if employeeRole != models.RoleManajer {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "HRD hanya dapat memproses pengajuan izin manajer"})
-		}
 		if leaveReq.Status != models.LeaveStatusPendingHRD {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Pengajuan manajer belum menunggu persetujuan HRD"})
 		}
@@ -450,7 +486,7 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 			}
 		}
 		var daysErr error
-		days, daysErr = workingLeaveDays(leaveReq.TanggalMulai, leaveReq.TanggalSelesai)
+		days, daysErr = workingLeaveDaysForEmployee(leaveReq.EmployeeID, leaveReq.TanggalMulai, leaveReq.TanggalSelesai)
 		if daysErr != nil || days <= 0 {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Periode pengajuan tidak memiliki hari kerja yang valid"})
 		}

@@ -118,7 +118,7 @@ export class EmployeeListComponent implements OnInit {
   }
 
   private buildEmployeeReport(): { headers: string[]; rows: string[][]; data: Record<string, string>[] } {
-    const headers = ['NIK/NIP', 'Nama lengkap', 'Jenis kelamin', 'Tempat dan tanggal lahir', 'Nomor telepon', 'Email', 'Alamat', 'Jabatan', 'Departemen', 'Status karyawan', 'Tanggal masuk', 'Shift kerja', 'Lokasi Rumah', 'Tanggal dibuat'];
+    const headers = ['Kode karyawan', 'NIK/NIP', 'Nama lengkap', 'Jenis kelamin', 'Tempat dan tanggal lahir', 'Nomor telepon', 'Email', 'Alamat', 'Jabatan', 'Departemen', 'Status karyawan', 'Tanggal masuk', 'Shift kerja', 'Lokasi Rumah', 'Tanggal dibuat'];
     const value = (emp: any, ...keys: string[]): string => {
       for (const key of keys) {
         const parts = key.split('.'); let current = emp;
@@ -132,13 +132,13 @@ export class EmployeeListComponent implements OnInit {
       const parsed = new Date(raw); return Number.isNaN(parsed.getTime()) ? '-' : new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(parsed);
     };
     const rows = this.filteredEmployees.map((emp) => [
-      value(emp, 'Employee.NIK', 'NIK'), value(emp, 'Nama', 'name'), value(emp, 'Employee.JenisKelamin', 'JenisKelamin', 'jenis_kelamin'),
+      value(emp, 'Employee.employee_code', 'Employee.EmployeeCode', 'employee_code'), value(emp, 'Employee.NIK', 'NIK'), value(emp, 'Nama', 'name'), value(emp, 'Employee.JenisKelamin', 'JenisKelamin', 'jenis_kelamin'),
       (() => { const place = value(emp, 'Employee.TempatLahir', 'tempat_lahir'); const birthDate = date(emp.Employee?.TanggalLahir); return place === '-' && birthDate === '-' ? '-' : `${place} / ${birthDate}`; })(),
       value(emp, 'Employee.NomorTelepon', 'NomorTelepon', 'nomor_telepon', 'phone'), value(emp, 'Email', 'email'), value(emp, 'Employee.Alamat', 'alamat', 'Alamat'),
       value(emp, 'Employee.Position.NamaJabatan', 'Jabatan'), value(emp, 'Employee.Division.NamaDivisi', 'Departemen'), this.statusLabel(value(emp, 'Status', 'status')),
       date(emp.Employee?.TanggalBergabung), value(emp, 'Employee.ShiftKerja', 'ShiftKerja', 'shift_kerja'), value(emp, 'Employee.HomeLocation.GoogleMapsURL', 'Employee.HomeLocation.google_maps_url'), date(emp.CreatedAt || emp.created_at)
     ]);
-    const keys = ['nik_nip', 'nama_lengkap', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nomor_telepon', 'email', 'alamat', 'jabatan', 'departemen', 'status_karyawan', 'tanggal_masuk', 'shift_kerja', 'lokasi_rumah', 'tanggal_dibuat'];
+    const keys = ['kode_karyawan', 'nik_nip', 'nama_lengkap', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nomor_telepon', 'email', 'alamat', 'jabatan', 'departemen', 'status_karyawan', 'tanggal_masuk', 'shift_kerja', 'lokasi_rumah', 'tanggal_dibuat'];
     const data = rows.map(row => Object.fromEntries(keys.map((key, i) => [key, row[i]])));
     return { headers, rows, data };
   }
@@ -235,7 +235,8 @@ export class EmployeeListComponent implements OnInit {
       const searchLower = this.filters.search.toLowerCase();
       result = result.filter(emp => 
         (emp.Nama && emp.Nama.toLowerCase().includes(searchLower)) ||
-        (emp.Employee?.NIK && emp.Employee.NIK.toLowerCase().includes(searchLower))
+        (emp.Employee?.NIK && emp.Employee.NIK.toLowerCase().includes(searchLower)) ||
+        (emp.Employee?.employee_code && emp.Employee.employee_code.toLowerCase().includes(searchLower))
       );
     }
 
@@ -384,6 +385,7 @@ export class EmployeeListComponent implements OnInit {
     this.isEditMode = true;
     this.formData = {
       id: emp.ID,
+      employee_code: emp.Employee?.employee_code || '',
       nama: emp.Nama,
       email: emp.Email,
       password: '',
@@ -429,11 +431,9 @@ export class EmployeeListComponent implements OnInit {
     if (!value || String(value).startsWith('0001-01-01')) return 'Belum diatur';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'Belum diatur';
-    return new Intl.DateTimeFormat('id-ID', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    }).format(date);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${day}-${month}-${date.getFullYear()}`;
   }
 
   closeModal(): void {
@@ -459,6 +459,10 @@ export class EmployeeListComponent implements OnInit {
     }
     if (!String(this.formData.home_google_maps_url || '').trim()) {
       await this.alert.error('Link Google Maps belum diisi', 'Link Google Maps rumah wajib diisi untuk keperluan absensi WFH.');
+      return;
+    }
+    if (!String(this.formData.tanggal_bergabung || '').trim()) {
+      await this.alert.error('Tanggal masuk belum diisi', 'Tanggal masuk wajib diisi untuk membuat kode karyawan.');
       return;
     }
 
@@ -551,6 +555,7 @@ export class EmployeeListComponent implements OnInit {
     this.isPhotoValidationPending = false;
     this.formData = {
       id: null,
+      employee_code: '',
       nama: '',
       email: '',
       password: '',

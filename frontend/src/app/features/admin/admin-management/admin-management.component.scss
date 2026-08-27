@@ -207,6 +207,10 @@
 }
 
 .schedule-field-wide { grid-column: 1 / -1; }
+.work-day-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.work-day-options label { border: 1px solid var(--mint-2); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.work-day-options input { accent-color: var(--green); }
+.schedule-days { white-space: nowrap; }
 
 .schedule-field small {
   color: #8a9eae;
@@ -888,3 +892,5 @@ textarea.golan-input {
     line-height: 1.45;
   }
 }
+.legacy-badge { display:block; color:#a66a00; font-size:.7rem; font-weight:600; }
+.home-tabs{display:flex;gap:8px;margin:0 0 18px}.home-tabs button{border:1px solid var(--border-strong);background:var(--surface);color:var(--text-dark-lo);padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer}.home-tabs button.active{background:var(--mint-0);color:var(--text-dark);border-color:var(--mint-2)}.home-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:5px;border-radius:10px;background:#dc2626;color:#fff;font-size:.7rem}.home-tabs + .golan-card small{display:block;color:var(--text-dark-lo);margin-top:4px}

@@ -357,8 +357,6 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	}
 	_ = closeExpiredAttendanceRecords(attendanceNow())
 
-	workingDays := map[int]bool{1: true, 2: true, 3: true, 4: true, 5: true}
-
 	var employees []models.Employee
 	if err := config.DB.Preload("User").Preload("Division").Preload("Position").Find(&employees).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch employees"})
@@ -452,13 +450,8 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 			startDate = lastCompletedDay
 		}
 		for day := startDate; !day.After(lastCompletedDay); day = day.AddDate(0, 0, 1) {
-			// time.Weekday uses Sunday=0, while the persisted schedule uses
-			// the documented Monday=1 ... Sunday=7 convention.
-			weekday := int(day.Weekday())
-			if weekday == 0 {
-				weekday = 7
-			}
-			if !workingDays[weekday] || holidayDates[day.Format("2006-01-02")] {
+			schedule := getAttendanceSchedule(employee.ID, day)
+			if !schedule.IsWorkingDay(day) || holidayDates[day.Format("2006-01-02")] {
 				continue
 			}
 			if !employee.TanggalBergabung.IsZero() && day.Before(employee.TanggalBergabung) {
@@ -514,7 +507,6 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	if err := query.Find(&employees).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to export alpha reports"})
 	}
-	workingDays := map[int]bool{1: true, 2: true, 3: true, 4: true, 5: true}
 	var records []models.AttendanceRecord
 	if err := config.DB.Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to export alpha reports"})
@@ -568,12 +560,9 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 			startDate = lastCompletedDay
 		}
 		for day := startDate; !day.After(lastCompletedDay); day = day.AddDate(0, 0, 1) {
-			weekday := int(day.Weekday())
-			if weekday == 0 {
-				weekday = 7
-			}
+			schedule := getAttendanceSchedule(employee.ID, day)
 			key := fmt.Sprintf("%d:%s", employee.ID, day.Format("2006-01-02"))
-			if !workingDays[weekday] || holidayDates[day.Format("2006-01-02")] || !employee.TanggalBergabung.IsZero() && day.Before(employee.TanggalBergabung) || leaveDates[key] {
+			if !schedule.IsWorkingDay(day) || holidayDates[day.Format("2006-01-02")] || !employee.TanggalBergabung.IsZero() && day.Before(employee.TanggalBergabung) || leaveDates[key] {
 				continue
 			}
 			if _, alreadyWritten := written[key]; alreadyWritten {

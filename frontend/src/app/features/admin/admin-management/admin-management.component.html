@@ -107,6 +107,14 @@
               </div>
             </label>
 
+            <div class="schedule-field schedule-field-wide">
+              <span>Hari kerja aktif</span>
+              <small>Pilih minimal satu hari. Hari yang dipilih menjadi hari wajib absensi untuk shift ini.</small>
+              <div class="work-day-options">
+                <label *ngFor="let day of workDays"><input type="checkbox" [checked]="isWorkDaySelected(day.id)" (change)="toggleWorkDay(day.id)"> {{ day.label }}</label>
+              </div>
+            </div>
+
 
 
             <div class="schedule-form-actions">
@@ -154,7 +162,7 @@
 
           <div class="table-container schedule-table-container" *ngIf="!isLoading && schedules.length > 0">
             <table class="golan-table schedule-table">
-              <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Jam kerja</th><th>Toleransi</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Hari kerja</th><th>Jam kerja</th><th>Toleransi</th><th>Aksi</th></tr></thead>
               <tbody>
                 <tr *ngFor="let schedule of schedules">
                   <td>
@@ -165,15 +173,16 @@
                           <path d="M12 7.5v5l3.5 2"></path>
                         </svg>
                       </span>
-                      <strong>{{ schedule.NamaShift }}</strong>
+                      <strong>{{ schedule.NamaShift }}</strong><small *ngIf="schedule.NamaShift?.toLowerCase() === 'reguler'" class="legacy-badge">Legacy — atur di Pengaturan Umum</small>
                     </div>
                   </td>
                   <td><span class="schedule-date">{{ schedule.Tanggal ? (schedule.Tanggal | date:'dd MMM yyyy') : '-' }}</span></td>
                   <td><span class="schedule-employee">{{ schedule.EmployeeID ? (schedule.Employee?.User?.Nama || '-') : 'Semua Karyawan (Global)' }}</span></td>
                   <td><span class="schedule-division">{{ schedule.EmployeeID ? (schedule.Employee?.Division?.NamaDivisi || '-') : 'Semua Divisi' }}</span></td>
                   <td><span class="schedule-hours">{{ schedule.JamMulai | slice:0:5 }} <small>–</small> {{ schedule.JamSelesai | slice:0:5 }}</span></td>
+                  <td><span class="schedule-days">{{ getWorkDaysLabel(schedule.HariKerja || schedule.hari_kerja) }}</span></td>
                   <td><span class="tolerance-pill">{{ schedule.ToleransiTerlambatMenit }} menit</span></td>
-                  <td class="schedule-actions"><button class="icon-button edit" type="button" (click)="editSchedule(schedule)" aria-label="Edit shift" title="Edit shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button><button class="icon-button delete" type="button" (click)="deleteSchedule(schedule.ID)" aria-label="Hapus shift" title="Hapus shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button></td>
+                  <td class="schedule-actions"><button *ngIf="schedule.NamaShift?.toLowerCase() !== 'reguler'" class="icon-button edit" type="button" (click)="editSchedule(schedule)" aria-label="Edit shift" title="Edit shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button><button *ngIf="schedule.NamaShift?.toLowerCase() !== 'reguler'" class="icon-button delete" type="button" (click)="deleteSchedule(schedule.ID)" aria-label="Hapus shift" title="Hapus shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button><span *ngIf="schedule.NamaShift?.toLowerCase() === 'reguler'" class="muted">Dikelola di Pengaturan Umum</span></td>
                 </tr>
               </tbody>
             </table>
@@ -183,6 +192,12 @@
     </ng-container>
 
     <ng-container *ngIf="section === 'home'">
+      <div class="home-tabs"><button type="button" [class.active]="homeTab === 'active'" (click)="homeTab='active'">Lokasi WFH Aktif</button><button type="button" [class.active]="homeTab === 'requests'" (click)="homeTab='requests'">Pengajuan Perubahan <span class="home-badge" *ngIf="homePendingCount">{{ homePendingCount }}</span></button></div>
+      <div class="golan-card" *ngIf="homeTab === 'requests'">
+        <div class="table-container" *ngIf="homeRequests.length"><table class="golan-table"><thead><tr><th>Karyawan</th><th>Lokasi lama → baru</th><th>Koordinat / radius</th><th>Berlaku</th><th>Alasan</th><th>Status</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let item of homeRequests"><td>{{ item.Employee?.User?.Nama || '-' }}<div class="code">{{ item.Employee?.NIK || '-' }}</div></td><td>{{ item.OldAddress || '-' }}<br><strong>{{ item.NewAddress }}</strong></td><td>{{ item.NewLatitude }}, {{ item.NewLongitude }}<br>{{ item.NewRadiusMeter }} m</td><td>{{ item.EffectiveDate | date:'dd MMM yyyy' }}</td><td>{{ item.Reason }}</td><td>{{ item.Status }}<small *ngIf="item.RejectionReason">{{ item.RejectionReason }}</small></td><td><ng-container *ngIf="item.Status === 'Menunggu Persetujuan'"><button type="button" class="btn-primary" (click)="approveHomeRequest(item)" [disabled]="isSaving">Setujui</button> <button type="button" class="btn-secondary" (click)="rejectHomeRequest(item)" [disabled]="isSaving">Tolak</button></ng-container><span *ngIf="item.Status !== 'Menunggu Persetujuan'">-</span></td></tr></tbody></table></div>
+        <div class="empty-state" *ngIf="!homeRequests.length">Belum ada pengajuan perubahan lokasi.</div>
+      </div>
+      <ng-container *ngIf="homeTab === 'active'">
       <div class="golan-card table-container">
         <div class="golan-table-responsive">
           <table class="golan-table">
@@ -237,6 +252,7 @@
           </form>
         </div>
       </div>
+      </ng-container>
     </ng-container>
 
     <ng-container *ngIf="section === 'quotas'">

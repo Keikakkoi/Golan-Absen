@@ -109,6 +109,7 @@
                   <th>Mulai</th>
                   <th>Selesai</th>
                   <th>Status</th>
+                  <th>Approver</th>
                   <th>Alasan Penolakan</th>
                   <th>Lampiran</th>
                   <th>Aksi</th>
@@ -124,6 +125,7 @@
                       {{ statusLabel(req.Status) }}
                     </span>
                   </td>
+                  <td>{{ approverLabel(req) }}</td>
                   <td>{{ rejectionReason(req) }}</td>
                   <td>
                     <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="link-action btn-view-detail compact">Lihat</a>
@@ -166,6 +168,10 @@
             {{ statusLabel(selectedLeave.Status) }}
           </span>
         </strong>
+      </div>
+      <div class="detail-row">
+        <span>Approver</span>
+        <strong>{{ approverLabel(selectedLeave) }}</strong>
       </div>
       <div class="detail-block">
         <span>Alasan Pengajuan</span>

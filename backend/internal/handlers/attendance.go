@@ -52,6 +52,12 @@ func CheckIn(c *fiber.Ctx) error {
 	now := attendanceNow()
 	workDate := attendanceBusinessDate(now)
 	schedule := getAttendanceSchedule(employee.ID, workDate)
+	if holiday, isHoliday := IsCalendarHoliday(workDate); isHoliday {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": holidayError(holiday), "holiday": holiday})
+	}
+	if !schedule.IsWorkingDay(workDate) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Hari ini bukan hari kerja untuk shift Anda."})
+	}
 	_, startTime, lateTime, endTime, checkoutDeadline := attendanceWindow(now, schedule)
 	if now.Before(startTime) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-in baru dapat dilakukan mulai pukul " + startTime.Format("15:04") + "."})
@@ -219,6 +225,12 @@ func CheckOut(c *fiber.Ctx) error {
 	now := attendanceNow()
 	workDate := attendanceBusinessDate(now)
 	schedule := getAttendanceSchedule(employee.ID, workDate)
+	if holiday, isHoliday := IsCalendarHoliday(workDate); isHoliday {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": holidayError(holiday), "holiday": holiday})
+	}
+	if !schedule.IsWorkingDay(workDate) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Hari ini bukan hari kerja untuk shift Anda."})
+	}
 	_, _, _, checkoutStart, checkoutDeadline := attendanceWindow(now, schedule)
 	if now.Before(checkoutStart) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-out baru dapat dilakukan mulai pukul " + checkoutStart.Format("15:04") + "."})
@@ -331,8 +343,8 @@ func CheckOut(c *fiber.Ctx) error {
 // check-in and check-out. The link is required; coordinates are the values
 // resolved from that link when the home location was saved.
 func validateHomeAttendanceLocation(employeeID uint, latitude, longitude float64) (bool, string, error) {
-	var home models.EmployeeHomeLocation
-	if err := config.DB.Where("employee_id = ?", employeeID).First(&home).Error; err != nil || strings.TrimSpace(home.GoogleMapsURL) == "" {
+	home, err := effectiveHomeLocation(config.DB, employeeID, attendanceNow())
+	if err != nil || strings.TrimSpace(home.GoogleMapsURL) == "" {
 		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
 	}
 	return validateConfiguredHomeLocation(home, latitude, longitude)
@@ -445,53 +457,7 @@ func attendanceBusinessDate(now time.Time) time.Time {
 }
 
 func getAttendanceSchedule(employeeID uint, date time.Time) models.WorkSchedule {
-	dateStr := date.Format("2006-01-02")
-	if config.DB != nil {
-		var schedule models.WorkSchedule
-
-		// An employee-specific assignment always wins over a global schedule.
-		// Use the latest assignment on or before the attendance date as a
-		// fallback. This also keeps a shift active when the admin saved it one
-		// day earlier than the current attendance date.
-		result := config.DB.Where("employee_id = ? AND DATE(tanggal) = ?", employeeID, dateStr).
-			Order("id desc").Limit(1).Find(&schedule)
-		if result.Error == nil && result.RowsAffected > 0 {
-			return schedule
-		}
-
-		result = config.DB.Where("employee_id = ? AND tanggal <= ?", employeeID, dateStr).
-			Order("tanggal desc").Order("id desc").Limit(1).Find(&schedule)
-		if result.Error == nil && result.RowsAffected > 0 {
-			return schedule
-		}
-
-		// Fallback to the latest global shift. Prefer a dated global shift
-		// effective for this attendance date, then the legacy undated default.
-		result = config.DB.Where("employee_id IS NULL AND DATE(tanggal) = ?", dateStr).
-			Order("id desc").Limit(1).Find(&schedule)
-		if result.Error == nil && result.RowsAffected > 0 {
-			return schedule
-		}
-
-		result = config.DB.Where("employee_id IS NULL AND tanggal <= ?", dateStr).
-			Order("tanggal desc").Order("id desc").Limit(1).Find(&schedule)
-		if result.Error == nil && result.RowsAffected > 0 {
-			return schedule
-		}
-
-		result = config.DB.Where("employee_id IS NULL AND tanggal IS NULL").
-			Order("id desc").Limit(1).Find(&schedule)
-		if result.Error == nil && result.RowsAffected > 0 {
-			return schedule
-		}
-	}
-
-	return models.WorkSchedule{
-		NamaShift:               "Reguler (Default)",
-		JamMulai:                defaultStartTime,
-		JamSelesai:              defaultEndTime,
-		ToleransiTerlambatMenit: defaultGraceMinutes,
-	}
+	return ResolveEffectiveSchedule(employeeID, date).Schedule
 }
 
 func scheduleMoment(date time.Time, raw, fallback string) time.Time {
@@ -613,6 +579,10 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 			if day.Before(joined) || holidayDates[day.Format("2006-01-02")] {
 				continue
 			}
+			schedule := getAttendanceSchedule(employee.ID, day)
+			if !schedule.IsWorkingDay(day) {
+				continue
+			}
 
 			key := fmt.Sprintf("%d:%s", employee.ID, day.Format("2006-01-02"))
 			leaveStatus, isOnLeave := leaveStatusMap[key]
@@ -640,13 +610,8 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 				continue
 			}
 
-			wd := day.Weekday()
-			schedule := getAttendanceSchedule(employee.ID, day)
-			// Check if it's a working day (Monday-Friday or has a specific schedule override)
-			isWorkingDay := (wd >= time.Monday && wd <= time.Friday) || schedule.NamaShift != "Reguler (Default)"
-
 			latestEnd := scheduleEndTime(schedule, day)
-			if !isWorkingDay || now.Before(latestEnd) {
+			if now.Before(latestEnd) {
 				continue
 			}
 

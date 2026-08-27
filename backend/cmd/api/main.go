@@ -18,6 +18,16 @@ func main() {
 	// Init DB
 	config.ConnectDB(cfg)
 	config.ConnectRedis()
+	// Refresh the current and next calendar at startup and periodically. This
+	// is best-effort and never replaces the last known data on failure.
+	go func() {
+		handlers.EnsureNationalHolidayCalendar()
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			handlers.EnsureNationalHolidayCalendar()
+		}
+	}()
 
 	// Init MinIO
 	minio.SetupMinIO(cfg)
@@ -55,6 +65,7 @@ func main() {
 	handlers.SetupHolidayRoutes(api)
 	handlers.SetupEventRoutes(api)
 	handlers.SetupAdminDirectoryRoutes(api)
+	handlers.SetupHomeLocationChangeRoutes(api)
 	handlers.SetupWorkReportRoutes(api)
 	handlers.SetupInternshipRoutes(api)
 	handlers.SetupManagerRoutes(api)

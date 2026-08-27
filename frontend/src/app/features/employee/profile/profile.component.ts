@@ -20,6 +20,7 @@ import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
   styleUrls: ['./profile.component.scss']
 })
 export class ProfileComponent implements OnInit, OnDestroy {
+  readonly workDayLabels: {[key: string]: string} = { '1':'Senin', '2':'Selasa', '3':'Rabu', '4':'Kamis', '5':'Jumat', '6':'Sabtu', '7':'Minggu' };
   profileData: any = null;
   isLoading = true;
   activeTab = 'profile'; // 'profile' | 'settings' | 'email' | 'security'
@@ -33,6 +34,17 @@ export class ProfileComponent implements OnInit, OnDestroy {
     confirm_password: '',
     alamat_rumah: '',
     google_maps_url: ''
+  };
+
+  homeLocation: any = null;
+  homeLocationRequests: any[] = [];
+  homeLocationLoading = false;
+  homeLocationSubmitting = false;
+  homeLocationAttachment: File | null = null;
+  homeLocationAttachmentName = '';
+  homeLocationForm = {
+    alamat_rumah: '', latitude: null as number | null, longitude: null as number | null,
+    radius_meter: 100, tanggal_mulai_berlaku: '', alasan: '', google_maps_url: ''
   };
 
   preferences: EmployeePreferences = {
@@ -104,6 +116,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.updateForm.alamat_rumah = homeLoc?.AlamatRumah || homeLoc?.alamat_rumah || '';
         this.updateForm.google_maps_url = homeLoc?.GoogleMapsURL || homeLoc?.google_maps_url || '';
         this.isLoading = false;
+        this.loadHomeLocationWorkflow();
         
         if (this.activeTab === 'profile') {
           this.initHomeMap();
@@ -114,6 +127,113 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.isLoading = false;
       }
     });
+  }
+
+  private authHeaders(): HttpHeaders {
+    return new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
+  }
+
+  get today(): string { return new Date().toISOString().slice(0, 10); }
+  get hasPendingHomeLocationRequest(): boolean { return this.homeLocationRequests.some(request => request.Status === 'Menunggu Persetujuan'); }
+
+  private loadHomeLocationWorkflow(): void {
+    this.homeLocationLoading = true;
+    this.http.get<any>('http://localhost:8080/api/v1/employee/profile/home-location', { headers: this.authHeaders() }).subscribe({
+      next: response => {
+        this.homeLocation = response?.active || null;
+        if (this.homeLocation) {
+          this.homeLocationForm.alamat_rumah = this.homeLocation.AlamatRumah || this.homeLocation.alamat_rumah || '';
+          this.homeLocationForm.google_maps_url = this.homeLocation.GoogleMapsURL || this.homeLocation.google_maps_url || '';
+          this.homeLocationForm.latitude = Number(this.homeLocation.LatitudeRumah ?? this.homeLocation.latitude_rumah ?? 0) || null;
+          this.homeLocationForm.longitude = Number(this.homeLocation.LongitudeRumah ?? this.homeLocation.longitude_rumah ?? 0) || null;
+          this.homeLocationForm.radius_meter = Number(this.homeLocation.RadiusMeter ?? this.homeLocation.radius_meter ?? 100) || 100;
+        }
+        this.http.get<any[]>('http://localhost:8080/api/v1/employee/profile/home-location/requests', { headers: this.authHeaders() }).subscribe({
+          next: requests => { this.homeLocationRequests = requests || []; this.homeLocationLoading = false; },
+          error: error => this.homeLocationError(error)
+        });
+      },
+      error: error => this.homeLocationError(error)
+    });
+  }
+
+  private homeLocationError(error: any): void {
+    this.homeLocationLoading = false;
+    this.errorMessage = error?.error?.error || 'Gagal memuat data lokasi WFH.';
+  }
+
+  onHomeLocationAttachment(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      this.errorMessage = 'Lampiran maksimal 5 MB.';
+      (event.target as HTMLInputElement).value = '';
+      return;
+    }
+    this.homeLocationAttachment = file;
+    this.homeLocationAttachmentName = file.name;
+  }
+
+  onGoogleMapsUrlChange(): void {
+    const url = this.homeLocationForm.google_maps_url.trim();
+    // Supports the coordinate formats commonly present in Google Maps URLs.
+    const match = url.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) ||
+      url.match(/[?&](?:q|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) ||
+      url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+    if (match) {
+      this.homeLocationForm.latitude = Number(match[1]);
+      this.homeLocationForm.longitude = Number(match[2]);
+    }
+  }
+
+  async submitHomeLocationRequest(): Promise<void> {
+    const f = this.homeLocationForm;
+    this.errorMessage = '';
+    if (!f.alamat_rumah.trim() || !f.tanggal_mulai_berlaku || !f.alasan.trim()) {
+      await this.alert.error('Data belum lengkap', 'Lengkapi alamat WFH, tanggal mulai berlaku, dan alasan perubahan.'); return;
+    }
+    // A short Google Maps link can be resolved by the backend. Send 0/0 as
+    // the explicit marker when the browser cannot extract coordinates.
+    const latitude = f.latitude ?? 0;
+    const longitude = f.longitude ?? 0;
+    if (latitude !== 0 || longitude !== 0) {
+      if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        await this.alert.error('Koordinat tidak valid', 'Periksa kembali latitude dan longitude lokasi WFH.'); return;
+      }
+    } else if (!f.google_maps_url.trim()) {
+      await this.alert.error('Koordinat tidak valid', 'Masukkan koordinat atau link Google Maps yang valid.'); return;
+    }
+    if (f.radius_meter < 1 || f.radius_meter > 10000 || f.tanggal_mulai_berlaku < this.today) {
+      await this.alert.error('Data lokasi tidak valid', 'Radius harus 1–10.000 meter dan tanggal mulai berlaku tidak boleh lampau.'); return;
+    }
+    if (this.homeLocationRequests.some(request => request.Status === 'Menunggu Persetujuan')) {
+      await this.alert.error('Pengajuan masih diproses', 'Masih ada pengajuan lokasi WFH yang menunggu persetujuan admin.'); return;
+    }
+    if (!await this.alert.confirm('Kirim pengajuan lokasi WFH?', 'Perubahan tidak langsung aktif dan menunggu persetujuan admin.')) return;
+
+    const body = new FormData();
+    Object.entries({ ...f, latitude, longitude }).forEach(([key, value]) => body.append(key, String(value ?? '')));
+    if (this.homeLocationAttachment) body.append('lampiran', this.homeLocationAttachment, this.homeLocationAttachment.name);
+    this.homeLocationSubmitting = true;
+    this.http.post<any>('http://localhost:8080/api/v1/employee/profile/home-location/requests', body, { headers: this.authHeaders() }).subscribe({
+      next: () => {
+        this.homeLocationSubmitting = false;
+        this.successMessage = 'Pengajuan perubahan lokasi WFH berhasil dikirim dan menunggu persetujuan admin.';
+        this.homeLocationForm = { ...this.homeLocationForm, alamat_rumah: '', latitude: null, longitude: null, alasan: '', google_maps_url: '' };
+        this.homeLocationAttachment = null; this.homeLocationAttachmentName = '';
+        this.loadHomeLocationWorkflow(); this.alert.success('Pengajuan lokasi WFH berhasil dikirim');
+      },
+      error: async error => {
+        this.homeLocationSubmitting = false;
+        await this.alert.error('Pengajuan gagal', error?.error?.error || 'Gagal mengirim pengajuan lokasi WFH.');
+      }
+    });
+  }
+
+  getWorkDaysLabel(value: any): string {
+    let days: any[] = [];
+    try { days = Array.isArray(value) ? value : JSON.parse(value || '[1,2,3,4,5,6]'); } catch { days = [1,2,3,4,5,6]; }
+    return (days.length ? days : [1,2,3,4,5,6]).map(day => this.workDayLabels[String(day)]).filter(Boolean).join(', ');
   }
 
   initHomeMap(): void {
@@ -171,15 +291,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.successMessage = '';
     this.errorMessage = '';
 
-    if (!await this.alert.confirm('Simpan perubahan profil?', 'Data nama dan alamat rumah profil akan diperbarui.')) return;
+    if (!await this.alert.confirm('Simpan perubahan profil?', 'Data profil umum akan diperbarui. Perubahan lokasi WFH diajukan melalui form Lokasi WFH.')) return;
 
     this.isSubmitting = true;
 
-    const payload = {
-      nama: this.updateForm.nama,
-      alamat_rumah: this.updateForm.alamat_rumah,
-      google_maps_url: this.updateForm.google_maps_url
-    };
+    const payload = { nama: this.updateForm.nama };
 
     const token = this.authService.getToken();
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
@@ -189,13 +305,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.successMessage = 'Profil berhasil diperbarui.';
         localStorage.setItem('name', payload.nama);
         this.profileData.Nama = payload.nama;
-        if (this.profileData.Employee) {
-          if (!this.profileData.Employee.HomeLocation) {
-            this.profileData.Employee.HomeLocation = {};
-          }
-          this.profileData.Employee.HomeLocation.AlamatRumah = payload.alamat_rumah;
-          this.profileData.Employee.HomeLocation.GoogleMapsURL = payload.google_maps_url;
-        }
         this.isSubmitting = false;
         this.alert.success('Profil berhasil diperbarui');
         this.loadProfile();

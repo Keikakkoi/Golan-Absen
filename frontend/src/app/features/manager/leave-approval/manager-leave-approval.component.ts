@@ -86,6 +86,10 @@ export class ManagerLeaveApprovalComponent implements OnInit {
   }
 
   canDecide(request: any): boolean { return request?.Status === 'pending_manager_approval' || request?.Status === 'Pending'; }
+  approverLabel(request: any): string {
+    const approver = request?.AssignedApprover || request?.assigned_approver;
+    return approver?.Nama || (request?.AssignedApproverRole === 'HRD' ? 'HRD' : 'Manajer utama');
+  }
   statusLabel(status: string): string {
     return ({pending_manager_approval: 'Menunggu Persetujuan Manajer', manager_approved: 'Disetujui Manajer', manager_rejected: 'Ditolak Manajer', pending_hrd_approval: 'Menunggu Persetujuan HRD', hrd_approved: 'Disetujui HRD', hrd_rejected: 'Ditolak HRD', Pending: 'Menunggu Persetujuan Manajer', Approved: 'Disetujui', Rejected: 'Ditolak'} as any)[status] || status || '-';
   }

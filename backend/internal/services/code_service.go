@@ -25,7 +25,7 @@ func RoleCode(role models.Role) string {
 	}
 }
 
-func nextEmployeeCode(tx *gorm.DB, role models.Role, divisionCode string) (string, error) {
+func nextEmployeeCode(tx *gorm.DB, role models.Role, divisionCode string, year int) (string, error) {
 	roleCode := RoleCode(role)
 	var generator models.CodeGenerator
 	if err := tx.Where("role_code = ? AND division_code = ?", roleCode, divisionCode).First(&generator).Error; err != nil {
@@ -40,13 +40,13 @@ func nextEmployeeCode(tx *gorm.DB, role models.Role, divisionCode string) (strin
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("role_code = ? AND division_code = ?", roleCode, divisionCode).First(&generator).Error; err != nil {
 		return "", err
 	}
-	// Always scan from 1 so a number released by a deletion or reassignment
-	// is reused before allocating a new number.
+	// Scan from 1 so the existing numeric suffix format is retained. The year
+	// prefix is included in the lookup because codes are globally unique.
 	number := 1
 	for {
-		code := fmt.Sprintf("%s%s%03d", roleCode, divisionCode, number)
+		code := fmt.Sprintf("%02d%s%s%03d", year%100, roleCode, divisionCode, number)
 		var used models.Employee
-		err := tx.Where("employee_code = ?", code).First(&used).Error
+		err := tx.Unscoped().Where("employee_code = ?", code).First(&used).Error
 		if err == gorm.ErrRecordNotFound {
 			if number >= generator.NextNumber {
 				generator.NextNumber = number + 1
@@ -64,11 +64,14 @@ func nextEmployeeCode(tx *gorm.DB, role models.Role, divisionCode string) (strin
 }
 
 func AssignEmployeeCode(tx *gorm.DB, employee *models.Employee, role models.Role) error {
+	if employee.TanggalBergabung.IsZero() {
+		return fmt.Errorf("tanggal masuk wajib diisi untuk membuat kode karyawan")
+	}
 	var division models.Division
 	if err := tx.First(&division, employee.DivisionID).Error; err != nil {
 		return err
 	}
-	code, err := nextEmployeeCode(tx, role, division.DivisionCode)
+	code, err := nextEmployeeCode(tx, role, division.DivisionCode, employee.TanggalBergabung.Year())
 	if err != nil {
 		return err
 	}
@@ -86,7 +89,10 @@ func RebuildEmployeeCodes(tx *gorm.DB, employeeIDs ...uint) error {
 		return err
 	}
 	for i := range employees {
-		code, err := nextEmployeeCode(tx, employees[i].User.Role, employees[i].Division.DivisionCode)
+		if strings.TrimSpace(employees[i].EmployeeCode) != "" || employees[i].TanggalBergabung.IsZero() {
+			continue
+		}
+		code, err := nextEmployeeCode(tx, employees[i].User.Role, employees[i].Division.DivisionCode, employees[i].TanggalBergabung.Year())
 		if err != nil {
 			return err
 		}
@@ -97,13 +103,9 @@ func RebuildEmployeeCodes(tx *gorm.DB, employeeIDs ...uint) error {
 	return nil
 }
 
-// BackfillCodes is safe to run repeatedly. Existing codes are preserved while
-// legacy hyphenated employee codes are normalized to the compact format.
+// BackfillCodes is safe to run repeatedly. Legacy generated codes receive the
+// year prefix once; other existing codes are preserved.
 func BackfillCodes(db *gorm.DB) error {
-	// Soft-deleted employees must not reserve reusable display codes.
-	if err := db.Unscoped().Model(&models.Employee{}).Where("deleted_at IS NOT NULL").Update("employee_code", nil).Error; err != nil {
-		return err
-	}
 	var divisions []models.Division
 	if err := db.Order("id asc").Find(&divisions).Error; err != nil {
 		return err
@@ -127,17 +129,32 @@ func BackfillCodes(db *gorm.DB) error {
 		}
 	}
 	var employees []models.Employee
-	if err := db.Preload("User").Order("id asc").Find(&employees).Error; err != nil {
+	if err := db.Preload("User").Preload("Division").Order("id asc").Find(&employees).Error; err != nil {
 		return err
 	}
 	for i := range employees {
-		if employees[i].EmployeeCode != "" {
-			normalized := strings.ReplaceAll(employees[i].EmployeeCode, "-", "")
-			if normalized != employees[i].EmployeeCode {
-				if err := db.Model(&employees[i]).Update("employee_code", normalized).Error; err != nil {
-					return err
-				}
+		legacyCode := strings.TrimSpace(employees[i].EmployeeCode)
+		if legacyCode != "" {
+			// Existing generated codes used ROLE+DIVISION+SEQUENCE (for
+			// example 0211001). Upgrade that
+			// legacy shape once by prepending the join year. Other codes,
+			// including manually assigned codes, remain untouched.
+			if employees[i].TanggalBergabung.IsZero() || !isLegacyEmployeeCode(legacyCode, employees[i].User.Role, employees[i].Division.DivisionCode) {
+				continue
 			}
+			upgradedCode := fmt.Sprintf("%02d%s", employees[i].TanggalBergabung.Year()%100, legacyCode)
+			var owner models.Employee
+			if err := db.Unscoped().Where("employee_code = ? AND id <> ?", upgradedCode, employees[i].ID).First(&owner).Error; err == nil {
+				return fmt.Errorf("kode karyawan hasil backfill %s sudah digunakan", upgradedCode)
+			} else if err != gorm.ErrRecordNotFound {
+				return err
+			}
+			if err := db.Model(&employees[i]).Update("employee_code", upgradedCode).Error; err != nil {
+				return err
+			}
+			continue
+		}
+		if employees[i].TanggalBergabung.IsZero() {
 			continue
 		}
 		if err := AssignEmployeeCode(db, &employees[i], employees[i].User.Role); err != nil {
@@ -145,4 +162,17 @@ func BackfillCodes(db *gorm.DB) error {
 		}
 	}
 	return nil
+}
+
+func isLegacyEmployeeCode(code string, role models.Role, divisionCode string) bool {
+	prefix := RoleCode(role) + strings.TrimSpace(divisionCode)
+	if prefix == "" || len(code) != len(prefix)+3 || !strings.HasPrefix(code, prefix) {
+		return false
+	}
+	for _, character := range code[len(prefix):] {
+		if character < '0' || character > '9' {
+			return false
+		}
+	}
+	return true
 }

@@ -73,6 +73,10 @@
 
             <div class="detail-grid mt-4">
               <div class="detail-row">
+                <span class="detail-label">Kode Karyawan</span>
+                <span class="detail-value mono-text">{{ profileData.Employee?.employee_code || profileData.Employee?.EmployeeCode || '-' }}</span>
+              </div>
+              <div class="detail-row">
                 <span class="detail-label">Nomor Induk Karyawan (NIK)</span>
                 <span class="detail-value mono-text">{{ profileData.Employee?.NIK || '-' }}</span>
               </div>
@@ -114,12 +118,13 @@
               <div *ngIf="profileData.WorkSchedules?.length; else noWorkSchedule" class="golan-table-responsive">
                 <table class="golan-table">
                   <thead>
-                    <tr><th>Tanggal</th><th>Nama Shift</th><th>Jam Check-in</th><th>Jam Check-out</th></tr>
+                    <tr><th>Tanggal</th><th>Nama Shift</th><th>Hari kerja</th><th>Jam Check-in</th><th>Jam Check-out</th></tr>
                   </thead>
                   <tbody>
                     <tr *ngFor="let shift of profileData.WorkSchedules">
                       <td>{{ shift.Tanggal ? (shift.Tanggal | date:'dd MMM yyyy') : 'Shift Aktif' }}</td>
                       <td><strong>{{ shift.NamaShift }}</strong></td>
+                      <td>{{ getWorkDaysLabel(shift.HariKerja || shift.hari_kerja) }}</td>
                       <td>{{ shift.JamMulai ? (shift.JamMulai | slice:0:5) : '-' }}</td>
                       <td>{{ shift.JamSelesai ? (shift.JamSelesai | slice:0:5) : '-' }}</td>
                     </tr>
@@ -158,23 +163,58 @@
                 <input type="text" class="form-control" [(ngModel)]="updateForm.nama" name="nama" required style="width: 100%; padding: 10px; border: 1px solid var(--mint-2); border-radius: 6px;" />
               </div>
 
-              <div class="form-group" style="margin-bottom: 1.25rem;">
-                <label style="font-weight: 500; margin-bottom: 6px; display: block;">Alamat Rumah / Tempat Tinggal</label>
-                <textarea class="form-control" [(ngModel)]="updateForm.alamat_rumah" name="alamat_rumah" rows="3" placeholder="Masukkan alamat lengkap rumah tempat tinggal Anda (misal: Jl. Merdeka No. 45, RT 02/RW 05, Kel. Kebon Jeruk, Jakarta Barat)..." style="width: 100%; padding: 10px; border: 1px solid var(--mint-2); border-radius: 6px; resize: vertical; font-family: inherit;"></textarea>
-              </div>
-
-              <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label style="font-weight: 500; margin-bottom: 6px; display: block;">Link Google Maps Rumah - Untuk WFH</label>
-                <input type="url" class="form-control" [(ngModel)]="updateForm.google_maps_url" name="google_maps_url" placeholder="https://maps.google.com/?q=..." style="width: 100%; padding: 10px; border: 1px solid var(--mint-2); border-radius: 6px;" />
-                <small class="text-dark-lo" style="font-size: 0.82rem; margin-top: 4px; display: block;">
-                  Link Google Maps dapat digunakan untuk memperbarui koordinat lokasi rumah untuk keperluan absensi WFH.
-                </small>
-              </div>
-
               <button type="submit" class="btn-primary" [disabled]="isSubmitting" style="margin-bottom: 2rem;">
-                {{ isSubmitting ? 'Menyimpan...' : 'Simpan Profil &amp; Alamat' }}
+                {{ isSubmitting ? 'Menyimpan...' : 'Simpan Profil' }}
               </button>
             </form>
+
+            <section class="home-location-profile-section">
+              <div class="section-title">Lokasi WFH</div>
+              <p class="form-description">Perubahan lokasi WFH tidak langsung aktif. Lokasi lama tetap digunakan sampai pengajuan disetujui dan tanggal mulai berlaku tercapai.</p>
+
+              <div *ngIf="homeLocationLoading" class="empty-state">Memuat lokasi WFH...</div>
+              <div *ngIf="!homeLocationLoading" class="home-location-active" [class.empty-state]="!homeLocation">
+                <ng-container *ngIf="homeLocation; else noHomeLocation">
+                  <div class="detail-grid">
+                    <div class="detail-row"><span class="detail-label">Alamat WFH aktif</span><span class="detail-value">{{ homeLocation.AlamatRumah || '-' }}</span></div>
+                    <div class="detail-row"><span class="detail-label">Koordinat</span><span class="detail-value mono-text">{{ homeLocation.LatitudeRumah }}, {{ homeLocation.LongitudeRumah }}</span></div>
+                    <div class="detail-row"><span class="detail-label">Radius geofence</span><span class="detail-value">{{ homeLocation.RadiusMeter }} meter</span></div>
+                    <div class="detail-row"><span class="detail-label">Status lokasi</span><span class="detail-value status-active">Aktif</span></div>
+                  </div>
+                  <a *ngIf="homeLocation.GoogleMapsURL" [href]="homeLocation.GoogleMapsURL" target="_blank" rel="noopener">Buka lokasi di Google Maps</a>
+                </ng-container>
+                <ng-template #noHomeLocation>Belum ada lokasi WFH aktif.</ng-template>
+              </div>
+
+              <form (ngSubmit)="submitHomeLocationRequest()" class="home-location-request-form">
+                <h4>Ajukan Perubahan Lokasi WFH</h4>
+                <div class="form-group"><label>Alamat WFH baru <span class="required">*</span></label><textarea class="form-control" [(ngModel)]="homeLocationForm.alamat_rumah" name="home_address" rows="3" required></textarea></div>
+                <div class="form-group"><label>Link Google Maps Rumah - Untuk WFH</label><input class="form-control" type="url" [(ngModel)]="homeLocationForm.google_maps_url" (ngModelChange)="onGoogleMapsUrlChange()" name="home_google_maps_url" placeholder="https://maps.google.com/?q=..." /><small class="text-dark-lo">Koordinat akan diisi otomatis jika URL memuat titik koordinat. Link pendek akan diproses oleh server saat dikirim.</small></div>
+                <div class="form-group-row">
+                  <div class="form-group"><label>Latitude</label><input class="form-control" type="number" [(ngModel)]="homeLocationForm.latitude" name="home_latitude" min="-90" max="90" step="any"></div>
+                  <div class="form-group"><label>Longitude</label><input class="form-control" type="number" [(ngModel)]="homeLocationForm.longitude" name="home_longitude" min="-180" max="180" step="any"></div>
+                  <div class="form-group"><label>Radius geofence (meter)</label><input class="form-control" type="number" [(ngModel)]="homeLocationForm.radius_meter" name="home_radius" min="1" max="10000" required></div>
+                </div>
+                <div class="form-group-row">
+                  <div class="form-group"><label>Tanggal mulai berlaku</label><input class="form-control" type="date" [(ngModel)]="homeLocationForm.tanggal_mulai_berlaku" name="home_effective_date" [min]="today" required></div>
+                  <div class="form-group"><label>Lampiran opsional (maks. 5 MB)</label><input class="form-control" type="file" (change)="onHomeLocationAttachment($event)" accept=".pdf,.jpg,.jpeg,.png"><small>{{ homeLocationAttachmentName }}</small></div>
+                </div>
+                <div class="form-group"><label>Alasan perubahan <span class="required">*</span></label><textarea class="form-control" [(ngModel)]="homeLocationForm.alasan" name="home_reason" rows="3" required></textarea></div>
+                <button type="submit" class="btn-primary" [disabled]="homeLocationSubmitting || hasPendingHomeLocationRequest">{{ homeLocationSubmitting ? 'Mengirim...' : 'Kirim Pengajuan Lokasi WFH' }}</button>
+              </form>
+
+              <div class="home-location-status">
+                <h4>Status Pengajuan Lokasi WFH</h4>
+                <div *ngIf="!homeLocationRequests.length" class="empty-state">Belum ada pengajuan lokasi WFH.</div>
+                <div *ngIf="homeLocationRequests.length" class="golan-table-responsive">
+                  <table class="golan-table"><thead><tr><th>Status</th><th>Lokasi baru</th><th>Mulai berlaku</th><th>Alasan</th><th>Diproses</th></tr></thead><tbody>
+                    <tr *ngFor="let request of homeLocationRequests | slice:0:1"><td>{{ request.Status }}</td><td>{{ request.OldAddress || '-' }} → {{ request.NewAddress }}<br><small>{{ request.NewLatitude }}, {{ request.NewLongitude }} · {{ request.NewRadiusMeter }} m</small></td><td>{{ request.EffectiveDate | date:'dd MMM yyyy' }}</td><td>{{ request.RejectionReason || request.Reason }}</td><td>{{ request.ReviewerName || '-' }}<br>{{ request.ReviewedAt ? (request.ReviewedAt | date:'dd MMM yyyy HH:mm') : (request.CreatedAt | date:'dd MMM yyyy HH:mm') }}</td></tr>
+                  </tbody></table>
+                </div>
+              </div>
+
+              <div class="home-location-history"><h4>Riwayat Pengajuan Lokasi WFH</h4><div *ngIf="!homeLocationRequests.length" class="empty-state">Belum ada riwayat pengajuan.</div><div *ngIf="homeLocationRequests.length" class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Waktu pengajuan</th><th>Lokasi baru</th><th>Status</th><th>Alasan penolakan</th></tr></thead><tbody><tr *ngFor="let request of homeLocationRequests"><td>{{ request.CreatedAt | date:'dd MMM yyyy HH:mm' }}</td><td>{{ request.NewAddress }}<br><small>{{ request.NewLatitude }}, {{ request.NewLongitude }} · {{ request.NewRadiusMeter }} m</small></td><td>{{ request.Status }}</td><td>{{ request.RejectionReason || '-' }}</td></tr></tbody></table></div></div>
+            </section>
 
             <form (ngSubmit)="savePreferences()">
               <div class="section-title" style="border-top: 1px solid var(--mint-1); padding-top: 2rem;">Preferensi Aplikasi &amp; Akun</div>

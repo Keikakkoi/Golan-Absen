@@ -34,6 +34,7 @@
         <table class="leave-table" *ngIf="!isLoading && leaveRequests.length > 0">
           <colgroup>
             <col class="leave-col-employee">
+            <col class="leave-col-approver">
             <col class="leave-col-type">
             <col class="leave-col-date">
             <col class="leave-col-date">
@@ -46,6 +47,7 @@
           <thead>
             <tr>
               <th scope="col">Nama Karyawan</th>
+              <th scope="col">Approver</th>
               <th scope="col">Jenis</th>
               <th scope="col">Tanggal Mulai</th>
               <th scope="col">Tanggal Selesai</th>
@@ -62,6 +64,7 @@
                 <span class="leave-employee-name">{{ req.Employee?.User?.Nama || 'Nama Tidak Tersedia' }}</span>
                 <span class="leave-employee-nik">{{ req.Employee?.NIK || '-' }}</span>
               </td>
+              <td>{{ approverLabel(req) }}</td>
               <td>{{ req.JenisIzin }}</td>
               <td class="leave-date-cell">{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
               <td class="leave-date-cell">{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
@@ -84,16 +87,16 @@
               </td>
               <td class="leave-actions-cell">
                 <div class="table-actions">
-                  <button class="icon-button view btn-view-detail icon-only" type="button" aria-label="Lihat detail" title="Lihat detail" (click)="openDetail(req)"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
+                  <button class="icon-button view btn-view-detail icon-only" type="button" aria-label="Lihat detail pengajuan" title="Lihat detail pengajuan" (click)="openDetail(req)"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
                   <div *ngIf="canDecide(req)" class="action-group">
-                    <button class="icon-button approve" type="button" aria-label="Setuju" title="Setuju" (click)="updateStatus(req.ID, 'Approved')">
+                    <button class="icon-button approve" type="button" aria-label="Setujui pengajuan" title="Setujui pengajuan" (click)="updateStatus(req.ID, 'Approved')">
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
                     </button>
-                    <button class="icon-button reject" type="button" aria-label="Tolak" title="Tolak" (click)="updateStatus(req.ID, 'Rejected')">
+                    <button class="icon-button reject" type="button" aria-label="Tolak pengajuan" title="Tolak pengajuan" (click)="updateStatus(req.ID, 'Rejected')">
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#x"></use></svg>
                     </button>
                   </div>
-                  <button *ngIf="!canDecide(req)" class="icon-button" disabled type="button" aria-label="Selesai" title="Selesai">
+                  <button *ngIf="!canDecide(req)" class="icon-button action-completed" disabled type="button" aria-label="Pengajuan sudah diproses" title="Pengajuan sudah diproses">
                     <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
                   </button>
                 </div>

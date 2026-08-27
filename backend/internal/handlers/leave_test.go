@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"absensi-golan-backend/internal/models"
+	"gorm.io/gorm"
 )
 
 func TestLeaveQuotaTypes(t *testing.T) {
@@ -40,6 +41,28 @@ func TestInitialLeaveStatusByRole(t *testing.T) {
 	}
 }
 
+func TestManagerCanReceiveLeave(t *testing.T) {
+	manager := models.User{Model: gorm.Model{ID: 10}, Role: models.RoleManajer, Status: "aktif"}
+	cases := []struct {
+		name    string
+		user    models.User
+		onLeave bool
+		want    bool
+	}{
+		{"aktif dan tidak cuti", manager, false, true},
+		{"sedang cuti", manager, true, false},
+		{"tidak aktif", models.User{Model: gorm.Model{ID: 10}, Role: models.RoleManajer, Status: "nonaktif"}, false, false},
+		{"role lain", models.User{Model: gorm.Model{ID: 10}, Role: models.RoleKaryawan, Status: "aktif"}, false, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := managerCanReceiveLeave(tc.user, tc.onLeave); got != tc.want {
+				t.Fatalf("managerCanReceiveLeave() = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestManagerCanOnlyProcessPendingManagerApproval(t *testing.T) {
 	if !managerCanProcessLeaveStatus(models.LeaveStatusPendingManager) || !managerCanProcessLeaveStatus(models.LeaveStatusPending) {
 		t.Fatal("manager should process new and legacy pending manager requests")
@@ -65,5 +88,16 @@ func TestAdminLeaveWorkflowIncludesEmployeesAndInterns(t *testing.T) {
 func TestRejectionReasonMustNotAcceptWhitespace(t *testing.T) {
 	if reason := strings.TrimSpace(" \t\n"); reason != "" {
 		t.Fatalf("whitespace-only rejection reason should be empty, got %q", reason)
+	}
+}
+
+func TestApprovalDelegationMustOverlapLeavePeriod(t *testing.T) {
+	leaveStart := time.Date(2026, 8, 20, 0, 0, 0, 0, jakartaLocation)
+	leaveEnd := time.Date(2026, 8, 24, 0, 0, 0, 0, jakartaLocation)
+	if !periodsOverlap(leaveStart, leaveEnd, time.Date(2026, 8, 24, 0, 0, 0, 0, jakartaLocation), time.Date(2026, 8, 30, 0, 0, 0, 0, jakartaLocation)) {
+		t.Fatal("delegation starting on the leave end date must be considered active")
+	}
+	if periodsOverlap(leaveStart, leaveEnd, time.Date(2026, 8, 25, 0, 0, 0, 0, jakartaLocation), time.Date(2026, 8, 30, 0, 0, 0, 0, jakartaLocation)) {
+		t.Fatal("delegation entirely after the leave period must not be selected")
 	}
 }

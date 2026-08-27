@@ -49,6 +49,9 @@ export class AdminManagementComponent implements OnInit {
   homeTotalPages = 1;
   selectedHome: any = null;
   homeForm: any = { latitude_rumah: null, longitude_rumah: null, radius_meter: 100, alamat_rumah: '', google_maps_url: '' };
+  homeTab: 'active' | 'requests' = 'active';
+  homeRequests: any[] = [];
+  homePendingCount = 0;
 
   employees: any[] = [];
   quotas: any[] = [];
@@ -98,7 +101,7 @@ export class AdminManagementComponent implements OnInit {
   editSchedule(schedule: any): void {
     this.editingScheduleId = schedule.ID;
     this.isGlobalSchedule = !schedule.EmployeeID;
-    this.scheduleForm = { ...schedule, EmployeeID: schedule.EmployeeID || '', EmployeeIDs: schedule.EmployeeID ? [Number(schedule.EmployeeID)] : [], Tanggal: schedule.Tanggal ? schedule.Tanggal.substring(0, 10) : '', JamMulai: (schedule.JamMulai || '').substring(0, 5), JamSelesai: (schedule.JamSelesai || '').substring(0, 5) };
+    this.scheduleForm = { ...schedule, EmployeeID: schedule.EmployeeID || '', EmployeeIDs: schedule.EmployeeID ? [Number(schedule.EmployeeID)] : [], Tanggal: schedule.Tanggal ? schedule.Tanggal.substring(0, 10) : '', JamMulai: (schedule.JamMulai || '').substring(0, 5), JamSelesai: (schedule.JamSelesai || '').substring(0, 5), HariKerja: this.parseWorkDays(schedule.HariKerja ?? schedule.hari_kerja) };
   }
 
   resetSchedule(): void { this.editingScheduleId = null; this.isGlobalSchedule = true; this.scheduleForm = this.emptySchedule(); }
@@ -148,6 +151,7 @@ export class AdminManagementComponent implements OnInit {
   }
 
   async saveSchedule(): Promise<void> {
+    if (!this.scheduleForm.HariKerja?.length) { this.alert.error('Hari kerja belum dipilih', 'Pilih minimal satu hari kerja.'); return; }
     const wasEditing = !!this.editingScheduleId;
     const action = wasEditing ? 'mengubah shift ini' : 'menyimpan shift baru';
     if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
@@ -167,6 +171,7 @@ export class AdminManagementComponent implements OnInit {
       JamMulai: this.scheduleForm.JamMulai.length === 5 ? `${this.scheduleForm.JamMulai}:00` : this.scheduleForm.JamMulai, 
       JamSelesai: this.scheduleForm.JamSelesai.length === 5 ? `${this.scheduleForm.JamSelesai}:00` : this.scheduleForm.JamSelesai, 
       ToleransiTerlambatMenit: Number(this.scheduleForm.ToleransiTerlambatMenit) 
+      ,HariKerja: this.scheduleForm.HariKerja.map((day: string) => Number(day))
     };
     const request = this.editingScheduleId ? this.http.put(`${this.api}/admin/schedules/${this.editingScheduleId}`, body, { headers: this.headers() }) : this.http.post(`${this.api}/admin/schedules`, body, { headers: this.headers() });
     request.subscribe({ next: () => { this.isSaving = false; this.resetSchedule(); this.loadSchedules(); this.alert.success(wasEditing ? 'Shift diperbarui' : 'Shift disimpan'); }, error: (err: any) => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan shift', err.error?.error || 'Gagal menyimpan shift'); } });
@@ -206,9 +211,27 @@ export class AdminManagementComponent implements OnInit {
           return;
         }
         this.isLoading = false;
+        this.loadHomeRequests();
       },
       error: err => this.fail(err)
     });
+  }
+
+  loadHomeRequests(): void {
+    this.http.get<any>(`${this.api}/admin/home-location-requests`, { headers: this.headers() }).subscribe({ next: response => { this.homeRequests = response?.data || []; this.homePendingCount = Number(response?.pending_count || 0); }, error: err => this.fail(err) });
+  }
+
+  async approveHomeRequest(item: any): Promise<void> {
+    if (!await this.alert.confirm('Setujui pengajuan lokasi?', 'Lokasi baru akan aktif sesuai tanggal mulai berlaku.')) return;
+    this.isSaving = true;
+    this.http.post(`${this.api}/admin/home-location-requests/${item.ID}/approve`, {}, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.alert.success('Pengajuan disetujui'); this.loadHomeLocations(); }, error: err => { this.isSaving = false; this.alert.error('Gagal menyetujui pengajuan', err.error?.error || 'Gagal memproses pengajuan'); } });
+  }
+
+  async rejectHomeRequest(item: any): Promise<void> {
+    const reason = await this.alert.textarea('Alasan penolakan', 'Tuliskan alasan agar karyawan dapat memperbaiki pengajuan.');
+    if (!reason) return;
+    this.isSaving = true;
+    this.http.post(`${this.api}/admin/home-location-requests/${item.ID}/reject`, { alasan_penolakan: reason }, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.alert.success('Pengajuan ditolak'); this.loadHomeRequests(); }, error: err => { this.isSaving = false; this.alert.error('Gagal menolak pengajuan', err.error?.error || 'Gagal memproses pengajuan'); } });
   }
 
   homePageChanged(page: number): void {
@@ -275,6 +298,20 @@ export class AdminManagementComponent implements OnInit {
     this.alert.info('Detail Kuota', info);
   }
 
-  private emptySchedule(): any { return { EmployeeID: '', EmployeeIDs: [], Tanggal: new Date().toISOString().substring(0, 10), NamaShift: 'Reguler', JamMulai: '09:00', JamSelesai: '17:00', ToleransiTerlambatMenit: 10 }; }
+  toggleWorkDay(day: string): void {
+    const selected = new Set<string>((this.scheduleForm.HariKerja || []).map((value: any) => String(value)));
+    selected.has(day) ? selected.delete(day) : selected.add(day);
+    this.scheduleForm.HariKerja = Array.from(selected).sort((a, b) => Number(a) - Number(b));
+  }
+
+  isWorkDaySelected(day: string): boolean { return (this.scheduleForm.HariKerja || []).map((v: any) => String(v)).includes(day); }
+  getWorkDaysLabel(value: any): string {
+    return this.parseWorkDays(value).map((day: string) => this.workDays.find(item => item.id === day)?.label).filter(Boolean).join(', ');
+  }
+  private parseWorkDays(value: any): string[] {
+    if (Array.isArray(value)) return value.map(v => String(v));
+    try { const parsed = JSON.parse(value || '[1,2,3,4,5,6]'); return Array.isArray(parsed) && parsed.length ? parsed.map((v: any) => String(v)) : ['1','2','3','4','5','6']; } catch { return ['1','2','3','4','5','6']; }
+  }
+  private emptySchedule(): any { return { EmployeeID: '', EmployeeIDs: [], Tanggal: new Date().toISOString().substring(0, 10), NamaShift: 'Reguler', JamMulai: '09:00', JamSelesai: '17:00', ToleransiTerlambatMenit: 10, HariKerja: ['1','2','3','4','5','6'] }; }
   private fail(err: any): void { this.isLoading = false; this.errorMessage = err?.error?.error || 'Gagal memuat data.'; }
 }
