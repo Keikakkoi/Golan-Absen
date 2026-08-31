@@ -3,10 +3,11 @@
   <main class="main-content">
     <section class="golan-card team-report-card">
       <div class="team-filter-layout">
-        <div class="team-filter-heading"><h2>Absensi Tim</h2><p>Status kehadiran anggota tim berdasarkan tanggal.</p></div>
+        <div class="team-filter-heading"><h2>Absensi Tim</h2><p>Status kehadiran anggota tim berdasarkan rentang tanggal.</p></div>
         <div class="report-toolbar team-attendance-toolbar">
           <label>Nama/NIK<input class="golan-input" [(ngModel)]="search"></label>
-          <label>Tanggal<input type="date" class="golan-input" [(ngModel)]="date"></label>
+          <label>Dari tanggal<input type="date" lang="id" class="golan-input" [(ngModel)]="startDate" [max]="endDate || null" aria-label="Dari tanggal"></label>
+          <label>Sampai tanggal<input type="date" lang="id" class="golan-input" [(ngModel)]="endDate" [min]="startDate || null" aria-label="Sampai tanggal"></label>
           <label>Status<select class="golan-input" [(ngModel)]="status"><option value="">Semua status</option><option>Hadir</option><option>Terlambat</option><option>Tidak hadir</option></select></label>
           <button type="button" class="btn-primary report-filter-action" (click)="load()">Tampilkan</button>
           <div class="export-dropdown">
@@ -20,7 +21,7 @@
           </div>
         </div>
       </div>
-      <p class="alert alert-danger" *ngIf="error">{{ error }}</p>
+      <p class="alert alert-danger" *ngIf="error" role="alert">{{ error }}</p>
       <div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Nama</th><th>Tanggal</th><th>Status</th><th>Masuk</th><th>Pulang</th></tr></thead><tbody><tr *ngFor="let row of displayedRows"><td>{{ row.nama }}</td><td>{{ row.tanggal }}</td><td><span *ngIf="!row.checkout_missing" class="status-pill" [class.status-terlambat]="row.status === 'Terlambat'">{{ row.status }}</span><span *ngIf="row.checkout_missing" class="status-pill status-warning">⚠ Belum Check-out</span></td><td>{{ row.jam_masuk || '-' }}</td><td>{{ row.jam_pulang || '-' }}</td></tr></tbody></table></div>
       <app-pagination [totalItems]="totalItems" [currentPage]="page" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions" [loading]="isLoading" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
       <p *ngIf="!rows.length && !isLoading" class="muted">Belum ada anggota tim yang terhubung.</p>

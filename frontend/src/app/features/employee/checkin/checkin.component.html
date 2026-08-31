@@ -5,13 +5,16 @@
   <div class="main-content">
     <div class="checkin-container">
       <div class="header">
-        <h2 *ngIf="hasLeaveToday">Status {{ leaveStatus }} Hari Ini</h2>
-        <h2 *ngIf="!hasLeaveToday && !hasCheckedIn && !isCheckoutPage">Check-in Harian</h2>
-        <h2 *ngIf="!hasLeaveToday && !hasCheckedIn && isCheckoutPage">Check-out Harian</h2>
-        <h2 *ngIf="!hasLeaveToday && hasCheckedIn && !hasCheckedOut">Check-out Harian</h2>
-        <h2 *ngIf="!hasLeaveToday && attendanceClosed && !hasCheckedOut">Absensi Ditutup</h2>
-        <h2 *ngIf="!hasLeaveToday && hasCheckedOut">Absensi Selesai</h2>
-        <p class="subtitle text-dark-lo">Silakan verifikasi lokasi dan bukti foto Anda untuk memulai absensi.</p>
+        <div class="checkin-header-content">
+          <h2 *ngIf="hasLeaveToday">Status {{ leaveStatus }} Hari Ini</h2>
+          <h2 *ngIf="!hasLeaveToday && !hasCheckedIn && !isCheckoutPage">Check-in Harian</h2>
+          <h2 *ngIf="!hasLeaveToday && !hasCheckedIn && isCheckoutPage">Check-out Harian</h2>
+          <h2 *ngIf="!hasLeaveToday && hasCheckedIn && !hasCheckedOut">Check-out Harian</h2>
+          <h2 *ngIf="!hasLeaveToday && attendanceClosed && !hasCheckedOut">Absensi Ditutup</h2>
+          <h2 *ngIf="!hasLeaveToday && hasCheckedOut">Absensi Selesai</h2>
+          <p class="subtitle text-dark-lo">Silakan verifikasi lokasi dan bukti foto Anda untuk memulai absensi.</p>
+        </div>
+        <app-notification-bell></app-notification-bell>
       </div>
 
       <!-- MAIN FOCUS: Large Circular Punch Button (15.4 PRD) -->

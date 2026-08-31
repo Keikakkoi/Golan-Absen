@@ -114,9 +114,30 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to load team"})
 	}
-	date := c.Query("date")
-	if date == "" {
-		date = attendanceBusinessDate(attendanceNow()).Format("2006-01-02")
+	start := strings.TrimSpace(c.Query("start_date"))
+	end := strings.TrimSpace(c.Query("end_date"))
+	// Keep accepting the legacy single-date parameter for existing API clients.
+	if start == "" && end == "" {
+		start = strings.TrimSpace(c.Query("date"))
+		end = start
+	}
+	if start == "" && end == "" {
+		start = attendanceBusinessDate(attendanceNow()).Format("2006-01-02")
+		end = start
+	}
+	if start == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Dari tanggal wajib diisi"})
+	}
+	if end == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Sampai tanggal wajib diisi"})
+	}
+	startDate, startErr := time.ParseInLocation("2006-01-02", start, jakartaLocation)
+	endDate, endErr := time.ParseInLocation("2006-01-02", end, jakartaLocation)
+	if startErr != nil || endErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format tanggal harus YYYY-MM-DD"})
+	}
+	if endDate.Before(startDate) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Sampai tanggal tidak boleh lebih kecil dari Dari tanggal"})
 	}
 	ids := make([]uint, 0, len(team))
 	for _, item := range team {
@@ -124,42 +145,50 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 	}
 	var records []models.AttendanceRecord
 	if len(ids) > 0 {
-		config.DB.Where("employee_id IN ? AND tanggal = ?", ids, date).Find(&records)
+		config.DB.Where("employee_id IN ? AND tanggal BETWEEN ? AND ?", ids, start, end).Find(&records)
 	}
-	byEmployee := map[uint]models.AttendanceRecord{}
+	byEmployee := map[string]models.AttendanceRecord{}
 	for _, record := range records {
-		byEmployee[record.EmployeeID] = record
+		byEmployee[recordKey(record.EmployeeID, record.Tanggal)] = record
 	}
 	rows := []fiber.Map{}
-	for _, employee := range team {
-		status := "Tidak hadir"
-		masuk := ""
-		pulang := ""
-		if record, ok := byEmployee[employee.ID]; ok {
-			status = string(record.Status)
-			if status == string(models.StatusTerlambat) {
-				status = string(models.StatusHadir)
+	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
+		dateString := date.Format("2006-01-02")
+		for _, employee := range team {
+			status := "Tidak hadir"
+			masuk := ""
+			pulang := ""
+			record, hasRecord := byEmployee[recordKey(employee.ID, date)]
+			if hasRecord {
+				status = string(record.Status)
+				if status == string(models.StatusTerlambat) {
+					status = string(models.StatusHadir)
+				}
+				if record.JamMasuk != nil {
+					masuk = record.JamMasuk.Format("15:04")
+				}
+				if record.JamPulang != nil {
+					pulang = record.JamPulang.Format("15:04")
+				}
 			}
-			if record.JamMasuk != nil {
-				masuk = record.JamMasuk.Format("15:04")
+			if search := strings.TrimSpace(c.Query("search")); search != "" && !strings.Contains(strings.ToLower(employee.User.Nama), strings.ToLower(search)) && !strings.Contains(strings.ToLower(employee.NIK), strings.ToLower(search)) {
+				continue
 			}
-			if record.JamPulang != nil {
-				pulang = record.JamPulang.Format("15:04")
+			if selectedStatus := c.Query("status"); selectedStatus != "" && status != selectedStatus {
+				continue
 			}
+			checkoutMissing := false
+			if hasRecord {
+				checkoutMissing = record.IsCheckoutMissing
+			}
+			rows = append(rows, fiber.Map{"employee_id": employee.ID, "user_id": employee.UserID, "nama": employee.User.Nama, "tanggal": dateString, "status": status, "jam_masuk": masuk, "jam_pulang": pulang, "checkout_missing": checkoutMissing})
 		}
-		if search := strings.TrimSpace(c.Query("search")); search != "" && !strings.Contains(strings.ToLower(employee.User.Nama), strings.ToLower(search)) && !strings.Contains(strings.ToLower(employee.NIK), strings.ToLower(search)) {
-			continue
-		}
-		if selectedStatus := c.Query("status"); selectedStatus != "" && status != selectedStatus {
-			continue
-		}
-		checkoutMissing := false
-		if record, ok := byEmployee[employee.ID]; ok {
-			checkoutMissing = record.IsCheckoutMissing
-		}
-		rows = append(rows, fiber.Map{"employee_id": employee.ID, "user_id": employee.UserID, "nama": employee.User.Nama, "tanggal": date, "status": status, "jam_masuk": masuk, "jam_pulang": pulang, "checkout_missing": checkoutMissing})
 	}
 	return c.JSON(rows)
+}
+
+func recordKey(employeeID uint, date time.Time) string {
+	return strconv.FormatUint(uint64(employeeID), 10) + ":" + date.Format("2006-01-02")
 }
 
 func GetManagerTeamReports(c *fiber.Ctx) error {

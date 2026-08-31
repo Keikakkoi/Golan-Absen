@@ -1,1 +1,2 @@
+.main-content > .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .progress-track { height: 10px; background: var(--mint-1); border-radius: 99px; overflow: hidden; margin-top: 16px; }.progress-value { height: 100%; background: var(--green); border-radius: inherit; transition: width .3s ease; }.muted { color: var(--text-dark-lo); font-size: .82rem; }.callout { margin-top: 24px; }.callout p { color: var(--text-dark-lo); }.callout .btn-primary { display: inline-block; text-decoration: none; margin-top: 8px; }

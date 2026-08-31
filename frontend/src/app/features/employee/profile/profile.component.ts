@@ -239,8 +239,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
   initHomeMap(): void {
     setTimeout(() => {
       if (!this.profileData || !this.profileData.Employee) return;
-      const hLat = this.profileData.Employee.HomeLatitude;
-      const hLng = this.profileData.Employee.HomeLongitude;
+      const home = this.profileData.Employee.HomeLocation || this.profileData.Employee.home_location;
+      const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.profileData.Employee.HomeLatitude ?? 0);
+      const hLng = Number(home?.LongitudeRumah ?? home?.longitude_rumah ?? this.profileData.Employee.HomeLongitude ?? 0);
+      const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 100);
       
       const mapContainer = document.getElementById('profile-home-map');
       if (!mapContainer) return;
@@ -277,12 +279,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
           fillColor: '#3B82F6',
           fillOpacity: 0.15,
           weight: 2,
-          radius: 100
+          radius: homeRadius
         }).addTo(this.map);
 
         this.homeMarker = L.marker([hLat, hLng], { icon: blueIcon })
           .addTo(this.map)
-          .bindPopup('Geofence Radius Rumah Anda (100 Meter)');
+          .bindPopup(`Geofence Radius Rumah Anda (${homeRadius} Meter)`);
       }
     }, 100);
   }

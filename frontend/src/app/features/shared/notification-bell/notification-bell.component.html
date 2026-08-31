@@ -1,0 +1,16 @@
+<div class="notification-wrapper">
+  <button class="notif-btn" type="button" (click)="toggleNotifications()" aria-label="Buka notifikasi" [attr.aria-expanded]="showNotifications">
+    <svg class="notif-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
+    <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+  </button>
+  <div class="notif-dropdown" *ngIf="showNotifications">
+    <div class="notif-header">Notifikasi</div>
+    <div class="notif-body">
+      <button class="notif-item" type="button" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca" (click)="markAsRead(notif)">
+        <strong>{{ notif.Judul }}</strong><p>{{ notif.Pesan }}</p><small>{{ notif.Waktu | date:'medium' }}</small>
+      </button>
+      <div class="notif-empty" *ngIf="notifications.length === 0">Tidak ada notifikasi.</div>
+    </div>
+    <a class="notif-footer" routerLink="/employee/notifications" (click)="showNotifications = false">Lihat semua notifikasi</a>
+  </div>
+</div>

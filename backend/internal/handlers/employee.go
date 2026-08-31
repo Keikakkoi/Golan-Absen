@@ -282,6 +282,15 @@ func GetProfile(c *fiber.Ctx) error {
 			user.Employee = emp
 		}
 	}
+	if empID != 0 {
+		// The effective location is the source of truth for every employee-facing
+		// consumer. Do not serialize a future-approved history row as active.
+		if effective, err := effectiveHomeLocation(config.DB, empID, attendanceNow()); err == nil {
+			user.Employee.HomeLatitude = effective.LatitudeRumah
+			user.Employee.HomeLongitude = effective.LongitudeRumah
+			user.Employee.HomeLocation = &effective
+		}
+	}
 
 	var schedules []models.WorkSchedule
 	if empID != 0 {

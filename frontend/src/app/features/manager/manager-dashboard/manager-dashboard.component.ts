@@ -5,6 +5,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
+import { NotificationBellComponent } from '../../shared/notification-bell/notification-bell.component';
 
 interface CompanyEvent {
   date: string;
@@ -34,7 +35,7 @@ interface CalendarDay {
 @Component({
   selector: 'app-manager-dashboard',
   standalone: true,
-  imports: [CommonModule, SharedSidebarComponent, DashboardChartsComponent],
+  imports: [CommonModule, SharedSidebarComponent, DashboardChartsComponent, NotificationBellComponent],
   templateUrl: './manager-dashboard.component.html',
   styleUrls: ['./manager-dashboard.component.scss']
 })

@@ -49,10 +49,31 @@ func effectiveHomeLocation(db *gorm.DB, employeeID uint, date time.Time) (models
 		return row, err
 	}
 	var history models.EmployeeHomeLocationHistory
+	// EffectiveDate is a DATE in Jakarta. Normalize the comparison date before
+	// formatting so callers in another server timezone cannot activate a row a
+	// day early/late.
+	date = date.In(jakartaLocation)
 	if err := db.Where("employee_id = ? AND status = ? AND effective_date <= ?", employeeID, models.HomeLocationApproved, date.Format("2006-01-02")).Order("effective_date desc, id desc").First(&history).Error; err == nil {
-		row.AlamatRumah, row.LatitudeRumah, row.LongitudeRumah, row.RadiusMeter, row.GoogleMapsURL = history.NewAddress, history.NewLatitude, history.NewLongitude, history.NewRadiusMeter, history.NewGoogleMapsURL
+		row = applyHomeLocationHistory(row, history)
 	}
 	return row, nil
+}
+
+func applyHomeLocationHistory(base models.EmployeeHomeLocation, history models.EmployeeHomeLocationHistory) models.EmployeeHomeLocation {
+	base.AlamatRumah = history.NewAddress
+	base.LatitudeRumah = history.NewLatitude
+	base.LongitudeRumah = history.NewLongitude
+	base.RadiusMeter = history.NewRadiusMeter
+	base.GoogleMapsURL = history.NewGoogleMapsURL
+	return base
+}
+
+func homeLocationIsEffective(effectiveDate, now time.Time) bool {
+	date := effectiveDate.In(jakartaLocation)
+	today := now.In(jakartaLocation)
+	dateOnly := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, jakartaLocation)
+	todayOnly := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, jakartaLocation)
+	return !dateOnly.After(todayOnly)
 }
 
 func employeeForUser(db *gorm.DB, userID uint) (models.Employee, error) {
@@ -66,7 +87,7 @@ func GetMyHomeLocation(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Data karyawan tidak ditemukan"})
 	}
-	location, err := effectiveHomeLocation(config.DB, employee.ID, time.Now())
+	location, err := effectiveHomeLocation(config.DB, employee.ID, attendanceNow())
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return c.JSON(fiber.Map{"active": nil})
 	}
@@ -252,7 +273,7 @@ func reviewHomeLocationRequest(c *fiber.Ctx, approve bool, rejection string) err
 		tx.Rollback()
 		return c.Status(400).JSON(fiber.Map{"error": "Alasan penolakan wajib diisi"})
 	}
-	now := time.Now()
+	now := time.Now().In(jakartaLocation)
 	req.ReviewedBy, req.ReviewedAt = &adminID, &now
 	history := models.EmployeeHomeLocationHistory{EmployeeID: req.EmployeeID, RequestID: &req.ID, ChangedBy: adminID, EffectiveDate: req.EffectiveDate, OldAddress: req.OldAddress, NewAddress: req.NewAddress, OldLatitude: req.OldLatitude, OldLongitude: req.OldLongitude, NewLatitude: req.NewLatitude, NewLongitude: req.NewLongitude, NewGoogleMapsURL: req.NewGoogleMapsURL, OldRadiusMeter: req.OldRadiusMeter, NewRadiusMeter: req.NewRadiusMeter}
 	if approve {
@@ -262,7 +283,7 @@ func reviewHomeLocationRequest(c *fiber.Ctx, approve bool, rejection string) err
 			tx.Rollback()
 			return c.Status(500).JSON(fiber.Map{"error": "Gagal menyimpan riwayat lokasi"})
 		}
-		if !req.EffectiveDate.After(time.Now().In(jakartaLocation)) {
+		if homeLocationIsEffective(req.EffectiveDate, now) {
 			var active models.EmployeeHomeLocation
 			if err := tx.Where("employee_id = ?", req.EmployeeID).First(&active).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 				active = models.EmployeeHomeLocation{EmployeeID: req.EmployeeID}
@@ -274,6 +295,15 @@ func reviewHomeLocationRequest(c *fiber.Ctx, approve bool, rejection string) err
 			if err := tx.Save(&active).Error; err != nil {
 				tx.Rollback()
 				return c.Status(500).JSON(fiber.Map{"error": "Gagal mengaktifkan lokasi baru"})
+			}
+			// Employee.HomeLatitude/HomeLongitude are denormalized legacy fields
+			// still consumed by older clients. Keep them atomic with the active row.
+			if err := tx.Model(&models.Employee{}).Where("id = ?", req.EmployeeID).Updates(map[string]any{
+				"home_latitude":  req.NewLatitude,
+				"home_longitude": req.NewLongitude,
+			}).Error; err != nil {
+				tx.Rollback()
+				return c.Status(500).JSON(fiber.Map{"error": "Gagal menyinkronkan lokasi karyawan"})
 			}
 		}
 	} else {

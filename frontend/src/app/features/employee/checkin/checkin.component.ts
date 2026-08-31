@@ -7,6 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import * as L from 'leaflet';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
+import { NotificationBellComponent } from '../../shared/notification-bell/notification-bell.component';
 
 const greenPinSvg = `
   <svg width="30" height="42" viewBox="0 0 30 42" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -49,7 +50,7 @@ const blueIcon = L.divIcon({
 @Component({
   selector: 'app-checkin',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, SharedSidebarComponent],
+  imports: [CommonModule, FormsModule, RouterLink, SharedSidebarComponent, NotificationBellComponent],
   templateUrl: './checkin.component.html',
   styleUrls: ['./checkin.component.scss']
 })
@@ -402,9 +403,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const selectedWorkType = this.workTypes.find(w => w.Nama === this.tipeKerja);
     if (selectedWorkType && selectedWorkType.IsHomeBase && this.employeeProfile?.Employee) {
-      const hLat = this.employeeProfile.Employee.HomeLatitude;
-      const hLng = this.employeeProfile.Employee.HomeLongitude;
-      const homeUrl = this.employeeProfile.Employee.HomeLocation?.GoogleMapsURL || this.employeeProfile.Employee.HomeLocation?.google_maps_url;
+      const home = this.employeeProfile.Employee.HomeLocation || this.employeeProfile.Employee.home_location;
+      const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.employeeProfile.Employee.HomeLatitude ?? 0);
+      const hLng = Number(home?.LongitudeRumah ?? home?.longitude_rumah ?? this.employeeProfile.Employee.HomeLongitude ?? 0);
+      const homeUrl = home?.GoogleMapsURL || home?.google_maps_url;
       
       if (homeUrl && hLat !== 0 && hLng !== 0) {
         this.homeCircle = L.circle([hLat, hLng], {
@@ -412,7 +414,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
           fillColor: '#3B82F6',
           fillOpacity: 0.15,
           weight: 2,
-          radius: this.employeeProfile?.Employee?.HomeLocation?.RadiusMeter || 100
+          radius: Number(home?.RadiusMeter ?? home?.radius_meter ?? 100)
         }).addTo(this.map);
         
         this.homeMarker = L.marker([hLat, hLng], { icon: blueIcon }).addTo(this.map).bindPopup('Lokasi Rumah Anda');
@@ -482,9 +484,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     
     if (selectedWorkType?.IsHomeBase) {
       if (this.employeeProfile?.Employee) {
-        const hLat = this.employeeProfile.Employee.HomeLatitude;
-        const hLng = this.employeeProfile.Employee.HomeLongitude;
-        const homeUrl = this.employeeProfile.Employee.HomeLocation?.GoogleMapsURL || this.employeeProfile.Employee.HomeLocation?.google_maps_url;
+        const home = this.employeeProfile.Employee.HomeLocation || this.employeeProfile.Employee.home_location;
+        const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.employeeProfile.Employee.HomeLatitude ?? 0);
+        const hLng = Number(home?.LongitudeRumah ?? home?.longitude_rumah ?? this.employeeProfile.Employee.HomeLongitude ?? 0);
+        const homeUrl = home?.GoogleMapsURL || home?.google_maps_url;
         if (!homeUrl || hLat === 0 || hLng === 0) {
           this.isLocationValid = false;
           this.locationError = 'Anda belum mengatur lokasi rumah untuk absensi WFH.';
@@ -493,7 +496,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         const homeLatLng = L.latLng(hLat, hLng);
         const homeDistance = Math.round(userLatLng.distanceTo(homeLatLng));
-        const homeRadius = this.employeeProfile.Employee.HomeLocation?.RadiusMeter || 100;
+        const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 100);
         this.isLocationValid = homeDistance <= homeRadius;
         if (!this.isLocationValid) {
           this.locationError = 'Posisi Anda di luar radius rumah.';

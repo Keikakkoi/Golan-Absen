@@ -53,6 +53,11 @@ func GetHomeLocations(c *fiber.Ctx) error {
 	result := make([]fiber.Map, 0, len(employees))
 	for _, employee := range employees {
 		location, ok := byEmployee[employee.ID]
+		if effective, err := effectiveHomeLocation(config.DB, employee.ID, attendanceNow()); err == nil {
+			location, ok = effective, true
+			employee.HomeLatitude = effective.LatitudeRumah
+			employee.HomeLongitude = effective.LongitudeRumah
+		}
 		result = append(result, fiber.Map{"employee": employee, "location": func() any {
 			if ok {
 				return location

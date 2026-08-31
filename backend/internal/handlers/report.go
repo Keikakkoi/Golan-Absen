@@ -69,8 +69,14 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 	todayCheckInTime := ""
 	todayCheckOutTime := ""
 
-	err := config.DB.Where("employee_id = ? AND tanggal = ?", employee.ID, workDate.Format("2006-01-02")).First(&todayRecord).Error
-	if err == nil {
+	// A record for today is optional until the employee checks in. Find does not
+	// treat an empty result as an error, so the normal "Belum Absen" state does
+	// not produce a misleading record-not-found log entry.
+	result := config.DB.Where("employee_id = ? AND tanggal = ?", employee.ID, workDate.Format("2006-01-02")).Limit(1).Find(&todayRecord)
+	if result.Error != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch today's attendance"})
+	}
+	if todayRecord.ID != 0 {
 		if todayRecord.JamPulang != nil {
 			todayStatus = "Sudah Check-out"
 			todayCheckOutTime = todayRecord.JamPulang.Format("15:04:05")

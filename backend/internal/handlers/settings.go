@@ -552,7 +552,9 @@ func removeSensitiveBackupFields(input []byte) ([]byte, error) {
 			out := map[string]any{}
 			for key, child := range v {
 				lower := strings.ToLower(key)
-				if strings.Contains(lower, "password") || strings.Contains(lower, "token") || strings.Contains(lower, "secret") || strings.Contains(lower, "credential") || lower == "auth" || lower == "p256dh" {
+				// PasswordHash is a bcrypt hash and is required to restore employee
+				// accounts. Other password fields remain sensitive and are removed.
+				if (strings.Contains(lower, "password") && lower != "passwordhash") || strings.Contains(lower, "token") || strings.Contains(lower, "secret") || strings.Contains(lower, "credential") || lower == "auth" || lower == "p256dh" {
 					continue
 				}
 				out[key] = scrub(child)
@@ -875,6 +877,31 @@ func RestoreBackup(c *fiber.Ctx) error {
 				if err := json.Unmarshal(b, &v); err != nil {
 					return 0, err
 				}
+				var fields map[string]json.RawMessage
+				if err := json.Unmarshal(b, &fields); err != nil {
+					return 0, err
+				}
+				backupHash := ""
+				for key, rawHash := range fields {
+					if strings.EqualFold(key, "PasswordHash") {
+						if err := json.Unmarshal(rawHash, &backupHash); err != nil {
+							return 0, fmt.Errorf("PasswordHash users tidak valid: %w", err)
+						}
+						break
+					}
+				}
+				existing := &models.User{}
+				lookupErr := tx.Unscoped().First(existing, v.ID).Error
+				if lookupErr == nil {
+					v.PasswordHash = restoredPasswordHash(backupHash, existing.PasswordHash)
+					if strings.TrimSpace(existing.PasswordHash) != "" && strings.TrimSpace(v.PasswordHash) == "" {
+						return 0, fmt.Errorf("PasswordHash users tidak boleh kosong untuk akun yang sudah memiliki password")
+					}
+				} else if lookupErr != gorm.ErrRecordNotFound {
+					return 0, lookupErr
+				} else if strings.TrimSpace(v.PasswordHash) == "" {
+					return 0, fmt.Errorf("PasswordHash users wajib diisi untuk akun baru")
+				}
 				v.Manager = nil
 				v.Project = nil
 				v.Employee = models.Employee{}
@@ -1096,6 +1123,16 @@ func restoreRows(tx *gorm.DB, raw json.RawMessage, mode, table string, decode fu
 	}
 	return count, nil
 }
+
+// restoredPasswordHash preserves an existing password when a legacy or
+// manually edited backup omits PasswordHash or contains an empty value.
+func restoredPasswordHash(backupHash, existingHash string) string {
+	if strings.TrimSpace(backupHash) == "" {
+		return existingHash
+	}
+	return backupHash
+}
+
 func saveRestoreRow(tx *gorm.DB, value any, mode string) error {
 	modelValue := reflect.ValueOf(value).Elem()
 	id := modelValue.FieldByName("Model").FieldByName("ID").Uint()

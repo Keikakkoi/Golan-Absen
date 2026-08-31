@@ -21,21 +21,18 @@ QA absen golan
 18. pada saat cetak pdf silahkan tambahkan logo golan ✅
 19. profil : mengganti icon profil, edit profil, dan keamanan, dan tambah fitur edit lokasi ❓❌
 20. pada saat kita klik navbar bagian bawah malah ke destrak ke bagian atas navbar ✅
-21. pada tampilan bantuan pas hubungi tim it silahkan ganti
-22. hapus tentang aplikasi pada karyawan ✅
-23. pusat bantuan dan FAQ : pada bagian cari kata kuci menembus layar hp ✅
-24. tampilan admin tentang aplikasi : tembul layar dan dempet pada hp ✅
-25. tampilan admin manajjemen data : tambah kariawannya dan tabel dempet pada tampilan hp ✅
-26. tampilan admin aproval izin : tabelnya tembus layar hp ✅
-27. tampilan admin dashboard : tabelnya tembus layar hp ✅
-28. tampilan admin laporan keterlambatan : tabelnya tembus layar hp ✅
-29. tampilan admin laporan alpha : tabelnya tembus layar hp ✅
-30. tampilan admin manajemen cuti : tampilan form dempet dan tabel tembus layar hp ✅
-31. tampilan admin pengaturan umum sistem : tabel hari liburnya tembus layar hp ✅
-32. tampilan admin jadwal sift : tabelnya tembus layar hp ✅
-33. tampilan admin lokasi rumah kariawan : tabelnya tembus layar hp ✅
-34. tampilan admin notifikasi : tabelnya tembus layar hp ✅
-35. tampilan admin audit log sistem : perbaiki tampilannya dan tabelnya tembus layar hp ✅
-36. tampilan kariawan riwayat absen : kalender dan tabelnya tembus layar hp ✅
-    37 semua tabel pada tampilan hp tembus layar
-37. ganti tombol CRUD jadi icon seperti hapus jadi tong sampah
+21. hapus tentang aplikasi pada karyawan ✅
+22. pusat bantuan dan FAQ : pada bagian cari kata kuci menembus layar hp ✅
+23. tampilan admin tentang aplikasi : tembul layar dan dempet pada hp ✅
+24. tampilan admin manajjemen data : tambah kariawannya dan tabel dempet pada tampilan hp ✅
+25. tampilan admin aproval izin : tabelnya tembus layar hp ✅
+26. tampilan admin dashboard : tabelnya tembus layar hp ✅
+27. tampilan admin laporan keterlambatan : tabelnya tembus layar hp ✅
+28. tampilan admin laporan alpha : tabelnya tembus layar hp ✅
+29. tampilan admin manajemen cuti : tampilan form dempet dan tabel tembus layar hp ✅
+30. tampilan admin pengaturan umum sistem : tabel hari liburnya tembus layar hp ✅
+31. tampilan admin jadwal sift : tabelnya tembus layar hp ✅
+32. tampilan admin lokasi rumah kariawan : tabelnya tembus layar hp ✅
+33. tampilan admin notifikasi : tabelnya tembus layar hp ✅
+34. tampilan admin audit log sistem : perbaiki tampilannya dan tabelnya tembus layar hp ✅
+35. tampilan kariawan riwayat absen : kalender dan tabelnya tembus layar hp ✅
