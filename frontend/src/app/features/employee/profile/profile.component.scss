@@ -318,3 +318,52 @@
   .required { color: #b42318; }
   .empty-state { color: var(--text-dark-lo); padding: 1rem; background: var(--mint-0); border-radius: 8px; }
 }
+
+/* Keep the WFH request form compact and predictable on narrow screens. */
+@media (max-width: 640px) {
+  .home-location-profile-section {
+    .home-location-request-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+      margin-top: 1.25rem;
+
+      > .form-group,
+      > .form-group-row {
+        width: 100%;
+        margin: 0;
+      }
+
+      .form-group-row {
+        display: flex;
+        flex-direction: column;
+        gap: 16px !important;
+        margin: 0;
+      }
+
+      .form-group-row > .form-group {
+        flex: 0 0 auto;
+        width: 100%;
+        margin: 0;
+      }
+
+      .form-group label {
+        margin-bottom: 6px;
+        line-height: 1.35;
+      }
+
+      .form-group .form-control {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+
+      > .btn-primary {
+        width: 100%;
+        margin-top: 0;
+      }
+    }
+  }
+}

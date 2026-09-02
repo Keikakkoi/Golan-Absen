@@ -18,6 +18,7 @@ import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.
 })
 export class LeaveRequestComponent implements OnInit, OnDestroy {
   isIntern = false;
+  approvalTarget: 'MANAJER' | 'HRD' = 'HRD';
   leaveTypes: string[] = ['Sakit', 'Lainnya'];
   canRequestCuti = false;
   minimumMasaKerjaCutiBulan = 3;
@@ -89,6 +90,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     this.http.get<any>(`${this.baseUrl}/policy`, { headers: this.getHeaders() }).subscribe({
       next: policy => {
         this.leaveTypes = policy.leave_types || ['Sakit', 'Lainnya'];
+        this.approvalTarget = policy.approval_target === 'MANAJER' ? 'MANAJER' : 'HRD';
         this.canRequestCuti = !!policy.can_request_cuti;
         this.minimumMasaKerjaCutiBulan = policy.minimum_masa_kerja_cuti_bulan || 3;
         this.tanggalCutiTersedia = policy.tanggal_cuti_tersedia || '';
@@ -211,7 +213,8 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
       }
     }
 
-    if (!await this.alert.confirm('Kirim pengajuan izin?', 'Pengajuan akan dikirim ke HRD untuk diproses.')) return;
+    const approvalTargetLabel = this.approvalTarget === 'MANAJER' ? 'manajer' : 'HRD';
+    if (!await this.alert.confirm('Kirim pengajuan izin?', `Pengajuan akan dikirim ke ${approvalTargetLabel} untuk diproses.`)) return;
 
     this.isSubmitting = true;
     this.errorMessage = '';

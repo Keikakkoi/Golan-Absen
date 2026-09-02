@@ -178,6 +178,16 @@ func GetLeavePolicy(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee profile not found"})
 	}
 	role := c.Locals("role").(models.Role)
+	// Keep the confirmation dialog in sync with the same routing rules used
+	// when the leave request is created. This covers the HRD fallback when the
+	// assigned manager is unavailable or is on leave.
+	approvalTarget := string(models.RoleHRD)
+	var requester models.User
+	if err := config.DB.First(&requester, userID).Error; err == nil {
+		if approver, _, err := resolveLeaveApprover(config.DB, requester, attendanceNow()); err == nil && approver != nil && approver.Role == models.RoleManajer {
+			approvalTarget = string(models.RoleManajer)
+		}
+	}
 	setting := getGeneralSetting()
 	policy := []string{models.LeaveTypeSakit, models.LeaveTypeLainnya}
 	eligible := false
@@ -201,6 +211,7 @@ func GetLeavePolicy(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{
 		"leave_types":                   policy,
+		"approval_target":               approvalTarget,
 		"can_request_cuti":              eligible,
 		"minimum_masa_kerja_cuti_bulan": setting.MinimumMasaKerjaCutiBulan,
 		"tanggal_bergabung":             employee.TanggalBergabung,
