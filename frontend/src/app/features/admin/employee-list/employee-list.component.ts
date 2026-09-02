@@ -204,6 +204,25 @@ export class EmployeeListComponent implements OnInit {
     }
   }
 
+  onHomeGoogleMapsUrlChange(): void {
+    this.formData.home_latitude = null;
+    this.formData.home_longitude = null;
+  }
+
+  resolveHomeGoogleMapsUrl(): void {
+    const url = String(this.formData.home_google_maps_url || '').trim();
+    if (!url) return;
+    this.http.get<any>('http://localhost:8080/api/v1/google-maps/resolve', {
+      headers: this.getHeaders(), params: { url }
+    }).subscribe({
+      next: result => {
+        this.formData.home_latitude = Number(result.latitude);
+        this.formData.home_longitude = Number(result.longitude);
+      },
+      error: err => this.alert.error('Link Google Maps tidak valid', err.error?.error || 'Koordinat tidak dapat diambil dari link tersebut')
+    });
+  }
+
   private syncInternManagerName(): void {
     const managerID = Number(this.formData.manager_id);
     const manager = managerID > 0 ? this.managers.find(item => Number(item.ID) === managerID) : null;

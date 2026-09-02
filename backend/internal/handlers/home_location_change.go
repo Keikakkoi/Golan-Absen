@@ -19,10 +19,19 @@ import (
 )
 
 func SetupHomeLocationChangeRoutes(router fiber.Router) {
+	router.Get("/google-maps/resolve", middleware.Protected(), ResolveGoogleMapsLocation)
+
 	// The employee workflow lives on the profile page. Keep the approval API
 	// under its existing admin namespace, but do not expose a second employee
 	// page/API for home locations.
-	employee := router.Group("/employee/profile/home-location", middleware.Protected(), middleware.RequireRoles(models.RoleKaryawan))
+	// All employee-facing roles may request a WFH location change. The employee
+	// record is resolved from the authenticated user in each handler, so callers
+	// cannot submit a request for another user by changing a client-side ID.
+	employee := router.Group("/employee/profile/home-location", middleware.Protected(), middleware.RequireRoles(
+		models.RoleKaryawan,
+		models.RoleMagang,
+		models.RoleManajer,
+	))
 	employee.Get("/", GetMyHomeLocation)
 	employee.Get("/requests", GetMyHomeLocationRequests)
 	employee.Post("/requests", CreateHomeLocationRequest)
@@ -31,6 +40,19 @@ func SetupHomeLocationChangeRoutes(router fiber.Router) {
 	admin.Get("/", GetHomeLocationRequests)
 	admin.Post("/:id/approve", ApproveHomeLocationRequest)
 	admin.Post("/:id/reject", RejectHomeLocationRequest)
+}
+
+// ResolveGoogleMapsLocation resolves both coordinate URLs and maps.app.goo.gl
+// short links without exposing Google's redirect to the browser (which would
+// be blocked by CORS). It only returns coordinates; saving still happens in
+// the role-specific endpoint after validation.
+func ResolveGoogleMapsLocation(c *fiber.Ctx) error {
+	rawURL := strings.TrimSpace(c.Query("url"))
+	latitude, longitude, err := utils.ResolveGoogleMapsLocationURL(rawURL)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"latitude": latitude, "longitude": longitude})
 }
 
 type homeLocationRequestInput struct {

@@ -242,19 +242,24 @@ func GetManagerTeamReports(c *fiber.Ctx) error {
 		query = query.Where("employee_id IN ?", matchingIDs)
 	}
 	start, end := strings.TrimSpace(c.Query("start_date")), strings.TrimSpace(c.Query("end_date"))
+	var startDate, endDate time.Time
 	if start != "" {
-		if _, parseErr := time.Parse("2006-01-02", start); parseErr != nil {
+		var parseErr error
+		startDate, parseErr = time.Parse("2006-01-02", start)
+		if parseErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start_date; expected YYYY-MM-DD"})
 		}
 		query = query.Where("tanggal >= ?", start)
 	}
 	if end != "" {
-		if _, parseErr := time.Parse("2006-01-02", end); parseErr != nil {
+		var parseErr error
+		endDate, parseErr = time.Parse("2006-01-02", end)
+		if parseErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid end_date; expected YYYY-MM-DD"})
 		}
 		query = query.Where("tanggal <= ?", end)
 	}
-	if start != "" && end != "" && start > end {
+	if start != "" && end != "" && startDate.After(endDate) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "start_date must be on or before end_date"})
 	}
 	reports := make([]models.WorkReport, 0)

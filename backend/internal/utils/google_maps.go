@@ -12,9 +12,11 @@ import (
 )
 
 var (
-	googleMapsAtPattern    = regexp.MustCompile(`@(-?[0-9]+(?:\.[0-9]+)?),(-?[0-9]+(?:\.[0-9]+)?)`)
-	googleMapsBangPattern  = regexp.MustCompile(`!3d(-?[0-9]+(?:\.[0-9]+)?)!4d(-?[0-9]+(?:\.[0-9]+)?)`)
-	googleMapsQueryPattern = regexp.MustCompile(`(?:^|[?&])(q|query|ll|destination)=(-?[0-9]+(?:\.[0-9]+)?)[,%20]+(-?[0-9]+(?:\.[0-9]+)?)`)
+	googleMapsAtPattern   = regexp.MustCompile(`@(-?[0-9]+(?:\.[0-9]+)?),(-?[0-9]+(?:\.[0-9]+)?)`)
+	googleMapsBangPattern = regexp.MustCompile(`!3d(-?[0-9]+(?:\.[0-9]+)?)!4d(-?[0-9]+(?:\.[0-9]+)?)`)
+	// Keep encoded commas as a complete token. A character class such as
+	// [,%%20] would incorrectly parse "%2C106..." as longitude "2".
+	googleMapsQueryPattern = regexp.MustCompile(`(?:^|[?&])(q|query|ll|destination)=(-?[0-9]+(?:\.[0-9]+)?)(?:,|%2[cC]|%20)+(-?[0-9]+(?:\.[0-9]+)?)`)
 )
 
 // ResolveGoogleMapsLocationURL extracts the pin coordinates from a Google Maps

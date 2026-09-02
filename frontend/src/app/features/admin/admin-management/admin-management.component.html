@@ -135,21 +135,21 @@
             <span class="schedule-count"><strong>{{ schedules.length }}</strong> shift</span>
           </div>
 
-          <div class="schedule-filters" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; padding: 0 24px;">
-            <label class="schedule-field" style="flex: 1; min-width: 200px;">
+          <div class="schedule-filters">
+            <label class="schedule-field schedule-search-filter">
               <span>Cari Shift / Karyawan</span>
               <input type="text" class="golan-input" placeholder="Ketik kata kunci lalu enter..." [(ngModel)]="scheduleSearch" name="scheduleSearch" (keyup.enter)="loadSchedules()">
             </label>
-            <label class="schedule-field" style="width: 150px;">
+            <label class="schedule-field schedule-date-filter">
               <span>Dari Tanggal</span>
               <input type="date" class="golan-input" [(ngModel)]="scheduleStartDate" name="scheduleStartDate" (change)="loadSchedules()">
             </label>
-            <label class="schedule-field" style="width: 150px;">
+            <label class="schedule-field schedule-date-filter">
               <span>Sampai Tanggal</span>
               <input type="date" class="golan-input" [(ngModel)]="scheduleEndDate" name="scheduleEndDate" (change)="loadSchedules()">
             </label>
-            <div style="display: flex; align-items: flex-end;">
-              <button class="btn-primary" type="button" (click)="loadSchedules()" style="height: 42px;">Filter</button>
+            <div class="schedule-filter-action">
+              <button class="btn-primary" type="button" (click)="loadSchedules()">Filter</button>
             </div>
           </div>
 
@@ -162,7 +162,7 @@
 
           <div class="table-container schedule-table-container" *ngIf="!isLoading && schedules.length > 0">
             <table class="golan-table schedule-table">
-              <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Hari kerja</th><th>Jam kerja</th><th>Toleransi</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Jam kerja</th><th>Hari kerja</th><th>Toleransi</th><th>Aksi</th></tr></thead>
               <tbody>
                 <tr *ngFor="let schedule of schedules">
                   <td>
@@ -194,13 +194,13 @@
     <ng-container *ngIf="section === 'home'">
       <div class="home-tabs"><button type="button" [class.active]="homeTab === 'active'" (click)="homeTab='active'">Lokasi WFH Aktif</button><button type="button" [class.active]="homeTab === 'requests'" (click)="homeTab='requests'">Pengajuan Perubahan <span class="home-badge" *ngIf="homePendingCount">{{ homePendingCount }}</span></button></div>
       <div class="golan-card" *ngIf="homeTab === 'requests'">
-        <div class="table-container" *ngIf="homeRequests.length"><table class="golan-table"><thead><tr><th>Karyawan</th><th>Lokasi lama → baru</th><th>Koordinat / radius</th><th>Berlaku</th><th>Alasan</th><th>Status</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let item of homeRequests"><td>{{ item.Employee?.User?.Nama || '-' }}<div class="code">{{ item.Employee?.NIK || '-' }}</div></td><td>{{ item.OldAddress || '-' }}<br><strong>{{ item.NewAddress }}</strong></td><td>{{ item.NewLatitude }}, {{ item.NewLongitude }}<br>{{ item.NewRadiusMeter }} m</td><td>{{ item.EffectiveDate | date:'dd MMM yyyy' }}</td><td>{{ item.Reason }}</td><td>{{ item.Status }}<small *ngIf="item.RejectionReason">{{ item.RejectionReason }}</small></td><td><ng-container *ngIf="item.Status === 'Menunggu Persetujuan'"><button type="button" class="btn-primary" (click)="approveHomeRequest(item)" [disabled]="isSaving">Setujui</button> <button type="button" class="btn-secondary" (click)="rejectHomeRequest(item)" [disabled]="isSaving">Tolak</button></ng-container><span *ngIf="item.Status !== 'Menunggu Persetujuan'">-</span></td></tr></tbody></table></div>
+        <div class="table-container" *ngIf="homeRequests.length"><table class="golan-table"><thead><tr><th>Karyawan</th><th>Lokasi lama → baru</th><th>Koordinat / radius</th><th>Berlaku</th><th>Alasan</th><th>Status</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let item of homeRequests"><td>{{ item.Employee?.User?.Nama || '-' }}<div class="code">{{ item.Employee?.NIK || '-' }}</div></td><td>{{ item.OldAddress || '-' }}<br><strong>{{ item.NewAddress }}</strong></td><td>{{ item.NewLatitude }}, {{ item.NewLongitude }}<br>{{ item.NewRadiusMeter }} m</td><td>{{ item.EffectiveDate | date:'dd MMM yyyy' }}</td><td>{{ item.Reason }}</td><td>{{ item.Status }}<small *ngIf="item.RejectionReason">{{ item.RejectionReason }}</small></td><td><ng-container *ngIf="item.Status === 'Menunggu Persetujuan'"><div class="home-request-actions"><button type="button" class="btn-primary" (click)="approveHomeRequest(item)" [disabled]="isSaving">Setujui</button><button type="button" class="btn-secondary" (click)="rejectHomeRequest(item)" [disabled]="isSaving">Tolak</button></div></ng-container><span *ngIf="item.Status !== 'Menunggu Persetujuan'">-</span></td></tr></tbody></table></div>
         <div class="empty-state" *ngIf="!homeRequests.length">Belum ada pengajuan perubahan lokasi.</div>
       </div>
       <ng-container *ngIf="homeTab === 'active'">
-      <div class="golan-card table-container">
-        <div class="golan-table-responsive">
-          <table class="golan-table">
+      <div class="golan-card table-container home-location-card">
+        <div class="golan-table-responsive home-location-table-wrap">
+          <table class="golan-table home-location-table">
             <thead><tr><th>Karyawan</th><th>Link Google Maps</th><th>Radius</th><th>Alamat</th><th>Aksi</th></tr></thead>
             <tbody>
               <tr *ngFor="let row of homeRows">
@@ -231,9 +231,13 @@
           <form class="home-form" (ngSubmit)="saveHome()">
             <label class="home-field" for="home-url">
               <span>Link Google Maps Rumah</span>
-              <input id="home-url" type="url" class="golan-input" [(ngModel)]="homeForm.google_maps_url" name="google_maps_url" placeholder="https://maps.app.goo.gl/..." required>
+              <input id="home-url" type="url" class="golan-input" [(ngModel)]="homeForm.google_maps_url" (ngModelChange)="onHomeGoogleMapsUrlChange()" (blur)="resolveHomeGoogleMapsUrl()" name="google_maps_url" placeholder="https://maps.app.goo.gl/..." required>
               <small>Koordinat dan titik geofence akan diambil otomatis dari link Google Maps.</small>
             </label>
+            <div class="home-form-row">
+              <label class="home-field"><span>Latitude</span><input type="number" class="golan-input" [ngModel]="homeForm.latitude_rumah" name="latitude_preview" readonly></label>
+              <label class="home-field"><span>Longitude</span><input type="number" class="golan-input" [ngModel]="homeForm.longitude_rumah" name="longitude_preview" readonly></label>
+            </div>
             
             <label class="home-field" for="home-radius">
               <span>Radius (meter)</span>

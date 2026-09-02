@@ -30,6 +30,7 @@
     <div class="content-grid" style="grid-template-columns: 1fr;">
       <div class="golan-card">
         <app-ui-skeleton *ngIf="isLoading" type="profile" [rows]="6" ariaLabel="Memuat profil pengguna"></app-ui-skeleton>
+        <div *ngIf="!isLoading && !profileData && errorMessage" class="alert alert-danger" style="color: red; margin-bottom: 1rem; padding: 12px; background: #fdf2f2; border-radius: 6px;">{{ errorMessage }}</div>
         
         <div *ngIf="!isLoading && profileData">
           <div *ngIf="successMessage" class="alert alert-success" style="color: #2F80ED; margin-bottom: 1rem; padding: 12px; background: #E8F2FF; border-radius: 6px;">{{ successMessage }}</div>
@@ -189,7 +190,7 @@
               <form (ngSubmit)="submitHomeLocationRequest()" class="home-location-request-form">
                 <h4>Ajukan Perubahan Lokasi WFH</h4>
                 <div class="form-group"><label>Alamat WFH baru <span class="required">*</span></label><textarea class="form-control" [(ngModel)]="homeLocationForm.alamat_rumah" name="home_address" rows="3" required></textarea></div>
-                <div class="form-group"><label>Link Google Maps Rumah - Untuk WFH</label><input class="form-control" type="url" [(ngModel)]="homeLocationForm.google_maps_url" (ngModelChange)="onGoogleMapsUrlChange()" name="home_google_maps_url" placeholder="https://maps.google.com/?q=..." /><small class="text-dark-lo">Koordinat akan diisi otomatis jika URL memuat titik koordinat. Link pendek akan diproses oleh server saat dikirim.</small></div>
+                <div class="form-group"><label>Link Google Maps Rumah - Untuk WFH</label><input class="form-control" type="url" [(ngModel)]="homeLocationForm.google_maps_url" (ngModelChange)="onGoogleMapsUrlChange()" (blur)="resolveGoogleMapsUrl()" name="home_google_maps_url" placeholder="https://maps.google.com/?q=..." /><small class="text-dark-lo">Koordinat akan diisi otomatis dari link Google Maps biasa maupun link pendek.</small></div>
                 <div class="form-group-row">
                   <div class="form-group"><label>Latitude</label><input class="form-control" type="number" [(ngModel)]="homeLocationForm.latitude" name="home_latitude" min="-90" max="90" step="any"></div>
                   <div class="form-group"><label>Longitude</label><input class="form-control" type="number" [(ngModel)]="homeLocationForm.longitude" name="home_longitude" min="-180" max="180" step="any"></div>

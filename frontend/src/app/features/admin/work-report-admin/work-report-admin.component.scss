@@ -267,7 +267,7 @@
     }
 
     .view-toggle .btn,
-    .golan-dropdown > .btn-secondary {
+    .export-dropdown > .btn-secondary {
       min-height: 40px;
       flex: 1 1 150px;
       padding: 9px 10px;
@@ -341,7 +341,7 @@
   }
   
   /* Sembunyikan elemen yang tidak perlu dicetak */
-  .header, .no-print, .golan-dropdown, .btn, .sidebar, .topbar {
+  .header, .no-print, .export-dropdown, .btn, .sidebar, .topbar {
     display: none !important;
   }
   

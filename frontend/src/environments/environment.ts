@@ -1,5 +1,6 @@
 export const environment = {
   production: true,
+  apiUrl: '/api/v1',
   appName: 'Absensi Golan Digital Kreatif',
   companyName: 'PT. Golan Digital Kreatif',
   publicSiteUrl: 'https://domain-anda-nanti.com',

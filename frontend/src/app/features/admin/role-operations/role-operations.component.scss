@@ -827,6 +827,86 @@
   }
 }
 
+/* Team tables: keep fixed, readable tracks and let the table viewport scroll
+   on phones. Wrapping is deliberately enabled for names and date ranges so a
+   long value can never paint over the next column. */
+.role-operations-page .team-filter-panel .golan-table {
+  table-layout: fixed;
+  min-width: 760px;
+}
+
+.role-operations-page .team-filter-panel .golan-table th,
+.role-operations-page .team-filter-panel .golan-table td {
+  box-sizing: border-box;
+  padding: 11px 12px;
+  line-height: 1.4;
+  vertical-align: middle;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+/* Five-column team attendance table. */
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) th:nth-child(1),
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) td:nth-child(1) { width: 30%; }
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) th:nth-child(2),
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) td:nth-child(2) { width: 20%; }
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) th:nth-child(3),
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) td:nth-child(3) { width: 20%; }
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) th:nth-child(4),
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) th:nth-child(5),
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) td:nth-child(4),
+.role-operations-page .team-filter-panel .golan-table:has(th:nth-child(5)):not(:has(th:nth-child(6))) td:nth-child(5) { width: 15%; }
+
+/* Six-column leave approval table. */
+.role-operations-page .golan-table:has(th:nth-child(6)) {
+  min-width: 980px;
+  table-layout: fixed;
+}
+.role-operations-page .golan-table:has(th:nth-child(6)) th,
+.role-operations-page .golan-table:has(th:nth-child(6)) td {
+  box-sizing: border-box;
+  padding: 11px 12px;
+  line-height: 1.4;
+  vertical-align: middle;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+.role-operations-page .golan-table:has(th:nth-child(6)) th:nth-child(1),
+.role-operations-page .golan-table:has(th:nth-child(6)) td:nth-child(1) { width: 22%; }
+.role-operations-page .golan-table:has(th:nth-child(6)) th:nth-child(2),
+.role-operations-page .golan-table:has(th:nth-child(6)) td:nth-child(2) { width: 11%; }
+.role-operations-page .golan-table:has(th:nth-child(6)) th:nth-child(3),
+.role-operations-page .golan-table:has(th:nth-child(6)) td:nth-child(3) { width: 18%; }
+.role-operations-page .golan-table:has(th:nth-child(6)) th:nth-child(4),
+.role-operations-page .golan-table:has(th:nth-child(6)) td:nth-child(4) { width: 21%; }
+.role-operations-page .golan-table:has(th:nth-child(6)) th:nth-child(5),
+.role-operations-page .golan-table:has(th:nth-child(6)) td:nth-child(5) { width: 14%; }
+.role-operations-page .golan-table:has(th:nth-child(6)) th:nth-child(6),
+.role-operations-page .golan-table:has(th:nth-child(6)) td:nth-child(6) { width: 14%; }
+
+@media (max-width: 768px) {
+  .role-operations-page .team-filter-panel .golan-table-responsive {
+    overflow-x: auto !important;
+    overscroll-behavior-inline: contain;
+  }
+
+  .role-operations-page .team-filter-panel .golan-table th,
+  .role-operations-page .team-filter-panel .golan-table td {
+    padding: 10px 11px;
+    line-height: 1.45;
+  }
+
+  .role-operations-page .team-filter-panel .golan-table td:first-child {
+    white-space: normal !important;
+  }
+
+  .role-operations-page .golan-table:has(th:nth-child(6)) td:first-child {
+    white-space: normal !important;
+  }
+}
+
 /* Keep the admin team filters balanced inside each panel. */
 .team-filter-panel .panel-heading {
   display: grid;

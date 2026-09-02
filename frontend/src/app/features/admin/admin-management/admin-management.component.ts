@@ -251,6 +251,23 @@ export class AdminManagementComponent implements OnInit {
     this.homeForm = { latitude_rumah: location.LatitudeRumah || row.employee.HomeLatitude || null, longitude_rumah: location.LongitudeRumah || row.employee.HomeLongitude || null, radius_meter: location.RadiusMeter || 100, alamat_rumah: location.AlamatRumah || '', google_maps_url: location.GoogleMapsURL || '' };
   }
 
+  onHomeGoogleMapsUrlChange(): void {
+    this.homeForm.latitude_rumah = null;
+    this.homeForm.longitude_rumah = null;
+  }
+
+  resolveHomeGoogleMapsUrl(): void {
+    const url = String(this.homeForm.google_maps_url || '').trim();
+    if (!url) return;
+    this.http.get<any>(`${this.api}/google-maps/resolve`, { headers: this.headers(), params: { url } }).subscribe({
+      next: result => {
+        this.homeForm.latitude_rumah = Number(result.latitude);
+        this.homeForm.longitude_rumah = Number(result.longitude);
+      },
+      error: err => this.alert.error('Link Google Maps tidak valid', err.error?.error || 'Koordinat tidak dapat diambil dari link tersebut')
+    });
+  }
+
   async saveHome(): Promise<void> {
     if (!this.selectedHome) return;
     if (!await this.alert.confirm('Simpan lokasi rumah?', 'Koordinat geofence WFH karyawan akan diperbarui dari link Google Maps.')) return;

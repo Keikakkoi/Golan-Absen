@@ -31,6 +31,7 @@ func ConnectDB(cfg *Config) {
 	err = DB.AutoMigrate(
 		&models.Project{},
 		&models.User{},
+		&models.PasswordResetChallenge{},
 		&models.Division{},
 		&models.Position{},
 		&models.Employee{},

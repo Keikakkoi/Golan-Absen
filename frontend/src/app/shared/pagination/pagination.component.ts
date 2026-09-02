@@ -29,11 +29,12 @@ import { FormsModule } from '@angular/forms';
     <ng-template #empty><div class="pagination-empty" *ngIf="showEmpty">Tidak ada data.</div></ng-template>
   `,
   styles: [`
-    :host { display: block; }
-    .app-pagination { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:18px; padding:10px 14px; min-height:64px; border:1px solid #cfe4ff; border-radius:6px; background:#f8fafc; color:#365b78; font-size:12px; }
-    .pagination-summary { display:flex; align-items:center; gap:12px; white-space:nowrap; }
-    .pagination-summary label { display:flex; align-items:center; gap:8px; }
-    .pagination-summary select { min-width:56px; padding:7px 24px 7px 10px; border:1px solid #cfe4ff; border-radius:6px; background:white; color:#183b56; }
+    :host { display:block; width:100%; min-width:0; }
+    .app-pagination { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:18px; box-sizing:border-box; width:100%; min-width:0; padding:10px 14px; min-height:64px; border:1px solid #cfe4ff; border-radius:6px; background:#f8fafc; color:#365b78; font-size:12px; }
+    .pagination-summary { display:flex; align-items:center; gap:12px; min-width:0; white-space:nowrap; }
+    .pagination-summary > span { min-width:0; }
+    .pagination-summary label { display:flex; align-items:center; gap:8px; min-width:0; }
+    .pagination-summary select { flex:0 0 68px; width:68px; min-width:68px; box-sizing:border-box; appearance:none; -webkit-appearance:none; padding:7px 25px 7px 10px; border:1px solid #cfe4ff; border-radius:6px; background-color:white; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23183b56' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; color:#183b56 !important; font-size:13px; line-height:1.2; text-align:left; }
     .pagination-controls { display:flex; align-items:center; gap:5px; }
     .pagination-button { min-width:31px; height:30px; padding:0 9px; border:1px solid #cfe4ff; border-radius:6px; background:white; color:#174a70; cursor:pointer; font-size:12px; }
     .pagination-button:hover:not(:disabled), .pagination-button.active { background:#1269e3; color:white; border-color:#1269e3; }
@@ -42,7 +43,14 @@ import { FormsModule } from '@angular/forms';
     .pagination-ellipsis { padding:0 5px; color:#70879a; }
     .pagination-loading { color:#1269e3; }
     .pagination-empty { padding:16px; color:#70879a; text-align:center; }
-    @media (max-width: 640px) { .app-pagination { align-items:stretch; flex-direction:column; gap:10px; } .pagination-summary { justify-content:space-between; white-space:normal; } .pagination-controls { justify-content:center; flex-wrap:wrap; } }
+    @media (max-width: 768px) {
+      .app-pagination { align-items:stretch; flex-direction:column; gap:10px; padding:10px 12px; }
+      .pagination-summary { justify-content:space-between; width:100%; white-space:normal; gap:10px; }
+      .pagination-summary > span { flex:1 1 auto; line-height:1.25; overflow-wrap:anywhere; }
+      .pagination-summary label { flex:0 0 114px; justify-content:space-between; line-height:1.25; }
+      .pagination-summary select { flex-basis:68px; width:68px; min-width:68px; }
+      .pagination-controls { justify-content:center; flex-wrap:wrap; width:100%; }
+    }
   `]
 })
 export class PaginationComponent {

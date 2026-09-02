@@ -102,19 +102,38 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   loadProfile(): void {
     const token = this.authService.getToken();
+    if (!token) {
+      this.profileData = null;
+      this.isLoading = false;
+      this.errorMessage = 'Sesi login tidak ditemukan. Silakan login kembali.';
+      return;
+    }
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
     this.http.get<any>('http://localhost:8080/api/v1/employee/profile', { headers }).subscribe({
       next: (data) => {
-        this.profileData = data;
-        if (this.profileData) {
-          this.profileData.WorkSchedules = data.WorkSchedules || data.work_schedules || [];
+        // Keep one profile source for every role, while accepting the direct
+        // response and the common {data: ...}/{profile: ...} API envelopes.
+        const profile = data?.data || data?.profile || data?.user || data || null;
+        this.profileData = profile;
+        if (!profile) {
+          this.isLoading = false;
+          this.errorMessage = 'Data profil belum tersedia.';
+          return;
         }
-        this.updateForm.nama = data.Nama;
-        this.updateForm.email = data.Email;
-        const homeLoc = data.Employee?.HomeLocation || data.Employee?.home_location;
+        // Normalize the alternate response key once so all roles use the same
+        // profile source in the template and map.
+        if (!this.profileData.Employee && this.profileData.employee) {
+          this.profileData.Employee = this.profileData.employee;
+        }
+        this.profileData.WorkSchedules = profile.WorkSchedules || profile.work_schedules || [];
+        this.updateForm.nama = profile.Nama || profile.nama || '';
+        this.updateForm.email = profile.Email || profile.email || '';
+        const employee = profile.Employee || profile.employee || {};
+        const homeLoc = employee.HomeLocation || employee.home_location;
         this.updateForm.alamat_rumah = homeLoc?.AlamatRumah || homeLoc?.alamat_rumah || '';
         this.updateForm.google_maps_url = homeLoc?.GoogleMapsURL || homeLoc?.google_maps_url || '';
+        this.errorMessage = '';
         this.isLoading = false;
         this.loadHomeLocationWorkflow();
         
@@ -122,8 +141,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
           this.initHomeMap();
         }
       },
-      error: () => {
-        this.errorMessage = 'Gagal memuat profil.';
+      error: (error) => {
+        this.errorMessage = this.apiError(error, 'Gagal memuat profil.');
         this.isLoading = false;
       }
     });
@@ -133,23 +152,41 @@ export class ProfileComponent implements OnInit, OnDestroy {
     return new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
   }
 
+  private apiError(error: any, fallback: string): string {
+    if (error?.status === 401) return 'Sesi login telah kedaluwarsa. Silakan login kembali.';
+    return error?.error?.error || error?.error?.message || error?.message || fallback;
+  }
+
   get today(): string { return new Date().toISOString().slice(0, 10); }
-  get hasPendingHomeLocationRequest(): boolean { return this.homeLocationRequests.some(request => request.Status === 'Menunggu Persetujuan'); }
+  get hasPendingHomeLocationRequest(): boolean {
+    return this.homeLocationRequests.some(request =>
+      (request.Status || request.status) === 'Menunggu Persetujuan'
+    );
+  }
 
   private loadHomeLocationWorkflow(): void {
     this.homeLocationLoading = true;
     this.http.get<any>('http://localhost:8080/api/v1/employee/profile/home-location', { headers: this.authHeaders() }).subscribe({
       next: response => {
-        this.homeLocation = response?.active || null;
+        this.homeLocation = response?.active || response?.data?.active || null;
         if (this.homeLocation) {
           this.homeLocationForm.alamat_rumah = this.homeLocation.AlamatRumah || this.homeLocation.alamat_rumah || '';
           this.homeLocationForm.google_maps_url = this.homeLocation.GoogleMapsURL || this.homeLocation.google_maps_url || '';
           this.homeLocationForm.latitude = Number(this.homeLocation.LatitudeRumah ?? this.homeLocation.latitude_rumah ?? 0) || null;
           this.homeLocationForm.longitude = Number(this.homeLocation.LongitudeRumah ?? this.homeLocation.longitude_rumah ?? 0) || null;
           this.homeLocationForm.radius_meter = Number(this.homeLocation.RadiusMeter ?? this.homeLocation.radius_meter ?? 100) || 100;
+        } else {
+          this.homeLocationForm.alamat_rumah = '';
+          this.homeLocationForm.google_maps_url = '';
+          this.homeLocationForm.latitude = null;
+          this.homeLocationForm.longitude = null;
         }
-        this.http.get<any[]>('http://localhost:8080/api/v1/employee/profile/home-location/requests', { headers: this.authHeaders() }).subscribe({
-          next: requests => { this.homeLocationRequests = requests || []; this.homeLocationLoading = false; },
+        this.http.get<any>('http://localhost:8080/api/v1/employee/profile/home-location/requests', { headers: this.authHeaders() }).subscribe({
+          next: requests => {
+            const rows = Array.isArray(requests) ? requests : requests?.data;
+            this.homeLocationRequests = Array.isArray(rows) ? rows : [];
+            this.homeLocationLoading = false;
+          },
           error: error => this.homeLocationError(error)
         });
       },
@@ -159,7 +196,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   private homeLocationError(error: any): void {
     this.homeLocationLoading = false;
-    this.errorMessage = error?.error?.error || 'Gagal memuat data lokasi WFH.';
+    this.errorMessage = this.apiError(error, 'Gagal memuat data lokasi WFH.');
   }
 
   onHomeLocationAttachment(event: Event): void {
@@ -183,12 +220,38 @@ export class ProfileComponent implements OnInit, OnDestroy {
     if (match) {
       this.homeLocationForm.latitude = Number(match[1]);
       this.homeLocationForm.longitude = Number(match[2]);
+      return;
     }
+
+    // A short maps.app.goo.gl URL has no coordinates until its redirect is
+    // followed by the backend. Clear old coordinates so changing the link can
+    // never submit the previous employee location by accident.
+    this.homeLocationForm.latitude = null;
+    this.homeLocationForm.longitude = null;
+  }
+
+  resolveGoogleMapsUrl(): void {
+    const url = this.homeLocationForm.google_maps_url.trim();
+    if (!url || this.homeLocationForm.latitude !== null || this.homeLocationForm.longitude !== null) return;
+    this.http.get<any>('http://localhost:8080/api/v1/google-maps/resolve', {
+      headers: this.authHeaders(), params: { url }
+    }).subscribe({
+      next: result => {
+        this.homeLocationForm.latitude = Number(result.latitude);
+        this.homeLocationForm.longitude = Number(result.longitude);
+      },
+      error: error => this.errorMessage = this.apiError(error, 'Link Google Maps tidak berisi koordinat yang valid.')
+    });
   }
 
   async submitHomeLocationRequest(): Promise<void> {
     const f = this.homeLocationForm;
     this.errorMessage = '';
+    if (!this.authService.getToken()) {
+      this.errorMessage = 'Sesi login tidak ditemukan. Silakan login kembali.';
+      await this.alert.error('Sesi berakhir', this.errorMessage);
+      return;
+    }
     if (!f.alamat_rumah.trim() || !f.tanggal_mulai_berlaku || !f.alasan.trim()) {
       await this.alert.error('Data belum lengkap', 'Lengkapi alamat WFH, tanggal mulai berlaku, dan alasan perubahan.'); return;
     }
@@ -212,7 +275,21 @@ export class ProfileComponent implements OnInit, OnDestroy {
     if (!await this.alert.confirm('Kirim pengajuan lokasi WFH?', 'Perubahan tidak langsung aktif dan menunggu persetujuan admin.')) return;
 
     const body = new FormData();
-    Object.entries({ ...f, latitude, longitude }).forEach(([key, value]) => body.append(key, String(value ?? '')));
+    const oldLocation = this.homeLocation || {};
+    // Include the complete API payload for audit/debug compatibility. The
+    // backend still derives user_id and old_* from the JWT/database and never
+    // trusts these client-provided values for authorization or history.
+    Object.entries({
+      ...f,
+      latitude,
+      longitude,
+      user_id: this.profileData?.ID || this.profileData?.id || '',
+      old_alamat_rumah: oldLocation.AlamatRumah || oldLocation.alamat_rumah || '',
+      old_latitude: oldLocation.LatitudeRumah ?? oldLocation.latitude_rumah ?? 0,
+      old_longitude: oldLocation.LongitudeRumah ?? oldLocation.longitude_rumah ?? 0,
+      old_radius_meter: oldLocation.RadiusMeter ?? oldLocation.radius_meter ?? 0,
+      old_google_maps_url: oldLocation.GoogleMapsURL || oldLocation.google_maps_url || ''
+    }).forEach(([key, value]) => body.append(key, String(value ?? '')));
     if (this.homeLocationAttachment) body.append('lampiran', this.homeLocationAttachment, this.homeLocationAttachment.name);
     this.homeLocationSubmitting = true;
     this.http.post<any>('http://localhost:8080/api/v1/employee/profile/home-location/requests', body, { headers: this.authHeaders() }).subscribe({
@@ -225,7 +302,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
       },
       error: async error => {
         this.homeLocationSubmitting = false;
-        await this.alert.error('Pengajuan gagal', error?.error?.error || 'Gagal mengirim pengajuan lokasi WFH.');
+        await this.alert.error('Pengajuan gagal', this.apiError(error, 'Gagal mengirim pengajuan lokasi WFH.'));
       }
     });
   }
@@ -300,6 +377,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
     const payload = { nama: this.updateForm.nama };
 
     const token = this.authService.getToken();
+    if (!token) {
+      this.errorMessage = 'Sesi login tidak ditemukan. Silakan login kembali.';
+      this.isSubmitting = false;
+      return;
+    }
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
 
     this.http.put<any>('http://localhost:8080/api/v1/employee/profile', payload, { headers }).subscribe({

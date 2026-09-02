@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-forgot-password',
@@ -16,24 +17,25 @@ export class ForgotPasswordComponent {
   isLoading: boolean = false;
   successMessage: string = '';
   errorMessage: string = '';
-  resetLink: string = '';
+  mockOtp = '';
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService, private router: Router) {}
 
   onSubmit(): void {
     this.isLoading = true;
     this.successMessage = '';
     this.errorMessage = '';
-    this.resetLink = '';
+    this.mockOtp = '';
 
     this.authService.requestPasswordReset(this.email)
       .subscribe({
         next: (res) => {
           this.isLoading = false;
-          this.successMessage = res.message || 'Jika email terdaftar, link reset password akan dikirim.';
-          if (res.mock_token) {
-            this.resetLink = `${window.location.origin}/reset-password?token=${encodeURIComponent(res.mock_token)}`;
-          }
+          sessionStorage.setItem('password_reset_email', this.email.trim().toLowerCase());
+          this.mockOtp = res.mock_otp || '';
+          if (this.mockOtp) sessionStorage.setItem('password_reset_mock_otp', this.mockOtp);
+          this.successMessage = res.message || 'Kode OTP telah dikirim ke email Anda.';
+          this.router.navigate(['/verify-password-otp']);
         },
         error: (err) => {
           this.isLoading = false;

@@ -10,8 +10,8 @@
       </div>
     </div>
 
-    <div class="golan-card history-card" *ngIf="viewMode === 'table'">
-      <div class="golan-table-responsive history-table-responsive">
+    <div class="golan-card attendance-history-card history-card" *ngIf="viewMode === 'table'">
+      <div class="table-scroll-container golan-table-responsive history-table-responsive">
         <app-ui-skeleton *ngIf="isLoading" type="table" [rows]="6" [columns]="6" ariaLabel="Memuat riwayat absensi"></app-ui-skeleton>
         <table class="golan-table history-table" *ngIf="!isLoading && records.length > 0">
           <thead>
@@ -44,12 +44,12 @@
             </tr>
           </tbody>
         </table>
-        <app-pagination [totalItems]="records.length" [currentPage]="page" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
-
-
         <div *ngIf="!isLoading && records.length === 0" class="empty-state">
           Belum ada riwayat absensi.
         </div>
+      </div>
+      <div class="pagination-container">
+        <app-pagination [totalItems]="records.length" [currentPage]="page" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
       </div>
     </div>
 

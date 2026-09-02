@@ -24,7 +24,7 @@ export class ResetPasswordComponent implements OnInit {
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
-      this.token = params['token'] || '';
+      this.token = sessionStorage.getItem('password_reset_token') || '';
       if (!this.token) {
         this.errorMessage = 'Token tidak valid atau tidak ditemukan.';
       }
@@ -37,8 +37,8 @@ export class ResetPasswordComponent implements OnInit {
       return;
     }
 
-    if (this.newPassword.length < 8) {
-      this.errorMessage = 'Password baru minimal 8 karakter.';
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}/.test(this.newPassword)) {
+      this.errorMessage = 'Password minimal 8 karakter dan harus mengandung huruf besar, huruf kecil, serta angka.';
       return;
     }
 
@@ -54,6 +54,8 @@ export class ResetPasswordComponent implements OnInit {
       next: (res) => {
         this.isLoading = false;
         this.successMessage = res.message || 'Password berhasil diubah.';
+        sessionStorage.removeItem('password_reset_token');
+        sessionStorage.removeItem('password_reset_email');
       },
       error: (err) => {
         this.isLoading = false;

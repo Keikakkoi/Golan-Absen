@@ -6,37 +6,129 @@
 .team-attendance-toolbar > label:nth-child(3) { flex: 1 1 150px; }
 .team-attendance-toolbar input[type='date'] { min-width: 0; }
 
+/* Keep the five team-attendance columns aligned while allowing the viewport
+   to scroll horizontally on narrow phones. */
+.team-attendance-table {
+  min-width: 700px;
+  table-layout: fixed;
+}
+
+/* The attendance page has a single data table; keep its tracks isolated from
+   the global mobile rule that otherwise keeps the first cell on one line. */
+.main-content .golan-table {
+  min-width: 700px;
+  table-layout: fixed;
+}
+
+.main-content .golan-table th,
+.main-content .golan-table td {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.main-content .golan-table th:nth-child(1),
+.main-content .golan-table td:nth-child(1) { width: 30%; }
+.main-content .golan-table th:nth-child(2),
+.main-content .golan-table td:nth-child(2) { width: 20%; }
+.main-content .golan-table th:nth-child(3),
+.main-content .golan-table td:nth-child(3) { width: 20%; }
+.main-content .golan-table th:nth-child(4),
+.main-content .golan-table td:nth-child(4),
+.main-content .golan-table th:nth-child(5),
+.main-content .golan-table td:nth-child(5) { width: 15%; }
+
+.team-attendance-table th,
+.team-attendance-table td {
+  box-sizing: border-box;
+  padding: 11px 12px;
+  line-height: 1.4;
+  vertical-align: middle;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.team-attendance-table th:nth-child(1),
+.team-attendance-table td:nth-child(1) { width: 30%; }
+.team-attendance-table th:nth-child(2),
+.team-attendance-table td:nth-child(2) { width: 20%; }
+.team-attendance-table th:nth-child(3),
+.team-attendance-table td:nth-child(3) { width: 20%; }
+.team-attendance-table th:nth-child(4),
+.team-attendance-table td:nth-child(4),
+.team-attendance-table th:nth-child(5),
+.team-attendance-table td:nth-child(5) { width: 15%; }
+
 /* Keep the team attendance filters compact on phone-sized screens. */
 @media (max-width: 768px) {
-  .report-toolbar {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
+  .team-report-card {
+    padding: 16px;
+  }
+
+  .team-filter-layout {
+    display: block;
     margin-bottom: 16px;
   }
 
-  .report-toolbar > label {
-    width: 100%;
-    min-width: 0;
-    flex: 0 0 auto;
-    gap: 6px;
+  .team-filter-heading {
+    margin-bottom: 12px;
   }
 
-  .report-toolbar .golan-input {
+  .golan-table-responsive:has(.team-attendance-table) {
+    overflow-x: auto !important;
+    overscroll-behavior-inline: contain;
+  }
+
+  .team-filter-layout .report-toolbar {
+    display: flex;
+    flex-direction: column !important;
+    align-items: stretch;
+    gap: 8px !important;
+    margin: 0;
+  }
+
+  .team-filter-layout .report-toolbar > label {
+    width: 100%;
+    min-width: 0;
+    flex: 0 0 auto !important;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .team-filter-layout .report-toolbar .golan-input {
     box-sizing: border-box;
-    width: 100%;
+    width: 100% !important;
     min-width: 0;
   }
 
-  .report-toolbar > .report-filter-action,
-  .report-toolbar > .export-dropdown,
-  .report-toolbar > .export-dropdown > button {
-    width: 100%;
+  .team-filter-layout .report-toolbar > .report-filter-action,
+  .team-filter-layout .report-toolbar > .export-dropdown,
+  .team-filter-layout .report-toolbar > .export-dropdown > button {
+    width: 100% !important;
     min-width: 0;
   }
 
-  .report-toolbar > .report-filter-action {
-    margin-top: 0;
+  .team-filter-layout .report-toolbar > .report-filter-action,
+  .team-filter-layout .report-toolbar > .export-dropdown {
+    flex: 0 0 auto !important;
+    margin: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .team-report-card {
+    padding: 12px;
+  }
+
+  .team-filter-heading h2 {
+    margin-bottom: 5px;
+    font-size: 1.05rem;
+  }
+
+  .team-filter-heading p {
+    font-size: 0.78rem;
+    line-height: 1.45;
   }
 }

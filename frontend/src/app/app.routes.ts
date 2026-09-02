@@ -13,6 +13,7 @@ import { AdminSettingsComponent } from './features/admin/admin-settings/admin-se
 import { AdminAuditComponent } from './features/admin/admin-audit/admin-audit.component';
 import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
+import { VerifyPasswordOtpComponent } from './features/auth/verify-password-otp/verify-password-otp.component';
 import { NotFoundComponent } from './features/errors/not-found/not-found.component';
 import { ForbiddenComponent } from './features/errors/forbidden/forbidden.component';
 import { MaintenanceComponent } from './features/errors/maintenance/maintenance.component';
@@ -57,6 +58,7 @@ export const routes: Routes = [
   { path: 'home', redirectTo: '', pathMatch: 'full' },
   { path: 'login', component: LoginComponent, data: { seo: { title: 'Masuk | Absensi Golan Digital Kreatif', ...noIndex } } },
   { path: 'forgot-password', component: ForgotPasswordComponent, data: { seo: { title: 'Lupa Password | Absensi Golan Digital Kreatif', ...noIndex } } },
+  { path: 'verify-password-otp', component: VerifyPasswordOtpComponent, data: { seo: { title: 'Verifikasi Kode OTP | Absensi Golan Digital Kreatif', ...noIndex } } },
   { path: 'reset-password', component: ResetPasswordComponent, data: { seo: { title: 'Atur Ulang Password | Absensi Golan Digital Kreatif', ...noIndex } } },
   
   { path: 'employee/dashboard', component: DashboardComponent, canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },

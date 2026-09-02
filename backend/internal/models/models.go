@@ -40,6 +40,22 @@ type User struct {
 	Employee            Employee
 }
 
+// PasswordResetChallenge stores only hashes of the OTP and recovery token.
+// The plaintext values are delivered to the user but are never persisted.
+type PasswordResetChallenge struct {
+	gorm.Model
+	UserID              uint       `gorm:"index;not null"`
+	Email               string     `gorm:"size:100;index;not null"`
+	OTPHash             string     `gorm:"size:64;not null"`
+	ExpiresAt           time.Time  `gorm:"not null;index"`
+	Attempts            int        `gorm:"not null;default:0"`
+	MaxAttempts         int        `gorm:"not null;default:5"`
+	VerifiedAt          *time.Time `gorm:"index"`
+	UsedAt              *time.Time `gorm:"index"`
+	ResetTokenHash      string     `gorm:"size:64;index"`
+	ResetTokenExpiresAt *time.Time
+}
+
 // Project is the source of valid project IDs used when assigning employees.
 // Soft deletion keeps historical employee assignments referentially readable.
 type Project struct {

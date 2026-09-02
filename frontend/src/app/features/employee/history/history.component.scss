@@ -17,9 +17,18 @@
   }
 
   .history-card {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     padding: 0;
     overflow: hidden;
     background: white;
+  }
+
+  .table-scroll-container {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .history-table-responsive {
@@ -35,6 +44,14 @@
       background: var(--mint-2);
       border-radius: 999px;
     }
+  }
+
+  .pagination-container {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .history-table {
@@ -369,7 +386,21 @@
     }
 
     .history-card {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
       padding: 0 !important;
+    }
+
+    .table-scroll-container {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .pagination-container {
+      width: 100%;
+      max-width: 100%;
+      padding: 0;
     }
 
     .history-table {

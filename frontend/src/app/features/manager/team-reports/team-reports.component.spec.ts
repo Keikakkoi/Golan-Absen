@@ -56,4 +56,30 @@ describe('TeamReportsComponent logbook review', () => {
     expect(http.put).toHaveBeenCalledTimes(1);
     response$.error(new Error('request failed'));
   });
+
+  it('rejects an invalid date range before making a request', () => {
+    const { component, http } = createComponent();
+    component.start = '2026-08-31';
+    component.end = '2026-08-01';
+
+    component.applyFilters();
+
+    expect(http.get).toBeUndefined();
+    expect(component.error).toContain('Rentang tanggal tidak valid');
+  });
+
+  it('clears date and search filters when refreshed', () => {
+    const { component, http } = createComponent();
+    http.get = jasmine.createSpy('get').and.returnValue(of([]));
+    component.start = '2026-08-01';
+    component.end = '2026-08-31';
+    component.search = 'Budi';
+
+    component.refreshReports();
+
+    expect(component.start).toBe('');
+    expect(component.end).toBe('');
+    expect(component.search).toBe('');
+    expect(http.get).toHaveBeenCalled();
+  });
 });

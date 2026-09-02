@@ -117,21 +117,21 @@
               </thead>
               <tbody>
                 <tr *ngFor="let req of displayedLeaveRequests">
-                  <td>{{ req.JenisIzin }}</td>
-                  <td>{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
-                  <td>{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
-                  <td>
+                  <td data-label="Jenis Izin">{{ req.JenisIzin }}</td>
+                  <td data-label="Mulai">{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
+                  <td data-label="Selesai">{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
+                  <td data-label="Status">
                     <span class="status-pill" [class.status-menunggu]="req.Status === 'Pending'" [class.status-hadir]="req.Status === 'Approved'" [class.status-alpha]="req.Status === 'Rejected' || req.Status === 'Cancelled'">
                       {{ statusLabel(req.Status) }}
                     </span>
                   </td>
-                  <td>{{ approverLabel(req) }}</td>
-                  <td>{{ rejectionReason(req) }}</td>
-                  <td>
+                  <td data-label="Approver">{{ approverLabel(req) }}</td>
+                  <td data-label="Alasan Penolakan">{{ rejectionReason(req) }}</td>
+                  <td data-label="Lampiran">
                     <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="link-action btn-view-detail compact">Lihat</a>
                     <span *ngIf="!req.LampiranURL" class="text-muted">-</span>
                   </td>
-                  <td>
+                  <td data-label="Aksi">
                     <button type="button" class="btn-secondary btn-sm btn-view-detail compact" (click)="openDetail(req)">Detail</button>
                     <button *ngIf="req.Status === 'Pending' || req.Status === 'Approved' || req.Status === 'pending_manager_approval' || req.Status === 'manager_approved'" type="button" class="btn-secondary btn-sm compact" (click)="cancelRequest(req)">Batal</button>
                   </td>

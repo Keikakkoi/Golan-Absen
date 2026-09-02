@@ -166,4 +166,64 @@
   }
 }
 
+/* Mobile report table: preserve readable words and keep every column in the
+   same track. The wrapper provides the horizontal viewport on phones. */
+.admin-report-page .report-table-container {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+}
+
+.admin-report-page .report-table {
+  table-layout: fixed;
+  min-width: 1530px !important;
+}
+
+.admin-report-page .report-table th,
+.admin-report-page .report-table td {
+  box-sizing: border-box;
+  vertical-align: middle;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  line-height: 1.4;
+}
+
+.admin-report-page .report-table th:nth-child(1),
+.admin-report-page .report-table td:nth-child(1) { width: 90px; }
+.admin-report-page .report-table th:nth-child(2),
+.admin-report-page .report-table td:nth-child(2) { width: 120px; }
+.admin-report-page .report-table th:nth-child(3),
+.admin-report-page .report-table td:nth-child(3) { width: 210px; }
+.admin-report-page .report-table th:nth-child(4),
+.admin-report-page .report-table td:nth-child(4) { width: 140px; }
+.admin-report-page .report-table th:nth-child(5),
+.admin-report-page .report-table td:nth-child(5) { width: 130px; }
+.admin-report-page .report-table th:nth-child(6),
+.admin-report-page .report-table td:nth-child(6) { width: 110px; }
+.admin-report-page .report-table th:nth-child(7),
+.admin-report-page .report-table td:nth-child(7) { width: 100px; }
+.admin-report-page .report-table th:nth-child(8),
+.admin-report-page .report-table td:nth-child(8) { width: 180px; }
+.admin-report-page .report-table th:nth-child(9),
+.admin-report-page .report-table td:nth-child(9) { width: 160px; }
+.admin-report-page .report-table th:nth-child(10),
+.admin-report-page .report-table td:nth-child(10) { width: 100px; }
+.admin-report-page .report-table th:nth-child(11),
+.admin-report-page .report-table td:nth-child(11) { width: 110px; }
+.admin-report-page .report-table th:nth-child(12),
+.admin-report-page .report-table td:nth-child(12) { width: 80px; }
+
+@media (max-width: 768px) {
+  .admin-report-page .report-table th,
+  .admin-report-page .report-table td {
+    padding: 10px 12px !important;
+    line-height: 1.45;
+  }
+
+  .admin-report-page .report-table td:nth-child(2) {
+    overflow-wrap: anywhere !important;
+  }
+}
+
 

@@ -9,8 +9,8 @@
         </div>
         <div class="report-toolbar team-reports-toolbar">
         <label>Nama/NIK<input class="golan-input" [(ngModel)]="search" placeholder="Cari nama atau NIK..."></label>
-        <label>Mulai<input type="date" class="golan-input" [(ngModel)]="start"></label>
-        <label>Selesai<input type="date" class="golan-input" [(ngModel)]="end"></label>
+        <label>Dari Tanggal<input type="date" class="golan-input" [(ngModel)]="start" aria-label="Dari Tanggal" title="Format: dd/mm/yyyy"></label>
+        <label>Sampai Tanggal<input type="date" class="golan-input" [(ngModel)]="end" aria-label="Sampai Tanggal" title="Format: dd/mm/yyyy"></label>
         <button type="button" class="btn-primary report-filter-action" (click)="applyFilters()" [disabled]="isLoading || isRefreshing">Filter</button>
         <button type="button" class="btn btn-secondary report-refresh-action" (click)="refreshReports()" [disabled]="isLoading || isRefreshing" [attr.aria-busy]="isRefreshing">
           <i class="fas fa-sync-alt" [class.fa-spin]="isRefreshing" aria-hidden="true"></i>
@@ -33,6 +33,9 @@
             </button>
             <button type="button" class="dropdown-item" (click)="exportPDF()">
               <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF
+            </button>
+            <button type="button" class="dropdown-item" (click)="printReport()">
+              <i class="fas fa-print" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Cetak Laporan
             </button>
           </div>
         </div>

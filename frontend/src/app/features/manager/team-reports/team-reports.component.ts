@@ -101,10 +101,19 @@ export class TeamReportsComponent implements OnInit {
   }
 
   refreshReports(): void {
+    this.start = '';
+    this.end = '';
+    this.search = '';
+    this.page = 1;
     this.load(true);
   }
 
   applyFilters(): void {
+    if (this.start && this.end && this.start > this.end) {
+      this.error = 'Rentang tanggal tidak valid: Dari Tanggal harus sama dengan atau sebelum Sampai Tanggal.';
+      this.success = '';
+      return;
+    }
     this.page = 1;
     this.load();
   }
@@ -192,50 +201,72 @@ export class TeamReportsComponent implements OnInit {
 
   exportCSV(): void {
     this.isExportOpen = false;
-    this.reportExport.downloadCsv(
-      'laporan-tim.csv',
-      ['Tanggal', 'Anggota', 'Role', 'Tugas', 'Kegiatan', 'Status', 'Catatan Review'],
-      this.reports.map(row => [
-        row.tanggal || row.Tanggal,
-        row.Employee?.User?.Nama,
-        row.Employee?.User?.Role || 'Karyawan',
-        row.tugas || row.Tugas,
-        row.deskripsi_kegiatan || row.DeskripsiKegiatan,
-        row.status_logbook || row.StatusLogbook,
-        this.notes[row.id || row.ID] || row.review_notes || row.ReviewNotes || ''
-      ])
-    );
+    this.exportWithFilteredReports(rows => this.reportExport.downloadCsv('laporan-tim.csv', this.exportHeaders(), rows));
   }
 
   exportExcel(): void {
     this.isExportOpen = false;
-    this.reportExport.downloadExcel(
-      'laporan-tim.xls',
-      ['Tanggal', 'Anggota', 'Role', 'Tugas', 'Kegiatan', 'Status', 'Catatan Review'],
-      this.reports.map(row => [
-        row.tanggal || row.Tanggal,
-        row.Employee?.User?.Nama,
-        row.Employee?.User?.Role || 'Karyawan',
-        row.tugas || row.Tugas,
-        row.deskripsi_kegiatan || row.DeskripsiKegiatan,
-        row.status_logbook || row.StatusLogbook,
-        this.notes[row.id || row.ID] || row.review_notes || row.ReviewNotes || ''
-      ])
-    );
+    this.exportWithFilteredReports(rows => this.reportExport.downloadExcel('laporan-tim.xls', this.exportHeaders(), rows));
   }
 
   exportJSON(): void {
     this.isExportOpen = false;
-    const dataWithNotes = this.reports.map(row => ({
+    this.loadAllFilteredReports(rows => this.reportExport.downloadJson('laporan-tim.json', rows.map(row => ({
       ...row,
       catatan_review: this.notes[row.id || row.ID] || row.review_notes || row.ReviewNotes || ''
-    }));
-    this.reportExport.downloadJson('laporan-tim.json', dataWithNotes);
+    }))));
   }
 
   exportPDF(): void {
     this.isExportOpen = false;
-    this.reportExport.print();
+    this.exportWithFilteredReports(rows => this.reportExport.downloadPdf('laporan-tim.pdf', 'Laporan Tim', this.dateRangeLabel(), this.exportHeaders(), rows));
+  }
+
+  printReport(): void {
+    this.isExportOpen = false;
+    this.exportWithFilteredReports(rows => this.reportExport.printReport('Laporan Tim', this.dateRangeLabel(), this.exportHeaders(), rows));
+  }
+
+  private exportHeaders(): string[] {
+    return ['Tanggal', 'Anggota', 'Role', 'Tugas', 'Kegiatan', 'Screenshot', 'Status Logbook', 'Pengisian', 'Catatan Review'];
+  }
+
+  private exportRows(reports: any[]): unknown[][] {
+    return reports.map(row => [
+      this.formatDate(row.tanggal || row.Tanggal),
+      row.Employee?.User?.Nama || '-',
+      row.Employee?.User?.Role || 'Karyawan',
+      row.tugas || row.Tugas || '-',
+      row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-',
+      (row.attachments || []).map((image: any) => image.file_url || image.FileURL).filter(Boolean).join(' | ') || '-',
+      row.status_logbook || row.StatusLogbook || '-',
+      row.is_late_submission ? 'Terlambat' : 'Tepat waktu',
+      this.notes[row.id || row.ID] || row.review_notes || row.ReviewNotes || '-'
+    ]);
+  }
+
+  private loadAllFilteredReports(done: (reports: any[]) => void): void {
+    let params = new HttpParams();
+    if (this.start) params = params.set('start_date', this.start);
+    if (this.end) params = params.set('end_date', this.end);
+    if (this.search) params = params.set('search', this.search);
+    this.http.get<any>('http://localhost:8080/api/v1/manager/team/reports', { params, headers: this.headers() }).subscribe({
+      next: response => done(Array.isArray(response) ? response : (response?.data || [])),
+      error: e => this.error = 'Gagal menyiapkan data unduhan: ' + (e.error?.error || 'Periksa koneksi lalu coba lagi.')
+    });
+  }
+
+  private exportWithFilteredReports(done: (rows: unknown[][]) => void): void {
+    this.loadAllFilteredReports(reports => done(this.exportRows(reports)));
+  }
+
+  private dateRangeLabel(): string {
+    return `${this.formatDate(this.start) || 'Semua tanggal'} - ${this.formatDate(this.end) || 'Semua tanggal'}`;
+  }
+
+  private formatDate(value: any): string {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value || '');
   }
 
   private headers(): HttpHeaders {

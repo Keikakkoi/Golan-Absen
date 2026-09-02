@@ -183,6 +183,7 @@ body.dark-theme .topbar-notification-item.unread {
 
 html, body { 
   height: 100%; 
+  max-width: 100%;
   margin: 0; 
   padding: 0;
   background-color: var(--bg);
@@ -2042,6 +2043,20 @@ body.dark-theme .form-control[type="file"] {
 .export-dropdown > .btn-secondary {
   min-height: 40px;
   padding-inline: 14px;
+  background: #6b7280;
+  border-color: #6b7280;
+  color: #ffffff;
+}
+
+.export-dropdown > .btn-secondary:hover {
+  background: #4b5563;
+  border-color: #4b5563;
+  color: #ffffff;
+}
+
+.export-dropdown > .btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(107, 114, 128, 0.28);
 }
 
 .export-dropdown > .btn-secondary .fa-file-export,

@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { ThemeService } from './theme.service';
+import { environment } from '../../../environments/environment';
 
 export interface LoginResponse {
   token: string;
@@ -15,7 +16,8 @@ export interface LoginResponse {
 
 export interface ForgotPasswordResponse {
   message: string;
-  mock_token?: string;
+  email?: string;
+  mock_otp?: string;
 }
 
 export interface ResetPasswordResponse {
@@ -26,7 +28,7 @@ export interface ResetPasswordResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly apiUrl = 'http://localhost:8080/api/v1/auth';
+  private readonly apiUrl = `${environment.apiUrl}/auth`;
   
   private currentUserSubject = new BehaviorSubject<any>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -77,9 +79,17 @@ export class AuthService {
     });
   }
 
+  resendPasswordOTP(email: string): Observable<ForgotPasswordResponse> {
+    return this.http.post<ForgotPasswordResponse>(`${this.apiUrl}/forgot-password/resend`, { email: email.trim() });
+  }
+
+  verifyPasswordOTP(email: string, otp: string): Observable<{ message: string; reset_token: string }> {
+    return this.http.post<{ message: string; reset_token: string }>(`${this.apiUrl}/verify-password-otp`, { email: email.trim(), otp });
+  }
+
   resetPassword(token: string, newPassword: string): Observable<ResetPasswordResponse> {
     return this.http.post<ResetPasswordResponse>(`${this.apiUrl}/reset-password`, {
-      token,
+      reset_token: token,
       new_password: newPassword
     });
   }
