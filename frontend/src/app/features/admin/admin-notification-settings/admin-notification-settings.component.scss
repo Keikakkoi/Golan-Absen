@@ -1,4 +1,7 @@
 .error-state, .success-state { padding: .75rem 1rem; border-radius: 8px; margin-bottom: 1rem; }
+.admin-notification-tabs { display: flex; gap: .75rem; margin: 1.25rem 0 1.5rem; }
+.admin-notification-tabs a { padding: .85rem 1.35rem; border: 1px solid #bfdbfe; border-radius: 10px; color: #476b92; background: #eff6ff; font-weight: 700; text-decoration: none; transition: .2s ease; }
+.admin-notification-tabs a:hover, .admin-notification-tabs a.active { border-color: #3182ed; color: #fff; background: #3182ed; }
 .error-state { color: #991b1b; background: #fef2f2; }
 .success-state { color: #166534; background: #f0fdf4; }
 .empty-state { padding: 2rem; color: #64748b; text-align: center; border: 1px dashed #cbd5e1; border-radius: 8px; }
@@ -7,6 +10,7 @@
 .role-tab { display: flex; align-items: center; gap: .7rem; padding: .85rem; border: 1px solid #e2e8f0; border-radius: 12px; color: #475569; background: #fff; text-align: left; cursor: pointer; transition: .2s ease; }
 .role-tab:hover, .role-tab.selected { border-color: #3b82f6; background: #eff6ff; color: #0f4c81; box-shadow: 0 3px 12px rgba(37, 99, 235, .09); }
 .role-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 10px; color: #2563eb; background: #dbeafe; font-size: .72rem; font-weight: 800; }
+.role-avatar svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .role-tab-copy { display: flex; min-width: 0; flex-direction: column; gap: .15rem; }.role-tab-copy strong { font-size: .85rem; }.role-tab-copy small { color: #94a3b8; font-size: .7rem; white-space: nowrap; }
 .role-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }.role-heading h3 { margin: .15rem 0 .2rem; color: #0f2742; font-size: 1.3rem; }.role-heading p { margin: 0; color: #64748b; font-size: .84rem; }.eyebrow { color: #2563eb; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }.unsaved-indicator { display: flex; align-items: center; gap: .45rem; padding: .55rem .75rem; border-radius: 8px; color: #92400e; background: #fffbeb; font-size: .76rem; font-weight: 700; }.unsaved-indicator span { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; }
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-bottom: 1.35rem; }.stat-card { display: flex; align-items: center; gap: .7rem; padding: .9rem; border: 1px solid #e2e8f0; border-radius: 11px; background: #f8fafc; }.stat-card div { display: flex; flex-direction: column; gap: .15rem; }.stat-card strong { color: #0f2742; font-size: 1.35rem; line-height: 1; }.stat-card div span { color: #64748b; font-size: .72rem; }.stat-icon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 9px; font-size: .9rem; }.stat-icon.purple { color: #7c3aed; background: #ede9fe; }.stat-icon.blue { color: #2563eb; background: #dbeafe; }.stat-icon.green { color: #059669; background: #d1fae5; }
@@ -35,6 +39,108 @@
 .broadcast-note { color: #64748b; font-size: .78rem; }
 .broadcast-submit { display: inline-flex; align-items: center; gap: .65rem; }
 .broadcast-submit span { font-size: 1.1rem; line-height: 1; }
-@media (max-width: 640px) { .broadcast-grid { grid-template-columns: 1fr; gap: 0; } .broadcast-actions { align-items: flex-start; flex-direction: column; } .broadcast-submit { width: 100%; justify-content: center; } }
+@media (max-width: 640px) { .broadcast-grid { grid-template-columns: 1fr; gap: 0; } .broadcast-actions { align-items: flex-start; flex-direction: column; } .broadcast-submit { width: 100%; justify-content: center; } .admin-notification-tabs { overflow-x: auto; } .admin-notification-tabs a { white-space: nowrap; } }
 @media (max-width: 800px) { .role-tabs { grid-template-columns: repeat(2, 1fr); }.settings-toolbar { align-items: stretch; flex-wrap: wrap; }.search-box { flex-basis: 100%; }.bulk-actions { margin-left: auto; } }
 @media (max-width: 540px) { .role-heading { align-items: flex-start; flex-direction: column; }.stats-grid { grid-template-columns: 1fr; }.settings-toolbar { flex-direction: column; }.filter-group { justify-content: space-between; }.filter-group button { flex: 1; }.bulk-actions { width: 100%; }.bulk-actions button { flex: 1; }.settings-footer { align-items: stretch; flex-direction: column; }.footer-warning { margin: 0; }.settings-footer .btn-primary { width: 100%; }.role-tab { padding: .7rem; }.role-tab-copy small { white-space: normal; } }
+
+/* Keep this page aligned with the shared dark palette. The base styles above
+   intentionally retain the light theme values for backwards compatibility. */
+body.dark-theme .admin-theme {
+  .error-state { color: #fca5a5; background: #450a0a; }
+  .success-state { color: #86efac; background: #052e16; }
+  .empty-state { color: var(--text-dark-lo); border-color: var(--border-strong); }
+  .empty-state strong { color: var(--text-dark); }
+  .settings-intro,
+  .role-heading p,
+  .stat-card div span,
+  .description-cell,
+  .filtered-empty,
+  .broadcast-help,
+  .broadcast-note { color: var(--text-dark-lo) !important; }
+  .role-tab {
+    border-color: var(--border-strong);
+    color: var(--text-dark);
+    background: var(--surface);
+  }
+  .role-tab:hover,
+  .role-tab.selected {
+    border-color: var(--info);
+    color: var(--text-dark);
+    background: var(--surface-raised);
+  }
+  .role-tab-copy small { color: var(--text-dark-lo); }
+  .role-heading h3,
+  .stat-card strong,
+  .settings-table td strong,
+  .broadcast-card h3 { color: var(--text-dark); }
+  .unsaved-indicator { color: #fcd34d; background: #451a03; }
+  .stat-card { border-color: var(--border-strong); background: var(--surface-raised); }
+  .search-box {
+    border-color: var(--border-strong);
+    color: var(--text-dark-lo);
+    background: var(--surface);
+  }
+  .search-box input { color: var(--text-dark); }
+  .filter-group { background: var(--surface-muted); }
+  .filter-group button,
+  .btn-light { color: var(--text-dark-lo); }
+  .filter-group button.active { color: var(--green-deep); background: var(--surface-raised); }
+  .btn-light { border-color: var(--border-strong); background: var(--surface); }
+  .btn-light:hover:not(:disabled) { border-color: var(--info); color: var(--green-deep); }
+  .settings-table-wrap { border-color: var(--border-strong); }
+  .settings-table th { color: var(--text-dark-lo); background: var(--surface-raised); }
+  .settings-table td { border-top-color: var(--mint-1); color: var(--text-dark); }
+  .slider { background: var(--border-strong); }
+  .status-pill { color: var(--text-dark-lo); background: var(--surface-muted); }
+  .status-pill.active { color: #86efac; background: #14532d; }
+  .footer-warning { color: #fcd34d; }
+  .broadcast-heading { border-bottom-color: var(--mint-1); }
+  .form-group label { color: var(--text-dark); }
+  .broadcast-input,
+  .select-control {
+    border-color: var(--border-strong);
+    color: var(--text-dark);
+    background: var(--surface);
+  }
+  .select-control svg { stroke: var(--text-dark-lo); }
+  .broadcast-error { color: #fca5a5; border-color: #7f1d1d; background: #450a0a; }
+}
+
+/* The search field is a label wrapper, so the shared input dark-mode rule
+   cannot change its background. Keep the host-context selector explicit and
+   use !important against legacy global toolbar rules. */
+:host-context(body.dark-theme) .settings-toolbar .search-box {
+  background: var(--surface) !important;
+  background-color: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark-lo) !important;
+}
+
+:host-context(body.dark-theme) .settings-toolbar .search-box input {
+  background: transparent !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .settings-toolbar .filter-group {
+  background: var(--surface-muted) !important;
+  border: 1px solid var(--border-strong) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:host-context(body.dark-theme) .settings-toolbar .filter-group button {
+  border-color: transparent !important;
+  outline: none !important;
+}
+
+:host-context(body.dark-theme) .settings-toolbar .filter-group button.active {
+  background: var(--surface-raised) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .stats-grid .stat-card strong,
+:host-context(body.dark-theme) .settings-table td strong,
+:host-context(body.dark-theme) .role-heading h3,
+:host-context(body.dark-theme) .broadcast-card h3 {
+  color: var(--text-dark) !important;
+}

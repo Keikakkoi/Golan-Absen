@@ -2,7 +2,10 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { Subscription } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpContext } from '@angular/common/http';
+import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
@@ -64,22 +67,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
   holidays: HolidayItem[] = [];
   private refreshTimer?: ReturnType<typeof setInterval>;
   private disconnectRealtime?: () => void;
+  private userSubscription?: Subscription;
+  private initialized = false;
 
   constructor(private authService: AuthService, private http: HttpClient, private notificationService: NotificationService) {}
 
   ngOnInit(): void {
     this.generateCalendar();
-    this.loadHolidays();
+    this.loadHolidays(true);
 
-    this.authService.currentUser$.subscribe(user => {
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
       if (user) {
+        if (this.initialized) return;
+        this.initialized = true;
         this.userName = user.name;
-        this.loadProfileEmail();
-        this.loadStats();
-        this.loadNotifications();
+        this.loadProfileEmail(true);
+        this.loadStats(true);
+        this.loadNotifications(true);
         this.notificationService.enablePush(false).catch(() => undefined);
         this.disconnectRealtime = this.notificationService.connectRealtime(() => this.refreshData());
-        this.loadEvents();
+        this.loadEvents(true);
         this.refreshTimer = setInterval(() => this.refreshData(), 30_000);
       }
     });
@@ -87,20 +94,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.refreshTimer = undefined;
     this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
+    this.userSubscription?.unsubscribe();
+    this.initialized = false;
   }
 
   private refreshData(): void {
-    this.loadStats();
-    this.loadNotifications();
-    this.loadEvents();
+    this.loadStats(true);
+    this.loadNotifications(true);
+    this.loadEvents(true);
   }
 
-  loadStats(): void {
+  loadStats(background = false): void {
     const token = this.authService.getToken();
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
-    this.http.get<any>('http://localhost:8080/api/v1/dashboard/employee/stats', { headers }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any>('http://localhost:8080/api/v1/dashboard/employee/stats', { headers, context }).subscribe({
       next: (data) => {
         this.stats = data;
       },
@@ -110,19 +122,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadProfileEmail(): void {
+  private loadProfileEmail(background = false): void {
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
-    this.http.get<any>('http://localhost:8080/api/v1/employee/profile', { headers }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any>('http://localhost:8080/api/v1/employee/profile', { headers, context }).subscribe({
       next: (profile) => this.userEmail = profile.Email || '',
       error: () => this.userEmail = ''
     });
   }
 
-  loadNotifications(): void {
+  loadNotifications(background = false): void {
     const token = this.authService.getToken();
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
-    this.http.get<AppNotification[]>('http://localhost:8080/api/v1/notifications', { headers }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<AppNotification[]>('http://localhost:8080/api/v1/notifications', { headers, context }).subscribe({
       next: (data) => {
         this.notifications = data || [];
       },
@@ -144,12 +158,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadEvents(): void {
+  loadEvents(background = false): void {
     const start = this.toDateKey(this.currentMonth);
     const end = this.toDateKey(new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 0));
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
 
-    this.http.get<any[]>(`http://localhost:8080/api/v1/events?start=${start}&end=${end}`, { headers }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any[]>(`http://localhost:8080/api/v1/events?start=${start}&end=${end}`, { headers, context }).subscribe({
       next: (data) => {
         this.companyEvents = (data || []).map(event => {
           const description = [
@@ -175,9 +190,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadHolidays(): void {
+  loadHolidays(background = false): void {
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
-    this.http.get<any[]>('http://localhost:8080/api/v1/holidays', { headers }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any[]>('http://localhost:8080/api/v1/holidays', { headers, context }).subscribe({
       next: (data) => {
         this.holidays = (data || []).map(item => ({
           date: String(item.Tanggal).split('T')[0],

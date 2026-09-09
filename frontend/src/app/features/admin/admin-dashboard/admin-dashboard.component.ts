@@ -1,12 +1,14 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpContext } from '@angular/common/http';
+import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { RouterLink } from '@angular/router';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
-import { Subscription } from 'rxjs';
+import { Subscription, filter, take } from 'rxjs';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -41,7 +43,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   constructor(private http: HttpClient, private authService: AuthService, private notificationService: NotificationService) {}
 
   ngOnInit(): void {
-    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+    this.userSubscription = this.authService.currentUser$.pipe(
+      filter(user => user?.role === 'HRD'),
+      take(1)
+    ).subscribe(user => {
       // This component can only be used by HRD. Without this guard, a stale
       // component instance can repeatedly call the HRD-only endpoint and get
       // 403 responses for employee/intern/manager sessions.
@@ -52,18 +57,19 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         this.loadStats();
         this.loadNotifications();
         this.notificationService.enablePush(false).catch(() => undefined);
-        this.disconnectRealtime = this.notificationService.connectRealtime(() => { this.loadStats(); this.loadNotifications(); });
+        this.disconnectRealtime = this.notificationService.connectRealtime(() => { this.loadStats(true); this.loadNotifications(true); });
         this.startLiveUpdates();
       }
     });
   }
 
-  loadStats(): void {
+  loadStats(background = false): void {
     if (this.authService.getRole() !== 'HRD') return;
     const token = this.authService.getToken();
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
-    this.http.get<any>('http://localhost:8080/api/v1/admin/reports/stats', { headers }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any>('http://localhost:8080/api/v1/admin/reports/stats', { headers, context }).subscribe({
       next: (data) => {
         this.stats = data;
         this.lastUpdated = new Date().toLocaleTimeString('id-ID');
@@ -78,13 +84,16 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.refreshTimer = undefined;
     this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
     this.userSubscription?.unsubscribe();
+    this.userSubscription = undefined;
     this.initialized = false;
   }
 
-  loadNotifications(): void {
-    this.notificationService.getAll().subscribe({
+  loadNotifications(background = false): void {
+    this.notificationService.getAll(background).subscribe({
       next: data => this.notifications = data || [],
       error: err => console.error('Failed to load notifications', err)
     });
@@ -103,6 +112,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   get unreadCount(): number { return this.notifications.filter(item => !item.StatusBaca).length; }
 
   private startLiveUpdates(): void {
-    this.refreshTimer = setInterval(() => this.loadStats(), 30_000);
+    this.refreshTimer = setInterval(() => this.loadStats(true), 30_000);
   }
 }

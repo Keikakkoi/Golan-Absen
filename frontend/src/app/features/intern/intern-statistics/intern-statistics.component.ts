@@ -161,7 +161,37 @@ export class InternStatisticsComponent implements OnInit {
 
   exportPDF(): void {
     this.isExportOpen = false;
-    this.reportExport.print();
+    void this.reportExport.downloadStatisticsPdf('statistik-kehadiran-magang.pdf', 'Statistik Kehadiran Magang', this.reportDate(), this.summaryRows(), this.detailHeaders(), this.detailRows());
+  }
+
+  printReport(): void {
+    this.isExportOpen = false;
+    this.reportExport.printStatisticsReport('Statistik Kehadiran Magang', this.reportDate(), this.summaryRows(), this.detailHeaders(), this.detailRows());
+  }
+
+  private detailHeaders(): string[] {
+    return ['Metric / Tanggal', 'Nilai / Status', 'Tipe Kerja', 'Jam Masuk', 'Jam Pulang', 'Durasi (Jam)'];
+  }
+
+  private summaryRows(): unknown[][] {
+    return [
+      ['Persentase Kehadiran', `${this.stats.attendance_rate || 0}%`, '', '', '', ''],
+      ['Hadir Tepat Waktu', `${this.stats.hadir || 0} Hari`, '', '', '', ''],
+      ['Terlambat', `${this.stats.terlambat || 0} Hari`, '', '', '', ''],
+      ['Izin & Cuti', `${this.stats.izin_disetujui || 0} Hari`, '', '', '', ''],
+      ['Alpha / Mangkir', `${this.stats.alpha || 0} Hari`, '', '', '', ''],
+      ['Rata-rata Check-in', `${this.stats.average_checkin_time || '-'}`, '', '', '', ''],
+      ['Logbook Disetujui', `${this.stats.logbooks_approved || 0}`, '', '', '', ''],
+      ['--- DETIL HARIAN ---', '', '', '', '', '']
+    ];
+  }
+
+  private detailRows(): unknown[][] {
+    return this.weeklyTrend.map(bar => [bar.dateStr || '-', bar.status || '-', bar.tipeKerja || '-', bar.jamMasuk || '-', bar.jamPulang || '-', bar.hours || 0]);
+  }
+
+  private reportDate(): string {
+    return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
   }
 }
 

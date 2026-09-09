@@ -379,6 +379,7 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 	if result.RowsAffected == 0 {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Logbook sudah diproses atau tidak lagi berstatus Submitted"})
 	}
+	WsHub.Broadcast <- fiber.Map{"event": "logbook_status_updated"}
 	if report.Employee.User != nil {
 		_ = utils.CreateNotification(config.DB, report.Employee.UserID, report.Employee.User.Role, "Logbook Magang", "Status Logbook Diperbarui", "Logbook harian Anda telah diperbarui menjadi "+input.Status)
 	}

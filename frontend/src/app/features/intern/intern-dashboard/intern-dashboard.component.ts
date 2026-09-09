@@ -2,11 +2,14 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpContext } from '@angular/common/http';
+import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
 import { NotificationBellComponent } from '../../shared/notification-bell/notification-bell.component';
+import { EMPTY, Subject, Subscription, filter, take, switchMap, takeUntil, timer, catchError } from 'rxjs';
 
 interface CompanyEvent {
   date: string;
@@ -43,6 +46,8 @@ interface CalendarDay {
 export class InternDashboardComponent implements OnInit, OnDestroy {
   userName = localStorage.getItem('name') || 'Peserta Magang';
   stats: any = { days_remaining: 0, progress_percent: 0, logbooks_submitted: 0, logbooks_approved: 0 };
+  statsLoading = true;
+  statsError = '';
 
   currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   selectedDate = this.toDateKey(new Date());
@@ -52,6 +57,9 @@ export class InternDashboardComponent implements OnInit, OnDestroy {
   holidays: HolidayItem[] = [];
   private refreshTimer?: ReturnType<typeof setInterval>;
   private disconnectRealtime?: () => void;
+  private userSubscription?: Subscription;
+  private statsPolling?: Subscription;
+  private readonly destroy$ = new Subject<void>();
 
   constructor(
     private http: HttpClient,
@@ -60,7 +68,7 @@ export class InternDashboardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.auth.currentUser$.subscribe(user => {
+    this.userSubscription = this.auth.currentUser$.pipe(filter(user => !!user), take(1)).subscribe(user => {
       if (user) {
         this.userName = user.name || this.userName;
       }
@@ -71,27 +79,80 @@ export class InternDashboardComponent implements OnInit, OnDestroy {
     this.loadHolidays();
     this.loadEvents();
 
-    this.disconnectRealtime = this.notificationService.connectRealtime(() => { this.loadStats(); this.loadEvents(); });
-    this.refreshTimer = setInterval(() => this.loadEvents(), 30_000);
+    this.disconnectRealtime = this.notificationService.connectRealtime(() => { this.loadStats(true); this.loadEvents(true); });
+    this.statsPolling = timer(30_000, 30_000).pipe(
+      switchMap(() => this.fetchStats(true).pipe(catchError(err => {
+        this.statsError = err.error?.error || 'Gagal memperbarui ringkasan magang.';
+        return EMPTY;
+      }))),
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: data => this.applyStats(data),
+      error: () => { /* fetchStats handles each HTTP error; keep polling alive */ }
+    });
   }
 
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.refreshTimer = undefined;
     this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
+    this.userSubscription?.unsubscribe();
+    this.userSubscription = undefined;
+    this.statsPolling?.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  loadStats(): void {
-    this.http.get<any>('http://localhost:8080/api/v1/internship/dashboard', { headers: this.headers() }).subscribe({
-      next: data => this.stats = data,
-      error: err => console.error('Failed to load intern stats', err)
+  loadStats(background = false): void {
+    this.statsLoading = !background;
+    this.statsError = '';
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any>('http://localhost:8080/api/v1/internship/dashboard', { headers: this.headers(), context }).subscribe({
+      next: data => this.applyStats(data),
+      error: err => {
+        this.statsLoading = false;
+        this.statsError = err.error?.error || 'Gagal memuat ringkasan magang.';
+        console.error('Failed to load intern stats', err);
+      }
     });
   }
 
-  loadEvents(): void {
+  private fetchStats(background: boolean) {
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    return this.http.get<any>('http://localhost:8080/api/v1/internship/dashboard', { headers: this.headers(), context });
+  }
+
+  private applyStats(data: any): void {
+    this.stats = {
+      ...this.stats,
+      ...data,
+      days_remaining: Math.max(0, Number(data?.days_remaining) || 0),
+      progress_percent: Math.min(100, Math.max(0, Number(data?.progress_percent) || 0)),
+      logbooks_submitted: Math.max(0, Number(data?.logbooks_submitted) || 0),
+      logbooks_approved: Math.max(0, Number(data?.logbooks_approved) || 0)
+    };
+    this.statsLoading = false;
+    this.statsError = '';
+  }
+
+  formatInternshipPeriod(start?: string, end?: string): string {
+    const format = (value?: string) => {
+      if (!value) return '-';
+      const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+      return Number.isNaN(date.getTime()) ? '-' : new Intl.DateTimeFormat('id-ID', {
+        day: 'numeric', month: 'long', year: 'numeric'
+      }).format(date);
+    };
+    return `${format(start)} – ${format(end)}`;
+  }
+
+  loadEvents(background = false): void {
     const start = this.toDateKey(this.currentMonth);
     const end = this.toDateKey(new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 0));
 
-    this.http.get<any[]>(`http://localhost:8080/api/v1/events?start=${start}&end=${end}`, { headers: this.headers() }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any[]>(`http://localhost:8080/api/v1/events?start=${start}&end=${end}`, { headers: this.headers(), context }).subscribe({
       next: (data) => {
         this.companyEvents = (data || []).map(event => {
           const description = [

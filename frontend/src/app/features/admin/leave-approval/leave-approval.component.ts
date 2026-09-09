@@ -2,6 +2,8 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpContext } from '@angular/common/http';
+import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { RouterLink } from '@angular/router';
@@ -25,6 +27,7 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   selectedType = '';
   selectedStatus = '';
   private refreshTimer?: ReturnType<typeof setInterval>;
+  private reconnectTimer?: ReturnType<typeof setTimeout>;
   private socket?: WebSocket;
   private destroyed = false;
 
@@ -38,30 +41,40 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadLeaveRequests();
-    this.refreshTimer = setInterval(() => this.loadLeaveRequests(), 30_000);
+    this.refreshTimer = setInterval(() => this.loadLeaveRequests(true), 30_000);
     this.connectLiveUpdates();
   }
 
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.destroyed = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = undefined;
     this.socket?.close();
+    this.socket = undefined;
   }
 
   private connectLiveUpdates(): void {
+    if (this.destroyed) return;
+    this.reconnectTimer = undefined;
     this.socket = new WebSocket('ws://localhost:8080/ws/dashboard');
     this.socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.event === 'leave_request_created' || message.event === 'leave_status_updated') this.loadLeaveRequests();
+        if (message.event === 'leave_request_created' || message.event === 'leave_status_updated') this.loadLeaveRequests(true);
       } catch { /* Ignore malformed broadcast messages. */ }
     };
     this.socket.onclose = () => {
-      if (!this.destroyed) setTimeout(() => this.connectLiveUpdates(), 3_000);
+      if (!this.destroyed) {
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = undefined;
+          if (!this.destroyed) this.connectLiveUpdates();
+        }, 3_000);
+      }
     };
   }
 
-  loadLeaveRequests(resetPage = true): void {
+  loadLeaveRequests(resetPage = true, background = false): void {
     if (resetPage) this.currentPage = 1;
     this.isLoading = true;
     const headers = this.getHeaders();
@@ -69,7 +82,8 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     if (this.selectedType) requestParams['jenis_izin'] = this.selectedType;
     if (this.selectedStatus) requestParams['status'] = this.selectedStatus;
     const params = Object.keys(requestParams).length ? { params: requestParams, headers } : { headers };
-    this.http.get<any[]>(this.baseUrl, params).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any[]>(this.baseUrl, { ...params, context }).subscribe({
       next: (data) => {
         // The API returns one row per leave_requests.id. Keep the UI stable
         // even if an older proxy/cache accidentally repeats a row.

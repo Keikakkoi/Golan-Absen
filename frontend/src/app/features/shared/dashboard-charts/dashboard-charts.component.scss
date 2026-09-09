@@ -23,7 +23,22 @@
   --chart-text-muted: #94a3b8;
   --chart-grid: #334155;
   --chart-border: #475569;
-  --chart-track: #334155;
+  --chart-track: #26364d;
+}
+
+/* The global dark theme has a broad selector for classes containing
+   "-item". Keep that rule from turning the wrapped summary row into a hard,
+   black-looking rectangle. */
+:host-context(body.dark-theme) .dashboard-charts .trend-summary {
+  background: var(--chart-track) !important;
+}
+
+:host-context(body.dark-theme) .dashboard-charts .trend-summary-item {
+  background: transparent !important;
+}
+
+:host-context(body.dark-theme) .dashboard-charts .trend-summary-items {
+  background: transparent !important;
 }
 
 .charts-heading { display:flex; justify-content:space-between; align-items:end; margin-bottom:14px; }
@@ -34,6 +49,15 @@
 .chart-card { background:var(--chart-card-bg); border:1px solid var(--chart-border); border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(15,23,42,.12); min-width:0; }
 .chart-card h4 { margin:0; color:var(--chart-text); }
 .chart-subtitle { font-size:.8rem; color:var(--chart-text-secondary); margin:6px 0 14px; }
+.trend-summary { border:1px solid var(--chart-border); border-radius:9px; padding:10px 12px; background:var(--chart-track); }
+.trend-summary-heading { display:flex; justify-content:space-between; gap:12px; align-items:baseline; color:var(--chart-text); font-size:.72rem; font-weight:600; }
+.trend-summary-heading small { color:var(--chart-text-muted); font-size:.65rem; font-weight:400; }
+.trend-summary-items { display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:8px; }
+.trend-summary-item { display:inline-flex; align-items:center; gap:4px; color:var(--chart-text-secondary); font-size:.72rem; }
+.trend-summary-item i { width:8px; height:8px; display:inline-block; border-radius:50%; }
+.trend-summary-item strong { color:var(--chart-text); font-size:.85rem; margin-left:2px; }
+.trend-summary-item small { color:var(--chart-text-muted); }
+.trend-reading-hint { margin:8px 0 4px; color:var(--chart-text-muted); font-size:.68rem; }
 .line-chart { height:190px; position:relative; }
 .line-chart svg { height:150px; width:100%; overflow:visible; background:repeating-linear-gradient(to bottom,transparent 0 36px,var(--chart-grid) 37px); }
 .line-chart line { stroke:var(--chart-grid); }
@@ -42,6 +66,8 @@
 .line-legend { display:flex; gap:10px; flex-wrap:wrap; font-size:.72rem; color:var(--chart-text-secondary); }
 .line-legend i,.legend-list i { width:9px; height:9px; display:inline-block; border-radius:50%; margin-right:5px; }
 .donut-layout { display:flex; align-items:center; gap:18px; min-height:190px; }
+.donut-card { display:flex; flex-direction:column; }
+.donut-card .donut-layout { flex:1; justify-content:center; }
 .donut { width:142px; height:142px; border-radius:50%; position:relative; flex:none; }
 .donut:after { content:''; position:absolute; inset:28px; background:var(--chart-card-bg); border-radius:50%; }
 .legend-list { display:grid; gap:8px; font-size:.78rem; }
@@ -63,3 +89,4 @@
 .progress-track { height:16px; background:var(--chart-track); border:1px solid var(--chart-border); border-radius:999px; overflow:hidden; margin-top:24px; }.progress-track span { display:block; height:100%; background:#16a34a; border-radius:inherit; }.progress-meta { display:flex; justify-content:space-between; margin-top:8px; color:var(--chart-text-secondary); }.progress-meta strong { color:var(--chart-text); }
 .accessible-table,.accessible-summary { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 @media(max-width:800px) { .chart-grid { grid-template-columns:1fr; } .donut-layout { justify-content:center; } }
+@media(max-width:520px) { .trend-summary-heading { align-items:flex-start; flex-direction:column; gap:2px; } .trend-summary-items { gap:7px 12px; } }

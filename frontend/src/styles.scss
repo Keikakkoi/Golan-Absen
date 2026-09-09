@@ -181,6 +181,8 @@ body.dark-theme .topbar-notification-item.unread {
   background-color: #26364d;
 }
 
+html { scroll-behavior: smooth; }
+
 html, body { 
   height: 100%; 
   max-width: 100%;
@@ -200,9 +202,14 @@ html, body {
 }
 
 .main-content {
-  margin-left: 250px;
+  /* The sidebar is fixed, so reserve exactly its desktop width here. */
+  margin-left: 300px;
   flex: 1;
-  padding: 32px 48px;
+  /* Let flex calculate the remaining viewport width. Combining an explicit
+     calc width with flex and the sidebar margin makes the toolbar overflow. */
+  width: auto;
+  max-width: none;
+  padding: 32px 36px;
   box-sizing: border-box;
   min-height: 100vh;
   min-width: 0;
@@ -1212,6 +1219,13 @@ body.dark-theme .btn-view-detail:hover { background: var(--mint-1); border-color
     overflow-x: hidden !important;
   }
 
+  /* Completed employee dashboards should not keep a viewport-sized empty tail. */
+  .dashboard-container.employee-dashboard,
+  .dashboard-container.employee-dashboard > .main-content {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
   .dashboard-container > .main-content,
   .admin-theme > .main-content {
     margin-left: 0 !important;
@@ -1568,6 +1582,45 @@ body.dark-theme option {
   color: #e2e8f0 !important;
 }
 
+/* Shared pagination is styled inline by its standalone component, so keep
+   its controls aligned with the dark surface without affecting light mode. */
+body.dark-theme app-pagination .app-pagination {
+  background: #1e293b !important;
+  border-color: #475569 !important;
+  color: #cbd5e1 !important;
+}
+
+body.dark-theme app-pagination .pagination-summary,
+body.dark-theme app-pagination .pagination-summary label {
+  color: #cbd5e1 !important;
+}
+
+body.dark-theme app-pagination .pagination-summary select {
+  background-color: #172033 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme app-pagination .pagination-button {
+  background: #334155 !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
+
+body.dark-theme app-pagination .pagination-button:hover:not(:disabled),
+body.dark-theme app-pagination .pagination-button.active {
+  background: #2563eb !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+}
+
+body.dark-theme app-pagination .pagination-ellipsis,
+body.dark-theme app-pagination .pagination-empty,
+body.dark-theme app-pagination .pagination-loading {
+  color: #94a3b8 !important;
+}
+
 body.dark-theme input::placeholder,
 body.dark-theme textarea::placeholder,
 body.dark-theme .broadcast-input::placeholder {
@@ -1921,6 +1974,9 @@ body.dark-theme .form-control[type="file"] {
 /* Shared layout for the team attendance and team report filter cards. */
 .team-report-card {
   padding: 24px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 .team-filter-layout {
@@ -1946,10 +2002,11 @@ body.dark-theme .form-control[type="file"] {
 
 .team-filter-layout .report-toolbar {
   display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr)) repeat(3, max-content);
+  grid-template-columns: minmax(140px, 1.25fr) repeat(2, minmax(135px, 1fr)) max-content max-content minmax(0, max-content);
   align-items: end;
   gap: 12px;
   min-width: 0;
+  max-width: 100%;
   margin: 0;
 }
 
@@ -1972,6 +2029,7 @@ body.dark-theme .form-control[type="file"] {
 
 .team-filter-layout .export-dropdown > button {
   white-space: nowrap;
+  max-width: 100%;
 }
 
 @media (max-width: 1100px) {
@@ -3025,7 +3083,7 @@ body.dark-theme .topbar-header .hamburger-btn:hover {
    Component-local rules and inline styles previously left neutral buttons
    with white/light backgrounds in dark mode. Semantic action buttons keep
    their role color; all neutral controls use the shared dark surfaces. */
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit),
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn),
 body.dark-theme .main-content
   a.btn-secondary,
 body.dark-theme .main-content
@@ -3063,7 +3121,7 @@ body.dark-theme .main-content
   text-shadow: none !important;
 }
 
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(:disabled):hover,
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(:disabled):hover,
 body.dark-theme .main-content a.btn-secondary:hover,
 body.dark-theme .main-content a.btn-view-detail:hover,
 body.dark-theme .main-content .btn-outline-primary:hover,
@@ -3085,7 +3143,7 @@ body.dark-theme .main-content .dropdown-item:hover {
   color: var(--text-dark) !important;
 }
 
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):active,
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):active,
 body.dark-theme .main-content a.btn-secondary:active,
 body.dark-theme .main-content a.btn-view-detail:active,
 body.dark-theme .main-content .btn-outline-primary:active,
@@ -3268,4 +3326,487 @@ body.dark-theme app-shared-sidebar button:hover,
 body.dark-theme app-admin-sidebar button:hover {
   background: var(--surface-raised) !important;
   border-color: var(--border-strong) !important;
+}
+
+/* Keep the pagination summary readable in narrow cards and prevent the
+   global dark select rule from repeating the custom dropdown icon. */
+body.dark-theme app-pagination .pagination-summary {
+  column-gap: 20px !important;
+}
+
+body.dark-theme app-pagination .pagination-summary label {
+  margin-left: 8px !important;
+}
+
+/* Make the custom page-size chevron visible on the dark pagination control. */
+body.dark-theme app-pagination .page-size-chevron {
+  border-right-color: #cbd5e1 !important;
+  border-bottom-color: #cbd5e1 !important;
+}
+
+body.dark-theme app-pagination .pagination-summary select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background-repeat: no-repeat !important;
+  background-position: right 8px center !important;
+  background-size: 14px 14px !important;
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  opacity: 1 !important;
+}
+
+body.dark-theme app-pagination .pagination-summary select option {
+  background-color: #172033 !important;
+  color: #f8fafc !important;
+}
+
+/* Organization tabs are navigation, not neutral action buttons. Keep them
+   transparent in dark mode and use the accent only for the active marker. */
+body.dark-theme .main-content .admin-theme .tabs .tab-btn,
+body.dark-theme .main-content .tabs .tab-btn {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .admin-theme .tabs .tab-btn.active,
+body.dark-theme .main-content .tabs .tab-btn.active {
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .admin-theme .tabs .tab-btn.active::after,
+body.dark-theme .main-content .tabs .tab-btn.active::after {
+  background-color: var(--green) !important;
+}
+
+/* Filter option menus.
+   Keep the native select control unchanged, but make its opened options follow
+   the same compact, rounded visual language as the custom filter menus. */
+select.filter-input option,
+.filter-grid select option,
+.report-toolbar select option,
+.toolbar > select option,
+.leave-toolbar select option,
+.team-attendance-toolbar select option,
+.team-reports-toolbar select option {
+  padding: 8px 14px;
+  background-color: #ffffff;
+  color: #183b56;
+  font: inherit;
+  font-size: 16px;
+}
+
+select.filter-input option:checked,
+.filter-grid select option:checked,
+.report-toolbar select option:checked,
+.toolbar > select option:checked,
+.leave-toolbar select option:checked,
+.team-attendance-toolbar select option:checked,
+.team-reports-toolbar select option:checked {
+  background: #e8f2fc linear-gradient(#e8f2fc, #e8f2fc);
+  color: #1269e3;
+  font-weight: 600;
+}
+
+body.dark-theme select.filter-input option,
+body.dark-theme .filter-grid select option,
+body.dark-theme .report-toolbar select option,
+body.dark-theme .toolbar > select option,
+body.dark-theme .leave-toolbar select option,
+body.dark-theme .team-attendance-toolbar select option,
+body.dark-theme .team-reports-toolbar select option {
+  background-color: #172033;
+  color: #e2e8f0;
+}
+
+body.dark-theme select.filter-input option:checked,
+body.dark-theme .filter-grid select option:checked,
+body.dark-theme .report-toolbar select option:checked,
+body.dark-theme .toolbar > select option:checked,
+body.dark-theme .leave-toolbar select option:checked,
+body.dark-theme .team-attendance-toolbar select option:checked,
+body.dark-theme .team-reports-toolbar select option:checked {
+  background: #294866 linear-gradient(#294866, #294866);
+  color: #8ed0ff;
+}
+
+/* Custom popup for native filter selects. The select control remains native;
+   only its opened option list is rendered with the shared filter style. */
+.filter-native-menu {
+  position: fixed;
+  z-index: 2000;
+  max-height: 360px;
+  overflow-y: scroll;
+  padding: 4px 0;
+  box-sizing: border-box;
+  border: 1px solid #d8e8f8;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 5px 14px rgba(24, 59, 86, 0.14);
+}
+
+.filter-native-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+.filter-native-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.filter-native-menu::-webkit-scrollbar-thumb {
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  background: #b8cbe0;
+}
+
+.filter-native-menu {
+  scrollbar-width: thin;
+  scrollbar-color: #b8cbe0 transparent;
+}
+
+.filter-native-option {
+  display: block;
+  width: calc(100% - 8px);
+  min-height: 37px;
+  margin: 0 4px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #183b56;
+  cursor: pointer;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.filter-native-option:hover,
+.filter-native-option.selected {
+  background: #e8f2fc;
+  color: #1269e3;
+  font-weight: 600;
+}
+
+.filter-native-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+body.dark-theme .filter-native-menu {
+  border-color: #475569;
+  background: #172033;
+}
+
+body.dark-theme .filter-native-option {
+  color: #e2e8f0;
+}
+
+body.dark-theme .filter-native-option:hover,
+body.dark-theme .filter-native-option.selected {
+  background: #294866;
+  color: #8ed0ff;
+}
+
+body.dark-theme .filter-native-menu::-webkit-scrollbar-thumb {
+  border-color: #172033;
+  background: #526b87;
+}
+
+body.dark-theme .filter-native-menu {
+  scrollbar-color: #526b87 transparent;
+}
+
+/* ================================================================
+   COMPACT DESKTOP DENSITY
+   Keep browser zoom at 100% while reducing excessive whitespace in the
+   application shell. This intentionally uses normal layout flow instead of
+   zoom/transform so dialogs, charts, tables, and sticky elements retain the
+   correct coordinate system.
+   ================================================================ */
+:root {
+  --compact-sidebar-width: 238px;
+  --compact-content-padding: 24px 28px;
+  --compact-section-gap: 16px;
+}
+
+@media (min-width: 901px) {
+  /* The reference is a full-app compact view, so reduce the design-system
+     scale globally instead of shrinking one page or one dashboard only. */
+  html { font-size: 12px; }
+  body { font-size: 1rem; }
+
+  .main-content {
+    margin-left: var(--compact-sidebar-width);
+    padding: 24px 28px !important;
+  }
+
+  .golan-card,
+  .stat-card {
+    border-radius: 9px;
+    padding: 16px;
+  }
+
+  .stat-card {
+    h4 {
+      margin-bottom: 7px;
+      font-size: 0.82rem;
+    }
+
+    .value {
+      font-size: 2.15rem;
+
+      .unit {
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .stats-grid,
+  .content-grid,
+  .quick-actions-grid,
+  .dashboard-lower-grid {
+    gap: 16px;
+  }
+
+  .quick-actions-grid .action-card {
+    padding: 18px;
+  }
+
+  .golan-table th,
+  .golan-table td {
+    padding: 9px 12px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+
+    .form-control {
+      padding: 9px 12px;
+    }
+  }
+
+  .btn-primary,
+  .btn-stamp,
+  .btn-outline-primary {
+    padding: 9px 16px;
+  }
+
+  /* The admin wrapper renders the shared sidebar component. Keep the shell
+     dimensions synchronized with the content offset at desktop widths. */
+  app-shared-sidebar .sidebar {
+    width: var(--compact-sidebar-width);
+    padding: 18px 14px;
+
+    .brand { margin-bottom: 18px; }
+    .brand .brand-logo { width: 36px; height: 36px; }
+    .brand .brand-info h3 { font-size: 1.05rem; }
+    .brand .brand-info small { font-size: 0.68rem; }
+    .current-role-badge { padding: 8px 10px; margin-bottom: 14px; }
+    .theme-switcher { margin-bottom: 10px; }
+    .sidebar-nav { gap: 3px; }
+    .sidebar-nav a { padding: 7px 10px; font-size: 0.9rem; }
+    .sidebar-nav a .nav-icon { flex-basis: 27px; width: 27px; min-width: 27px; height: 21px; }
+  }
+
+  .header h1,
+  .header h2,
+  .header h3,
+  .welcome-text h1,
+  .welcome-text h2,
+  .welcome-text h3 {
+    font-size: 2rem !important;
+    margin-bottom: 5px !important;
+  }
+
+  .header p,
+  .welcome-text p { font-size: 0.95rem !important; }
+
+  .dashboard-charts { margin-top: 18px; }
+  .chart-grid { gap: 16px; }
+  .chart-card { padding: 18px; border-radius: 11px; }
+  .chart-card h4 { font-size: 1rem; }
+  .chart-subtitle { margin: 6px 0 12px; font-size: 0.8rem; }
+  .line-chart { height: 180px; }
+  .line-chart svg { height: 145px; }
+  .donut-layout { min-height: 180px; gap: 16px; }
+  .donut { width: 130px; height: 130px; }
+  .donut:after { inset: 26px; }
+  .bars { gap: 10px; margin-top: 16px; }
+  .bar-track { height: 11px; }
+
+  .golan-table th,
+  .golan-table td { padding: 9px 12px; font-size: 0.85rem; }
+  .btn-sm,
+  .btn-info,
+  .btn-edit,
+  .btn-delete,
+  .btn-danger,
+  .btn-secondary { min-height: 32px; padding: 7px 10px; font-size: 0.8rem; }
+  .icon-button { width: 32px; height: 32px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { margin-bottom: 6px; font-size: 0.82rem; }
+  .form-group .form-control { padding: 9px 12px; font-size: 0.9rem; }
+
+  .quick-actions-grid { gap: 16px; }
+  .quick-actions-grid .action-card h3 { font-size: 1.1rem; margin-bottom: 7px; }
+  .quick-actions-grid .action-card p { font-size: 0.82rem; margin-bottom: 12px; }
+}
+
+/* Final desktop precedence layer. Several feature styles intentionally have
+   local, more-specific layout rules; these shared shell rules keep the 75%
+   density consistent across every route. */
+@media (min-width: 901px) {
+  app-shared-sidebar .sidebar {
+    width: 238px !important;
+    padding: 18px 14px !important;
+  }
+
+  .dashboard-container > .main-content,
+  .admin-theme > .main-content,
+  .main-content {
+    margin-left: 238px !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 24px 28px !important;
+  }
+
+  .main-content .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+    gap: 16px !important;
+  }
+
+  .main-content .golan-card,
+  .main-content .stat-card,
+  .main-content .action-card {
+    padding: 16px !important;
+  }
+
+  .admin-dashboard-page .stats-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+
+  .main-content h1,
+  .main-content h2,
+  .main-content h3 { font-size: 2rem !important; }
+  .main-content p,
+  .main-content label { font-size: 0.9rem; }
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .admin-dashboard-page .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Reference density: desktop equivalent of the supplied 67% browser view. */
+@media (min-width: 901px) {
+  html { font-size: 10.72px !important; }
+
+  app-shared-sidebar .sidebar {
+    width: 238px !important;
+    padding: 12px 10px !important;
+  }
+
+  app-shared-sidebar .sidebar .brand {
+    gap: 8px !important;
+    margin-bottom: 14px !important;
+  }
+
+  app-shared-sidebar .sidebar .brand .brand-logo {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  app-shared-sidebar .sidebar .brand-info h3 { font-size: 0.95rem !important; }
+  app-shared-sidebar .sidebar .brand-info small { font-size: 0.58rem !important; }
+  app-shared-sidebar .sidebar .current-role-badge {
+    padding: 7px 9px !important;
+    margin-bottom: 10px !important;
+  }
+  app-shared-sidebar .sidebar .sidebar-nav { gap: 2px !important; }
+  app-shared-sidebar .sidebar .sidebar-nav a {
+    gap: 7px !important;
+    padding: 6px 8px !important;
+    font-size: 0.78rem !important;
+  }
+  app-shared-sidebar .sidebar .sidebar-nav a .nav-icon {
+    flex-basis: 25px !important;
+    width: 25px !important;
+    min-width: 25px !important;
+    height: 19px !important;
+  }
+
+  .dashboard-container > .main-content,
+  .admin-theme > .main-content,
+  .main-content {
+    margin-left: 238px !important;
+    width: auto !important;
+    padding: 24px 28px !important;
+  }
+
+  .main-content .header,
+  .main-content > .header { margin-bottom: 22px !important; }
+  .main-content h1,
+  .main-content h2,
+  .main-content h3 { font-size: 2.25rem !important; }
+  .main-content p { font-size: 0.78rem; }
+
+  .main-content .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) !important;
+    gap: 16px !important;
+    margin-bottom: 22px !important;
+  }
+
+  .admin-dashboard-page .stats-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+
+  .main-content .golan-card,
+  .main-content .stat-card,
+  .main-content .action-card {
+    padding: 12px !important;
+    border-radius: 9px !important;
+  }
+
+  .main-content .stat-card h4 {
+    margin-bottom: 5px !important;
+    font-size: 0.72rem !important;
+  }
+  .main-content .stat-card .value { font-size: 2.2rem !important; }
+  .main-content .stat-card .value .unit { font-size: 0.82rem !important; }
+
+  .dashboard-charts { margin-top: 14px !important; }
+  .chart-grid { gap: 16px !important; }
+  .chart-card { padding: 12px !important; }
+  .chart-card h4 { font-size: 0.9rem !important; }
+  .chart-subtitle { margin: 4px 0 8px !important; font-size: 0.68rem !important; }
+  .line-chart { height: 155px !important; }
+  .line-chart svg { height: 120px !important; }
+  .donut-layout { min-height: 150px !important; gap: 12px !important; }
+  .donut { width: 100px !important; height: 100px !important; }
+  .donut:after { inset: 20px !important; }
+  .legend-list { gap: 5px !important; font-size: 0.7rem !important; }
+  .bars { gap: 7px !important; margin-top: 10px !important; }
+  .bar-track { height: 9px !important; }
+
+  .main-content .golan-table th,
+  .main-content .golan-table td {
+    padding: 7px 9px !important;
+    font-size: 0.72rem !important;
+  }
+  .main-content .form-group { margin-bottom: 10px !important; }
+  .main-content .form-group label { font-size: 0.72rem !important; }
+  .main-content .form-group .form-control {
+    padding: 7px 9px !important;
+    font-size: 0.78rem !important;
+  }
+  .main-content .btn-primary,
+  .main-content .btn-secondary,
+  .main-content .btn-sm { min-height: 28px !important; padding: 6px 10px !important; font-size: 0.72rem !important; }
+  .main-content .icon-button { width: 28px !important; height: 28px !important; }
+  .quick-actions-grid { gap: 12px !important; }
+  .quick-actions-grid .action-card h3 { font-size: 0.95rem !important; }
+  .quick-actions-grid .action-card p { font-size: 0.7rem !important; }
 }

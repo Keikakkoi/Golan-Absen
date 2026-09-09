@@ -20,8 +20,10 @@
 }
 
 .help-page .help-card {
-  width: min(100%, 900px);
-  max-width: 100% !important;
+  /* Use the available content width so the page does not leave a large
+     empty area before the viewport scrollbar. */
+  width: 100%;
+  max-width: none !important;
 }
 
 .help-page .search-filter-section > input.golan-input {

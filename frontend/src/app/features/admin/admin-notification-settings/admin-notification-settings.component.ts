@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
@@ -18,22 +19,23 @@ interface NotificationRole {
   label: string;
   description: string;
   initials: string;
+  icon: string;
 }
 
 @Component({
   selector: 'app-admin-notification-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminSidebarComponent],
+  imports: [CommonModule, FormsModule, RouterLink, AdminSidebarComponent],
   templateUrl: './admin-notification-settings.component.html',
   styleUrls: ['./admin-notification-settings.component.scss']
 })
 export class AdminNotificationSettingsComponent implements OnInit {
   settings: NotificationSetting[] = [];
   readonly roles: NotificationRole[] = [
-    { value: 'HRD', label: 'HRD', description: 'Human Resources', initials: 'HR' },
-    { value: 'Karyawan', label: 'Karyawan', description: 'Pegawai tetap', initials: 'K' },
-    { value: 'MAGANG', label: 'Magang', description: 'Peserta magang', initials: 'M' },
-    { value: 'MANAJER', label: 'Manajer', description: 'Pemimpin tim', initials: 'MN' }
+    { value: 'HRD', label: 'HRD', description: 'Human Resources', initials: 'HR', icon: 'building' },
+    { value: 'Karyawan', label: 'Karyawan', description: 'Pegawai', initials: 'K', icon: 'user' },
+    { value: 'MAGANG', label: 'Magang', description: 'Peserta magang', initials: 'M', icon: 'graduation-cap' },
+    { value: 'MANAJER', label: 'Manajer', description: 'Pemimpin tim', initials: 'MN', icon: 'users' }
   ];
   selectedRole = 'HRD';
   searchTerm = '';

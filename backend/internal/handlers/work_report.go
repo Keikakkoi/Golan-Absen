@@ -386,6 +386,9 @@ func DeleteWorkReport(c *fiber.Ctx) error {
 }
 
 func GetWorkReportCompliance(c *fiber.Ctx) error {
+	c.Set(fiber.HeaderCacheControl, "no-store, no-cache, must-revalidate, proxy-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
 	userID := c.Locals("user_id").(uint)
 	userRole := string(c.Locals("role").(models.Role))
 
@@ -395,7 +398,18 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 	if startDate == "" || endDate == "" {
 		now := time.Now()
 		startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local).Format("2006-01-02")
-		endDate = now.Format("2006-01-02")
+		endDate = time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, time.Local).Format("2006-01-02")
+	}
+	start, err := time.Parse("2006-01-02", startDate)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start_date; expected YYYY-MM-DD"})
+	}
+	end, err := time.Parse("2006-01-02", endDate)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid end_date; expected YYYY-MM-DD"})
+	}
+	if start.After(end) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "start_date must be on or before end_date"})
 	}
 
 	var emp models.Employee
@@ -414,25 +428,16 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 		}
 	}
 
-	var attendances []models.AttendanceRecord
-	attQuery := config.DB.Where("tanggal BETWEEN ? AND ?", startDate, endDate).Where("status != ?", "Alpha")
-	if empID != 0 {
-		attQuery = attQuery.Where("employee_id = ?", empID)
-	}
-	attQuery.Order("tanggal ASC").Find(&attendances)
-
 	var reports []models.WorkReport
 	repQuery := config.DB.Where("tanggal BETWEEN ? AND ?", startDate, endDate)
 	if empID != 0 {
 		repQuery = repQuery.Where("employee_id = ?", empID)
 	}
-	repQuery.Find(&reports)
-
-	reportMap := make(map[string]bool)
-	for _, r := range reports {
-		key := fmt.Sprintf("%d_%s", r.EmployeeID, r.Tanggal.Format("2006-01-02"))
-		reportMap[key] = true
+	if err := repQuery.Find(&reports).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch work report status"})
 	}
+
+	reportMap := workReportStatusMap(reports)
 
 	type ComplianceResult struct {
 		EmployeeID uint   `json:"employee_id"`
@@ -442,14 +447,6 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 	}
 
 	var results []ComplianceResult
-	attendedMap := make(map[string]bool)
-	for _, a := range attendances {
-		attendedMap[a.Tanggal.Format("2006-01-02")] = true
-	}
-
-	start, _ := time.Parse("2006-01-02", startDate)
-	end, _ := time.Parse("2006-01-02", endDate)
-
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
 		dateStr := d.Format("2006-01-02")
 		key := fmt.Sprintf("%d_%s", empID, dateStr)
@@ -458,11 +455,26 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 			EmployeeID: empID,
 			Tanggal:    dateStr,
 			HasReport:  reportMap[key],
-			IsAttended: attendedMap[dateStr],
+			// Compliance is intentionally based only on a work report. Attendance
+			// must never make a date green (or change its reporting status).
+			IsAttended: false,
 		})
 	}
 
 	return c.JSON(results)
+}
+
+func workReportStatusMap(reports []models.WorkReport) map[string]bool {
+	status := make(map[string]bool)
+	for _, report := range reports {
+		// The rules job creates an empty marker row for a missed deadline.
+		// That marker is evidence of a missing report, not a submitted report.
+		if strings.EqualFold(strings.TrimSpace(report.StatusSesuai), "tidak membuat laporan kerja") {
+			continue
+		}
+		status[fmt.Sprintf("%d_%s", report.EmployeeID, report.Tanggal.Format("2006-01-02"))] = true
+	}
+	return status
 }
 
 type workReportInput struct {

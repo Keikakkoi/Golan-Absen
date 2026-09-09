@@ -1,2 +1,35 @@
+:host {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.dashboard-container {
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  background-color: var(--bg);
+}
+
+.main-content {
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
 .main-content > .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .weekly-card{margin-top:24px}.weekly-chart{height:220px;display:flex;align-items:flex-end;justify-content:space-around;gap:14px;padding:20px 10px 0;border-bottom:1px solid var(--mint-1)}.week-column{height:100%;display:flex;flex:1;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px}.bar{width:100%;max-width:50px;min-height:4px;background:var(--green);border-radius:8px 8px 0 0}.week-column small{color:var(--text-dark-lo)}
+
+@media (min-width: 901px) {
+  .main-content { padding: var(--compact-content-padding); }
+  .main-content > .header { gap: var(--compact-section-gap); margin-bottom: 24px; }
+  .stats-grid { gap: var(--compact-section-gap); margin-bottom: 24px; }
+  .stat-card { padding: 16px; }
+  .stat-card .value { font-size: 2rem; }
+  .weekly-card { margin-top: var(--compact-section-gap); }
+}

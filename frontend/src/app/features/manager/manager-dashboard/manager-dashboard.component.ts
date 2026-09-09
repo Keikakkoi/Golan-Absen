@@ -1,6 +1,8 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpContext } from '@angular/common/http';
+import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -63,17 +65,20 @@ export class ManagerDashboardComponent implements OnInit, OnDestroy {
     this.loadHolidays();
     this.loadEvents();
 
-    this.disconnectRealtime = this.notificationService.connectRealtime(() => { this.loadStats(); this.loadEvents(); });
-    this.refreshTimer = setInterval(() => this.loadEvents(), 30_000);
+    this.disconnectRealtime = this.notificationService.connectRealtime(() => { this.loadStats(true); this.loadEvents(true); });
+    this.refreshTimer = setInterval(() => this.loadEvents(true), 30_000);
   }
 
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.refreshTimer = undefined;
     this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
   }
 
-  loadStats(): void {
-    this.http.get<any>('http://localhost:8080/api/v1/manager/dashboard', { headers: this.headers() }).subscribe({
+  loadStats(background = false): void {
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any>('http://localhost:8080/api/v1/manager/dashboard', { headers: this.headers(), context }).subscribe({
       next: data => this.stats = data,
       error: err => console.error('Failed to load manager stats', err)
     });
@@ -83,11 +88,12 @@ export class ManagerDashboardComponent implements OnInit, OnDestroy {
     return Math.min(100, Number(item.hadir || 0) * 15);
   }
 
-  loadEvents(): void {
+  loadEvents(background = false): void {
     const start = this.toDateKey(this.currentMonth);
     const end = this.toDateKey(new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 0));
 
-    this.http.get<any[]>(`http://localhost:8080/api/v1/events?start=${start}&end=${end}`, { headers: this.headers() }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any[]>(`http://localhost:8080/api/v1/events?start=${start}&end=${end}`, { headers: this.headers(), context }).subscribe({
       next: (data) => {
         this.companyEvents = (data || []).map(event => {
           const description = [

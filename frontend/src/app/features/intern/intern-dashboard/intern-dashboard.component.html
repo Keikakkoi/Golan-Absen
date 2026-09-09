@@ -7,8 +7,11 @@
     </div>
 
     <div class="stats-grid">
+      <div class="dashboard-feedback loading" *ngIf="statsLoading" role="status">Memuat ringkasan magang...</div>
+      <div class="dashboard-feedback error" *ngIf="statsError" role="alert">{{ statsError }}</div>
       <section class="golan-card stat-card">
         <h4>Sisa Hari Magang</h4>
+        <p class="muted period-label">{{ formatInternshipPeriod(stats.internship_start_date, stats.internship_end_date) }}</p>
         <div class="value">{{ stats.days_remaining }} <span class="unit">hari</span></div>
         <p class="muted">{{ stats.internship_start_date | date:'dd MMM yyyy' }} – {{ stats.internship_end_date | date:'dd MMM yyyy' }}</p>
       </section>

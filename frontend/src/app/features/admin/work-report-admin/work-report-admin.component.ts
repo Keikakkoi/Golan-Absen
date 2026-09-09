@@ -9,6 +9,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import Swal from 'sweetalert2';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { ReportExportService } from '../../../core/services/report-export.service';
 
 @Component({
   selector: 'app-work-report-admin',
@@ -55,7 +56,8 @@ export class WorkReportAdminComponent implements OnInit {
     private workReportService: WorkReportService,
     private alertService: AlertService,
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private reportExport: ReportExportService
   ) {}
 
   ngOnInit(): void {
@@ -588,21 +590,34 @@ export class WorkReportAdminComponent implements OnInit {
 
   exportPDF() {
     this.isExportOpen = false;
-    this.printReport();
+    const report = this.buildPrintableReport();
+    void this.reportExport.downloadPdf(`laporan-kerja-${this.exportDate()}.pdf`, 'Laporan Kerja Karyawan', this.exportDate(), report.headers, report.rows);
   }
 
   printReport() {
     this.isExportOpen = false;
-    this.printAllReports = true;
-    setTimeout(() => {
-      const resetPrintMode = () => {
-        this.printAllReports = false;
-        window.removeEventListener('afterprint', resetPrintMode);
-      };
-      window.addEventListener('afterprint', resetPrintMode);
-      window.print();
-      setTimeout(resetPrintMode, 1000);
+    const report = this.buildPrintableReport();
+    this.reportExport.printReport('Laporan Kerja Karyawan', this.exportDate(), report.headers, report.rows);
+  }
+
+  private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
+    const headers = ['No', 'Hari/Tanggal', 'Nama', 'Divisi', 'Jabatan', 'Tugas', 'Judul Golan Nusantara / Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Status Report', 'Status Validasi'];
+    const rows = this.reports.map((r, index) => {
+      const customData: Record<string, unknown> = {};
+      try { Object.assign(customData, JSON.parse(r.custom_fields || '{}')); } catch { /* laporan tetap dapat diekspor meski custom field rusak */ }
+      const customValues = this.columns.map(column => customData[column.ID] ?? '-');
+      return [index + 1, this.formatReportDate(r.tanggal), this.getEmployeeName(r), r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', r.tugas || '-', r.judul || '-', r.deskripsi_kegiatan || '-', r.realisasi_kegiatan || '-', r.kendala || '-', r.rencana_minggu_depan || '-', r.link_artikel || '-', r.catatan_tambahan || '-', this.isNoReport(r) ? 'Tidak membuat laporan kerja' : 'Sudah Report', r.status_sesuai || (this.isNoReport(r) ? 'Tidak membuat laporan kerja' : 'Menunggu'), ...customValues];
     });
+    return { headers: headers.concat(this.columns.map(column => column.nama_kolom)), rows };
+  }
+
+  private formatReportDate(value: string): string {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '-' : new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(date);
+  }
+
+  private exportDate(): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
   }
 
   getEmployeeName(report: WorkReport): string {

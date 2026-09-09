@@ -4,10 +4,11 @@
   background-color: var(--bg-light);
   
   .main-content {
-    margin-left: 250px; /* sidebar width */
+    /* Match the shared sidebar width so content starts after its scrollbar. */
+    margin-left: 300px;
     flex: 1;
     padding: 32px 48px;
-    width: calc(100% - 250px);
+    width: calc(100% - 300px);
   }
 
   .header {
@@ -193,4 +194,54 @@
   0% { opacity: 0.6; }
   50% { opacity: 0.3; }
   100% { opacity: 0.6; }
+}
+
+@media (min-width: 901px) {
+  .admin-theme .main-content {
+    margin-left: var(--compact-sidebar-width);
+    width: auto;
+    padding: var(--compact-content-padding);
+  }
+
+  .admin-theme .header {
+    margin-bottom: 24px;
+
+    h2 { font-size: 1.7rem; margin-bottom: 5px; }
+    p { font-size: 0.88rem; }
+  }
+
+  .admin-theme .stats-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: var(--compact-section-gap);
+    margin-bottom: 24px;
+
+    .stat-card.admin-stat {
+      padding: 16px;
+
+      h4 { margin-bottom: 9px; font-size: 0.82rem; }
+      .value { font-size: 2.15rem; }
+      .value .unit { font-size: 0.9rem; }
+    }
+  }
+
+  .admin-dashboard-page app-dashboard-charts {
+    min-height: 0;
+    margin-bottom: 24px;
+  }
+
+  .admin-theme .quick-actions-grid {
+    gap: var(--compact-section-gap);
+
+    .action-card {
+      padding: 18px;
+
+      p { font-size: 0.82rem; margin-bottom: 12px; }
+    }
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .admin-theme .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }

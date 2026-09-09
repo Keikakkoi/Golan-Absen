@@ -16,6 +16,30 @@
   }
 }
 
+.admin-notification-tabs {
+  display: flex;
+  gap: .75rem;
+  margin: 1.25rem 0 1.5rem;
+}
+
+.admin-notification-tabs a {
+  padding: .85rem 1.35rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  color: #476b92;
+  background: #eff6ff;
+  font-weight: 700;
+  text-decoration: none;
+  transition: .2s ease;
+}
+
+.admin-notification-tabs a:hover,
+.admin-notification-tabs a.active {
+  border-color: #3182ed;
+  color: #fff;
+  background: #3182ed;
+}
+
 .push-button {
   display: inline-flex;
   align-items: center;
@@ -141,4 +165,6 @@ body.dark-theme .notification-item.unread {
 
 @media (max-width: 640px) {
   .notification-header { align-items: flex-start; flex-direction: column; }
+  .admin-notification-tabs { overflow-x: auto; }
+  .admin-notification-tabs a { white-space: nowrap; }
 }

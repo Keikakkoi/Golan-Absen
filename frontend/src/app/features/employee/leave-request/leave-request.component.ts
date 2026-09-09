@@ -1,7 +1,9 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpContext } from '@angular/common/http';
+import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { RouterLink } from '@angular/router';
@@ -20,6 +22,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   isIntern = false;
   approvalTarget: 'MANAJER' | 'HRD' = 'HRD';
   leaveTypes: string[] = ['Sakit', 'Lainnya'];
+  isLeaveTypeOpen = false;
   canRequestCuti = false;
   minimumMasaKerjaCutiBulan = 3;
   tanggalCutiTersedia = '';
@@ -47,6 +50,7 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   
   selectedLeave: any = null;
   private refreshTimer?: ReturnType<typeof setInterval>;
+  private reconnectTimer?: ReturnType<typeof setTimeout>;
   private socket?: WebSocket;
   private destroyed = false;
 
@@ -68,6 +72,24 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     private alert: AlertService
   ) {}
 
+  toggleLeaveType(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isLeaveTypeOpen = !this.isLeaveTypeOpen;
+  }
+
+  selectLeaveType(type: string, event: MouseEvent): void {
+    event.stopPropagation();
+    if (type === 'Cuti' && !this.canRequestCuti) return;
+    this.formData.jenis_izin = type;
+    this.isLeaveTypeOpen = false;
+    this.onDateChange();
+  }
+
+  @HostListener('document:click')
+  closeLeaveType(): void {
+    this.isLeaveTypeOpen = false;
+  }
+
   openDetail(leave: any): void {
     this.selectedLeave = leave;
   }
@@ -80,14 +102,15 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     this.isIntern = this.authService.getRole() === 'MAGANG';
     this.loadLeavePolicy();
     this.loadMyLeaves();
-    this.refreshTimer = setInterval(() => this.loadMyLeaves(), 30_000);
+    this.refreshTimer = setInterval(() => this.loadMyLeaves(true), 30_000);
     this.connectLiveUpdates();
   }
 
-  private loadLeavePolicy(): void {
+  private loadLeavePolicy(background = false): void {
     this.quotaLoading = true;
     this.quotaError = '';
-    this.http.get<any>(`${this.baseUrl}/policy`, { headers: this.getHeaders() }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any>(`${this.baseUrl}/policy`, { headers: this.getHeaders(), context }).subscribe({
       next: policy => {
         this.leaveTypes = policy.leave_types || ['Sakit', 'Lainnya'];
         this.approvalTarget = policy.approval_target === 'MANAJER' ? 'MANAJER' : 'HRD';
@@ -129,25 +152,36 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.destroyed = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = undefined;
     this.socket?.close();
+    this.socket = undefined;
   }
 
   private connectLiveUpdates(): void {
+    if (this.destroyed) return;
+    this.reconnectTimer = undefined;
     this.socket = new WebSocket('ws://localhost:8080/ws/dashboard');
     this.socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.event === 'leave_status_updated') { this.loadMyLeaves(); this.loadLeavePolicy(); }
+        if (message.event === 'leave_status_updated') { this.loadMyLeaves(true); this.loadLeavePolicy(true); }
       } catch { /* Ignore malformed broadcast messages. */ }
     };
     this.socket.onclose = () => {
-      if (!this.destroyed) setTimeout(() => this.connectLiveUpdates(), 3_000);
+      if (!this.destroyed) {
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = undefined;
+          if (!this.destroyed) this.connectLiveUpdates();
+        }, 3_000);
+      }
     };
   }
 
-  loadMyLeaves(): void {
+  loadMyLeaves(background = false): void {
     const headers = this.getHeaders();
-    this.http.get<any[]>(this.baseUrl, { headers }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any[]>(this.baseUrl, { headers, context }).subscribe({
       next: (data) => {
         this.leaveRequests = data;
         this.page = 1;

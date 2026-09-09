@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { ReportExportService } from '../../../core/services/report-export.service';
 
 @Component({
   selector: 'app-admin-alpha-reports',
@@ -37,7 +38,7 @@ export class AdminAlphaReportsComponent implements OnInit {
 
   private baseUrl = 'http://localhost:8080/api/v1/admin/reports/alpha';
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(private http: HttpClient, private authService: AuthService, private reportExport: ReportExportService) {}
 
   ngOnInit(): void {
     this.loadDepartments();
@@ -193,7 +194,39 @@ export class AdminAlphaReportsComponent implements OnInit {
   }
 
   exportPDF(): void {
-    window.print();
+    this.isExportOpen = false;
+    const headers = ['NIK', 'NAMA KARYAWAN', 'DIVISI', 'TOTAL ALPHA', 'STATUS', 'DETAIL'];
+    void this.reportExport.downloadPdf('laporan-ketidakhadiran-alpha.pdf', 'Laporan Ketidakhadiran (Alpha)', this.reportDate(), headers, this.exportRows());
+  }
+
+  printReport(): void {
+    this.isExportOpen = false;
+    const headers = ['NIK', 'NAMA KARYAWAN', 'DIVISI', 'TOTAL ALPHA', 'STATUS', 'DETAIL'];
+    this.reportExport.printAlphaReport('Laporan Ketidakhadiran (Alpha)', this.reportDate(), headers, this.exportRows());
+  }
+
+  private exportRows(): unknown[][] {
+    return this.summaries.map(summary => [
+      summary.nik || '-', summary.nama || '-', summary.divisi || '-', Number(summary.total || 0),
+      'Tindakan Lanjut', this.formatDetails(summary.details)
+    ]);
+  }
+
+  private formatDetails(details: any[]): string {
+    if (!Array.isArray(details) || details.length === 0) return '-';
+    return details.map(detail => {
+      const date = detail?.tanggal ? this.formatDate(detail.tanggal) : '-';
+      return `${date}: ${detail?.keterangan || '-'}`;
+    }).join('\n');
+  }
+
+  private formatDate(value: string | Date): string {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+  }
+
+  private reportDate(): string {
+    return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
   }
 
   private download(blob: Blob, fileName: string): void {

@@ -113,8 +113,11 @@ export class EmployeeListComponent implements OnInit {
     if (format === 'csv') this.reportExport.downloadCsv(`data-karyawan-${date}.csv`, report.headers, report.rows);
     if (format === 'xls') this.reportExport.downloadExcel(`data-karyawan-${date}.xlsx`, report.headers, report.rows);
     if (format === 'json') this.reportExport.downloadJson(`data-karyawan-${date}.json`, report.data);
-    if (format === 'pdf') this.reportExport.downloadPdf(`laporan-karyawan-${date}.pdf`, 'Laporan Data Karyawan', date, report.headers, report.rows);
-    if (format === 'print') this.reportExport.printReport('Laporan Data Karyawan', date, report.headers, report.rows);
+    // PDF/cetak menggunakan 13 kolom inti agar seluruh data tetap terbaca pada A4 landscape.
+    const printableHeaders = report.headers.slice(0, 13);
+    const printableRows = report.rows.map(row => row.slice(0, 13));
+    if (format === 'pdf') void this.reportExport.downloadPdf(`laporan-karyawan-${date}.pdf`, 'Laporan Data Karyawan', date, printableHeaders, printableRows);
+    if (format === 'print') this.reportExport.printReport('Laporan Data Karyawan', date, printableHeaders, printableRows);
   }
 
   private buildEmployeeReport(): { headers: string[]; rows: string[][]; data: Record<string, string>[] } {

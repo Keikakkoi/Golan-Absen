@@ -38,6 +38,9 @@
           <button type="button" class="dropdown-item" (click)="exportPDF()">
             <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF
           </button>
+          <button type="button" class="dropdown-item" (click)="printReport()" style="border-top: 1px solid #eee;">
+            <i class="fas fa-print" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Cetak Laporan
+          </button>
         </div>
       </div>
     </section>
@@ -162,30 +165,32 @@
             <span>0 Jam</span>
           </div>
 
-          <div class="chart-content">
-            <!-- Grid lines background -->
-            <div class="chart-grid-lines">
-              <div class="grid-line"></div>
-              <div class="grid-line target-line"></div>
-              <div class="grid-line"></div>
-              <div class="grid-line"></div>
-            </div>
+          <div class="chart-scroll" tabindex="0" aria-label="Gulir grafik durasi kerja secara horizontal">
+            <div class="chart-content" [style.--bar-count]="weeklyTrend.length">
+              <!-- Grid lines background -->
+              <div class="chart-grid-lines">
+                <div class="grid-line"></div>
+                <div class="grid-line target-line"></div>
+                <div class="grid-line"></div>
+                <div class="grid-line"></div>
+              </div>
 
-            <!-- Bars container -->
-            <div class="chart-bars">
-              <div class="bar-column" *ngFor="let item of weeklyTrend">
-                <div class="bar-wrapper">
-                  <div class="bar-tooltip">{{ item.hours }} jam ({{ item.status }})</div>
-                  <div class="bar-fill-element" 
-                       [style.height.%]="item.heightPercent" 
-                       [class.target-met]="item.hoursVal >= 8"
-                       [class.bar-terlambat]="item.status === 'Terlambat'"
-                       [class.bar-alpha]="item.status === 'Alpha'">
+              <!-- Bars container -->
+              <div class="chart-bars">
+                <div class="bar-column" *ngFor="let item of weeklyTrend">
+                  <div class="bar-wrapper">
+                    <div class="bar-tooltip">{{ item.hours }} jam ({{ item.status }})</div>
+                    <div class="bar-fill-element"
+                         [style.height.%]="item.heightPercent"
+                         [class.target-met]="item.hoursVal >= 8"
+                         [class.bar-terlambat]="item.status === 'Terlambat'"
+                         [class.bar-alpha]="item.status === 'Alpha'">
+                    </div>
                   </div>
-                </div>
-                <div class="bar-labels">
-                  <span class="bar-day">{{ item.dayName }}</span>
-                  <span class="bar-date">{{ item.dateStr }}</span>
+                  <div class="bar-labels">
+                    <span class="bar-day">{{ item.dayName }}</span>
+                    <span class="bar-date">{{ item.dateStr }}</span>
+                  </div>
                 </div>
               </div>
             </div>

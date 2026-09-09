@@ -157,12 +157,15 @@ func CheckIn(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to upload image"})
 	}
 
-	// Determine Status — always Hadir within the check-in window.
+	// Determine the attendance status from the employee's effective shift and
+	// its configured tolerance. A late check-in still counts as present in
+	// aggregate attendance, but must retain the distinct late status.
 	nowStr := now.Format("15:04:05")
 
 	status := models.StatusHadir
 	lateMinutes := 0
 	if now.After(lateTime) {
+		status = models.StatusTerlambat
 		lateMinutes = int(now.Sub(startTime).Minutes())
 		if lateMinutes < 0 {
 			lateMinutes = 0

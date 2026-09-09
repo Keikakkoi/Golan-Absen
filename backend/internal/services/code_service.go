@@ -46,7 +46,7 @@ func nextEmployeeCode(tx *gorm.DB, role models.Role, divisionCode string, year i
 	for {
 		code := fmt.Sprintf("%02d%s%s%03d", year%100, roleCode, divisionCode, number)
 		var used models.Employee
-		err := tx.Unscoped().Where("employee_code = ?", code).First(&used).Error
+		err := tx.Where("employee_code = ?", code).First(&used).Error
 		if err == gorm.ErrRecordNotFound {
 			if number >= generator.NextNumber {
 				generator.NextNumber = number + 1
@@ -144,7 +144,7 @@ func BackfillCodes(db *gorm.DB) error {
 			}
 			upgradedCode := fmt.Sprintf("%02d%s", employees[i].TanggalBergabung.Year()%100, legacyCode)
 			var owner models.Employee
-			if err := db.Unscoped().Where("employee_code = ? AND id <> ?", upgradedCode, employees[i].ID).First(&owner).Error; err == nil {
+			if err := db.Where("employee_code = ? AND id <> ?", upgradedCode, employees[i].ID).First(&owner).Error; err == nil {
 				return fmt.Errorf("kode karyawan hasil backfill %s sudah digunakan", upgradedCode)
 			} else if err != gorm.ErrRecordNotFound {
 				return err

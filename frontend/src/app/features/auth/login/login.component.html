@@ -4,11 +4,21 @@
     <span class="ambient-orb orb-one" aria-hidden="true"></span>
     <span class="ambient-orb orb-two" aria-hidden="true"></span>
     <span class="ambient-orb orb-three" aria-hidden="true"></span>
+    <div class="falling-stars" aria-hidden="true">
+      <span class="falling-star star-one"></span>
+      <span class="falling-star star-two"></span>
+      <span class="falling-star star-three"></span>
+      <span class="falling-star star-four"></span>
+      <span class="falling-star star-five"></span>
+      <span class="falling-star star-six"></span>
+      <span class="falling-star star-seven"></span>
+      <span class="falling-star star-eight"></span>
+    </div>
 
     <div class="brand-content">
       <div class="clock-display">
         <h1 class="mono-text">{{ currentTime | date:'HH:mm:ss' }}</h1>
-        <p>{{ currentTime | date:'EEEE, dd MMMM yyyy' }}</p>
+        <p>{{ currentDateLabel }}</p>
       </div>
 
       <!-- Signature Element: Stempel Bundar Berputar (15.1 PRD) -->

@@ -8,6 +8,7 @@ import { ActivatedRoute } from '@angular/router';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { ReportExportService } from '../../../core/services/report-export.service';
 
 @Component({
   selector: 'app-admin-reports',
@@ -56,7 +57,8 @@ export class AdminReportsComponent implements OnInit {
     private http: HttpClient,
     private authService: AuthService,
     private route: ActivatedRoute,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private reportExport: ReportExportService
   ) {}
 
   ngOnInit(): void {
@@ -421,102 +423,36 @@ export class AdminReportsComponent implements OnInit {
       return;
     }
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Gagal membuka jendela cetak. Mohon izinkan pop-up.');
-      return;
-    }
+    const report = this.buildPrintableReport();
+    void this.reportExport.downloadPdf(`rekap-absensi-${this.filters.start_date}-sampai-${this.filters.end_date}.pdf`, 'Laporan Rekap Absensi Kehadiran Karyawan', `${this.filters.start_date} s/d ${this.filters.end_date}`, report.headers, report.rows);
+  }
 
-    // Gunakan URL absolut agar logo tetap dapat dimuat pada dokumen print
-    // yang dibuka melalui jendela baru maupun saat aplikasi dideploy di subpath.
-    const logoUrl = new URL('assets/icon_golan.png', document.baseURI).href;
+  printReport(): void {
+    if (this.reports.length === 0) return;
+    const report = this.buildPrintableReport();
+    this.reportExport.printReport('Laporan Rekap Absensi Kehadiran Karyawan', `${this.filters.start_date} s/d ${this.filters.end_date}`, report.headers, report.rows);
+  }
 
-    let rowsHtml = '';
-    this.reports.forEach(r => {
-      const dateVal = r.Tanggal ? new Date(r.Tanggal).toLocaleDateString('id-ID') : '-';
-      const jamMasuk = r.JamMasuk ? new Date(r.JamMasuk).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
-      const jamPulang = r.JamPulang ? new Date(r.JamPulang).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
-      
-      let badgeClass = 'status-alpha';
-      if (r.Status === 'Hadir') badgeClass = 'status-hadir';
-      else if (r.Status === 'Izin') badgeClass = 'status-izin';
-      else if (r.Status === 'Cuti') badgeClass = 'status-cuti';
+  private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
+    const headers = ['Tanggal', 'NIK', 'Nama Karyawan', 'Divisi', 'Jabatan', 'Tipe Kerja', 'Jam Masuk', 'Jam Pulang', 'Status'];
+    const rows = this.reports.map(r => [
+      this.formatAttendanceDate(r.Tanggal), r.Employee?.NIK || '-', r.Employee?.User?.Nama || '-',
+      r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', r.TipeKerja || 'WFO',
+      this.formatAttendanceTime(r.JamMasuk), this.formatAttendanceTime(r.JamPulang), r.Status || '-'
+    ]);
+    return { headers, rows };
+  }
 
-      rowsHtml += `
-        <tr>
-          <td>${dateVal}</td>
-          <td>${r.Employee?.NIK || ''}</td>
-          <td>${r.Employee?.User?.Nama || ''}</td>
-          <td>${r.Employee?.Division?.NamaDivisi || ''}</td>
-          <td>${r.Employee?.Position?.NamaJabatan || ''}</td>
-          <td>${r.TipeKerja || 'WFO'}</td>
-          <td>${jamMasuk}</td>
-          <td>${jamPulang}</td>
-          <td><span class="status-badge ${badgeClass}">${r.Status}</span></td>
-        </tr>
-      `;
-    });
+  private formatAttendanceDate(value: string): string {
+    if (!value) return '-';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '-' : new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(date);
+  }
 
-    printWindow.document.write(`
-      <html>
-      <head>
-        <title>Rekap Absensi Karyawan - PT. Golan</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; color: #1e293b; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
-          .brand-logo { width: 64px; height: 64px; object-fit: contain; display: block; margin: 0 auto 8px; }
-          .header h1 { margin: 0; color: #1e3a8a; font-size: 24px; }
-          .header p { margin: 5px 0 0; color: #64748b; font-size: 14px; }
-          .info { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 12px; color: #475569; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th { background-color: #f1f5f9; color: #334155; font-weight: bold; border: 1px solid #cbd5e1; padding: 10px; font-size: 12px; text-align: left; }
-          td { border: 1px solid #cbd5e1; padding: 10px; font-size: 11px; }
-          tr:nth-child(even) { background-color: #f8fafc; }
-          .status-badge { padding: 3px 8px; border-radius: 9999px; font-size: 10px; font-weight: 500; display: inline-block; }
-          .status-hadir { background-color: #dbeafe; color: #1e5aa8; }
-          .status-alpha { background-color: #fee2e2; color: #991b1b; }
-          .status-izin { background-color: #e0f2fe; color: #075985; }
-          .status-cuti { background-color: #f3e8ff; color: #6b21a8; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <img src="${logoUrl}" alt="Logo Golan Digital Kreatif" class="brand-logo">
-          <h1>PT. GOLAN DIGITAL KREATIF</h1>
-          <p>Laporan Rekap Absensi Kehadiran Karyawan</p>
-        </div>
-        <div class="info">
-          <div><strong>Periode:</strong> ${this.filters.start_date} s/d ${this.filters.end_date}</div>
-          <div><strong>Dicetak pada:</strong> ${new Date().toLocaleString('id-ID')}</div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Tanggal</th>
-              <th>NIK</th>
-              <th>Nama Karyawan</th>
-              <th>Divisi</th>
-              <th>Jabatan</th>
-              <th>Tipe Kerja</th>
-              <th>Jam Masuk</th>
-              <th>Jam Pulang</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml}
-          </tbody>
-        </table>
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(function() { window.close(); }, 500);
-          };
-        </script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
+  private formatAttendanceTime(value: string): string {
+    if (!value) return '-';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '-' : new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Jakarta' }).format(date);
   }
 
   private getHeaders(): HttpHeaders {

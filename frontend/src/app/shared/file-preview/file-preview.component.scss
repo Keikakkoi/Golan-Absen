@@ -176,3 +176,29 @@
   cursor: pointer;
 }
 .file-preview-input{display:none}
+
+:host-context(body.dark-theme) .file-preview-item {
+  border-color: var(--mint-2, #475569);
+  background: var(--surface, #1e293b);
+  color: var(--text-dark, #e2e8f0);
+}
+
+:host-context(body.dark-theme) .file-preview-item img,
+:host-context(body.dark-theme) .file-preview-item iframe,
+:host-context(body.dark-theme) .file-preview-image-button,
+:host-context(body.dark-theme) .file-preview-generic {
+  background: var(--surface-raised, #26364d);
+}
+
+:host-context(body.dark-theme) .file-preview-generic {
+  color: var(--text-dark-lo, #94a3b8);
+}
+
+:host-context(body.dark-theme) .file-preview-meta span {
+  color: var(--text-dark-lo, #94a3b8);
+}
+
+:host-context(body.dark-theme) .file-preview-remove {
+  background: var(--surface-raised, #26364d);
+  color: var(--absent, #f87171);
+}

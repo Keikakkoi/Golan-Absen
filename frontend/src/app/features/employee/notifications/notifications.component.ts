@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
@@ -7,7 +8,7 @@ import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.com
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [CommonModule, DatePipe, SharedSidebarComponent, UiSkeletonComponent],
+  imports: [CommonModule, DatePipe, RouterLink, RouterLinkActive, SharedSidebarComponent, UiSkeletonComponent],
   templateUrl: './notifications.component.html',
   styleUrls: ['./notifications.component.scss']
 })
@@ -21,23 +22,29 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   pushBusy = false;
   pushError = '';
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(private notificationService: NotificationService, private router: Router) {}
+
+  get isAdminPage(): boolean {
+    return this.router.url.startsWith('/admin/');
+  }
 
   ngOnInit(): void {
     this.fetchNotifications();
-    this.refreshTimer = setInterval(() => this.fetchNotifications(), 15_000);
+    this.refreshTimer = setInterval(() => this.fetchNotifications(true), 15_000);
     this.notificationService.enablePush(false).then(enabled => this.pushEnabled = enabled).catch(() => undefined);
-    this.disconnectRealtime = this.notificationService.connectRealtime(() => this.fetchNotifications());
+    this.disconnectRealtime = this.notificationService.connectRealtime(() => this.fetchNotifications(true));
   }
 
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
+    this.refreshTimer = undefined;
     this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
   }
 
-  fetchNotifications(): void {
+  fetchNotifications(background = false): void {
     this.isLoading = true;
-    this.notificationService.getAll().subscribe({
+    this.notificationService.getAll(background).subscribe({
       next: (data) => {
         this.notifications = data || [];
         this.isLoading = false;

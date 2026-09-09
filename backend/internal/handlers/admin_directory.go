@@ -205,7 +205,7 @@ func DeleteLeaveQuota(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid quota id"})
 	}
-	if err := config.DB.Unscoped().Delete(&models.LeaveQuota{}, id).Error; err != nil {
+	if err := config.DB.Delete(&models.LeaveQuota{}, id).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete leave quota"})
 	}
 	utils.LogAction(c.Locals("user_id").(uint), "DELETE", "LeaveQuota", uint(id), "Deleted employee leave quota")

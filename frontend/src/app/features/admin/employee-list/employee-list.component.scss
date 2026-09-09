@@ -818,3 +818,31 @@
 .shift-pagi { background: #fff1cf; color: #8a5a00; }
 .shift-siang { background: #dff4e8; color: #176b43; }
 .shift-malam { background: #e9e1ff; color: #5b3b9a; }
+
+/* Keep the CSV picker aligned with the shared dark-mode surfaces. */
+:host-context(body.dark-theme) .employee-csv-upload {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+:host-context(body.dark-theme) .employee-csv-upload ::ng-deep .file-preview-picker {
+  border-color: var(--mint-2);
+  background: var(--mint-1);
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .employee-csv-upload ::ng-deep .file-preview-help {
+  color: var(--text-dark-lo);
+}
+
+:host-context(body.dark-theme) .employee-csv-upload ::ng-deep .file-preview-list {
+  border-color: var(--mint-2);
+  background: var(--surface);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
+}
+
+:host-context(body.dark-theme) .employee-csv-upload ::ng-deep .file-preview-item {
+  border-color: var(--mint-2);
+  background: var(--surface);
+  color: var(--text-dark);
+}

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"absensi-golan-backend/internal/models"
-	"gorm.io/gorm"
 )
 
 func TestSelectEffectiveSchedulePrioritizesSpecificAndDate(t *testing.T) {
@@ -17,10 +16,10 @@ func TestSelectEffectiveSchedulePrioritizesSpecificAndDate(t *testing.T) {
 	futureDate := date.AddDate(0, 0, 1)
 
 	schedules := []models.WorkSchedule{
-		{Model: gorm.Model{ID: 1}, EmployeeID: nil, Tanggal: &globalDate, NamaShift: "global"},
-		{Model: gorm.Model{ID: 2}, EmployeeID: &employeeID, Tanggal: &oldSpecificDate, NamaShift: "old-specific"},
-		{Model: gorm.Model{ID: 3}, EmployeeID: &employeeID, Tanggal: &newSpecificDate, NamaShift: "khusus"},
-		{Model: gorm.Model{ID: 4}, EmployeeID: &employeeID, Tanggal: &futureDate, NamaShift: "future"},
+		{Model: models.Model{ID: 1}, EmployeeID: nil, Tanggal: &globalDate, NamaShift: "global"},
+		{Model: models.Model{ID: 2}, EmployeeID: &employeeID, Tanggal: &oldSpecificDate, NamaShift: "old-specific"},
+		{Model: models.Model{ID: 3}, EmployeeID: &employeeID, Tanggal: &newSpecificDate, NamaShift: "khusus"},
+		{Model: models.Model{ID: 4}, EmployeeID: &employeeID, Tanggal: &futureDate, NamaShift: "future"},
 	}
 
 	selected, ok := selectEffectiveSchedule(schedules, employeeID, date)

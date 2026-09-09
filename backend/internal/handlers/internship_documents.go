@@ -164,9 +164,7 @@ func UploadAdminInternshipDocument(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal menyimpan file dokumen"})
 	}
 	var doc models.InternshipDocument
-	// Include soft-deleted rows because (user_id, document_type) is still
-	// unique even when GORM hides the row from normal queries.
-	findErr := config.DB.Unscoped().Where("user_id = ? AND document_type = ?", user.ID, docType).First(&doc).Error
+	findErr := config.DB.Where("user_id = ? AND document_type = ?", user.ID, docType).First(&doc).Error
 	if findErr == nil && doc.StorageKey != "" {
 		_ = storage.Client.RemoveObject(context.Background(), storage.BucketName, doc.StorageKey, minio.RemoveObjectOptions{})
 	}
@@ -175,7 +173,6 @@ func UploadAdminInternshipDocument(c *fiber.Ctx) error {
 		doc.UserID = user.ID
 		doc.DocumentType = docType
 	} else {
-		doc.DeletedAt.Valid = false
 	}
 	uploader := c.Locals("user_id").(uint)
 	cfg := config.LoadConfig()

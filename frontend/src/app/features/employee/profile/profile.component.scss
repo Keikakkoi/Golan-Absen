@@ -1,5 +1,28 @@
 @import '../dashboard/dashboard.component.scss';
 
+/* Profile contains several long tab panels and forms. On mobile it must use
+   the document's natural height instead of the fixed dashboard viewport. */
+@media (max-width: 900px) {
+  :host {
+    position: static;
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .dashboard-container {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .main-content {
+    overflow: visible;
+  }
+}
+
 .profile-tabs {
   display: flex;
   gap: 8px;
@@ -172,12 +195,13 @@
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
 
 .detail-row {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--mint-0);
@@ -214,9 +238,16 @@
   }
 
   .detail-value {
+    min-width: 0;
     font-size: 1.05rem;
     color: var(--text-dark);
     font-weight: 600;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .email-detail-value {
+    line-height: 1.35;
   }
 }
 
@@ -321,6 +352,12 @@
 
 /* Keep the WFH request form compact and predictable on narrow screens. */
 @media (max-width: 640px) {
+  .geofence-section {
+    .coordinates-pill {
+      margin-top: 12px !important;
+    }
+  }
+
   .home-location-profile-section {
     .home-location-request-form {
       display: flex;

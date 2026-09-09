@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { HttpClient, HttpHeaders, HttpContext } from '@angular/common/http';
+import { firstValueFrom, Observable, finalize, shareReplay } from 'rxjs';
 import { AuthService } from './auth.service';
+import { SKIP_PAGE_LOADING } from '../interceptors/page-loading-context';
 
 export interface AppNotification {
   ID: number;
@@ -16,35 +17,69 @@ export class NotificationService {
   private readonly baseUrl = 'http://localhost:8080/api/v1/notifications';
   private realtimeSocket?: WebSocket;
   private realtimeCallbacks = new Set<() => void>();
+  private notificationsRequest$?: Observable<AppNotification[]>;
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
-  getAll() {
-    return this.http.get<AppNotification[]>(this.baseUrl, { headers: this.headers() });
+  getAll(background = false) {
+    // Several dashboard widgets can request notifications in response to the
+    // same realtime event. Share only the in-flight request so those widgets
+    // receive one HTTP response without keeping stale data cached forever.
+    if (!this.notificationsRequest$) {
+      const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+      this.notificationsRequest$ = this.http.get<AppNotification[]>(this.baseUrl, { headers: this.headers(), context }).pipe(
+        finalize(() => this.notificationsRequest$ = undefined),
+        shareReplay({ bufferSize: 1, refCount: true })
+      );
+    }
+    return this.notificationsRequest$;
   }
 
   markAsRead(id: number) {
-    return this.http.put(`${this.baseUrl}/${id}/read`, {}, { headers: this.headers() });
+    return this.http.put(`${this.baseUrl}/${id}/read`, {}, { headers: this.headers() }).pipe(
+      finalize(() => this.notificationsRequest$ = undefined)
+    );
   }
 
   markAllAsRead() {
-    return this.http.put(`${this.baseUrl}/read-all`, {}, { headers: this.headers() });
+    return this.http.put(`${this.baseUrl}/read-all`, {}, { headers: this.headers() }).pipe(
+      finalize(() => this.notificationsRequest$ = undefined)
+    );
   }
 
   /** Refreshes an open app as soon as the backend creates a user notification. */
   connectRealtime(onNotification: () => void): () => void {
     this.realtimeCallbacks.add(onNotification);
-    if (!this.realtimeSocket || this.realtimeSocket.readyState === WebSocket.CLOSED) {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      this.realtimeSocket = new WebSocket(`${protocol}//localhost:8080/ws/dashboard`);
-      this.realtimeSocket.onmessage = (event) => {
-        try {
-          const eventName = JSON.parse(event.data)?.event;
-          if (['notification_created', 'new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'new_leave', 'leave_request_created', 'leave_status_updated'].includes(eventName)) this.realtimeCallbacks.forEach(callback => callback());
-        } catch { /* Ignore malformed broadcast messages. */ }
-      };
-    }
-    return () => { this.realtimeCallbacks.delete(onNotification); if (!this.realtimeCallbacks.size) { this.realtimeSocket?.close(); this.realtimeSocket = undefined; } };
+    if (!this.realtimeSocket || this.realtimeSocket.readyState === WebSocket.CLOSED) this.openRealtimeSocket();
+    // A CLOSING socket is intentionally left alone. Its close handler will
+    // open the replacement after the browser has fully released it.
+    let disconnected = false;
+    return () => {
+      if (disconnected) return;
+      disconnected = true;
+      this.realtimeCallbacks.delete(onNotification);
+      if (!this.realtimeCallbacks.size) {
+        this.realtimeSocket?.close();
+        this.realtimeSocket = undefined;
+      }
+    };
+  }
+
+  private openRealtimeSocket(): void {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new WebSocket(`${protocol}//localhost:8080/ws/dashboard`);
+    this.realtimeSocket = socket;
+    socket.onmessage = (event) => {
+      try {
+        const eventName = JSON.parse(event.data)?.event;
+        if (['notification_created', 'new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'new_leave', 'leave_request_created', 'leave_status_updated'].includes(eventName)) this.realtimeCallbacks.forEach(callback => callback());
+      } catch { /* Ignore malformed broadcast messages. */ }
+    };
+    socket.onclose = () => {
+      if (this.realtimeSocket !== socket) return;
+      this.realtimeSocket = undefined;
+      if (this.realtimeCallbacks.size) this.openRealtimeSocket();
+    };
   }
 
   /**

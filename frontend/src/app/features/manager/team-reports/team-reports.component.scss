@@ -29,10 +29,20 @@
 
 .note-input {
   width: 100%;
-  min-width: 150px;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 6px 10px;
   font-size: 13px;
   border-radius: 6px;
+}
+
+.report-action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .btn-small {
@@ -100,8 +110,28 @@
 }
 
 .team-reports-toolbar {
+  /* Keep every control inside the card. At intermediate desktop widths the
+     export action may move to a second row instead of overflowing. */
+  display: flex !important;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 10px;
+}
+
+.team-filter-layout .team-reports-toolbar > label {
+  flex: 1 1 165px;
+  min-width: 0;
+}
+
+.team-filter-layout .team-reports-toolbar > .report-filter-action,
+.team-filter-layout .team-reports-toolbar > .report-refresh-action,
+.team-filter-layout .team-reports-toolbar > .export-dropdown {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.team-filter-layout .team-reports-toolbar > .export-dropdown > button {
+  max-width: 100%;
 }
 
 .report-refresh-action {
@@ -134,12 +164,16 @@
 
 .team-reports-table {
   table-layout: fixed;
-  min-width: 0 !important;
+  /* The action and review columns need real space. The wrapper scrolls on
+     smaller screens instead of compressing controls into each other. */
+  min-width: 1480px !important;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .team-reports-table th,
 .team-reports-table td {
+  box-sizing: border-box;
   word-break: normal;
   overflow-wrap: break-word;
   white-space: normal;
@@ -168,15 +202,25 @@
   line-height: 1.2;
 }
 
-.team-reports-col-date { width: 10%; }
-.team-reports-col-member { width: 15%; }
-.team-reports-col-task { width: 12%; }
-.team-reports-col-activity { width: 15%; }
-.team-reports-col-screenshot { width: 10%; }
-.team-reports-col-status { width: 10%; }
-.team-reports-col-submission { width: 10%; }
-.team-reports-col-review { width: 8%; }
-.team-reports-col-action { width: 10%; }
+.team-reports-col-date { width: 125px; }
+.team-reports-col-member { width: 220px; }
+.team-reports-col-task { width: 150px; }
+.team-reports-col-activity { width: 210px; }
+.team-reports-col-screenshot { width: 125px; }
+.team-reports-col-status { width: 145px; }
+.team-reports-col-submission { width: 145px; }
+.team-reports-col-review { width: 235px; }
+.team-reports-col-action { width: 225px; }
+
+.team-reports-table td:nth-child(2),
+.team-reports-table td:nth-child(3),
+.team-reports-table td:nth-child(4) {
+  overflow-wrap: anywhere;
+}
+
+.team-reports-table td:nth-child(9) {
+  white-space: nowrap;
+}
 
 @media (max-width: 600px) {
   .team-reports-toolbar {
@@ -220,19 +264,19 @@
 
   .team-reports-table {
     /* Use stable column widths on phones so badges and inputs never overlap. */
-    min-width: 1315px !important;
+    min-width: 1480px !important;
     table-layout: fixed;
   }
 
-  .team-reports-col-date { width: 100px; }
-  .team-reports-col-member { width: 170px; }
-  .team-reports-col-task { width: 130px; }
-  .team-reports-col-activity { width: 150px; }
+  .team-reports-col-date { width: 110px; }
+  .team-reports-col-member { width: 190px; }
+  .team-reports-col-task { width: 135px; }
+  .team-reports-col-activity { width: 170px; }
   .team-reports-col-screenshot { width: 110px; }
-  .team-reports-col-status { width: 130px; }
-  .team-reports-col-submission { width: 125px; }
-  .team-reports-col-review { width: 220px; }
-  .team-reports-col-action { width: 180px; }
+  .team-reports-col-status { width: 135px; }
+  .team-reports-col-submission { width: 135px; }
+  .team-reports-col-review { width: 230px; }
+  .team-reports-col-action { width: 205px; }
 
   .team-reports-table th,
   .team-reports-table td {
@@ -262,8 +306,8 @@
     overflow: visible;
   }
 
-  .team-reports-table td:last-child > div {
-    flex-wrap: wrap;
+  .team-reports-table td:last-child > .report-action-buttons {
+    flex-wrap: nowrap;
   }
 
   .team-reports-table .status-pill {

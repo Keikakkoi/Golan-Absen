@@ -1,8 +1,31 @@
 @import '../dashboard/dashboard.component.scss';
 
+/* This page has a long form. Release the fixed dashboard shell on mobile so
+   the document can grow and the browser can scroll through the full form. */
+@media (max-width: 900px) {
+  :host {
+    position: static;
+    display: block;
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .dashboard-container {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .main-content {
+    overflow: visible;
+  }
+}
+
 .leave-request-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 0.9fr;
+  display: flex;
+  flex-direction: column;
   gap: 22px;
 }
 
@@ -107,6 +130,93 @@
   box-sizing: border-box;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Match the application's styled selects instead of the browser default
+   arrow and spacing. */
+.field-group select.golan-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 10px 40px 10px 16px;
+  background-color: #fafdff;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23385b79' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  cursor: pointer;
+}
+
+.leave-type-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.leave-type-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+}
+
+.leave-type-trigger.open,
+.leave-type-trigger:focus-visible {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.leave-type-arrow {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-right: 3px;
+  border-right: 2px solid #385b79;
+  border-bottom: 2px solid #385b79;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+.leave-type-trigger.open .leave-type-arrow {
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+
+.leave-type-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  overflow: hidden;
+  padding: 5px;
+  border: 1px solid #cfe3f6;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(21, 84, 136, 0.16);
+}
+
+.leave-type-options button {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #173450;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.leave-type-options button:hover,
+.leave-type-options button.selected {
+  background: #eaf4ff;
+  color: #1769aa;
+}
+
+.leave-type-options button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .golan-input:focus,
@@ -342,81 +452,56 @@ body.dark-theme .file-name {
   }
 }
 
+.leave-form-card,
+.leave-history-card,
+.history-body,
+.golan-table-responsive {
+  min-width: 0;
+}
+
+.leave-form-card,
+.leave-history-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.leave-history-card .golan-table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+}
+
+.leave-history-card .golan-table-responsive > .golan-table {
+  min-width: 980px;
+  max-width: none;
+}
+
+.leave-history-card app-pagination {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+}
+
 @media (max-width: 640px) {
   .leave-history-card {
     padding: 18px 14px;
   }
 
   .leave-history-card .golan-table-responsive {
-    overflow: visible;
-    border: 0;
-    background: transparent;
+    overflow-x: auto;
+    overflow-y: hidden;
   }
 
   .leave-history-card .golan-table-responsive > .golan-table {
-    display: block;
-    min-width: 0 !important;
-    width: 100%;
-    white-space: normal;
+    min-width: 980px !important;
   }
 
-  .leave-history-card .golan-table thead {
-    display: none;
-  }
-
-  .leave-history-card .golan-table tbody {
-    display: grid;
-    gap: 12px;
-  }
-
-  .leave-history-card .golan-table tbody tr {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0;
-    border: 1px solid var(--mint-1);
-    border-radius: 12px;
-    overflow: hidden;
-    background: #fff;
-  }
-
-  .leave-history-card .golan-table tbody td {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    min-width: 0;
-    padding: 10px 11px;
-    border-bottom: 1px solid var(--mint-1);
-    font-size: 0.84rem;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-
-  .leave-history-card .golan-table tbody td::before {
-    content: attr(data-label);
-    color: var(--text-dark-lo);
-    font-size: 0.64rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .leave-history-card .golan-table tbody td:nth-child(5),
-  .leave-history-card .golan-table tbody td:nth-child(6),
-  .leave-history-card .golan-table tbody td:nth-child(7),
-  .leave-history-card .golan-table tbody td:nth-child(8) {
-    grid-column: 1 / -1;
-  }
-
-  .leave-history-card .golan-table tbody td:last-child {
-    border-bottom: 0;
-  }
-
-  .leave-history-card .status-pill {
-    max-width: 100%;
-    padding: 0.3rem 0.65rem;
-    text-align: center;
-    white-space: normal;
+  .leave-history-card .golan-table th,
+  .leave-history-card .golan-table td {
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
   }
 }

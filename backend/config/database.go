@@ -74,6 +74,24 @@ func ConnectDB(cfg *Config) {
 	if err := DB.Exec("ALTER TABLE employees ALTER COLUMN shift_kerja SET DEFAULT 'Reguler', ALTER COLUMN shift_kerja SET NOT NULL").Error; err != nil {
 		log.Printf("Failed to enforce employee shift constraint: %v", err)
 	}
+	// Employee lifecycle policy B requires historical rows to survive after the
+	// employee row is removed. Keep the FK columns nullable and store an
+	// immutable identity snapshot in the historical tables.
+	for _, statement := range []string{
+		"ALTER TABLE attendance_records ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE leave_requests ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE leave_quota ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE work_reports ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE employee_home_locations ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE home_location_change_requests ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE employee_home_location_histories ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE work_schedules ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE audit_logs ALTER COLUMN user_id DROP NOT NULL",
+	} {
+		if err := DB.Exec(statement).Error; err != nil {
+			log.Printf("Failed to prepare employee lifecycle schema (%s): %v", statement, err)
+		}
+	}
 	if err := DB.Exec("UPDATE work_schedules SET hari_kerja = '[1,2,3,4,5,6]' WHERE hari_kerja IS NULL OR BTRIM(hari_kerja) = '' OR hari_kerja = '[]'").Error; err != nil {
 		log.Printf("Failed to backfill work schedule days: %v", err)
 	}

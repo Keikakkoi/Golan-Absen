@@ -157,7 +157,12 @@
 }
 
 .schedule-form-card { border-top: 3px solid #4c9dde; }
-.schedule-list-card { min-width: 0; }
+.schedule-list-card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
 
 .schedule-card-heading {
   display: flex;
@@ -345,17 +350,32 @@
 }
 
 .schedule-filters {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, auto);
   align-items: flex-end;
   gap: 12px;
   margin-bottom: 24px;
   padding: 0;
+  width: 100%;
   min-width: 0;
 }
-.schedule-search-filter { flex: 1 1 220px; min-width: 200px; }
-.schedule-date-filter { flex: 0 1 150px; min-width: 140px; }
-.schedule-filter-action { display: flex; flex: 0 0 auto; align-items: flex-end; }
-.schedule-filter-action .btn-primary { min-height: 42px; }
+.schedule-search-filter,
+.schedule-date-filter,
+.schedule-filter-action {
+  width: 100%;
+  min-width: 0;
+}
+.schedule-filter-action { display: flex; align-items: flex-end; }
+.schedule-filter-action .btn-primary {
+  width: 100%;
+  min-height: 42px;
+  white-space: nowrap;
+}
+.schedule-filters .golan-input {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+}
 
 .main-content .schedule-table {
   width: 100%;
@@ -471,8 +491,8 @@
   .schedule-list-card { overflow: hidden; }
 
   .schedule-filters {
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
-    flex-direction: column;
     gap: 10px;
     margin-bottom: 18px;
   }

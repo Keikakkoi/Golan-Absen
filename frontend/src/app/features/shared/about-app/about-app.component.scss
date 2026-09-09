@@ -4,10 +4,13 @@
   background-color: var(--bg-light, #f8fafc);
   
   .main-content {
-    margin-left: 250px;
+    /* Keep the same sidebar offset and content gutter as the other pages. */
+    margin-left: 300px;
     flex: 1;
-    padding: 32px 48px;
-    width: calc(100% - 250px);
+    padding: 32px 36px;
+    width: auto;
+    box-sizing: border-box;
+    min-width: 0;
   }
 }
 
@@ -140,6 +143,41 @@
 
 .status-value--metric {
   color: #2563eb;
+}
+
+/* Diagnostics rows have their own light-theme surfaces, so explicitly map
+   them to the shared dark tokens when the application theme is dark. */
+:host-context(body.dark-theme) .status-diagnostics-card {
+  background: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .status-diagnostics-title,
+:host-context(body.dark-theme) .status-label,
+:host-context(body.dark-theme) .status-value {
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .status-diagnostics-title i {
+  color: #fb7185 !important;
+}
+
+:host-context(body.dark-theme) .status-diagnostics-divider {
+  border-top-color: var(--border-strong) !important;
+}
+
+:host-context(body.dark-theme) .about-status-row {
+  background: var(--surface-raised) !important;
+  border-color: var(--border-strong) !important;
+}
+
+:host-context(body.dark-theme) .status-value--success {
+  color: #86efac !important;
+}
+
+:host-context(body.dark-theme) .status-value--metric {
+  color: #93c5fd !important;
 }
 
 @media (max-width: 700px) {

@@ -1,59 +1,419 @@
-<div class="dashboard-container"><app-shared-sidebar></app-shared-sidebar><main class="main-content"><div class="header"><h2>Logbook Harian</h2><p>Isi kegiatan setiap hari dan kirimkan kepada manajer untuk direview.</p></div>
-  <div *ngIf="message" class="alert alert-success">{{ message }}</div><div *ngIf="error" class="alert alert-danger">{{ error }}</div>
-  <section class="golan-card form-card"><div class="panel-heading"><h3>{{ editingId ? 'Edit Logbook' : 'Catatan Hari Ini' }}</h3><button class="btn-secondary" type="button" *ngIf="editingId" (click)="cancelEdit()">Batal Edit</button></div><form (ngSubmit)="save('submitted')"><div class="field-row"><label class="field-group"><span>Tanggal</span><input class="golan-input" type="date" [(ngModel)]="form.tanggal" (change)="loadDeadline()" name="tanggal" required></label><label class="field-group"><span>Tugas / topik</span><input class="golan-input" [(ngModel)]="form.tugas" name="tugas"></label></div><div *ngIf="deadlineInfo" class="alert alert-info">Shift: <strong>{{ deadlineInfo.shift_name }}</strong> · selesai {{ deadlineInfo.shift_end }} WIB · toleransi {{ deadlineInfo.tolerance_minutes }} menit · batas akhir <strong>{{ deadlineInfo.deadline_label }}</strong> · status: <strong>{{ deadlineInfo.status === 'terlambat' ? 'Terlambat' : 'Tepat waktu' }}</strong></div><div *ngIf="deadlineError" class="alert alert-danger">{{ deadlineError }}</div><label class="field-group"><span>Deskripsi kegiatan</span><textarea class="golan-input" rows="4" [(ngModel)]="form.deskripsi_kegiatan" name="deskripsi_kegiatan" required></textarea></label><label class="field-group"><span>Kendala</span><textarea class="golan-input" rows="2" [(ngModel)]="form.kendala" name="kendala"></textarea></label><label class="field-group"><span>Screenshot pekerjaan (maksimal 3 file, 5MB/file)</span><input class="golan-input" type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onScreenshotsSelected($event)"><div class="screenshot-preview-grid" *ngIf="screenshotPreviews.length"><img *ngFor="let preview of screenshotPreviews" [src]="preview" alt="Preview screenshot"></div></label><div style="display: flex; gap: 8px; margin-top: 1rem;"><button type="button" class="btn-secondary" [disabled]="saving" (click)="save('draft')"><i class="fas fa-save"></i> Simpan Draft</button><button type="button" class="btn-primary" [disabled]="saving" (click)="save('submitted')"><i class="fas fa-paper-plane"></i> {{ saving ? 'Menyimpan...' : (editingId ? 'Perbarui Logbook' : 'Kirim Logbook (Submit)') }}</button></div></form></section>
-  <section class="golan-card table-card"><div class="panel-heading"><h3>Riwayat Logbook</h3><div class="report-toolbar"><label>Tanggal mulai<input class="golan-input" type="date" [(ngModel)]="start"></label><label>Tanggal selesai<input class="golan-input" type="date" [(ngModel)]="end"></label><label>Status<select class="golan-input" [(ngModel)]="statusFilter"><option value="">Semua status</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></label><button type="button" class="btn-primary report-filter-action" (click)="load()">Filter</button><div class="export-dropdown" style="position: relative;"><button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()"><i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i></button><div class="dropdown-menu-custom" *ngIf="isExportOpen"><button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button><button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button><button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button><button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button></div></div></div></div><div class="golan-table-responsive intern-logbook-table-wrapper"><table class="golan-table intern-logbook-table"><thead><tr><th>Tanggal</th><th>Tugas</th><th>Kegiatan</th><th>Screenshot</th><th>Status</th><th>Catatan Manajer</th><th>Aksi</th></tr></thead><tbody><tr *ngFor="let item of displayedLogbooks"><td data-label="Tanggal">{{ (item.tanggal || item.Tanggal || item.CreatedAt) | date:'dd MMM yyyy' }}</td><td data-label="Tugas">{{ item.tugas || item.Tugas || '-' }}</td><td data-label="Kegiatan">{{ item.deskripsi_kegiatan || item.DeskripsiKegiatan || item.kegiatan || item.Kegiatan || '-' }}</td><td data-label="Screenshot"><span *ngFor="let image of (item.attachments || item.Attachments)" class="report-thumb"><a [href]="image.file_url || image.FileURL" target="_blank"><img [src]="image.file_url || image.FileURL" [alt]="image.file_name || image.FileName"></a></span><span *ngIf="!(item.attachments?.length || item.Attachments?.length)">-</span></td><td data-label="Status"><span class="status-pill" [ngClass]="{'status-success': (item.status_logbook || item.StatusLogbook) === 'approved', 'status-warning': (item.status_logbook || item.StatusLogbook) === 'submitted', 'status-danger': (item.status_logbook || item.StatusLogbook) === 'rejected'}">{{ item.status_logbook || item.StatusLogbook || 'draft' }}</span></td><td data-label="Catatan Manajer">{{ item.review_notes || item.ReviewNotes || '-' }}</td><td data-label="Aksi"><div class="intern-logbook-actions"><button type="button" class="btn-secondary btn-small" (click)="viewDetail(item)"><i class="fas fa-eye"></i> Detail</button><button type="button" class="btn-secondary btn-small" *ngIf="(item.status_logbook || item.StatusLogbook) === 'draft' || (item.status_logbook || item.StatusLogbook) === 'rejected'" (click)="edit(item)"><i class="fas fa-edit"></i> Edit</button><button type="button" class="btn-danger btn-small" *ngIf="(item.status_logbook || item.StatusLogbook) === 'draft' || (item.status_logbook || item.StatusLogbook) === 'rejected'" (click)="deleteLogbook(item)" style="background-color: #dc3545; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer;"><i class="fas fa-trash"></i> Hapus</button></div></td></tr></tbody></table></div><app-pagination [totalItems]="logbooks.length" [currentPage]="page" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination><p *ngIf="!logbooks.length && !isLoading" class="muted">Belum ada logbook.</p></section>
-  </main></div>
+<div class="dashboard-container">
+  <app-shared-sidebar></app-shared-sidebar>
+  <main class="main-content">
+    <div class="header">
+      <h2>Logbook Harian</h2>
+      <p>
+        Isi kegiatan setiap hari dan kirimkan kepada manajer untuk direview.
+      </p>
+    </div>
+    <div *ngIf="message" class="alert alert-success">{{ message }}</div>
+    <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+    <section class="golan-card form-card">
+      <div class="panel-heading">
+        <h3>{{ editingId ? "Edit Logbook" : "Catatan Hari Ini" }}</h3>
+        <button
+          class="btn-secondary"
+          type="button"
+          *ngIf="editingId"
+          (click)="cancelEdit()"
+        >
+          Batal Edit
+        </button>
+      </div>
+      <form (ngSubmit)="save('submitted')">
+        <div class="field-row">
+          <label class="field-group"
+            ><span>Tanggal</span
+            ><input
+              class="golan-input"
+              type="date"
+              [(ngModel)]="form.tanggal"
+              (change)="loadDeadline()"
+              name="tanggal"
+              required /></label
+          ><label class="field-group"
+            ><span>Tugas / topik</span
+            ><input class="golan-input" [(ngModel)]="form.tugas" name="tugas"
+          /></label>
+        </div>
+        <div *ngIf="deadlineInfo" class="alert alert-info">
+          Shift: <strong>{{ deadlineInfo.shift_name }}</strong> · selesai
+          {{ deadlineInfo.shift_end }} WIB · toleransi
+          {{ deadlineInfo.tolerance_minutes }} menit · batas akhir
+          <strong>{{ deadlineInfo.deadline_label }}</strong> · status:
+          <strong>{{
+            deadlineInfo.status === "terlambat" ? "Terlambat" : "Tepat waktu"
+          }}</strong>
+        </div>
+        <div *ngIf="deadlineError" class="alert alert-danger">
+          {{ deadlineError }}
+        </div>
+        <label class="field-group"
+          ><span>Deskripsi kegiatan</span
+          ><textarea
+            class="golan-input"
+            rows="4"
+            [(ngModel)]="form.deskripsi_kegiatan"
+            name="deskripsi_kegiatan"
+            required
+          ></textarea></label
+        ><label class="field-group"
+          ><span>Kendala</span
+          ><textarea
+            class="golan-input"
+            rows="2"
+            [(ngModel)]="form.kendala"
+            name="kendala"
+          ></textarea></label
+        ><label class="field-group"
+          ><span>Screenshot pekerjaan (maksimal 3 file, 5MB/file)</span
+          ><input
+            class="golan-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            (change)="onScreenshotsSelected($event)" />
+          <div
+            class="screenshot-preview-grid"
+            *ngIf="screenshotPreviews.length"
+          >
+            <img
+              *ngFor="let preview of screenshotPreviews"
+              [src]="preview"
+              alt="Preview screenshot"
+            /></div
+        ></label>
+        <div style="display: flex; gap: 8px; margin-top: 1rem">
+          <button
+            type="button"
+            class="btn-secondary"
+            [disabled]="saving"
+            (click)="save('draft')"
+          >
+            <i class="fas fa-save"></i> Simpan Draft</button
+          ><button
+            type="button"
+            class="btn-primary"
+            [disabled]="saving"
+            (click)="save('submitted')"
+          >
+            <i class="fas fa-paper-plane"></i>
+            {{
+              saving
+                ? "Menyimpan..."
+                : editingId
+                  ? "Perbarui Logbook"
+                  : "Kirim Logbook (Submit)"
+            }}
+          </button>
+        </div>
+      </form>
+    </section>
+    <section class="golan-card table-card">
+      <div class="panel-heading">
+        <h3>Riwayat Logbook</h3>
+        <div class="report-toolbar">
+          <label
+            >Tanggal mulai<input
+              class="golan-input"
+              type="date"
+              [(ngModel)]="start" /></label
+          ><label
+            >Tanggal selesai<input
+              class="golan-input"
+              type="date"
+              [(ngModel)]="end" /></label
+          ><label
+            >Status<span class="status-filter-dropdown" [class.is-open]="statusFilterOpen" [class.drop-up]="statusFilterDropUp"
+              ><button type="button" class="status-filter-trigger" [attr.aria-expanded]="statusFilterOpen" (click)="toggleStatusFilter($event)">
+                <span>{{ statusFilterLabel() }}</span><span class="status-filter-chevron" aria-hidden="true"></span>
+              </button><span class="status-filter-menu" *ngIf="statusFilterOpen" role="listbox">
+                <button type="button" class="status-filter-option" [class.selected]="statusFilter === ''" (click)="selectStatusFilter('', $event)">Semua status</button>
+                <button type="button" class="status-filter-option" [class.selected]="statusFilter === 'draft'" (click)="selectStatusFilter('draft', $event)">Draft</button>
+                <button type="button" class="status-filter-option" [class.selected]="statusFilter === 'submitted'" (click)="selectStatusFilter('submitted', $event)">Submitted</button>
+                <button type="button" class="status-filter-option" [class.selected]="statusFilter === 'approved'" (click)="selectStatusFilter('approved', $event)">Approved</button>
+                <button type="button" class="status-filter-option" [class.selected]="statusFilter === 'rejected'" (click)="selectStatusFilter('rejected', $event)">Rejected</button>
+              </span></span></label
+          ><button
+            type="button"
+            class="btn-primary report-filter-action"
+            (click)="load()"
+          >
+            Filter
+          </button>
+          <div class="export-dropdown" style="position: relative">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="toggleExportDropdown()"
+            >
+              <i class="fas fa-file-export" style="margin-right: 0.5rem"></i>
+              Unduh / Cetak
+              <i
+                class="fas fa-chevron-down"
+                style="margin-left: 0.5rem; font-size: 0.8rem"
+              ></i>
+            </button>
+            <div class="dropdown-menu-custom" *ngIf="isExportOpen">
+              <button type="button" class="dropdown-item" (click)="exportCSV()">
+                <i
+                  class="fas fa-file-csv"
+                  style="color: #17a2b8; margin-right: 0.5rem; width: 16px"
+                ></i>
+                Format CSV</button
+              ><button
+                type="button"
+                class="dropdown-item"
+                (click)="exportExcel()"
+              >
+                <i
+                  class="fas fa-file-excel"
+                  style="color: #28a745; margin-right: 0.5rem; width: 16px"
+                ></i>
+                Format Excel (XLS)</button
+              ><button
+                type="button"
+                class="dropdown-item"
+                (click)="exportJSON()"
+              >
+                <i
+                  class="fas fa-file-code"
+                  style="color: #ffc107; margin-right: 0.5rem; width: 16px"
+                ></i>
+                Format JSON</button
+              ><button
+                type="button"
+                class="dropdown-item"
+                (click)="exportPDF()"
+              >
+                <i
+                  class="fas fa-file-pdf"
+                  style="color: #dc3545; margin-right: 0.5rem; width: 16px"
+                ></i>
+                Format PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="golan-table-responsive intern-logbook-table-wrapper">
+        <table class="golan-table intern-logbook-table">
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Tugas</th>
+              <th>Kegiatan</th>
+              <th>Screenshot</th>
+              <th>Status</th>
+              <th>Catatan Manajer</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of displayedLogbooks">
+              <td data-label="Tanggal">
+                {{
+                  item.tanggal || item.Tanggal || item.CreatedAt
+                    | date: "dd MMM yyyy"
+                }}
+              </td>
+              <td data-label="Tugas">{{ item.tugas || item.Tugas || "-" }}</td>
+              <td data-label="Kegiatan">
+                {{
+                  item.deskripsi_kegiatan ||
+                    item.DeskripsiKegiatan ||
+                    item.kegiatan ||
+                    item.Kegiatan ||
+                    "-"
+                }}
+              </td>
+              <td data-label="Screenshot">
+                <span
+                  *ngFor="let image of item.attachments || item.Attachments"
+                  class="report-thumb"
+                  ><a [href]="image.file_url || image.FileURL" target="_blank"
+                    ><img
+                      [src]="image.file_url || image.FileURL"
+                      [alt]="image.file_name || image.FileName" /></a></span
+                ><span
+                  *ngIf="
+                    !(item.attachments?.length || item.Attachments?.length)
+                  "
+                  >-</span
+                >
+              </td>
+              <td data-label="Status">
+                <span
+                  class="status-pill"
+                  [ngClass]="logbookStatusClass(item)"
+                  >{{
+                    item.status_logbook || item.StatusLogbook || "draft"
+                  }}</span
+                >
+              </td>
+              <td data-label="Catatan Manajer">
+                {{ item.review_notes || item.ReviewNotes || "-" }}
+              </td>
+              <td data-label="Aksi">
+                <div class="intern-logbook-actions">
+                  <button
+                    type="button"
+                    class="btn-secondary btn-small"
+                    (click)="viewDetail(item)"
+                  >
+                    <i class="fas fa-eye"></i> Detail</button
+                  ><button
+                    type="button"
+                    class="btn-secondary btn-small"
+                    *ngIf="
+                      (item.status_logbook || item.StatusLogbook) === 'draft' ||
+                      (item.status_logbook || item.StatusLogbook) === 'rejected'
+                    "
+                    (click)="edit(item)"
+                  >
+                    <i class="fas fa-edit"></i> Edit</button
+                  ><button
+                    type="button"
+                    class="btn-danger btn-small"
+                    *ngIf="
+                      (item.status_logbook || item.StatusLogbook) === 'draft' ||
+                      (item.status_logbook || item.StatusLogbook) === 'rejected'
+                    "
+                    (click)="deleteLogbook(item)"
+                    style="
+                      background-color: #dc3545;
+                      color: #fff;
+                      border: none;
+                      border-radius: 4px;
+                      padding: 4px 8px;
+                      font-size: 12px;
+                      cursor: pointer;
+                    "
+                  >
+                    <i class="fas fa-trash"></i> Hapus
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <app-pagination
+        [totalItems]="logbooks.length"
+        [currentPage]="page"
+        [pageSize]="pageSize"
+        [loading]="isLoading"
+        (pageChange)="pageChanged($event)"
+        (pageSizeChange)="pageSizeChanged($event)"
+      ></app-pagination>
+      <p *ngIf="!logbooks.length && !isLoading" class="muted">
+        Belum ada logbook.
+      </p>
+    </section>
+  </main>
+</div>
 
-<div class="modal-backdrop" *ngIf="selectedLogbookDetail" (click)="closeDetail()">
+<div
+  class="modal-backdrop"
+  *ngIf="selectedLogbookDetail"
+  (click)="closeDetail()"
+>
   <div class="modal-card golan-card" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h3>Detail Logbook - {{ (selectedLogbookDetail.tanggal || selectedLogbookDetail.Tanggal) | date:'dd MMMM yyyy' }}</h3>
-      <button type="button" class="close-btn" (click)="closeDetail()">&times;</button>
+      <h3>
+        Detail Logbook -
+        {{
+          selectedLogbookDetail.tanggal || selectedLogbookDetail.Tanggal
+            | date: "dd MMMM yyyy"
+        }}
+      </h3>
+      <button type="button" class="close-btn" (click)="closeDetail()">
+        &times;
+      </button>
     </div>
     <div class="modal-body">
       <div class="detail-row">
         <strong>Status:</strong>
-        <span class="status-pill" [ngClass]="{
-          'status-success': (selectedLogbookDetail.status_logbook || selectedLogbookDetail.StatusLogbook) === 'approved',
-          'status-warning': (selectedLogbookDetail.status_logbook || selectedLogbookDetail.StatusLogbook) === 'submitted',
-          'status-danger': (selectedLogbookDetail.status_logbook || selectedLogbookDetail.StatusLogbook) === 'rejected'
-        }">
-          {{ selectedLogbookDetail.status_logbook || selectedLogbookDetail.StatusLogbook || 'draft' }}
+        <span
+          class="status-pill"
+          [ngClass]="logbookStatusClass(selectedLogbookDetail)"
+        >
+          {{
+            selectedLogbookDetail.status_logbook ||
+              selectedLogbookDetail.StatusLogbook ||
+              "draft"
+          }}
         </span>
       </div>
       <div class="detail-row" *ngIf="selectedLogbookDetail.is_late_submission">
-        <strong>Pengisian:</strong> <span class="status-pill status-warning">⚠ Terlambat</span>
+        <strong>Pengisian:</strong>
+        <span class="status-pill status-warning">⚠ Terlambat</span>
       </div>
       <div class="detail-row">
         <strong>Tugas / Topik:</strong>
-        <p>{{ selectedLogbookDetail.tugas || selectedLogbookDetail.Tugas || '-' }}</p>
+        <p>
+          {{
+            selectedLogbookDetail.tugas || selectedLogbookDetail.Tugas || "-"
+          }}
+        </p>
       </div>
       <div class="detail-row">
         <strong>Deskripsi Kegiatan:</strong>
-        <p style="white-space: pre-wrap;">{{ selectedLogbookDetail.deskripsi_kegiatan || selectedLogbookDetail.DeskripsiKegiatan || '-' }}</p>
+        <p style="white-space: pre-wrap">
+          {{
+            selectedLogbookDetail.deskripsi_kegiatan ||
+              selectedLogbookDetail.DeskripsiKegiatan ||
+              "-"
+          }}
+        </p>
       </div>
       <div class="detail-row">
         <strong>Kendala:</strong>
-        <p style="white-space: pre-wrap;">{{ selectedLogbookDetail.kendala || selectedLogbookDetail.Kendala || '-' }}</p>
+        <p style="white-space: pre-wrap">
+          {{
+            selectedLogbookDetail.kendala ||
+              selectedLogbookDetail.Kendala ||
+              "-"
+          }}
+        </p>
       </div>
       <div class="detail-row">
         <strong>Catatan Review Manager:</strong>
-        <p>{{ selectedLogbookDetail.review_notes || selectedLogbookDetail.ReviewNotes || '-' }}</p>
+        <p>
+          {{
+            selectedLogbookDetail.review_notes ||
+              selectedLogbookDetail.ReviewNotes ||
+              "-"
+          }}
+        </p>
       </div>
       <div class="detail-row" *ngIf="selectedLogbookDetail.attachments?.length">
         <strong>Screenshot Pekerjaan:</strong>
         <div class="screenshot-preview-grid">
-          <a *ngFor="let img of selectedLogbookDetail.attachments" [href]="img.file_url" target="_blank">
-            <img [src]="img.file_url" [alt]="img.file_name" style="width: 120px; height: 90px; object-fit: cover; border-radius: 6px;">
+          <a
+            *ngFor="let img of selectedLogbookDetail.attachments"
+            [href]="img.file_url"
+            target="_blank"
+          >
+            <img
+              [src]="img.file_url"
+              [alt]="img.file_name"
+              style="
+                width: 120px;
+                height: 90px;
+                object-fit: cover;
+                border-radius: 6px;
+              "
+            />
           </a>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn-secondary" (click)="closeDetail()">Tutup</button>
+      <button type="button" class="btn-secondary" (click)="closeDetail()">
+        Tutup
+      </button>
     </div>
   </div>
 </div>
-
-
-<app-file-preview [files]="selectedScreenshots" accept="image/jpeg,image/png,image/webp" [maxSizeMb]="5" [maxFiles]="3" label="Pilih screenshot (preview)" (filesChange)="onScreenshotFilesChange($event)"></app-file-preview>

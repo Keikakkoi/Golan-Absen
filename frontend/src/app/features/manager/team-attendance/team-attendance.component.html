@@ -13,10 +13,11 @@
           <div class="export-dropdown">
             <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()"><i class="fas fa-file-export" aria-hidden="true"></i> Unduh / Cetak <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
             <div class="dropdown-menu-custom" *ngIf="isExportOpen">
-              <button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv"></i> Format CSV</button>
-              <button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel"></i> Format Excel (XLS)</button>
-              <button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code"></i> Format JSON</button>
-              <button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf"></i> Format PDF</button>
+              <button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv export-icon export-icon-csv" aria-hidden="true"></i> Format CSV</button>
+              <button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel export-icon export-icon-excel" aria-hidden="true"></i> Format Excel (XLS)</button>
+              <button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code export-icon export-icon-json" aria-hidden="true"></i> Format JSON</button>
+              <button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf export-icon export-icon-pdf" aria-hidden="true"></i> Format PDF</button>
+              <button type="button" class="dropdown-item dropdown-item-print" (click)="printReport()"><i class="fas fa-print export-icon export-icon-print" aria-hidden="true"></i> Cetak Laporan</button>
             </div>
           </div>
         </div>

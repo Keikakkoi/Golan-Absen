@@ -6,6 +6,11 @@
       <h2>Pengaturan Notifikasi Sistem</h2>
     </div>
 
+    <div class="admin-notification-tabs" role="tablist" aria-label="Bagian notifikasi admin">
+      <a routerLink="/admin/notifications" role="tab">Notifikasi</a>
+      <a routerLink="/admin/settings/notifications" class="active" role="tab" aria-selected="true">Pengaturan Notifikasi</a>
+    </div>
+
     <div class="golan-card">
       <div *ngIf="isLoading" class="loading-state">Memuat pengaturan...</div>
       
@@ -16,7 +21,7 @@
 
         <div class="role-tabs" role="tablist" aria-label="Pilih role">
           <button *ngFor="let role of roles" type="button" class="role-tab" [class.selected]="selectedRole === role.value" (click)="selectRole(role.value)" role="tab" [attr.aria-selected]="selectedRole === role.value">
-            <span class="role-avatar">{{ role.initials }}</span><span class="role-tab-copy"><strong>{{ role.label }}</strong><small>{{ role.description }}</small></span>
+            <span class="role-avatar"><svg aria-hidden="true" focusable="false"><use [attr.href]="'assets/sidebar-icons.svg#' + role.icon"></use></svg></span><span class="role-tab-copy"><strong>{{ role.label }}</strong><small>{{ role.description }}</small></span>
           </button>
         </div>
 

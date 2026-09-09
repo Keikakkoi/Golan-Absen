@@ -516,6 +516,19 @@
 .role-operations-certificate-table .certificate-col-documents { width: 270px; }
 .role-operations-certificate-table .certificate-col-actions { width: 330px; }
 
+/* Keep the document labels and their controls visually separated. The table
+   is horizontally scrollable on narrow screens, so the extra breathing room
+   must live inside the two adjacent cells instead of relying on page width. */
+.role-operations-page .role-operations-certificate-table th:nth-child(6),
+.role-operations-page .role-operations-certificate-table td:nth-child(6) {
+  padding-right: 24px;
+}
+
+.role-operations-page .role-operations-certificate-table th:nth-child(7),
+.role-operations-page .role-operations-certificate-table td:nth-child(7) {
+  padding-left: 24px;
+}
+
 /* The shared table styles keep the first cell on one line. The participant
    cell is an exception: let its content shrink and wrap without affecting
    the neighbouring table tracks. */
@@ -539,12 +552,17 @@
 }
 
 .role-operations-page .role-operations-certificate-table .certificate-participant-name {
+  /* Keep long participant names inside the participant column. The table is
+     horizontally scrollable on small screens, so letting this text overflow
+     makes it visually collide with the institution column. */
+  display: block;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   font-weight: 600;
   line-height: 1.35;
   white-space: normal !important;
+  overflow: hidden;
   overflow-wrap: anywhere !important;
   word-break: break-word !important;
 }
@@ -644,6 +662,11 @@
     table-layout: fixed !important;
   }
 
+  /* Give the participant name a real wrapping boundary on narrow screens. */
+  .role-operations-page .role-operations-certificate-table .certificate-col-participant {
+    width: 170px !important;
+  }
+
   .role-operations-page .role-operations-certificate-table thead,
   .role-operations-page .role-operations-certificate-table tbody,
   .role-operations-page .role-operations-certificate-table tr {
@@ -666,11 +689,71 @@
   .role-operations-page .role-operations-certificate-table td::before { display: none !important; }
   .role-operations-page .role-operations-certificate-table .btn-small { width: auto; min-height: 30px; }
   .role-operations-page .role-operations-certificate-table .file-picker { min-width: 230px; }
+
+  /* Add a little more breathing room between the document and action
+     columns on narrow screens without creating a visible hover gap. */
+  .role-operations-page .role-operations-certificate-table th:nth-child(6),
+  .role-operations-page .role-operations-certificate-table td:nth-child(6) {
+    padding-right: 32px;
+  }
+
+  .role-operations-page .role-operations-certificate-table th:nth-child(7),
+  .role-operations-page .role-operations-certificate-table td:nth-child(7) {
+    padding-left: 40px;
+    /* Keep the column gap identical to the white table surface. */
+    border-left: 12px solid #fff;
+  }
+
+  .role-operations-page .role-operations-certificate-table tbody tr:hover td:nth-child(7) {
+    border-left-color: #fff;
+  }
+}
+
+/* The document/action separator is spacing, not a coloured table column. */
+:host-context(body:not(.dark-theme)) .role-operations-page .role-operations-certificate-table th:nth-child(6),
+:host-context(body:not(.dark-theme)) .role-operations-page .role-operations-certificate-table th:nth-child(7),
+:host-context(body:not(.dark-theme)) .role-operations-page .role-operations-certificate-table td:nth-child(6),
+:host-context(body:not(.dark-theme)) .role-operations-page .role-operations-certificate-table td:nth-child(7) {
+  background-color: #fff;
+}
+
+:host-context(body:not(.dark-theme)) .role-operations-page .role-operations-certificate-table th:nth-child(6),
+:host-context(body:not(.dark-theme)) .role-operations-page .role-operations-certificate-table th:nth-child(7) {
+  background-color: var(--mint-0);
+}
+
+/* Preserve the normal table hover highlight in the two action-related cells. */
+:host-context(body:not(.dark-theme)) .role-operations-page .role-operations-certificate-table tbody tr:hover td:nth-child(6),
+:host-context(body:not(.dark-theme)) .role-operations-page .role-operations-certificate-table tbody tr:hover td:nth-child(7) {
+  background-color: var(--mint-0);
+}
+
+:host-context(body.dark-theme) .role-operations-page .role-operations-certificate-table th:nth-child(7),
+:host-context(body.dark-theme) .role-operations-page .role-operations-certificate-table td:nth-child(7) {
+  border-left-color: var(--surface);
 }
 
 .muted-file {
   color: var(--muted-color);
   font-size: 11px;
+}
+
+/* The custom document picker keeps a light surface in the base theme. Map
+   that surface and its filename text to the dark tokens when needed. */
+:host-context(body.dark-theme) .role-operations-page .role-operations-certificate-table .file-picker {
+  background: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .role-operations-page .role-operations-certificate-table .file-picker:hover,
+:host-context(body.dark-theme) .role-operations-page .role-operations-certificate-table .file-picker.file-selected {
+  background: var(--surface-raised) !important;
+  border-color: var(--info) !important;
+}
+
+:host-context(body.dark-theme) .role-operations-page .role-operations-certificate-table .file-picker-name {
+  color: var(--text-dark) !important;
 }
 
 /* Light mode action colors. Keep these scoped to light mode so the shared
@@ -885,6 +968,64 @@
 .role-operations-page .golan-table:has(th:nth-child(6)) td:nth-child(5) { width: 14%; }
 .role-operations-page .golan-table:has(th:nth-child(6)) th:nth-child(6),
 .role-operations-page .golan-table:has(th:nth-child(6)) td:nth-child(6) { width: 14%; }
+
+/* Persetujuan Izin Tim: keep the action column readable and prevent status
+   values from turning into oversized, round blobs. */
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) {
+  min-width: 1180px;
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(1),
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(1) { width: 21%; }
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(2),
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(2) { width: 10%; }
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(3),
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(3) { width: 17%; }
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(4),
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(4) { width: 18%; }
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(5),
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(5) { width: 14%; }
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(6),
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(6) { width: 22%; }
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child {
+  overflow: hidden !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .status-pill {
+  display: block;
+  width: 100%;
+  max-width: 190px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border-radius: 10px;
+  text-align: center;
+  line-height: 1.25;
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-items: center;
+  gap: 5px;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .status-pill::before {
+  margin: 0;
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .btn-small {
+  min-width: 74px;
+  min-height: 36px;
+  margin: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
 
 @media (max-width: 768px) {
   .role-operations-page .team-filter-panel .golan-table-responsive {

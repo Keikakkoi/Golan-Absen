@@ -30,6 +30,7 @@ export class TeamAttendanceComponent implements OnInit {
   exportExcel(): void { this.isExportOpen = false; this.reportExport.downloadExcel('absensi-tim.xls', ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
   exportJSON(): void { this.isExportOpen = false; this.reportExport.downloadJson('absensi-tim.json', this.rows); }
   exportPDF(): void { this.isExportOpen = false; this.reportExport.downloadPdf('absensi-tim.pdf', 'Absensi Tim', this.dateRangeLabel(), ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
+  printReport(): void { this.isExportOpen = false; this.reportExport.printReport('Absensi Tim', this.dateRangeLabel(), ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
   private exportRows(): unknown[][] { return this.rows.map(row => [row.nama, row.tanggal, row.status, row.jam_masuk, row.jam_pulang]); }
   private dateRangeLabel(): string { return `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`; }
   private formatDate(value: string): string { const [year, month, day] = value.split('-'); return year && month && day ? `${day}/${month}/${year}` : value; }

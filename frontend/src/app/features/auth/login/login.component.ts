@@ -16,6 +16,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   isLoading = false;
   errorMessage = '';
   currentTime: Date = new Date();
+  currentDateLabel = this.formatDate(this.currentTime);
   mathQuestion = '';
   showPassword = false;
   readonly particleIds = Array.from({ length: 12 }, (_, index) => index + 1);
@@ -38,6 +39,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.generateMathChallenge();
     this.timerId = setInterval(() => {
       this.currentTime = new Date();
+      this.currentDateLabel = this.formatDate(this.currentTime);
     }, 1000);
   }
 
@@ -92,5 +94,15 @@ export class LoginComponent implements OnInit, OnDestroy {
     const secondNumber = Math.floor(Math.random() * 9) + 1;
     this.mathExpectedAnswer = firstNumber + secondNumber;
     this.mathQuestion = `${firstNumber} + ${secondNumber}`;
+  }
+
+  private formatDate(date: Date): string {
+    return new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    }).format(date);
   }
 }

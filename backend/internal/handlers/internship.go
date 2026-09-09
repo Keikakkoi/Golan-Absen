@@ -55,23 +55,33 @@ func GetInternshipDashboard(c *fiber.Ctx) error {
 	progress := 0
 	remaining := 0
 	if !start.IsZero() && !end.IsZero() && !end.Before(start) {
-		total := int(end.Sub(start).Hours()/24) + 1
-		elapsed := int(today.Sub(start).Hours()/24) + 1
-		if elapsed < 0 {
-			elapsed = 0
+		total := int(end.Sub(start).Hours() / 24)
+		if total == 0 {
+			progress = 100
+		} else {
+			elapsed := int(today.Sub(start).Hours() / 24)
+			if elapsed < 0 {
+				elapsed = 0
+			}
+			if elapsed > total {
+				elapsed = total
+			}
+			progress = elapsed * 100 / total
 		}
-		if elapsed > total {
-			elapsed = total
-		}
-		progress = elapsed * 100 / total
 		if !today.After(end) {
 			remaining = int(end.Sub(today).Hours()/24) + 1
 		}
 	}
 
+	// A logbook represents a day. Count distinct dates so legacy duplicate rows
+	// cannot inflate the dashboard totals.
 	var submitted, approved int64
-	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "submitted").Count(&submitted)
-	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "approved").Count(&approved)
+	config.DB.Model(&models.WorkReport{}).
+		Where("employee_id = ? AND status_logbook IN ?", user.Employee.ID, []string{"submitted", "approved", "rejected"}).
+		Distinct("tanggal").Count(&submitted)
+	config.DB.Model(&models.WorkReport{}).
+		Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "approved").
+		Distinct("tanggal").Count(&approved)
 	return c.JSON(fiber.Map{
 		"internship_start_date": user.InternshipStartDate,
 		"internship_end_date":   user.InternshipEndDate,
@@ -206,8 +216,8 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 	leaveQuery.Count(&leaveCount)
 
 	var logbooksSubmitted, logbooksApproved int64
-	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "submitted").Count(&logbooksSubmitted)
-	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "approved").Count(&logbooksApproved)
+	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook IN ?", user.Employee.ID, []string{"submitted", "approved", "rejected"}).Distinct("tanggal").Count(&logbooksSubmitted)
+	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "approved").Distinct("tanggal").Count(&logbooksApproved)
 
 	totalDays := int64(len(records)) + leaveCount
 	if totalDays == 0 {
@@ -439,6 +449,7 @@ func CreateInternshipLogbook(c *fiber.Ctx) error {
 			saveWorkReportAttachments(existing.ID, user.Employee.NIK, files)
 		}
 		config.DB.Preload("Attachments").First(&existing, existing.ID)
+		WsHub.Broadcast <- fiber.Map{"event": "logbook_updated"}
 		return c.Status(200).JSON(existing)
 	}
 
@@ -491,6 +502,7 @@ func UpdateInternshipLogbook(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	config.DB.Preload("Attachments").First(&report, report.ID)
+	WsHub.Broadcast <- fiber.Map{"event": "logbook_updated"}
 	return c.JSON(report)
 }
 
@@ -509,5 +521,6 @@ func DeleteInternshipLogbook(c *fiber.Ctx) error {
 	if err := config.DB.Delete(&report).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal menghapus logbook"})
 	}
+	WsHub.Broadcast <- fiber.Map{"event": "logbook_deleted"}
 	return c.JSON(fiber.Map{"message": "Logbook berhasil dihapus"})
 }

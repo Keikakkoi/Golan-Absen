@@ -225,12 +225,17 @@
 
 // Weekly Chart Card
 .chart-card {
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+
   .chart-container-flex {
     display: flex;
     gap: 16px;
-    height: 250px;
+    height: 274px;
     margin-top: 16px;
     position: relative;
+    min-width: 0;
   }
 
   .y-axis-labels {
@@ -249,6 +254,16 @@
     position: relative;
     flex: 1;
     height: 100%;
+    min-width: max(100%, calc(var(--bar-count, 0) * 60px + 16px));
+  }
+
+  .chart-scroll {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 8px;
+    scrollbar-width: thin;
   }
 
   .chart-grid-lines {
@@ -298,7 +313,7 @@
   .bar-wrapper {
     position: relative;
     width: 28px;
-    height: calc(100% - 30px);
+    height: calc(100% - 40px);
     display: flex;
     align-items: flex-end;
     margin-bottom: 8px;
@@ -368,7 +383,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    height: 22px;
+    height: 32px;
+    flex: 0 0 32px;
+    line-height: 1.15;
 
     .bar-day {
       font-size: 0.8rem;
@@ -380,6 +397,7 @@
       font-size: 0.65rem;
       color: #6c757d;
       margin-top: 1px;
+      white-space: nowrap;
     }
   }
 
@@ -388,5 +406,38 @@
     padding: 32px;
     color: #6c757d;
     font-style: italic;
+  }
+}
+
+/* Preserve readable fixed-width date columns on narrow screens. The scroll
+   belongs to the chart viewport, so the page itself never becomes wider. */
+@media (max-width: 600px) {
+  .chart-card {
+    padding-left: 14px;
+    padding-right: 14px;
+
+    .chart-container-flex {
+      gap: 8px;
+    }
+
+    .y-axis-labels {
+      width: 76px;
+      flex: 0 0 76px;
+      font-size: 0.7rem;
+    }
+
+    .chart-scroll {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    .chart-content {
+      min-width: max(500px, calc(var(--bar-count, 0) * 60px + 16px));
+    }
+
+    .bar-column {
+      width: 60px;
+      flex: 0 0 60px;
+    }
   }
 }

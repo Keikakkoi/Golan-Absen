@@ -19,13 +19,13 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadNotifications();
-    this.disconnectRealtime = this.notificationService.connectRealtime(() => this.loadNotifications());
+    this.disconnectRealtime = this.notificationService.connectRealtime(() => this.loadNotifications(true));
   }
 
   ngOnDestroy(): void { this.disconnectRealtime?.(); }
 
-  loadNotifications(): void {
-    this.notificationService.getAll().subscribe({
+  loadNotifications(background = false): void {
+    this.notificationService.getAll(background).subscribe({
       next: data => this.notifications = data || [],
       error: err => console.error('Failed to load notifications', err)
     });

@@ -1,9 +1,40 @@
 @import '../dashboard/dashboard.component.scss';
 
+/* The dashboard stylesheet is shared with the fixed desktop shell. History
+   contains variable-height table/calendar content, so it must be allowed to
+   grow with the document on small screens. */
+:host {
+  display: block;
+}
+
 .dashboard-container {
   display: flex;
   min-height: 100vh;
   background-color: var(--background);
+}
+
+@media (max-width: 900px) {
+  :host {
+    position: static;
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
+  .dashboard-container {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .main-content {
+    overflow: visible;
+  }
+
+  .table-scroll-container {
+    overflow-y: visible;
+  }
 }
 
 .main-content {
@@ -51,7 +82,7 @@
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .history-table {
@@ -400,7 +431,10 @@
     .pagination-container {
       width: 100%;
       max-width: 100%;
-      padding: 0;
+      /* Keep the pagination controls visually inset from the card/table edge
+         on narrow screens, especially the page-size dropdown. */
+      padding: 0 16px;
+      box-sizing: border-box;
     }
 
     .history-table {
@@ -546,5 +580,81 @@
 
   .attendance-detail-block {
     padding: 13px;
+  }
+}
+
+/* Dark theme surfaces for this page. The base rules above intentionally keep
+   the light theme colors, so override the legacy white surfaces only when the
+   application theme is dark. */
+:host-context(body.dark-theme) {
+  .history-card,
+  .history-calendar-card,
+  .history-detail-modal {
+    background: var(--surface) !important;
+    color: var(--text-dark);
+  }
+
+  .view-toggle button,
+  .calendar-header button {
+    background: var(--surface-muted);
+    border-color: var(--border-strong);
+    color: var(--text-dark);
+
+    &:hover {
+      background: var(--mint-1);
+    }
+  }
+
+  .table-container th {
+    background-color: var(--surface-muted);
+  }
+
+  .table-container th,
+  .table-container td {
+    border-color: var(--mint-1);
+  }
+
+  .calendar-grid .day-cell {
+    background: var(--surface-raised);
+    border-color: var(--border-strong);
+    color: var(--text-dark);
+
+    &.empty {
+      background: transparent;
+      border-color: transparent;
+    }
+
+    .day-record {
+      &.status-hadir {
+        background-color: #1e3a5f;
+        color: #93c5fd;
+      }
+
+      &.status-terlambat {
+        background-color: #4c2525;
+        color: #fca5a5;
+      }
+
+      &.status-izin {
+        background-color: #4a3a1a;
+        color: #fcd34d;
+      }
+
+      &.status-cuti {
+        background-color: #3d2854;
+        color: #d8b4fe;
+      }
+
+      &.status-alpha,
+      &.status-tidak-hadir {
+        background-color: #4b262b;
+        color: #fca5a5;
+      }
+    }
+  }
+
+  .history-detail-modal .attendance-detail-block {
+    background: var(--surface-raised);
+    border-color: var(--border-strong);
   }
 }

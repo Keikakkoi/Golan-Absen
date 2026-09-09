@@ -492,12 +492,22 @@ var backupModuleTables = map[string][]string{
 	"organisasi_jabatan":        {"divisions", "positions"},
 	"project":                   {"projects"},
 	"presensi":                  {"attendance_records"},
-	"pengajuan_izin_cuti":       {"leave_requests", "leave_quotas"},
+	"pengajuan_izin_cuti":       {"leave_requests", "leave_quotas", "leave_approval_histories", "approval_delegations"},
+	"lokasi_wfh":                {"employee_home_locations", "home_location_change_requests", "employee_home_location_histories"},
 	"jadwal_shift":              {"work_schedules", "regular_work_schedules", "work_types"},
+	"work_report":               {"work_reports", "work_report_attachments", "work_report_columns"},
 	"agenda_event":              {"company_events", "holidays"},
 	"sertifikat_dokumen_magang": {"internship_certificates", "internship_documents", "certificate_issuance_logs"},
-	"pengaturan_aplikasi":       {"office_locations", "notification_settings"},
-	"audit_log":                 {"audit_logs"},
+	"pengaturan_aplikasi":       {"office_locations", "notification_settings", "general_settings", "helpdesk_contacts"},
+	"notifikasi_perangkat":      {"notifications", "push_subscriptions"},
+	"audit_sistem":              {"audit_logs", "code_generators"},
+}
+
+var backupTableOrder = []string{
+	"users", "divisions", "positions", "projects", "employees", "work_types", "regular_work_schedules", "work_schedules",
+	"employee_home_locations", "home_location_change_requests", "employee_home_location_histories", "attendance_records",
+	"leave_requests", "leave_quotas", "leave_approval_histories", "approval_delegations", "work_reports", "work_report_attachments", "work_report_columns",
+	"company_events", "holidays", "internship_certificates", "internship_documents", "certificate_issuance_logs", "office_locations", "notification_settings", "general_settings", "helpdesk_contacts", "notifications", "push_subscriptions", "audit_logs", "code_generators",
 }
 
 func requestedBackupModules(raw string) ([]string, map[string]bool, error) {
@@ -518,6 +528,18 @@ func requestedBackupModules(raw string) ([]string, map[string]bool, error) {
 				key = "pengajuan_izin_cuti"
 			case "jadwal", "shift":
 				key = "jadwal_shift"
+			case "lokasi", "wfh":
+				key = "lokasi_wfh"
+			case "work-report", "work-report-logbook", "logbook":
+				key = "work_report"
+			case "agenda":
+				key = "agenda_event"
+			case "sertifikat", "magang":
+				key = "sertifikat_dokumen_magang"
+			case "notifikasi", "perangkat":
+				key = "notifikasi_perangkat"
+			case "audit", "sistem":
+				key = "audit_sistem"
 			}
 			if _, ok := backupModuleTables[key]; !ok {
 				return nil, nil, fmt.Errorf("Modul backup tidak dikenal: %s", part)
@@ -537,7 +559,33 @@ func requestedBackupModules(raw string) ([]string, map[string]bool, error) {
 			allowed[table] = true
 		}
 	}
+	// Selected snapshots must be independently restorable. Add only the
+	// smallest parent rows required by the selected child tables.
+	if strings.TrimSpace(raw) != "" {
+		if allowed["employees"] || allowed["attendance_records"] || allowed["leave_requests"] || allowed["leave_quotas"] || allowed["work_reports"] || allowed["employee_home_locations"] || allowed["home_location_change_requests"] || allowed["employee_home_location_histories"] || allowed["internship_certificates"] || allowed["internship_documents"] {
+			allowed["users"], allowed["employees"], allowed["divisions"], allowed["positions"] = true, true, true, true
+		}
+		if allowed["notifications"] || allowed["push_subscriptions"] || allowed["audit_logs"] || allowed["leave_approval_histories"] || allowed["approval_delegations"] {
+			allowed["users"] = true
+		}
+		if allowed["leave_approval_histories"] {
+			allowed["leave_requests"] = true
+		}
+		if allowed["work_report_attachments"] {
+			allowed["work_reports"] = true
+		}
+	}
 	return selected, allowed, nil
+}
+
+func backupTablesInOrder(data fiber.Map) []string {
+	tables := make([]string, 0, len(data))
+	for _, table := range backupTableOrder {
+		if _, ok := data[table]; ok {
+			tables = append(tables, table)
+		}
+	}
+	return tables
 }
 
 func removeSensitiveBackupFields(input []byte) ([]byte, error) {
@@ -580,31 +628,46 @@ func BackupDatabase(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
+	backupFormat := strings.ToLower(strings.TrimSpace(c.Query("format", "json")))
+	if backupFormat != "json" && backupFormat != "zip" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format backup tidak didukung"})
+	}
 
 	// Create a portable JSON snapshot of the application's data. This keeps the
 	// backup useful even when mysqldump is unavailable in the deployment image.
 	var (
-		users              []models.User
-		employees          []models.Employee
-		divisions          []models.Division
-		positions          []models.Position
-		attendanceRecords  []models.AttendanceRecord
-		leaveRequests      []models.LeaveRequest
-		leaveQuotas        []models.LeaveQuota
-		workTypes          []models.WorkType
-		workSchedules      []models.WorkSchedule
-		regularSchedules   []models.RegularWorkSchedule
-		officeLocations    []models.OfficeLocation
-		holidays           []models.Holiday
-		notifications      []models.Notification
-		notificationConfig []models.NotificationSetting
-		auditLogs          []models.AuditLog
-		homeLocations      []models.EmployeeHomeLocation
-		projects           []models.Project
-		companyEvents      []models.CompanyEvent
-		internshipCerts    []models.InternshipCertificate
-		internshipDocs     []models.InternshipDocument
-		issuanceLogs       []models.CertificateIssuanceLog
+		users                 []models.User
+		employees             []models.Employee
+		divisions             []models.Division
+		positions             []models.Position
+		attendanceRecords     []models.AttendanceRecord
+		leaveRequests         []models.LeaveRequest
+		leaveQuotas           []models.LeaveQuota
+		workTypes             []models.WorkType
+		workSchedules         []models.WorkSchedule
+		regularSchedules      []models.RegularWorkSchedule
+		officeLocations       []models.OfficeLocation
+		holidays              []models.Holiday
+		notifications         []models.Notification
+		notificationConfig    []models.NotificationSetting
+		auditLogs             []models.AuditLog
+		homeLocations         []models.EmployeeHomeLocation
+		projects              []models.Project
+		companyEvents         []models.CompanyEvent
+		internshipCerts       []models.InternshipCertificate
+		internshipDocs        []models.InternshipDocument
+		issuanceLogs          []models.CertificateIssuanceLog
+		homeChangeRequests    []models.HomeLocationChangeRequest
+		homeHistories         []models.EmployeeHomeLocationHistory
+		approvalDelegations   []models.ApprovalDelegation
+		approvalHistories     []models.LeaveApprovalHistory
+		workReports           []models.WorkReport
+		workReportAttachments []models.WorkReportAttachment
+		workReportColumns     []models.WorkReportColumn
+		generalSettings       []models.GeneralSetting
+		helpdeskContacts      []models.HelpdeskContact
+		pushSubscriptions     []models.PushSubscription
+		codeGenerators        []models.CodeGenerator
 	)
 	queries := []struct {
 		name string
@@ -620,6 +683,10 @@ func BackupDatabase(c *fiber.Ctx) error {
 		{"projects", &projects}, {"company_events", &companyEvents},
 		{"internship_certificates", &internshipCerts}, {"internship_documents", &internshipDocs},
 		{"certificate_issuance_logs", &issuanceLogs},
+		{"home_location_change_requests", &homeChangeRequests},
+		{"employee_home_location_histories", &homeHistories}, {"approval_delegations", &approvalDelegations}, {"leave_approval_histories", &approvalHistories},
+		{"work_reports", &workReports}, {"work_report_attachments", &workReportAttachments}, {"work_report_columns", &workReportColumns},
+		{"general_settings", &generalSettings}, {"helpdesk_contacts", &helpdeskContacts}, {"push_subscriptions", &pushSubscriptions}, {"code_generators", &codeGenerators},
 	}
 	for _, query := range queries {
 		if !allowed[query.name] {
@@ -649,7 +716,11 @@ func BackupDatabase(c *fiber.Ctx) error {
 			"audit_logs": auditLogs, "employee_home_locations": homeLocations,
 			"projects": projects, "company_events": companyEvents,
 			"internship_certificates": internshipCerts, "internship_documents": internshipDocs,
-			"certificate_issuance_logs": issuanceLogs,
+			"certificate_issuance_logs":        issuanceLogs,
+			"home_location_change_requests":    homeChangeRequests,
+			"employee_home_location_histories": homeHistories, "approval_delegations": approvalDelegations, "leave_approval_histories": approvalHistories,
+			"work_reports": workReports, "work_report_attachments": workReportAttachments, "work_report_columns": workReportColumns,
+			"general_settings": generalSettings, "helpdesk_contacts": helpdeskContacts, "push_subscriptions": pushSubscriptions, "code_generators": codeGenerators,
 		},
 	}
 	data := fiber.Map{}
@@ -658,23 +729,21 @@ func BackupDatabase(c *fiber.Ctx) error {
 			data[key] = value
 		}
 	}
+	files := collectBackupFiles(data)
 	backupType := "full"
 	if strings.TrimSpace(c.Query("modules")) != "" {
 		backupType = "selected"
 	}
 	createdAt := time.Now().Format(time.RFC3339)
 	backupData := fiber.Map{
-		"backup_meta": fiber.Map{"backup_format_version": "1.0", "backup_version": "1.0", "backup_type": backupType, "created_at": createdAt, "created_by": c.Locals("user_id"), "modules": modules, "database_structure_version": "gorm-models-2026-08", "database_version": "postgresql", "format": "golan-json-snapshot"},
+		"backup_meta": fiber.Map{"format": "golan-json-snapshot", "backup_format_version": "2.0", "backup_type": backupType, "created_at": createdAt, "created_by": c.Locals("user_id"), "database": "postgresql", "database_version": "postgresql", "modules": modules, "tables": backupTablesInOrder(data), "include_files": backupFormat == "zip", "database_structure_version": "gorm-models-2026-09"},
 		// Legacy consumers use metadata; retain it in every new file.
 		"metadata": fiber.Map{"timestamp": createdAt, "version": "1.0.0", "format": "golan-json-snapshot", "backup_type": backupType, "modules": modules},
 		"data":     data,
+		"files":    files,
 	}
 
 	backupFilename := "backup_golan_db_" + time.Now().Format("20060102150405")
-	backupFormat := strings.ToLower(strings.TrimSpace(c.Query("format", "json")))
-	if backupFormat != "json" && backupFormat != "zip" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format backup tidak didukung"})
-	}
 	if requested := strings.TrimSpace(c.Query("name")); requested != "" {
 		requested = strings.TrimSuffix(requested, ".json")
 		requested = strings.Map(func(r rune) rune {
@@ -717,6 +786,9 @@ func BackupDatabase(c *fiber.Ctx) error {
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mencadangkan file sertifikat atau dokumen magang: " + err.Error()})
 			}
 		}
+		if err = appendBackupFiles(writer, files); err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Gagal mencadangkan file: " + err.Error()})
+		}
 		if err = writer.Close(); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengompres backup"})
 		}
@@ -730,6 +802,108 @@ func BackupDatabase(c *fiber.Ctx) error {
 	c.Set("Content-Type", "application/json")
 	_ = utils.LogAction(c.Locals("user_id").(uint), "BACKUP", "Backup", 0, fmt.Sprintf("Membuat backup %s (%s), modul: %s", backupFilename, backupType, strings.Join(modules, ",")))
 	return c.Send(jsonData)
+}
+
+func collectBackupFiles(data fiber.Map) []backupFile {
+	result := []backupFile{}
+	for table, value := range data {
+		rv := reflect.ValueOf(value)
+		if rv.Kind() != reflect.Slice {
+			continue
+		}
+		for i := 0; i < rv.Len(); i++ {
+			row := rv.Index(i)
+			if row.Kind() == reflect.Pointer {
+				row = row.Elem()
+			}
+			if row.Kind() != reflect.Struct {
+				continue
+			}
+			idField := row.FieldByName("ID")
+			if !idField.IsValid() {
+				continue
+			}
+			id := uint(idField.Uint())
+			storage := stringField(row, "StorageKey")
+			filename := stringField(row, "FileName")
+			mime := stringField(row, "MimeType")
+			urls := []string{"FotoProfilURL", "FotoSelfieMasukURL", "FotoSelfiePulangURL", "LampiranURL", "FileAttachmentURL", "AttachmentURL", "FileURL"}
+			for _, field := range urls {
+				url := stringField(row, field)
+				if url == "" {
+					continue
+				}
+				key := storage
+				if key == "" {
+					key = storageKeyFromURL(url)
+				}
+				if key == "" {
+					continue
+				}
+				if filename == "" {
+					filename = filepath.Base(key)
+				}
+				result = append(result, backupFile{Table: table, RecordID: id, StorageKey: key, FileName: filename, MimeType: mime, ContentPath: "files/" + table + "/" + fmt.Sprintf("%d-%s", id, safeBackupFileName(filename))})
+			}
+			if storage != "" && len(urls) == 0 {
+				result = append(result, backupFile{Table: table, RecordID: id, StorageKey: storage, FileName: filename, MimeType: mime, ContentPath: "files/" + table + "/" + fmt.Sprintf("%d-%s", id, safeBackupFileName(filename))})
+			}
+		}
+	}
+	return result
+}
+func stringField(v reflect.Value, name string) string {
+	f := v.FieldByName(name)
+	if f.IsValid() && f.Kind() == reflect.String {
+		return f.String()
+	}
+	return ""
+}
+func storageKeyFromURL(raw string) string {
+	parts := strings.Split(strings.TrimPrefix(raw, "/"), "/")
+	for i, part := range parts {
+		if part == storage.BucketName && i+1 < len(parts) {
+			return strings.Join(parts[i+1:], "/")
+		}
+	}
+	return ""
+}
+func safeBackupFileName(name string) string {
+	return strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '.' || r == '-' || r == '_' {
+			return r
+		}
+		return '-'
+	}, filepath.Base(name))
+}
+func appendBackupFiles(writer *zip.Writer, files []backupFile) error {
+	if storage.Client == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, file := range files {
+		if seen[file.ContentPath] || file.StorageKey == "" {
+			continue
+		}
+		seen[file.ContentPath] = true
+		object, err := storage.Client.GetObject(context.Background(), storage.BucketName, file.StorageKey, minioSDK.GetObjectOptions{})
+		if err != nil {
+			continue
+		}
+		content, err := io.ReadAll(io.LimitReader(object, 20*1024*1024+1))
+		object.Close()
+		if err != nil || len(content) > 20*1024*1024 {
+			continue
+		}
+		entry, err := writer.Create(file.ContentPath)
+		if err != nil {
+			return err
+		}
+		if _, err = entry.Write(content); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // appendInternshipBackupFiles stores the actual certificate/document objects
@@ -791,7 +965,8 @@ type restoreRequest struct {
 
 // RestoreBackup restores only the explicitly supported JSON snapshot format.
 // Every write is performed in one transaction; a single invalid row rolls the
-// entire operation back. Existing audit logs are intentionally never imported.
+// entire operation back. Existing audit logs are intentionally never deleted
+// by a full restore, but audit logs included in the snapshot are imported.
 func RestoreBackup(c *fiber.Ctx) error {
 	if !isHRD(c) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Anda tidak memiliki izin untuk melakukan restore"})
@@ -800,8 +975,8 @@ func RestoreBackup(c *fiber.Ctx) error {
 	if err != nil || file == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File backup wajib diunggah"})
 	}
-	if file.Size <= 0 || file.Size > 20*1024*1024 || !strings.HasSuffix(strings.ToLower(file.Filename), ".json") {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File harus berupa JSON dan berukuran maksimal 20 MB"})
+	if file.Size <= 0 || file.Size > 20*1024*1024 || (!strings.HasSuffix(strings.ToLower(file.Filename), ".json") && !strings.HasSuffix(strings.ToLower(file.Filename), ".zip")) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File harus berupa JSON atau ZIP dan berukuran maksimal 20 MB"})
 	}
 	mode := strings.ToLower(strings.TrimSpace(c.FormValue("mode", "add")))
 	if mode != "add" && mode != "overwrite" && mode != "full" {
@@ -819,10 +994,39 @@ func RestoreBackup(c *fiber.Ctx) error {
 	if err != nil || len(body) > 20*1024*1024 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File backup tidak dapat dibaca"})
 	}
+	archiveFiles := map[string][]byte{}
+	if strings.HasSuffix(strings.ToLower(file.Filename), ".zip") {
+		archive, zipErr := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+		if zipErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Arsip ZIP backup tidak valid"})
+		}
+		for _, entry := range archive.File {
+			if entry.FileInfo().IsDir() || strings.Contains(filepath.Clean(entry.Name), "..") {
+				continue
+			}
+			reader, openErr := entry.Open()
+			if openErr != nil {
+				return c.Status(400).JSON(fiber.Map{"error": "File dalam arsip backup tidak dapat dibaca"})
+			}
+			content, readErr := io.ReadAll(io.LimitReader(reader, 20*1024*1024+1))
+			reader.Close()
+			if readErr != nil {
+				return c.Status(400).JSON(fiber.Map{"error": "File dalam arsip backup tidak dapat dibaca"})
+			}
+			archiveFiles[entry.Name] = content
+		}
+		for name, content := range archiveFiles {
+			if strings.HasSuffix(strings.ToLower(name), ".json") {
+				body = content
+				break
+			}
+		}
+	}
 	var snapshot struct {
 		Meta       map[string]any             `json:"backup_meta"`
 		LegacyMeta map[string]any             `json:"metadata"`
 		Data       map[string]json.RawMessage `json:"data"`
+		Files      []backupFile               `json:"files"`
 	}
 	if err := json.Unmarshal(body, &snapshot); err != nil || snapshot.Data == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Struktur file backup tidak valid"})
@@ -834,7 +1038,7 @@ func RestoreBackup(c *fiber.Ctx) error {
 	if meta == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Metadata backup tidak ditemukan"})
 	}
-	if version, ok := meta["backup_format_version"].(string); ok && version != "1.0" {
+	if version, ok := meta["backup_format_version"].(string); ok && version != "1.0" && version != "2.0" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Versi backup tidak kompatibel dengan aplikasi ini"})
 	}
 	if version, ok := meta["version"].(string); ok && version != "1.0.0" && version != "1.0" {
@@ -891,7 +1095,7 @@ func RestoreBackup(c *fiber.Ctx) error {
 					}
 				}
 				existing := &models.User{}
-				lookupErr := tx.Unscoped().First(existing, v.ID).Error
+				lookupErr := tx.First(existing, v.ID).Error
 				if lookupErr == nil {
 					v.PasswordHash = restoredPasswordHash(backupHash, existing.PasswordHash)
 					if strings.TrimSpace(existing.PasswordHash) != "" && strings.TrimSpace(v.PasswordHash) == "" {
@@ -1085,6 +1289,15 @@ func RestoreBackup(c *fiber.Ctx) error {
 			})
 		}},
 	}
+	for _, table := range backupTableOrder {
+		if _, exists := snapshot.Data[table]; !exists {
+			continue
+		}
+		if hasCollection(collections, table) {
+			continue
+		}
+		collections = append(collections, restoreGenericCollection(tx, table, snapshot.Data[table]))
+	}
 	for _, collection := range collections {
 		if len(collection.rows) == 0 || string(collection.rows) == "null" {
 			continue
@@ -1100,9 +1313,117 @@ func RestoreBackup(c *fiber.Ctx) error {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Restore gagal. Tidak ada perubahan data yang diterapkan.", "rollback": true})
 	}
+	failedFiles := restoreBackupFiles(archiveFiles, snapshot.Files, mode)
 	userID, _ := c.Locals("user_id").(uint)
 	utils.LogAction(userID, "RESTORE", "Backup", 0, fmt.Sprintf("Restore backup %s dengan mode %s; %v", file.Filename, mode, counts))
-	return c.JSON(fiber.Map{"message": "Restore berhasil", "mode": mode, "restored": counts, "skipped": 0, "conflicts": 0, "failed": 0})
+	return c.JSON(fiber.Map{"message": "Restore berhasil", "mode": mode, "restored": counts, "skipped": 0, "conflicts": 0, "failed": len(failedFiles), "file_errors": failedFiles})
+}
+
+type backupFile struct {
+	Table       string `json:"table"`
+	RecordID    uint   `json:"record_id"`
+	StorageKey  string `json:"storage_key"`
+	FileName    string `json:"file_name"`
+	MimeType    string `json:"mime_type"`
+	FileSize    int64  `json:"file_size"`
+	ContentPath string `json:"content_path"`
+}
+
+func hasCollection(items []struct {
+	key     string
+	rows    json.RawMessage
+	restore func(json.RawMessage, string) (int, error)
+}, key string) bool {
+	for _, item := range items {
+		if item.key == key {
+			return true
+		}
+	}
+	return false
+}
+
+func restoreGenericCollection(tx *gorm.DB, table string, raw json.RawMessage) struct {
+	key     string
+	rows    json.RawMessage
+	restore func(json.RawMessage, string) (int, error)
+} {
+	modelTypes := map[string]reflect.Type{
+		"regular_work_schedules": reflect.TypeOf(models.RegularWorkSchedule{}), "home_location_change_requests": reflect.TypeOf(models.HomeLocationChangeRequest{}),
+		"employee_home_location_histories": reflect.TypeOf(models.EmployeeHomeLocationHistory{}), "approval_delegations": reflect.TypeOf(models.ApprovalDelegation{}), "leave_approval_histories": reflect.TypeOf(models.LeaveApprovalHistory{}),
+		"work_reports": reflect.TypeOf(models.WorkReport{}), "work_report_attachments": reflect.TypeOf(models.WorkReportAttachment{}), "work_report_columns": reflect.TypeOf(models.WorkReportColumn{}),
+		"general_settings": reflect.TypeOf(models.GeneralSetting{}), "helpdesk_contacts": reflect.TypeOf(models.HelpdeskContact{}), "push_subscriptions": reflect.TypeOf(models.PushSubscription{}), "code_generators": reflect.TypeOf(models.CodeGenerator{}),
+		"audit_logs": reflect.TypeOf(models.AuditLog{}),
+	}
+	return struct {
+		key     string
+		rows    json.RawMessage
+		restore func(json.RawMessage, string) (int, error)
+	}{table, raw, func(rows json.RawMessage, mode string) (int, error) {
+		typ, ok := modelTypes[table]
+		if !ok {
+			return 0, fmt.Errorf("model %s tidak didukung", table)
+		}
+		return restoreRows(tx, rows, mode, table, func(row []byte) (uint, error) {
+			value := reflect.New(typ)
+			if err := json.Unmarshal(row, value.Interface()); err != nil {
+				return 0, err
+			}
+			clearBackupAssociations(value.Interface())
+			return uint(value.Elem().FieldByName("Model").FieldByName("ID").Uint()), saveRestoreRow(tx, value.Interface(), mode)
+		})
+	}}
+}
+
+func clearBackupAssociations(value any) {
+	switch v := value.(type) {
+	case *models.HomeLocationChangeRequest:
+		v.Employee = models.Employee{}
+		v.Reviewer = nil
+	case *models.LeaveApprovalHistory:
+		v.LeaveRequest = models.LeaveRequest{}
+		v.DecidedByUser = models.User{}
+	case *models.WorkReport:
+		v.Employee = models.Employee{}
+		v.Attachments = nil
+	case *models.WorkReportAttachment:
+		v.WorkReport = models.WorkReport{}
+	case *models.PushSubscription:
+		v.User = models.User{}
+	case *models.AuditLog:
+		// The backup contains the preloaded User object for audit log exports.
+		// Restore only the foreign key; saving User would create a nested row.
+		v.User = models.User{}
+	}
+}
+
+func restoreBackupFiles(archive map[string][]byte, files []backupFile, mode string) []string {
+	if len(files) == 0 {
+		return nil
+	}
+	if storage.Client == nil {
+		failed := make([]string, 0, len(files))
+		for _, file := range files {
+			failed = append(failed, file.StorageKey+": storage tidak tersedia")
+		}
+		return failed
+	}
+	failed := []string{}
+	for _, file := range files {
+		if mode == "add" {
+			if _, err := storage.Client.StatObject(context.Background(), storage.BucketName, file.StorageKey, minioSDK.StatObjectOptions{}); err == nil {
+				continue
+			}
+		}
+		content, ok := archive[file.ContentPath]
+		if !ok {
+			failed = append(failed, file.StorageKey+": file fisik tidak tersedia")
+			continue
+		}
+		if _, err := storage.Client.PutObject(context.Background(), storage.BucketName, file.StorageKey, bytes.NewReader(content), int64(len(content)), minioSDK.PutObjectOptions{ContentType: file.MimeType}); err != nil {
+			failed = append(failed, file.StorageKey+": "+err.Error())
+		}
+	}
+	return failed
 }
 
 func restoreRows(tx *gorm.DB, raw json.RawMessage, mode, table string, decode func([]byte) (uint, error)) (int, error) {
@@ -1139,16 +1460,10 @@ func saveRestoreRow(tx *gorm.DB, value any, mode string) error {
 	// Use a separate destination for the lookup. Querying into value would
 	// overwrite the backup row with the database row before Save was called.
 	existing := reflect.New(modelValue.Type()).Interface()
-	err := tx.Unscoped().First(existing, id).Error
+	err := tx.First(existing, id).Error
 	if err == nil {
 		if mode == "add" {
 			return nil
-		}
-		// A soft-deleted row still owns its primary key. Clear DeletedAt so
-		// Save updates that physical row instead of attempting an INSERT.
-		deletedAt := modelValue.FieldByName("Model").FieldByName("DeletedAt")
-		if deletedAt.IsValid() && deletedAt.CanSet() {
-			deletedAt.Set(reflect.Zero(deletedAt.Type()))
 		}
 		return tx.Save(value).Error
 	}
@@ -1164,6 +1479,11 @@ func clearRestoreTables(tx *gorm.DB) error {
 		return err
 	}
 	for _, value := range []any{&models.AttendanceRecord{}, &models.LeaveRequest{}, &models.LeaveQuota{}, &models.WorkSchedule{}, &models.EmployeeHomeLocation{}, &models.Notification{}, &models.InternshipDocument{}, &models.InternshipCertificate{}, &models.CertificateIssuanceLog{}, &models.CompanyEvent{}, &models.Employee{}, &models.Project{}, &models.Division{}, &models.Position{}, &models.WorkType{}, &models.OfficeLocation{}, &models.Holiday{}, &models.NotificationSetting{}} {
+		if err := tx.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(value).Error; err != nil {
+			return err
+		}
+	}
+	for _, value := range []any{&models.RegularWorkSchedule{}, &models.HomeLocationChangeRequest{}, &models.EmployeeHomeLocationHistory{}, &models.ApprovalDelegation{}, &models.LeaveApprovalHistory{}, &models.WorkReportAttachment{}, &models.WorkReport{}, &models.WorkReportColumn{}, &models.GeneralSetting{}, &models.HelpdeskContact{}, &models.PushSubscription{}, &models.CodeGenerator{}} {
 		if err := tx.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(value).Error; err != nil {
 			return err
 		}

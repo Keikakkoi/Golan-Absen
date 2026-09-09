@@ -52,9 +52,18 @@
           <div class="field-row">
             <label class="field-group">
               <span>Jenis Izin</span>
-              <select [(ngModel)]="formData.jenis_izin" (ngModelChange)="onDateChange()" name="jenis_izin" class="golan-input" required>
-                <option *ngFor="let type of leaveTypes" [value]="type" [disabled]="type === 'Cuti' && !canRequestCuti">{{ type }}</option>
-              </select>
+              <div class="leave-type-dropdown">
+                <input type="hidden" name="jenis_izin" [value]="formData.jenis_izin" required>
+                <button type="button" class="golan-input leave-type-trigger" [class.open]="isLeaveTypeOpen" [attr.aria-expanded]="isLeaveTypeOpen" aria-haspopup="listbox" (click)="toggleLeaveType($event)">
+                  <span>{{ formData.jenis_izin }}</span>
+                  <span class="leave-type-arrow" aria-hidden="true"></span>
+                </button>
+                <div class="leave-type-options" *ngIf="isLeaveTypeOpen" role="listbox">
+                  <button type="button" *ngFor="let type of leaveTypes" role="option" [attr.aria-selected]="formData.jenis_izin === type" [disabled]="type === 'Cuti' && !canRequestCuti" [class.selected]="formData.jenis_izin === type" (click)="selectLeaveType(type, $event)">
+                    {{ type }}
+                  </button>
+                </div>
+              </div>
               <small class="input-hint" *ngIf="!isIntern && !canRequestCuti">Cuti tersedia setelah minimal {{ minimumMasaKerjaCutiBulan }} bulan kerja<span *ngIf="tanggalCutiTersedia"> ({{ tanggalCutiTersedia | date:'dd MMMM yyyy' }}).</span></small>
             </label>
 
@@ -138,8 +147,8 @@
                 </tr>
               </tbody>
             </table>
-            <app-pagination [totalItems]="leaveRequests.length" [currentPage]="page" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
           </div>
+          <app-pagination [totalItems]="leaveRequests.length" [currentPage]="page" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
         </div>
       </section>
     </div>

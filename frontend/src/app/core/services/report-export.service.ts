@@ -1,88 +1,106 @@
 import { Injectable } from '@angular/core';
 import * as XLSX from 'xlsx';
 
+type ReportCellAlign = 'left' | 'center';
+
 @Injectable({ providedIn: 'root' })
 export class ReportExportService {
+  private readonly blue = '#1769AA';
+  private readonly ink = '#172B3A';
+  private readonly muted = '#526F8C';
+  private readonly border = '#B8CBD8';
+
   downloadCsv(filename: string, headers: string[], rows: unknown[][]): void {
-    const csv = [headers, ...rows]
-      .map(row => row.map(value => `"${String(value ?? '-').replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
+    const csv = [headers, ...rows].map(row => row.map(value => `"${String(value ?? '-').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     this.download(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }), filename);
   }
-
   downloadExcel(filename: string, headers: string[], rows: unknown[][]): void {
-    const normalizedRows = [headers, ...rows].map(row => row.map(value => String(value ?? '-')));
-    const worksheet = XLSX.utils.aoa_to_sheet(normalizedRows);
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows].map(row => row.map(value => String(value ?? '-'))));
     worksheet['!cols'] = headers.map(() => ({ wch: 22 }));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Karyawan');
-    const content = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    this.download(new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), filename);
+    const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Karyawan');
+    this.download(new Blob([XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), filename);
+  }
+  downloadJson(filename: string, data: unknown): void { this.download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' }), filename); }
+
+  async downloadPdf(filename: string, title: string, printDate: string, headers: string[], rows: unknown[][]): Promise<void> {
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const logo = await this.loadLogoDataUrl(); const margin = 10;
+    const pageWidth = pdf.internal.pageSize.getWidth(); const pageHeight = pdf.internal.pageSize.getHeight();
+    const isAlpha = this.isAlphaReport(headers); const isLogbook = this.isLogbookReport(headers); const isWorkReport = this.isWorkReport(headers); const widths = this.getColumnWidths(headers.length, pageWidth - margin * 2);
+    const columnStyles: Record<number, { cellWidth: number; halign?: ReportCellAlign }> = {};
+    widths.forEach((cellWidth, index) => columnStyles[index] = { cellWidth });
+    if (isAlpha) [0, 3, 4].forEach(index => columnStyles[index].halign = 'center');
+    if (isLogbook) [0, 3, 4].forEach(index => columnStyles[index].halign = 'center');
+    if (isWorkReport) [0, 1, 13, 14].forEach(index => { if (columnStyles[index]) columnStyles[index].halign = 'center'; });
+    autoTable(pdf, {
+      head: [headers], body: rows.map(row => row.map(value => String(value ?? '-'))), startY: 35,
+      margin: { top: 35, right: margin, bottom: 14, left: margin }, tableWidth: pageWidth - margin * 2,
+      theme: 'grid', rowPageBreak: 'avoid', showHead: 'everyPage',
+      styles: { font: 'helvetica', fontSize: isAlpha || isLogbook || isWorkReport ? 7 : 6.4, cellPadding: isAlpha || isLogbook || isWorkReport ? 2.2 : 2, overflow: 'linebreak', valign: 'top', textColor: this.ink, lineColor: this.border, lineWidth: .2 },
+      headStyles: { fillColor: this.blue, textColor: '#FFFFFF', fontStyle: 'bold', fontSize: isAlpha || isLogbook || isWorkReport ? 7 : 6.2, halign: 'center', valign: 'middle' },
+      alternateRowStyles: { fillColor: '#F1F7FB' }, columnStyles,
+      didParseCell: data => {
+        if ((!isAlpha && !isLogbook && !isWorkReport) || data.section !== 'body') return;
+        if (isAlpha && data.column.index === 3) { const total = Number(data.cell.raw || 0); data.cell.styles.fontStyle = 'bold'; data.cell.styles.textColor = total > 2 ? '#B42318' : total > 0 ? '#A15C00' : '#19734B'; }
+        if (isAlpha && data.column.index === 4) { data.cell.styles.fontStyle = 'bold'; data.cell.styles.textColor = '#B42318'; data.cell.styles.fillColor = '#FEE4E2'; }
+        if (isLogbook && data.column.index === 4) this.styleLogbookStatus(data.cell, String(data.cell.raw || 'draft'));
+        if (isWorkReport && data.column.index >= 13 && data.column.index <= 14) this.styleWorkReportStatus(data.cell, String(data.cell.raw || '-'));
+      },
+      didDrawPage: data => this.drawPdfHeader(pdf, logo, title, printDate, data.pageNumber, pageWidth, pageHeight, margin)
+    });
+    this.download(pdf.output('blob'), filename);
   }
 
-  downloadJson(filename: string, data: unknown): void {
-    this.download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' }), filename);
+  printReport(title: string, printDate: string, headers: string[], rows: unknown[][]): void { this.openPrintWindow(title, printDate, headers, rows, false); }
+  printAlphaReport(title: string, printDate: string, headers: string[], rows: unknown[][]): void { this.openPrintWindow(title, printDate, headers, rows, true); }
+  async downloadStatisticsPdf(filename: string, title: string, printDate: string, summaryRows: unknown[][], detailHeaders: string[], detailRows: unknown[][]): Promise<void> {
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }); const logo = await this.loadLogoDataUrl(); const margin = 10;
+    const pageWidth = pdf.internal.pageSize.getWidth(); const pageHeight = pdf.internal.pageSize.getHeight();
+    const drawHeader = (data: any) => this.drawPdfHeader(pdf, logo, title, printDate, data.pageNumber, pageWidth, pageHeight, margin);
+    autoTable(pdf, { head: [['RINGKASAN STATISTIK', 'NILAI']], body: summaryRows.map(row => [String(row[0] ?? '-'), String(row[1] ?? '-')]), startY: 35, margin: { top: 35, right: margin, bottom: 14, left: margin }, tableWidth: 105, theme: 'grid', styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.5, textColor: this.ink, lineColor: this.border, lineWidth: .2 }, headStyles: { fillColor: this.blue, textColor: '#FFFFFF', fontStyle: 'bold', halign: 'center' }, alternateRowStyles: { fillColor: '#F1F7FB' }, columnStyles: { 0: { cellWidth: 68 }, 1: { cellWidth: 37, halign: 'center' } }, didDrawPage: drawHeader });
+    const summaryEnd = (pdf as any).lastAutoTable?.finalY || 70;
+    const widths = this.getColumnWidths(detailHeaders.length, pageWidth - margin * 2); const columnStyles: Record<number, { cellWidth: number; halign?: ReportCellAlign }> = {};
+    widths.forEach((cellWidth, index) => columnStyles[index] = { cellWidth }); [0, 1, 2, 3, 4, 5].forEach(index => { if (columnStyles[index]) columnStyles[index].halign = index === 1 || index === 3 || index === 4 ? 'center' : 'left'; });
+    autoTable(pdf, { head: [detailHeaders], body: detailRows.map(row => row.map(value => String(value ?? '-'))), startY: summaryEnd + 8, margin: { top: 35, right: margin, bottom: 14, left: margin }, tableWidth: pageWidth - margin * 2, theme: 'grid', rowPageBreak: 'avoid', showHead: 'everyPage', styles: { font: 'helvetica', fontSize: 7, cellPadding: 2.2, overflow: 'linebreak', valign: 'top', textColor: this.ink, lineColor: this.border, lineWidth: .2 }, headStyles: { fillColor: this.blue, textColor: '#FFFFFF', fontStyle: 'bold', fontSize: 7, halign: 'center', valign: 'middle' }, alternateRowStyles: { fillColor: '#F1F7FB' }, columnStyles, didDrawPage: drawHeader });
+    this.download(pdf.output('blob'), filename);
+  }
+  printStatisticsReport(title: string, printDate: string, summaryRows: unknown[][], detailHeaders: string[], detailRows: unknown[][]): void {
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800'); if (!printWindow) return; const escape = (value: unknown) => this.escapeHtml(String(value ?? '-')); const logoUrl = new URL('assets/icon_golan.png', document.baseURI).href;
+    const summary = summaryRows.map(row => `<tr><td>${escape(row[0])}</td><td class="summary-value">${escape(row[1])}</td></tr>`).join(''); const detail = detailRows.map(row => `<tr>${row.map(cell => `<td>${escape(cell).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`).join(''); const widths = this.getPrintColumnWidths(detailHeaders.length);
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escape(title)}</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Arial,sans-serif;color:${this.ink};font-size:7.5px;margin:0}.report-header{display:flex;align-items:center;gap:12px;border-bottom:2px solid ${this.blue};padding:0 0 8px;margin-bottom:10px}.report-header img{width:42px;height:42px;object-fit:contain}.report-header h1{margin:0;color:${this.blue};font-size:17px}.report-header h2{margin:3px 0 0;font-size:12px}.report-header p{margin:3px 0 0;color:${this.muted};font-size:8px}.summary-table{width:105mm;border-collapse:collapse;margin-bottom:10px}.summary-table th,.summary-table td,table.detail-table th,table.detail-table td{border:1px solid ${this.border};padding:5px 4px;line-height:1.3;vertical-align:top}.summary-table th,table.detail-table th{background:${this.blue};color:#fff;font-weight:700;text-align:center}.summary-table td:last-child{text-align:center;font-weight:700}.summary-table tr:nth-child(even),.detail-table tbody tr:nth-child(even){background:#F1F7FB}.detail-table{width:100%;border-collapse:collapse;table-layout:fixed}.detail-table th,.detail-table td{overflow-wrap:anywhere;word-break:break-word}.detail-table thead{display:table-header-group}.detail-table tr{break-inside:avoid;page-break-inside:avoid}</style></head><body><header class="report-header"><img src="${logoUrl}" alt="Logo Golan"><div><h1>GOLAN - PT. GOLAN DIGITAL KREATIF</h1><h2>${escape(title)}</h2><p>Tanggal pembuatan laporan: ${escape(printDate)}</p></div></header><table class="summary-table"><thead><tr><th>RINGKASAN STATISTIK</th><th>NILAI</th></tr></thead><tbody>${summary}</tbody></table><table class="detail-table"><colgroup>${widths.map(width => `<col style="width:${width}">`).join('')}</colgroup><thead><tr>${detailHeaders.map(header => `<th>${escape(header)}</th>`).join('')}</tr></thead><tbody>${detail}</tbody></table><script>window.onload=function(){window.print();}</script></body></html>`); printWindow.document.close();
+  }
+  print(): void { window.print(); }
+
+  private drawPdfHeader(pdf: any, logo: string | null, title: string, printDate: string, page: number, pageWidth: number, pageHeight: number, margin: number): void {
+    if (logo) pdf.addImage(logo, 'PNG', margin, 8, 18, 18);
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(14); pdf.setTextColor(this.blue); pdf.text('GOLAN - PT. GOLAN DIGITAL KREATIF', margin + 23, 14);
+    pdf.setFontSize(11); pdf.setTextColor(this.ink); pdf.text(title, margin + 23, 20); pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(this.muted); pdf.text(`Tanggal pembuatan laporan: ${printDate}`, margin + 23, 25);
+    pdf.setDrawColor(this.blue); pdf.setLineWidth(.6); pdf.line(margin, 30, pageWidth - margin, 30); pdf.setFontSize(7); pdf.text(`Halaman ${page}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
   }
 
-  downloadPdf(filename: string, title: string, printDate: string, headers: string[], rows: unknown[][]): void {
-    const safe = (value: unknown) => this.pdfText(String(value ?? '-').replace(/[\r\n]+/g, ' '));
-    const wrap = (value: unknown, size = 18): string[] => { const text = safe(value); const parts: string[] = []; for (let i = 0; i < text.length; i += size) parts.push(text.slice(i, i + size)); return parts.length ? parts : ['-']; };
-    const widths = [55, 70, 45, 95, 55, 85, 95, 60, 60, 55, 55, 55, 65, 60];
-    const pageRows = 14; const pages: string[] = [];
-    for (let start = 0; start < rows.length || start === 0; start += pageRows) {
-      const chunk = rows.slice(start, start + pageRows); let y = 535; const commands: string[] = ['0.05 0.45 0.65 rg', '25 548 30 22 re f', '1 1 1 rg', 'BT', '/F1 7 Tf', '29 557 Td', '(GOLAN) Tj', 'ET', '0 0 0 rg', 'BT', '/F1 14 Tf', '65 565 Td', `(${safe('GOLAN - PT. GOLAN DIGITAL KREATIF')}) Tj`, '0 -16 Td', `/F1 11 Tf (${safe(title)}) Tj`, '0 -12 Td', `/F1 8 Tf (${safe(`Tanggal pembuatan laporan: ${printDate}`)}) Tj`, 'ET'];
-      const drawRow = (cells: unknown[], header = false) => { const lines = cells.map(cell => wrap(cell)); const height = Math.max(...lines.map(x => x.length), 1) * 9 + 6; let x = 25; for (let i = 0; i < cells.length; i++) { const w = widths[i] || 55; commands.push(`${x} ${y - height} ${w} ${height} re S`); commands.push('BT', `/F1 ${header ? 6 : 5} Tf`, `${x + 2} ${y - 10} Td`); lines[i].forEach((line, li) => { if (li) commands.push('0 -8 Td'); commands.push(`(${line}) Tj`); }); commands.push('ET'); x += w; } y -= height; };
-      drawRow(headers, true); chunk.forEach(row => drawRow(row));
-      commands.push('BT', '/F1 8 Tf', `740 20 Td`, `(${safe(`Halaman ${Math.floor(start / pageRows) + 1}`)}) Tj`, 'ET'); pages.push(commands.join('\n'));
-    }
-    const objects: string[] = ['<< /Type /Catalog /Pages 2 0 R >>', ''];
-    const pageIds: number[] = [];
-    pages.forEach(content => { const pageId = objects.length + 1; const contentId = pageId + 1; pageIds.push(pageId); objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 ${pages.length * 2 + 3} 0 R >> >> /Contents ${contentId} 0 R >>`, `<< /Length ${content.length} >>\nstream\n${content}\nendstream`); });
-    const fontId = objects.length + 1;
-    objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-    objects[1] = `<< /Type /Pages /Kids [${pageIds.map(id => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`;
-    let pdf = '%PDF-1.4\n'; const offsets: number[] = [0];
-    objects.forEach((object, index) => { offsets[index + 1] = pdf.length; pdf += `${index + 1} 0 obj\n${object}\nendobj\n`; });
-    const xref = pdf.length; pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-    offsets.slice(1).forEach(offset => pdf += `${String(offset).padStart(10, '0')} 00000 n \n`);
-    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-    this.download(new Blob([pdf], { type: 'application/pdf' }), filename);
+  private openPrintWindow(title: string, printDate: string, headers: string[], rows: unknown[][], alpha: boolean): void {
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800'); if (!printWindow) return;
+    const escape = (value: unknown) => this.escapeHtml(String(value ?? '-')); const logoUrl = new URL('assets/icon_golan.png', document.baseURI).href; const widths = this.getPrintColumnWidths(headers.length);
+    const logbook = this.isLogbookReport(headers); const workReport = this.isWorkReport(headers);
+    const body = rows.map(row => `<tr>${row.map((cell, index) => { const classes = alpha && index === 3 ? `alpha-total ${this.alphaLevel(Number(cell))}` : alpha && index === 4 ? 'status-follow-up' : logbook && index === 4 ? `logbook-status ${this.logbookStatusClass(String(cell))}` : workReport && index >= 13 && index <= 14 ? `work-status ${this.workStatusClass(String(cell))}` : ''; const content = escape(cell).replace(/\n/g, '<br>'); return `<td class="${classes}">${content}</td>`; }).join('')}</tr>`).join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escape(title)}</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Arial,sans-serif;color:${this.ink};font-size:7.5px;margin:0}.report-header{display:flex;align-items:center;gap:12px;border-bottom:2px solid ${this.blue};padding:0 0 8px;margin-bottom:10px}.report-header img{width:42px;height:42px;object-fit:contain}.report-header h1{margin:0;color:${this.blue};font-size:17px;line-height:1.2}.report-header h2{margin:3px 0 0;font-size:12px}.report-header p{margin:3px 0 0;color:${this.muted};font-size:8px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid ${this.border};padding:5px 4px;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:break-word;line-height:1.3}th{background:${this.blue};color:#fff;font-size:7px;text-align:center;vertical-align:middle}td{font-size:7px}tbody tr:nth-child(even){background:#F1F7FB}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}.alpha-total{text-align:center;font-weight:700}.alpha-total.green{color:#19734B}.alpha-total.orange{color:#A15C00}.alpha-total.red{color:#B42318}.status-follow-up{background:#FEE4E2;color:#B42318;font-weight:700;text-align:center}.logbook-status{text-align:center;font-weight:700}.logbook-status.approved{background:#DCFCE7;color:#166534}.logbook-status.submitted{background:#DBEAFE;color:#1D4ED8}.logbook-status.rejected{background:#FEE2E2;color:#B42318}.logbook-status.draft{background:#F1F5F9;color:#475569}</style></head><body><header class="report-header"><img src="${logoUrl}" alt="Logo Golan"><div><h1>GOLAN - PT. GOLAN DIGITAL KREATIF</h1><h2>${escape(title)}</h2><p>Tanggal pembuatan laporan: ${escape(printDate)}</p></div></header><table><colgroup>${widths.map(width => `<col style="width:${width}">`).join('')}</colgroup><thead><tr>${headers.map(header => `<th>${escape(header)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table><script>window.onload=function(){window.print();}</script></body></html>`;
+    printWindow.document.write(html); printWindow.document.close();
   }
 
-  printReport(title: string, printDate: string, headers: string[], rows: unknown[][]): void {
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800');
-    if (!printWindow) return;
-    const escape = (value: unknown) => this.escapeHtml(String(value ?? ''));
-    printWindow.document.write(`<!doctype html><html><head><title>${escape(title)}</title><style>@page{size:landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#172b3d;font-size:8px}.report-header{display:flex;align-items:center;gap:10px;border-bottom:2px solid #1675a8;padding-bottom:8px;margin-bottom:10px}.report-header img{width:38px;height:38px;object-fit:contain}.report-header h1{margin:0;font-size:18px}.report-header p{margin:3px 0 0;color:#647b8e}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #9db3c2;padding:4px;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#d9edf8;color:#0d4564;font-size:7px}td{font-size:7px}tr:nth-child(even){background:#f7fbfd}thead{display:table-header-group}tfoot{display:table-footer-group}</style></head><body><header class="report-header"><img src="assets/icon_golan.png" alt="Logo Golan"><div><h1>${escape(title)}</h1><p>Golan Digital Kreatif · Tanggal pembuatan laporan: ${escape(printDate)}</p></div></header><table><thead><tr>${headers.map(header => `<th>${escape(header)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${escape(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table><script>window.onload=function(){window.print();}</script></body></html>`);
-    printWindow.document.close();
-  }
-
-  print(): void {
-    window.print();
-  }
-
-  private download(blob: Blob, filename: string): void {
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  private escapeHtml(value: string): string {
-    return value.replace(/[&<>"']/g, character => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[character] || character));
-  }
-
-  private pdfText(value: string): string {
-    return value.replace(/[^\x20-\x7E]/g, '?').replace(/[\\()]/g, character => `\\${character}`);
-  }
+  private isAlphaReport(headers: string[]): boolean { return headers.map(header => header.toUpperCase()).join('|') === 'NIK|NAMA KARYAWAN|DIVISI|TOTAL ALPHA|STATUS|DETAIL'; }
+  private isLogbookReport(headers: string[]): boolean { return headers.map(header => header.toUpperCase()).join('|') === 'TANGGAL|TUGAS|KEGIATAN|SCREENSHOT|STATUS|CATATAN MANAJER'; }
+  private isWorkReport(headers: string[]): boolean { return headers.length >= 14 && headers.some(header => header.toUpperCase() === 'STATUS VALIDASI'); }
+  private workStatusClass(value: string): string { const status = value.toLowerCase(); return status.includes('tidak') || status.includes('rejected') || status.includes('ditolak') ? 'danger' : status.includes('sudah') || status.includes('approved') || status.includes('sesuai') ? 'success' : 'pending'; }
+  private styleWorkReportStatus(cell: any, value: string): void { const status = this.workStatusClass(value); const styles: Record<string, { textColor: string; fillColor: string }> = { success: { textColor: '#166534', fillColor: '#DCFCE7' }, danger: { textColor: '#B42318', fillColor: '#FEE2E2' }, pending: { textColor: '#A15C00', fillColor: '#FEF3C7' } }; const style = styles[status]; cell.styles.fontStyle = 'bold'; cell.styles.textColor = style.textColor; cell.styles.fillColor = style.fillColor; }
+  private logbookStatusClass(value: string): string { return value.toLowerCase().replace(/\s+/g, '-'); }
+  private styleLogbookStatus(cell: any, value: string): void { const status = this.logbookStatusClass(value); const styles: Record<string, { textColor: string; fillColor: string }> = { approved: { textColor: '#166534', fillColor: '#DCFCE7' }, submitted: { textColor: '#1D4ED8', fillColor: '#DBEAFE' }, rejected: { textColor: '#B42318', fillColor: '#FEE2E2' }, draft: { textColor: '#475569', fillColor: '#F1F5F9' } }; const style = styles[status] || styles['draft']; cell.styles.fontStyle = 'bold'; cell.styles.textColor = style.textColor; cell.styles.fillColor = style.fillColor; }
+  private alphaLevel(total: number): string { return total > 2 ? 'red' : total > 0 ? 'orange' : 'green'; }
+  private download(blob: Blob, filename: string): void { const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; document.body.appendChild(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url); }
+  private escapeHtml(value: string): string { return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] || character)); }
+  private async loadLogoDataUrl(): Promise<string | null> { try { const response = await fetch(new URL('assets/icon_golan.png', document.baseURI).href); if (!response.ok) return null; const blob = await response.blob(); return await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => resolve(null); reader.readAsDataURL(blob); }); } catch { return null; } }
+  private getColumnWidths(count: number, totalWidth: number): number[] { const weights = count === 6 ? [13, 25, 19, 14, 15, 34] : this.getGenericColumnWeights(count); const total = weights.reduce((sum, width) => sum + width, 0); return weights.map(width => totalWidth * width / total); }
+  private getPrintColumnWidths(count: number): string[] { const weights = count === 6 ? [10, 19, 15, 11, 12, 33] : this.getGenericColumnWeights(count); const total = weights.reduce((sum, width) => sum + width, 0); return weights.map(width => `${(width / total * 100).toFixed(3)}%`); }
+  private getGenericColumnWeights(count: number): number[] { if (count >= 15) return [4, 10, 14, 8, 8, 12, 15, 18, 9, 10, 12, 12, 12, 10, 10, ...Array.from({ length: count - 15 }, () => 8)]; if (count === 14) return [4, 8, 10, 9, 8, 9, 12, 16, 13, 10, 12, 9, 10, 10]; if (count === 4) return [45, 18, 18, 19]; if (count === 5) return [24, 14, 20, 20, 22]; if (count === 7) return [18, 18, 14, 16, 14, 10, 10]; return Array.from({ length: count }, () => 1); }
 }

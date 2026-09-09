@@ -31,17 +31,26 @@
     <!-- LIST VIEW -->
     <ng-container *ngIf="viewMode === 'list'">
       <!-- Kepatuhan Pelaporan (Compliance) -->
-      <div class="golan-card mb-4" *ngIf="complianceData.length > 0">
-        <h3>Status Pelaporan Bulan Ini</h3>
+      <div class="golan-card mb-4">
+        <div class="reporting-month-toolbar">
+          <h3>Status Pelaporan {{ selectedMonthLabel }}</h3>
+          <label>Periode
+            <select [(ngModel)]="selectedMonth" (ngModelChange)="onMonthChange()" aria-label="Pilih bulan laporan">
+              <option *ngFor="let month of availableMonths" [value]="month.value">{{ month.label }}</option>
+            </select>
+          </label>
+        </div>
+        <div *ngIf="complianceError" class="report-refresh-error" role="alert">{{ complianceError }}</div>
+        <div *ngIf="!isLoading && !complianceError && complianceData.length === 0" class="empty-state">Tidak ada data status untuk periode ini.</div>
         <div class="compliance-grid">
           <div *ngFor="let c of complianceData" class="compliance-day" [ngClass]="{
-              'has-report': c.has_report, 
-              'missing-report': !c.has_report && c.is_attended,
-              'unattended': !c.has_report && !c.is_attended
+              'has-report': getDayStatus(c) === 'reported',
+              'missing-report': getDayStatus(c) === 'missing',
+              'unattended': getDayStatus(c) === 'future'
             }">
-            <div class="date">{{ c.tanggal | date:'dd' }}</div>
+            <div class="date">{{ getDayNumber(c.tanggal) }}</div>
             <div class="indicator"></div>
-            <div class="hover-info" *ngIf="!c.has_report && c.is_attended">
+            <div class="hover-info" *ngIf="getDayStatus(c) === 'missing'">
               Belum lapor! <a (click)="openForm(c.tanggal)" style="color: white; text-decoration: underline; cursor: pointer;">Isi Sekarang</a>
             </div>
           </div>
@@ -88,7 +97,7 @@
             <tbody>
               <tr *ngFor="let r of reports; let i = index">
                 <td>{{ ((currentPage - 1) * pageSize) + i + 1 }}</td>
-                <td>{{ r.tanggal | date:'dd MMM yyyy' }}</td>
+                <td>{{ formatReportDate(r.tanggal) }}</td>
                 <td>{{ userDivisi }}</td>
                 <td style="min-width: 250px; white-space: normal; line-height: 1.4;" [title]="r.tugas || '-'">{{ r.tugas || '-' }}</td>
                 <td style="min-width: 150px; white-space: normal; line-height: 1.4;" [title]="r.judul || '-'">{{ r.judul || '-' }}</td>

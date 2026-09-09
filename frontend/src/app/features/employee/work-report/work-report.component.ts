@@ -12,6 +12,8 @@ import { CommonModule } from '@angular/common';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
+import { ReportExportService } from '../../../core/services/report-export.service';
+import { dateOnly, localDateString, monthRange, reportDayStatus } from './work-report-date.utils';
 
 @Component({
   selector: 'app-work-report',
@@ -45,18 +47,33 @@ export class WorkReportComponent implements OnInit {
   pageSize = 25;
   totalReports = 0;
   pageSizeOptions = [10, 25, 50, 100];
+  selectedMonth = localDateString().slice(0, 7);
+  availableMonths: Array<{ value: string; label: string }> = [];
+  complianceError = '';
+  readonly monthLabelFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' });
 
   constructor(
     private fb: FormBuilder,
     private workReportService: WorkReportService,
     private alertService: AlertService,
-    public authService: AuthService
+    public authService: AuthService,
+    private reportExport: ReportExportService
   ) {}
 
   ngOnInit(): void {
     this.userDivisi = localStorage.getItem('divisi') || 'Belum Ditentukan';
+    this.buildAvailableMonths();
     this.initForm();
     this.loadInitialData();
+  }
+
+  private buildAvailableMonths(): void {
+    const now = new Date();
+    this.availableMonths = Array.from({ length: 25 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      return { value, label: this.monthLabelFormatter.format(date) };
+    });
   }
 
   initForm() {
@@ -84,7 +101,7 @@ export class WorkReportComponent implements OnInit {
 
     forkJoin({
       columns: this.workReportService.getColumns(isRefresh),
-      reports: this.workReportService.getWorkReports(undefined, undefined, undefined, undefined, isRefresh, this.currentPage, this.pageSize)
+      reports: this.workReportService.getWorkReports(undefined, monthRange(this.selectedMonth).start, monthRange(this.selectedMonth).end, undefined, isRefresh, this.currentPage, this.pageSize)
     }).pipe(
       finalize(() => {
         this.isLoading = false;
@@ -146,18 +163,50 @@ export class WorkReportComponent implements OnInit {
   }
 
   loadCompliance(forceRefresh = false) {
-    // Check current month compliance
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const end = now.toISOString().split('T')[0];
+    const range = monthRange(this.selectedMonth);
+    this.complianceError = '';
 
-    this.workReportService.getCompliance(start, end, undefined, forceRefresh).subscribe({
+    this.workReportService.getCompliance(range.start, range.end, undefined, forceRefresh).subscribe({
       next: (res) => {
-        this.complianceData = res;
+        // The API contract is boolean. Normalize defensively so a legacy
+        // cached response containing "false" cannot be treated as truthy.
+        this.complianceData = res.map(item => ({
+          ...item,
+          has_report: item.has_report === true || (item.has_report as unknown) === 1 || (item.has_report as unknown) === 'true'
+        }));
         this.isLoading = false;
       },
-      error: () => this.isLoading = false
+      error: (err) => {
+        this.complianceData = [];
+        this.complianceError = err?.error?.error || 'Gagal memuat status pelaporan.';
+        this.isLoading = false;
+      }
     });
+  }
+
+  onMonthChange(): void {
+    if (!this.availableMonths.some(month => month.value === this.selectedMonth)) {
+      this.selectedMonth = this.availableMonths[0]?.value || localDateString().slice(0, 7);
+    }
+    this.currentPage = 1;
+    this.loadInitialData();
+  }
+
+  get selectedMonthLabel(): string {
+    const [year, month] = this.selectedMonth.split('-').map(Number);
+    return this.monthLabelFormatter.format(new Date(year, month - 1, 1));
+  }
+
+  getDayStatus(c: ComplianceResult): 'reported' | 'missing' | 'future' {
+    return reportDayStatus(c.tanggal, c.has_report);
+  }
+
+  getDayNumber(date: string): string {
+    return date.slice(8, 10);
+  }
+
+  isSelectedMonthCurrent(): boolean {
+    return this.selectedMonth === localDateString().slice(0, 7);
   }
 
   buildCustomFieldsForm() {
@@ -181,7 +230,7 @@ export class WorkReportComponent implements OnInit {
     this.editingReportId = null;
     this.reportForm.reset();
     this.clearScreenshots();
-    const workDate = date || new Date().toISOString().split('T')[0];
+    const workDate = date || localDateString();
     this.reportForm.patchValue({ tanggal: workDate });
     this.loadDeadline(workDate);
   }
@@ -222,7 +271,7 @@ export class WorkReportComponent implements OnInit {
     }
     
     this.reportForm.patchValue({
-      tanggal: new Date(r.tanggal).toISOString().split('T')[0],
+      tanggal: dateOnly(r.tanggal),
       tugas: r.tugas,
       judul: r.judul,
       deskripsi_kegiatan: r.deskripsi_kegiatan,
@@ -429,7 +478,8 @@ export class WorkReportComponent implements OnInit {
     `;
     
     this.reports.forEach((r, index) => {
-      const dateObj = new Date(r.tanggal);
+      const [reportYear, reportMonth, reportDay] = dateOnly(r.tanggal).split('-').map(Number);
+      const dateObj = new Date(reportYear, reportMonth - 1, reportDay);
       const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
       const dateString = `${days[dateObj.getDay()]}, ${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
@@ -499,7 +549,7 @@ export class WorkReportComponent implements OnInit {
     this.reports.forEach((r, i) => {
       const row = [
         i + 1,
-        new Date(r.tanggal).toISOString().split('T')[0],
+        dateOnly(r.tanggal),
         `"${(r.tugas || '').replace(/"/g, '""')}"`,
         `"${(r.judul || '').replace(/"/g, '""')}"`,
         `"${(r.deskripsi_kegiatan || '').replace(/"/g, '""')}"`,
@@ -534,11 +584,36 @@ export class WorkReportComponent implements OnInit {
 
   exportPDF() {
     this.isExportOpen = false;
-    window.print();
+    if (!this.reports || this.reports.length === 0) return;
+    const report = this.buildPrintableReport();
+    void this.reportExport.downloadPdf(`laporan-kerja-harian-${this.reportDate()}.pdf`, 'Laporan Kerja Harian Karyawan', this.reportDate(), report.headers, report.rows);
   }
 
   printReport() {
     this.isExportOpen = false;
-    window.print();
+    if (!this.reports || this.reports.length === 0) return;
+    const report = this.buildPrintableReport();
+    this.reportExport.printReport('Laporan Kerja Harian Karyawan', this.reportDate(), report.headers, report.rows);
+  }
+
+  private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
+    const headers = ['No', 'Hari/Tanggal', 'Nama', 'Divisi', 'Jabatan', 'Tugas', 'Judul Golan Nusantara / Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Status Validasi', ...this.columns.map(column => column.nama_kolom)];
+    const userName = localStorage.getItem('name') || '-';
+    const userDivisi = localStorage.getItem('divisi') || 'Belum Ditentukan';
+    const userJabatan = localStorage.getItem('jabatan') || 'Belum Ditentukan';
+    const rows = this.reports.map((report, index) => {
+      let customData: Record<string, unknown> = {};
+      try { customData = JSON.parse(report.custom_fields || '{}'); } catch { /* gunakan nilai kosong */ }
+      return [index + 1, this.formatReportDate(report.tanggal), userName, userDivisi, userJabatan, report.tugas || '-', report.judul || '-', report.deskripsi_kegiatan || '-', report.realisasi_kegiatan || '-', report.kendala || '-', report.rencana_minggu_depan || '-', report.link_artikel || '-', report.catatan_tambahan || '-', report.status_sesuai || 'Menunggu', ...this.columns.map(column => customData[column.ID] ?? '-')];
+    });
+    return { headers, rows };
+  }
+
+  private reportDate(): string { return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()); }
+  formatReportDate(value: string): string {
+    const [year, month, day] = dateOnly(value).split('-').map(Number);
+    return Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)
+      ? value || '-'
+      : new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(year, month - 1, day));
   }
 }

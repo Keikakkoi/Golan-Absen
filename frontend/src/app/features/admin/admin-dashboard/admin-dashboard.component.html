@@ -67,11 +67,6 @@
 
     <app-dashboard-charts role="admin"></app-dashboard-charts>
 
-    <section class="golan-card mt-4" *ngIf="stats.missing_work_reports?.length">
-      <h3>Rekap Laporan Kerja Terlambat</h3>
-      <div class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Nama</th><th>Tanggal</th><th>Batas</th></tr></thead><tbody><tr *ngFor="let item of stats.missing_work_reports"><td>{{ item.nama }}</td><td>{{ item.tanggal }}</td><td><span class="status-pill status-warning">⚠ {{ item.deadline_label }}</span></td></tr></tbody></table></div>
-    </section>
-
     <div class="quick-actions-grid mt-4">
       <div class="golan-card action-card">
         <h3>Manajemen Karyawan</h3>

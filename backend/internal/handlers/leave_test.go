@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"absensi-golan-backend/internal/models"
-	"gorm.io/gorm"
 )
 
 func TestLeaveQuotaTypes(t *testing.T) {
@@ -42,7 +41,7 @@ func TestInitialLeaveStatusByRole(t *testing.T) {
 }
 
 func TestManagerCanReceiveLeave(t *testing.T) {
-	manager := models.User{Model: gorm.Model{ID: 10}, Role: models.RoleManajer, Status: "aktif"}
+	manager := models.User{Model: models.Model{ID: 10}, Role: models.RoleManajer, Status: "aktif"}
 	cases := []struct {
 		name    string
 		user    models.User
@@ -51,8 +50,8 @@ func TestManagerCanReceiveLeave(t *testing.T) {
 	}{
 		{"aktif dan tidak cuti", manager, false, true},
 		{"sedang cuti", manager, true, false},
-		{"tidak aktif", models.User{Model: gorm.Model{ID: 10}, Role: models.RoleManajer, Status: "nonaktif"}, false, false},
-		{"role lain", models.User{Model: gorm.Model{ID: 10}, Role: models.RoleKaryawan, Status: "aktif"}, false, false},
+		{"tidak aktif", models.User{Model: models.Model{ID: 10}, Role: models.RoleManajer, Status: "nonaktif"}, false, false},
+		{"role lain", models.User{Model: models.Model{ID: 10}, Role: models.RoleKaryawan, Status: "aktif"}, false, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

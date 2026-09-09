@@ -708,14 +708,14 @@ func CreateEmployee(c *fiber.Ctx) error {
 
 	// Cek ketersediaan Email
 	var existingUser models.User
-	if err := config.DB.Unscoped().Where("LOWER(email) = ?", strings.ToLower(req.Email)).First(&existingUser).Error; err == nil {
+	if err := config.DB.Where("LOWER(email) = ?", strings.ToLower(req.Email)).First(&existingUser).Error; err == nil {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Email '" + req.Email + "' sudah memiliki akun. Silakan gunakan email lain untuk melanjutkan."})
 	}
 
 	// Cek ketersediaan NIK
 	if req.NIK != "" {
 		var existingEmp models.Employee
-		if err := config.DB.Unscoped().Where("nik = ?", req.NIK).First(&existingEmp).Error; err == nil {
+		if err := config.DB.Where("nik = ?", req.NIK).First(&existingEmp).Error; err == nil {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "NIK '" + req.NIK + "' sudah memiliki akun. Pastikan NIK yang dimasukkan benar."})
 		}
 	}
@@ -895,7 +895,7 @@ func UpdateEmployee(c *fiber.Ctx) error {
 		manualCode := strings.TrimSpace(req.EmployeeCode)
 		if manualCode != "" && manualCode != user.Employee.EmployeeCode {
 			var codeOwner models.Employee
-			if err := tx.Unscoped().Where("employee_code = ? AND id <> ?", manualCode, user.Employee.ID).First(&codeOwner).Error; err == nil {
+			if err := tx.Where("employee_code = ? AND id <> ?", manualCode, user.Employee.ID).First(&codeOwner).Error; err == nil {
 				tx.Rollback()
 				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Kode karyawan '" + manualCode + "' sudah digunakan karyawan lain."})
 			} else if err != gorm.ErrRecordNotFound {
@@ -1020,12 +1020,6 @@ func DeleteEmployee(c *fiber.Ctx) error {
 	}
 
 	if user.Employee.ID != 0 {
-		// Release the display code before soft-deleting the row. The internal ID
-		// remains in history, while the code becomes available for reuse.
-		if err := tx.Model(&user.Employee).Update("employee_code", nil).Error; err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to release employee code"})
-		}
 		if err := tx.Delete(&user.Employee).Error; err != nil {
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete employee"})

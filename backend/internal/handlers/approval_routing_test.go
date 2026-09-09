@@ -5,11 +5,10 @@ import (
 	"time"
 
 	"absensi-golan-backend/internal/models"
-	"gorm.io/gorm"
 )
 
 func approvalTestUser(id uint, role models.Role, status string) models.User {
-	return models.User{Model: gorm.Model{ID: id}, Role: role, Status: status}
+	return models.User{Model: models.Model{ID: id}, Role: role, Status: status}
 }
 
 func TestValidDirectManagerCandidate(t *testing.T) {

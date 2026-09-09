@@ -5,6 +5,15 @@
   <ng-container *ngIf="!loading && !error">
     <div class="chart-grid">
       <article class="chart-card line-card"><h4>{{ isManager ? 'Tren kehadiran tim' : isAdmin ? 'Tren kehadiran' : 'Tren kehadiran pribadi' }}</h4><p class="chart-subtitle">Hadir, terlambat, izin/cuti, dan alfa per tanggal</p>
+        <div class="trend-summary" aria-label="Ringkasan status kehadiran 30 hari terakhir">
+          <div class="trend-summary-heading"><span>Ringkasan 30 hari</span><small>Angka = jumlah, persen = proporsi</small></div>
+          <div class="trend-summary-items">
+            <span class="trend-summary-item" *ngFor="let item of trendSummary">
+              <i [style.background]="color(item.label)"></i><span>{{ item.label }}</span><strong>{{ item.value }}</strong><small>({{ item.rate }}%)</small>
+            </span>
+          </div>
+        </div>
+        <p class="trend-reading-hint">Grafik menunjukkan jumlah status pada setiap tanggal.</p>
         <div class="line-chart" *ngIf="hasTrend; else emptyTrend"><svg viewBox="0 0 100 100" role="img" aria-label="Grafik garis tren kehadiran"><line x1="0" y1="95" x2="100" y2="95"/><polyline *ngFor="let key of ['hadir','terlambat','izin','alfa']" [attr.points]="linePoints(key)" [attr.class]="'line-' + key" [attr.title]="key + ' per tanggal'" fill="none"/></svg><div class="line-legend"><span *ngFor="let item of [{label:'Hadir'},{label:'Terlambat'},{label:'Izin/Cuti'},{label:'Alfa'}]"><i [style.background]="color(item.label)"></i>{{ item.label }}</span></div><span class="chart-tooltip" aria-hidden="true">Arahkan ke garis untuk melihat tren</span></div><ng-template #emptyTrend><div class="empty">Belum ada data kehadiran.</div></ng-template>
         <div class="accessible-table" *ngIf="hasTrend"><span *ngFor="let item of data.attendance_trend">{{ dateLabel(item.date) }}: hadir {{ item.hadir }}, terlambat {{ item.terlambat }}, izin {{ item.izin }}, alfa {{ item.alfa }}</span></div>
       </article>

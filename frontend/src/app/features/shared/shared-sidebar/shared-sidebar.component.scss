@@ -1,5 +1,5 @@
 .sidebar {
-  width: 250px;
+  width: 300px;
   background-color: var(--mint-0);
   border-right: 1px solid var(--mint-1);
   padding: 24px 20px;
@@ -514,5 +514,61 @@
 
   .topbar-header .topbar-title {
     font-size: 0.875rem;
+  }
+}
+
+/* Compact desktop sidebar. The mobile drawer keeps its existing dimensions. */
+@media (min-width: 901px) {
+  .sidebar {
+    width: 238px;
+    padding: 18px 14px;
+
+    .brand {
+      gap: 10px;
+      margin-bottom: 20px;
+
+      .brand-logo {
+        width: 38px;
+        height: 38px;
+      }
+
+      .brand-info h3 { font-size: 1.1rem; }
+      .brand-info small { font-size: 0.72rem; }
+    }
+
+    .current-role-badge {
+      padding: 9px 11px;
+      margin-bottom: 16px;
+    }
+
+    .theme-switcher {
+        margin-bottom: 12px;
+
+      .theme-toggle {
+        gap: 8px;
+        padding: 7px 10px;
+        font-size: 0.8rem;
+      }
+    }
+
+    .sidebar-nav {
+      gap: 3px;
+
+      a {
+        gap: 8px;
+        padding: 8px 11px;
+        font-size: 0.9rem;
+
+        .nav-icon {
+          flex-basis: 29px;
+          width: 29px;
+          min-width: 29px;
+          height: 22px;
+        }
+
+        &.active { padding-left: 7px; }
+        &.logout-btn { margin-top: 18px; }
+      }
+    }
   }
 }

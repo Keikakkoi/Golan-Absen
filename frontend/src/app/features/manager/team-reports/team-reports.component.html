@@ -109,7 +109,7 @@
                 <input class="golan-input note-input" [(ngModel)]="notes[row.id || row.ID]" placeholder="Masukkan catatan review...">
               </td>
               <td>
-                <div style="display: flex; gap: 6px; align-items: center;">
+                <div class="report-action-buttons">
                   <button *ngIf="canReview(row)" type="button" class="btn-small approve" (click)="reviewLogbook(row.id || row.ID, 'approved')" title="Setujui logbook">
                     <i class="fas fa-check"></i> Approve
                   </button>

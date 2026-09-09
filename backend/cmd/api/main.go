@@ -52,6 +52,7 @@ func main() {
 
 	// Setup Routes
 	handlers.SetupAuthRoutes(api)
+	handlers.SetupPublicSummaryRoutes(api)
 
 	handlers.SetupAttendanceRoutes(api)
 	handlers.SetupEmployeeRoutes(api)

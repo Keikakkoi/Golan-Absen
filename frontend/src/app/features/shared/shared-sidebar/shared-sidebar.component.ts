@@ -4,7 +4,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { ThemeService } from '../../../core/services/theme.service';
-import { Subscription } from 'rxjs';
+import { Subscription, filter, take } from 'rxjs';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 
 @Component({
@@ -27,6 +27,7 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   isNotificationsLoading = true;
   private themeSubscription = new Subscription();
   private disconnectRealtime?: () => void;
+  private userSubscription?: Subscription;
 
   constructor(
     private authService: AuthService,
@@ -36,11 +37,14 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
 
   ngOnInit(): void {
     this.userRole = this.authService.getRole();
-    this.authService.currentUser$.subscribe(user => {
+    this.userSubscription = this.authService.currentUser$.pipe(
+      filter(user => !!user),
+      take(1)
+    ).subscribe(user => {
       this.isMenuLoading = false;
       if (user) {
         this.loadNotifications();
-        this.disconnectRealtime = this.notificationService.connectRealtime(() => this.loadNotifications());
+        this.disconnectRealtime = this.notificationService.connectRealtime(() => this.loadNotifications(true));
       }
     });
     this.themeSubscription.add(this.themeService.darkModeEnabled$.subscribe(enabled => {
@@ -67,11 +71,14 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   ngOnDestroy(): void {
     this.themeSubscription.unsubscribe();
     this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
+    this.userSubscription?.unsubscribe();
+    this.userSubscription = undefined;
   }
 
-  loadNotifications(): void {
+  loadNotifications(background = false): void {
     this.isNotificationsLoading = true;
-    this.notificationService.getAll().subscribe({
+    this.notificationService.getAll(background).subscribe({
       next: data => { this.notifications = data || []; this.isNotificationsLoading = false; },
       error: err => { this.isNotificationsLoading = false; console.error('Failed to load notifications', err); }
     });

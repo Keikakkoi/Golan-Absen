@@ -1,7 +1,18 @@
+// Keep the login screen contained inside the viewport. The global form styles
+// also add a bottom margin to `.form-group`; the login form already uses `gap`,
+// so that margin would make the card unnecessarily tall.
+:host {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+}
+
 .split-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   width: 100%;
+  overflow: hidden;
 
   @media (max-width: 900px) {
     flex-direction: column;
@@ -105,6 +116,51 @@
     will-change: transform;
   }
 
+  .falling-stars {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    display: block;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .falling-star {
+    position: absolute;
+    display: block;
+    width: 88px;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent 0%, rgba(67, 154, 235, 0.4) 44%, rgba(255, 255, 255, 1) 100%);
+    box-shadow: 0 0 10px 2px rgba(66, 153, 234, 0.42);
+    transform-origin: right center;
+    animation: login-falling-star var(--star-duration, 5s) ease-in-out infinite;
+    animation-delay: var(--star-delay, 0s);
+    will-change: transform, opacity;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: -1px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 7px 2px rgba(255, 255, 255, 0.7);
+      transform: translateY(-50%);
+    }
+  }
+
+  .star-one { top: 4%; left: 9%; --star-duration: 4.4s; --star-delay: -1.5s; --star-opacity: 0.62; }
+  .star-two { top: 9%; left: 36%; width: 72px; --star-duration: 5.8s; --star-delay: -4.2s; --star-opacity: 0.52; }
+  .star-three { top: 16%; left: 68%; width: 78px; --star-duration: 3.8s; --star-delay: -2.1s; --star-opacity: 0.58; }
+  .star-four { top: 29%; left: 91%; width: 66px; --star-duration: 5.2s; --star-delay: -3.4s; --star-opacity: 0.48; }
+  .star-five { top: 40%; left: 22%; width: 74px; --star-duration: 4.9s; --star-delay: -0.9s; --star-opacity: 0.54; }
+  .star-six { top: 52%; left: 80%; width: 70px; --star-duration: 5.6s; --star-delay: -2.8s; --star-opacity: 0.46; }
+  .star-seven { top: 66%; left: 4%; width: 82px; --star-duration: 4.1s; --star-delay: -3.1s; --star-opacity: 0.5; }
+  .star-eight { top: 78%; left: 56%; width: 68px; --star-duration: 5.3s; --star-delay: -1.8s; --star-opacity: 0.44; }
+
   .clock-display {
     margin-bottom: 30px;
     
@@ -181,6 +237,8 @@
 
 .form-panel {
   flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
   background: linear-gradient(145deg, #ffffff 0%, #eff6ff 100%);
   display: flex;
   align-items: center;
@@ -373,6 +431,23 @@
   }
 }
 
+@keyframes login-falling-star {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(135deg) scaleX(0.55);
+    opacity: 0;
+  }
+  12% {
+    opacity: var(--star-opacity, 0.34);
+  }
+  70% {
+    opacity: var(--star-opacity, 0.34);
+  }
+  100% {
+    transform: translate3d(-145px, 145px, 0) rotate(135deg) scaleX(1);
+    opacity: 0;
+  }
+}
+
 @keyframes login-orb-one {
   0% {
     transform: translate3d(-12px, 8px, 0) scale(0.92);
@@ -415,10 +490,24 @@
     animation: none;
   }
 
+  .brand-panel .falling-star {
+    animation: none;
+  }
+
   .form-panel .login-grid-overlay::before,
   .form-panel .login-grid-overlay::after {
     animation: none;
   }
+}
+
+@media (min-width: 901px) {
+  .brand-panel,
+  .form-panel { padding: 24px; }
+
+  .login-card { padding: 28px 24px; }
+  .login-form .form-group { margin-bottom: 12px; }
+  .login-form .form-group input,
+  .login-form .form-group select { padding: 9px 12px; }
 }
 
 .login-card {
@@ -426,6 +515,7 @@
   z-index: 2;
   width: 100%;
   max-width: 400px;
+  transform: translateY(-12px);
   background: white;
   padding: 40px 32px;
   text-align: center;
@@ -463,11 +553,13 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    margin-bottom: 0;
 
     label {
       font-size: 0.875rem;
       font-weight: 600;
       color: #526f8c;
+      margin-bottom: 0;
     }
 
     input {
@@ -625,6 +717,87 @@
 
     .ambient-orb {
       opacity: 0.18;
+    }
+
+    .falling-stars {
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      display: block;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .falling-star {
+      position: absolute;
+      display: block;
+      left: auto;
+      width: 58px;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent 0%, rgba(126, 194, 250, 0.32) 45%, rgba(255, 255, 255, 0.96) 100%);
+      box-shadow: 0 0 7px 2px rgba(93, 174, 244, 0.42);
+      transform-origin: right center;
+      animation: login-falling-star var(--star-duration, 4.8s) ease-in-out infinite;
+      animation-delay: var(--star-delay, 0s);
+      will-change: transform, opacity;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -1px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.72);
+        transform: translateY(-50%);
+      }
+    }
+
+    .star-one {
+      top: 8px;
+      right: 9%;
+      --star-duration: 4.2s;
+      --star-delay: -1.4s;
+      --star-opacity: 0.48;
+    }
+
+    .star-two {
+      top: 24px;
+      right: 39%;
+      width: 46px;
+      --star-duration: 5.7s;
+      --star-delay: -4.6s;
+      --star-opacity: 0.4;
+    }
+
+    .star-three {
+      top: 12px;
+      right: 67%;
+      width: 50px;
+      --star-duration: 3.6s;
+      --star-delay: -2.4s;
+      --star-opacity: 0.44;
+    }
+
+    .star-four {
+      top: 58px;
+      right: 22%;
+      width: 40px;
+      --star-duration: 5.1s;
+      --star-delay: -3.2s;
+      --star-opacity: 0.36;
+    }
+
+    .star-five {
+      top: 76px;
+      right: 76%;
+      width: 44px;
+      --star-duration: 4.7s;
+      --star-delay: -0.8s;
+      --star-opacity: 0.34;
     }
 
     .brand-content {

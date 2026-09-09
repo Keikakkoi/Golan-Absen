@@ -3,16 +3,11 @@
   <main class="main-content">
     <div class="header">
       <h2>Sertifikat Magang</h2>
-      <p>Sertifikat, nilai magang, dan keterangan lulus diunggah oleh HRD setelah periode magang berakhir.</p>
+      <p>Sertifikat, nilai, dan keterangan lulus tersedia setelah diunggah oleh HRD.</p>
     </div>
 
     <section class="certificate-documents">
       <div *ngIf="error" class="alert alert-danger" style="margin-bottom: 16px;">{{ error }}</div>
-      <div class="certificate-documents-intro">
-        <h3>Dokumen Magang</h3>
-        <p class="muted">Sertifikat dan dokumen berikut dapat diunduh setelah diunggah oleh HRD.</p>
-      </div>
-
       <ng-container *ngIf="certificate">
         <article class="golan-card intern-document-card">
           <div class="intern-document-row">

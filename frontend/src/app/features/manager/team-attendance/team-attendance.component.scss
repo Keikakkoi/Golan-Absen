@@ -1,10 +1,95 @@
 .toolbar{display:flex;align-items:end;gap:12px;margin-bottom:20px}.toolbar label{display:flex;flex-direction:column;gap:6px}.muted{color:var(--text-dark-lo)}@media(max-width:600px){.toolbar{flex-direction:column;align-items:stretch}}
 
 .team-attendance-toolbar { align-items: end; }
+.team-filter-layout .team-attendance-toolbar {
+  /* The shared filter grid can become wider than the card when four filters
+     and the actions are present. Allow the action buttons to wrap safely. */
+  display: flex !important;
+  flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.team-filter-layout .team-attendance-toolbar > label {
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+.team-filter-layout .team-attendance-toolbar > .report-filter-action,
+.team-filter-layout .team-attendance-toolbar > .export-dropdown {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.team-filter-layout .team-attendance-toolbar > .export-dropdown > button {
+  max-width: 100%;
+}
+
 .team-attendance-toolbar > label { min-width: 0; }
 .team-attendance-toolbar > label:nth-child(2),
 .team-attendance-toolbar > label:nth-child(3) { flex: 1 1 150px; }
 .team-attendance-toolbar input[type='date'] { min-width: 0; }
+
+.team-attendance-toolbar .export-dropdown {
+  position: relative;
+  z-index: 2;
+}
+
+.team-attendance-toolbar .dropdown-menu-custom {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  min-width: 220px;
+  padding: 8px 0;
+  background: #fff;
+  border: 1px solid var(--mint-1, #cfe3f0);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.team-attendance-toolbar .dropdown-menu-custom .dropdown-item {
+  display: flex !important;
+  align-items: center;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 10px 16px;
+  white-space: nowrap;
+}
+
+.team-attendance-toolbar .dropdown-menu-custom .dropdown-item:hover {
+  background-color: var(--mint-0, #edf7fb);
+}
+
+.team-attendance-toolbar .dropdown-item-print {
+  border-top: 1px solid #eee;
+}
+
+.team-attendance-toolbar .export-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+.team-attendance-toolbar .export-icon-csv,
+.team-attendance-toolbar .export-icon-print { color: #17a2b8; }
+.team-attendance-toolbar .export-icon-excel { color: #28a745; }
+.team-attendance-toolbar .export-icon-json { color: #ffc107; }
+.team-attendance-toolbar .export-icon-pdf { color: #dc3545; }
+
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom {
+  background: var(--surface, #172033);
+  border-color: var(--mint-2, #6b8ca3);
+}
+
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .dropdown-item {
+  color: var(--text-dark, #e2e8f0);
+}
+
+body.dark-theme .team-attendance-toolbar .dropdown-item-print {
+  border-top-color: var(--border-color, #334155);
+}
 
 /* Keep the five team-attendance columns aligned while allowing the viewport
    to scroll horizontally on narrow phones. */

@@ -16,6 +16,11 @@
       </div>
     </div>
 
+    <div class="admin-notification-tabs" *ngIf="isAdminPage" role="tablist" aria-label="Bagian notifikasi admin">
+      <a routerLink="/admin/notifications" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" role="tab" aria-selected="true">Notifikasi</a>
+      <a routerLink="/admin/settings/notifications" routerLinkActive="active" role="tab">Pengaturan Notifikasi</a>
+    </div>
+
     <div class="push-hint" [class.active]="pushEnabled">
       <span class="push-hint-icon" aria-hidden="true">{{ pushEnabled ? '✓' : '!' }}</span>
       <span>{{ pushEnabled ? 'Push aktif. Anda akan menerima pengumuman meskipun halaman tidak sedang dibuka.' : 'Aktifkan push agar pengumuman penting tetap masuk ke perangkat Anda.' }}</span>

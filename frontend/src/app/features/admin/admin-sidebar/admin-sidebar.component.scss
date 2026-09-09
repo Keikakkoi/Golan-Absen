@@ -60,3 +60,30 @@
     }
   }
 }
+
+@media (min-width: 901px) {
+  .admin-sidebar {
+    width: 238px;
+    padding: 16px 14px;
+
+    .brand {
+      gap: 10px;
+      margin-bottom: 22px;
+
+      .brand-logo { width: 36px; height: 36px; }
+      h3 { font-size: 1.05rem; }
+    }
+
+    nav {
+      gap: 4px;
+
+      a {
+        padding: 8px 10px;
+        font-size: 0.82rem;
+        border-radius: 7px;
+
+        &.logout-btn { margin-top: 18px; }
+      }
+    }
+  }
+}
