@@ -27,6 +27,24 @@
   border: 1px solid var(--border-color);
 }
 
+.team-reports-table .role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.team-reports-table .role-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -2px;
+}
+
 .note-input {
   width: 100%;
   min-width: 0;
@@ -43,6 +61,15 @@
   gap: 8px;
   flex-wrap: nowrap;
   white-space: nowrap;
+}
+
+.report-action-buttons .icon-button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .btn-small {
@@ -135,6 +162,11 @@
 }
 
 .report-refresh-action {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -195,11 +227,35 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   max-width: 100%;
+  padding: 5px 10px;
+  border: 0 !important;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
   white-space: nowrap;
   word-break: normal;
   overflow-wrap: normal;
   line-height: 1.2;
+}
+
+/* Compact status pills matching the attendance table reference. */
+.team-reports-table .status-pill::before {
+  display: inline-block !important;
+  width: 8px;
+  height: 8px;
+}
+
+.team-reports-table .status-pill.status-success,
+.team-reports-table .status-pill.status-warning {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.team-reports-table .status-pill.status-danger {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
 }
 
 .team-reports-col-date { width: 125px; }

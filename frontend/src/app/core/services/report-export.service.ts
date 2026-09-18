@@ -11,7 +11,12 @@ export class ReportExportService {
   private readonly border = '#B8CBD8';
 
   downloadCsv(filename: string, headers: string[], rows: unknown[][]): void {
-    const csv = [headers, ...rows].map(row => row.map(value => `"${String(value ?? '-').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    // Keep empty values empty. The employee importer treats a dash as real data
+    // (and it is invalid for optional dates/coordinates), so it must not be used
+    // as a display placeholder in a machine-readable export.
+    const csv = [headers, ...rows]
+      .map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\r\n') + '\r\n';
     this.download(new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8' }), filename);
   }
   downloadExcel(filename: string, headers: string[], rows: unknown[][]): void {

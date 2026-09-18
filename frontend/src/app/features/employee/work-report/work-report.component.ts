@@ -14,6 +14,7 @@ import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.com
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { dateOnly, localDateString, monthRange, reportDayStatus } from './work-report-date.utils';
+import { isValidRealisasiKegiatan, REALISASI_KEGIATAN_ERROR } from './work-report-validation';
 
 @Component({
   selector: 'app-work-report',
@@ -82,7 +83,7 @@ export class WorkReportComponent implements OnInit {
       tugas: ['', Validators.required],
       judul: [''],
       deskripsi_kegiatan: ['', Validators.required],
-      realisasi_kegiatan: ['', Validators.required],
+      realisasi_kegiatan: ['', [Validators.required, Validators.pattern(/^(?:100|[1-9]?\d)%$/)]],
       kendala: [''],
       rencana_minggu_depan: [''],
       link_artikel: [''],
@@ -335,11 +336,20 @@ export class WorkReportComponent implements OnInit {
       if (result.isConfirmed) {
         this.workReportService.deleteWorkReport(id).subscribe({
           next: () => {
-            Swal.fire('Terhapus!', 'Laporan berhasil dihapus.', 'success');
-            this.loadInitialData();
+            this.reports = this.reports.filter(report => report.ID !== id);
+            this.allReports = this.allReports.filter(report => report.ID !== id);
+            this.totalReports = Math.max(0, this.totalReports - 1);
+            Swal.fire('Terhapus!', 'Laporan berhasil dihapus.', 'success').then(() => {
+              this.loadInitialData();
+            });
           },
           error: (err) => {
-            Swal.fire('Gagal', 'Laporan gagal dihapus.', 'error');
+            const message = typeof err?.error?.error === 'string'
+              ? err.error.error
+              : typeof err?.error?.message === 'string'
+                ? err.error.message
+                : 'Laporan gagal dihapus.';
+            Swal.fire('Gagal', message, 'error');
           }
         });
       }
@@ -348,10 +358,13 @@ export class WorkReportComponent implements OnInit {
 
   submitReport() {
     if (this.reportForm.invalid) {
+      this.reportForm.markAllAsTouched();
       Swal.fire({
         icon: 'error',
         title: 'Formulir Belum Lengkap',
-        text: 'Harap lengkapi semua field yang diwajibkan',
+        text: this.reportForm.get('realisasi_kegiatan')?.invalid
+          ? REALISASI_KEGIATAN_ERROR
+          : 'Harap lengkapi semua field yang diwajibkan',
         confirmButtonColor: '#2F80ED'
       });
       return;
@@ -376,6 +389,12 @@ export class WorkReportComponent implements OnInit {
   private processSubmit() {
     this.isSubmitting = true;
     const formValue = this.reportForm.value;
+    if (!isValidRealisasiKegiatan(formValue.realisasi_kegiatan)) {
+      this.reportForm.get('realisasi_kegiatan')?.markAsTouched();
+      this.isSubmitting = false;
+      Swal.fire({ icon: 'error', title: 'Input tidak valid', text: REALISASI_KEGIATAN_ERROR, confirmButtonColor: '#2F80ED' });
+      return;
+    }
     
     const payload = new FormData();
     payload.append('tanggal', formValue.tanggal || '');

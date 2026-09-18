@@ -21,6 +21,7 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   isDrawerOpen = false;
   darkModeEnabled = false;
   isDarkMode = false;
+  get isAdmin(): boolean { return this.userRole === 'HRD'; }
   notifications: AppNotification[] = [];
   showNotifications = false;
   isMenuLoading = true;
@@ -107,7 +108,10 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   }
 
   toggleTheme(): void {
-    this.themeService.toggleTheme();
+    // Admin navbar changes are also the Profile preference. For regular
+    // users, navbar only changes the active palette and keeps the switcher
+    // available for turning it back on.
+    this.themeService.toggleTheme(this.isAdmin);
   }
 
   toggleDrawer(): void {

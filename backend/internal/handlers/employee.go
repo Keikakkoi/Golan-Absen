@@ -991,7 +991,7 @@ func hasHomeLocation(latitude, longitude float64) bool {
 func saveEmployeeHomeLocation(tx *gorm.DB, employeeID uint, latitude, longitude float64, googleMapsURL string) error {
 	var location models.EmployeeHomeLocation
 	if err := tx.Where("employee_id = ?", employeeID).First(&location).Error; err != nil {
-		location = models.EmployeeHomeLocation{EmployeeID: employeeID, RadiusMeter: 100}
+		location = models.EmployeeHomeLocation{EmployeeID: &employeeID, RadiusMeter: 100}
 	}
 	location.LatitudeRumah = latitude
 	location.LongitudeRumah = longitude
@@ -1003,42 +1003,109 @@ func saveEmployeeHomeLocation(tx *gorm.DB, employeeID uint, latitude, longitude 
 }
 
 func DeleteEmployee(c *fiber.Ctx) error {
-	role := c.Locals("role").(models.Role)
+	role, ok := c.Locals("role").(models.Role)
+	if !ok {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied. Only HRD can delete employees."})
+	}
 	if role != models.RoleHRD {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied. Only HRD can delete employees."})
 	}
 
-	idParam := c.Params("id")
-	id, _ := strconv.Atoi(idParam)
-
-	tx := config.DB.Begin()
-
-	var user models.User
-	if err := tx.Preload("Employee").First(&user, id).Error; err != nil {
-		tx.Rollback()
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
+	// The directory API returns users, so /employees/:id deliberately uses
+	// users.id (emp.ID in the Angular directory), not employees.id.
+	userID, err := strconv.ParseUint(c.Params("id"), 10, 32)
+	if err != nil || userID == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Employee user ID must be a positive integer"})
 	}
 
-	if user.Employee.ID != 0 {
+	tx := config.DB.Begin()
+	if tx.Error != nil {
+		log.Printf("delete employee: begin transaction failed: user_id=%d: %v", userID, tx.Error)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memulai transaksi penghapusan karyawan"})
+	}
+	rollbackWithLog := func(operation string, operationErr error) error {
+		tx.Rollback()
+		log.Printf("delete employee failed: user_id=%d operation=%s: %v", userID, operation, operationErr)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   fmt.Sprintf("Gagal menghapus karyawan pada tahap %s: %v", operation, operationErr),
+			"details": operationErr.Error(),
+		})
+	}
+
+	var user models.User
+	if err := tx.Preload("Employee").First(&user, uint(userID)).Error; err != nil {
+		tx.Rollback()
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Karyawan tidak ditemukan"})
+		}
+		log.Printf("delete employee failed: user_id=%d operation=load user: %v", userID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal membaca data karyawan", "details": err.Error()})
+	}
+
+	employeeID := user.Employee.ID
+	if employeeID != 0 {
+		// Preserve report/audit identity before detaching the historical rows.
+		for _, table := range []string{"attendance_records", "leave_requests", "work_reports"} {
+			if result := tx.Exec(fmt.Sprintf(`UPDATE %s SET employee_name_snapshot = ?, employee_code_snapshot = ?, employee_id = NULL WHERE employee_id = ?`, table), user.Nama, user.Employee.EmployeeCode, employeeID); result.Error != nil {
+				return rollbackWithLog("menyimpan snapshot historis "+table, result.Error)
+			}
+		}
+
+		// Quota and dated schedules remain useful for reports/audit, but no
+		// longer point at a live employee profile. The active home location is
+		// account data and can be removed; location requests/history are audit data.
+		for _, table := range []string{"leave_quota", "work_schedules", "home_location_change_requests", "employee_home_location_histories"} {
+			if result := tx.Exec(fmt.Sprintf(`UPDATE %s SET employee_id = NULL WHERE employee_id = ?`, table), employeeID); result.Error != nil {
+				return rollbackWithLog("memutus referensi "+table, result.Error)
+			}
+		}
+		if result := tx.Exec(`DELETE FROM employee_home_locations WHERE employee_id = ?`, employeeID); result.Error != nil {
+			return rollbackWithLog("menghapus lokasi rumah aktif", result.Error)
+		}
+		if result := tx.Exec(`DELETE FROM work_report_deletions WHERE employee_id = ?`, employeeID); result.Error != nil {
+			return rollbackWithLog("membersihkan penanda laporan kerja", result.Error)
+		}
 		if err := tx.Delete(&user.Employee).Error; err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete employee"})
+			return rollbackWithLog("menghapus profil karyawan", err)
+		}
+	}
+
+	// Detach account-owned data and nullable approval/audit references before
+	// removing users row. Historical certificates/documents remain available.
+	for _, statement := range []struct {
+		query string
+		args  []any
+	}{
+		{`DELETE FROM password_reset_challenges WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM notifications WHERE user_id = ?`, []any{userID}},
+		{`DELETE FROM push_subscriptions WHERE user_id = ?`, []any{userID}},
+		{`UPDATE users SET manager_id = NULL WHERE manager_id = ?`, []any{userID}},
+		{`UPDATE leave_requests SET assigned_approver_id = NULL, approved_by = NULL, manager_approved_by = NULL, rejected_by = NULL WHERE assigned_approver_id = ? OR approved_by = ? OR manager_approved_by = ? OR rejected_by = ?`, []any{userID, userID, userID, userID}},
+		{`UPDATE leave_approval_histories SET decided_by = NULL WHERE decided_by = ?`, []any{userID}},
+		{`UPDATE internship_certificates SET user_id = NULL WHERE user_id = ?`, []any{userID}},
+		{`UPDATE internship_documents SET user_id = NULL WHERE user_id = ?`, []any{userID}},
+		{`UPDATE audit_logs SET user_id = NULL WHERE user_id = ?`, []any{userID}},
+	} {
+		if result := tx.Exec(statement.query, statement.args...); result.Error != nil {
+			return rollbackWithLog("memutus referensi akun", result.Error)
 		}
 	}
 
 	if err := tx.Delete(&user).Error; err != nil {
-		tx.Rollback()
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete user"})
+		return rollbackWithLog("menghapus akun login", err)
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to commit transaction"})
+		log.Printf("delete employee failed: user_id=%d operation=commit: %v", userID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal melakukan commit penghapusan karyawan", "details": err.Error()})
 	}
 
 	hrdID := c.Locals("user_id").(uint)
-	utils.LogAction(hrdID, "DELETE", "Employee", uint(id), "Admin deleted employee data")
+	if err := utils.LogAction(hrdID, "DELETE", "Employee", uint(userID), "HRD deleted employee account; historical records retained with identity snapshots"); err != nil {
+		log.Printf("delete employee: audit log failed after commit: deleted_user_id=%d actor_id=%d: %v", userID, hrdID, err)
+	}
 
-	return c.JSON(fiber.Map{"message": "Employee deleted successfully"})
+	return c.JSON(fiber.Map{"message": "Data karyawan berhasil dihapus"})
 }
 
 func ImportEmployees(c *fiber.Ctx) error {
@@ -1051,6 +1118,16 @@ func ImportEmployees(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File CSV wajib dipilih"})
 	}
+	if file.Size == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "CSV kosong"})
+	}
+	if file.Size > 10*1024*1024 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Ukuran file CSV maksimal 10 MB"})
+	}
+	contentType := strings.ToLower(strings.TrimSpace(strings.Split(file.Header.Get("Content-Type"), ";")[0]))
+	if contentType != "" && contentType != "text/csv" && contentType != "application/csv" && contentType != "text/plain" && contentType != "application/vnd.ms-excel" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "MIME type tidak valid untuk file CSV"})
+	}
 	if !strings.HasSuffix(strings.ToLower(file.Filename), ".csv") {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format import yang didukung adalah CSV"})
 	}
@@ -1059,20 +1136,48 @@ func ImportEmployees(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File CSV tidak dapat dibaca"})
 	}
 	defer src.Close()
-	reader := csv.NewReader(src)
+	content, err := io.ReadAll(src)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "File CSV tidak dapat dibaca"})
+	}
+	if len(content) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "CSV kosong"})
+	}
+	if len(bytes.TrimSpace(bytes.TrimPrefix(content, []byte{0xEF, 0xBB, 0xBF}))) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "CSV kosong"})
+	}
+	// Browsers/Excel commonly add an UTF-8 BOM, and Excel installations in some
+	// locales use semicolon or tab as the separator. Normalize those details so
+	// a file downloaded from this application can be uploaded again unchanged.
+	content = bytes.TrimPrefix(content, []byte{0xEF, 0xBB, 0xBF})
+	reader := csv.NewReader(bytes.NewReader(content))
 	reader.TrimLeadingSpace = true
+	reader.FieldsPerRecord = -1 // report row-specific column-count errors below
+	reader.Comma = detectEmployeeCSVDelimiter(content)
 	header, err := reader.Read()
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "CSV kosong atau header tidak valid"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("CSV kosong atau header tidak valid: baris header tidak ditemukan (%v)", err)})
 	}
 	columns := make(map[string]int)
 	for i, column := range header {
-		columns[strings.ToLower(strings.TrimSpace(column))] = i
+		name := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(column, "\ufeff")))
+		// Accept the original import spelling as a backwards-compatible alias.
+		aliases := map[string]string{"nama lengkap": "nama", "nik/nip": "nik", "tanggal masuk": "tanggal_bergabung"}
+		if canonical, ok := aliases[name]; ok {
+			name = canonical
+		}
+		if name == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Header CSV tidak valid: ada nama kolom kosong"})
+		}
+		if _, exists := columns[name]; exists {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("Header CSV tidak valid: kolom %s duplikat", name)})
+		}
+		columns[name] = i
 	}
-	required := []string{"nik", "nama", "email", "password", "division_id", "position_id", "tanggal_bergabung"}
+	required := []string{"nik", "nama", "email", "division_id", "position_id", "tanggal_bergabung"}
 	for _, column := range required {
 		if _, ok := columns[column]; !ok {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("Kolom %s wajib ada", column)})
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("Header CSV tidak valid: kolom %s wajib ada", column)})
 		}
 	}
 	imported := 0
@@ -1085,7 +1190,14 @@ func ImportEmployees(c *fiber.Ctx) error {
 			break
 		}
 		if readErr != nil {
-			errors = append(errors, fmt.Sprintf("Baris %d: format CSV tidak valid", rowNumber))
+			errors = append(errors, fmt.Sprintf("Baris %d: format CSV tidak valid (%v)", rowNumber, readErr))
+			continue
+		}
+		if len(row) == 0 || (len(row) == 1 && strings.TrimSpace(row[0]) == "") {
+			continue
+		}
+		if len(row) != len(header) {
+			errors = append(errors, fmt.Sprintf("Baris %d: jumlah kolom %d, seharusnya %d", rowNumber, len(row), len(header)))
 			continue
 		}
 		value := func(name string) string {
@@ -1097,9 +1209,9 @@ func ImportEmployees(c *fiber.Ctx) error {
 		}
 		divisionID, errDept := strconv.ParseUint(value("division_id"), 10, 32)
 		positionID, errPosition := strconv.ParseUint(value("position_id"), 10, 32)
-		joined, errDate := time.Parse("2006-01-02", value("tanggal_bergabung"))
-		if value("nik") == "" || value("nama") == "" || value("email") == "" || value("password") == "" || errDept != nil || errPosition != nil || errDate != nil {
-			errors = append(errors, fmt.Sprintf("Baris %d: data wajib atau format angka/tanggal tidak valid", rowNumber))
+		joined, errDate := parseEmployeeDate(value("tanggal_bergabung"))
+		if value("nik") == "" || value("nama") == "" || value("email") == "" || errDept != nil || errPosition != nil || errDate != nil {
+			errors = append(errors, fmt.Sprintf("Baris %d: NIK, nama, email, divisi, jabatan, dan tanggal_bergabung wajib valid (format tanggal YYYY-MM-DD)", rowNumber))
 			continue
 		}
 		role := models.Role(value("role"))
@@ -1110,25 +1222,95 @@ func ImportEmployees(c *fiber.Ctx) error {
 		if status == "" {
 			status = "aktif"
 		}
-		homeLat, _ := strconv.ParseFloat(value("home_latitude"), 64)
-		homeLng, _ := strconv.ParseFloat(value("home_longitude"), 64)
-		hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(value("password")), bcrypt.DefaultCost)
-		if hashErr != nil {
-			errors = append(errors, fmt.Sprintf("Baris %d: password tidak dapat diproses", rowNumber))
+		password := value("password")
+		homeLat, latErr := csvOptionalFloat(value("home_latitude"))
+		homeLng, lngErr := csvOptionalFloat(value("home_longitude"))
+		birthDate, birthErr := csvOptionalDate(value("tanggal_lahir"))
+		internshipStart, startErr := csvOptionalDate(value("internship_start_date"))
+		internshipEnd, endErr := csvOptionalDate(value("internship_end_date"))
+		if latErr != nil || lngErr != nil || birthErr != nil || startErr != nil || endErr != nil {
+			errors = append(errors, fmt.Sprintf("Baris %d: tanggal atau koordinat opsional tidak valid", rowNumber))
 			continue
 		}
+		managerID := csvOptionalUint(value("manager_id"))
+		projectID := csvOptionalUint(value("project_id"))
 		tx := config.DB.Begin()
-		user := models.User{Nama: value("nama"), Email: value("email"), PasswordHash: string(hashedPassword), Role: role, Status: status}
-		if err = tx.Create(&user).Error; err != nil {
-			tx.Rollback()
-			errors = append(errors, fmt.Sprintf("Baris %d: email sudah digunakan atau user gagal dibuat", rowNumber))
-			continue
+		var employee models.Employee
+		existing := config.DB.Preload("User").Where("nik = ?", value("nik")).First(&employee).Error == nil
+		if existing {
+			if employee.User == nil {
+				tx.Rollback()
+				errors = append(errors, fmt.Sprintf("Baris %d: user karyawan tidak ditemukan", rowNumber))
+				continue
+			}
+			user := employee.User
+			user.Nama, user.Email, user.Role, user.Status = value("nama"), strings.ToLower(value("email")), role, status
+			user.ManagerID, user.ProjectID, user.TeamID = managerID, projectID, value("team_id")
+			user.MentorName, user.InstitutionName = value("mentor_name"), value("institution_name")
+			user.InternshipStartDate, user.InternshipEndDate = internshipStart, internshipEnd
+			if password != "" {
+				hashed, hashErr := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+				if hashErr != nil {
+					tx.Rollback()
+					errors = append(errors, fmt.Sprintf("Baris %d: password tidak dapat diproses", rowNumber))
+					continue
+				}
+				user.PasswordHash = string(hashed)
+			}
+			if err = tx.Save(user).Error; err != nil {
+				tx.Rollback()
+				errors = append(errors, fmt.Sprintf("Baris %d: user gagal diperbarui", rowNumber))
+				continue
+			}
+		} else {
+			if password == "" {
+				tx.Rollback()
+				errors = append(errors, fmt.Sprintf("Baris %d: password wajib diisi untuk karyawan baru", rowNumber))
+				continue
+			}
+			hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+			if hashErr != nil {
+				tx.Rollback()
+				errors = append(errors, fmt.Sprintf("Baris %d: password tidak dapat diproses", rowNumber))
+				continue
+			}
+			user := models.User{Nama: value("nama"), Email: strings.ToLower(value("email")), PasswordHash: string(hashedPassword), Role: role, Status: status, ManagerID: managerID, ProjectID: projectID, TeamID: value("team_id"), MentorName: value("mentor_name"), InstitutionName: value("institution_name"), InternshipStartDate: internshipStart, InternshipEndDate: internshipEnd}
+			if err = tx.Create(&user).Error; err != nil {
+				tx.Rollback()
+				errors = append(errors, fmt.Sprintf("Baris %d: email sudah digunakan atau user gagal dibuat", rowNumber))
+				continue
+			}
+			employee = models.Employee{UserID: user.ID, NIK: value("nik")}
 		}
-		employee := models.Employee{UserID: user.ID, NIK: value("nik"), DivisionID: uint(divisionID), PositionID: uint(positionID), TanggalBergabung: joined, HomeLatitude: homeLat, HomeLongitude: homeLng}
-		if err = tx.Create(&employee).Error; err != nil {
+		employee.EmployeeCode, employee.JenisKelamin, employee.TempatLahir, employee.TanggalLahir = value("employee_code"), value("jenis_kelamin"), value("tempat_lahir"), birthDate
+		employee.NomorTelepon, employee.Alamat, employee.ShiftKerja = value("nomor_telepon"), value("alamat"), value("shift_kerja")
+		if employee.ShiftKerja == "" {
+			employee.ShiftKerja = "Reguler"
+		}
+		employee.DivisionID, employee.PositionID, employee.TanggalBergabung, employee.HomeLatitude, employee.HomeLongitude = uint(divisionID), uint(positionID), joined, homeLat, homeLng
+		if existing {
+			err = tx.Save(&employee).Error
+		} else {
+			err = tx.Create(&employee).Error
+		}
+		if err != nil {
 			tx.Rollback()
 			errors = append(errors, fmt.Sprintf("Baris %d: NIK/divisi/jabatan tidak valid", rowNumber))
 			continue
+		}
+		if !existing && employee.EmployeeCode == "" {
+			if err = services.AssignEmployeeCode(tx, &employee, role); err != nil {
+				tx.Rollback()
+				errors = append(errors, fmt.Sprintf("Baris %d: kode karyawan gagal dibuat", rowNumber))
+				continue
+			}
+		}
+		if hasHomeLocation(homeLat, homeLng) {
+			if err = saveEmployeeHomeLocation(tx, employee.ID, homeLat, homeLng, value("home_google_maps_url")); err != nil {
+				tx.Rollback()
+				errors = append(errors, fmt.Sprintf("Baris %d: lokasi rumah tidak dapat disimpan", rowNumber))
+				continue
+			}
 		}
 		if err = tx.Commit().Error; err != nil {
 			errors = append(errors, fmt.Sprintf("Baris %d: transaksi gagal disimpan", rowNumber))
@@ -1138,4 +1320,50 @@ func ImportEmployees(c *fiber.Ctx) error {
 	}
 	utils.LogAction(c.Locals("user_id").(uint), "CREATE", "Employee", 0, fmt.Sprintf("Imported %d employees from CSV", imported))
 	return c.JSON(fiber.Map{"message": "Import selesai", "imported": imported, "errors": errors})
+}
+
+func detectEmployeeCSVDelimiter(content []byte) rune {
+	line := strings.TrimSpace(string(content))
+	if newline := strings.IndexByte(line, '\n'); newline >= 0 {
+		line = line[:newline]
+	}
+	counts := map[rune]int{',': strings.Count(line, ","), ';': strings.Count(line, ";"), '\t': strings.Count(line, "\t")}
+	delimiter := ','
+	for _, candidate := range []rune{';', '\t'} {
+		if counts[candidate] > counts[delimiter] {
+			delimiter = candidate
+		}
+	}
+	return delimiter
+}
+
+func csvOptionalUint(value string) *uint {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	n, err := strconv.ParseUint(value, 10, 32)
+	if err != nil || n == 0 {
+		return nil
+	}
+	result := uint(n)
+	return &result
+}
+
+func csvOptionalDate(value string) (*time.Time, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+	parsed, err := parseEmployeeDate(value)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
+func csvOptionalFloat(value string) (float64, error) {
+	if strings.TrimSpace(value) == "" {
+		return 0, nil
+	}
+	return strconv.ParseFloat(strings.TrimSpace(value), 64)
 }

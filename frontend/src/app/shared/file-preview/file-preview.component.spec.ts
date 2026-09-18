@@ -44,6 +44,29 @@ describe('FilePreviewComponent', () => {
     expect(component.previews.length).toBe(0);
   });
 
+  it('adds files selected in separate picker actions up to the limit', () => {
+    component.maxFiles = 3;
+    const first = new File(['one'], 'one.png', { type: 'image/png', lastModified: 1 });
+    const second = new File(['two'], 'two.png', { type: 'image/png', lastModified: 2 });
+
+    component.onInput({ target: { files: [first], value: '' } } as unknown as Event);
+    component.onInput({ target: { files: [second], value: '' } } as unknown as Event);
+
+    expect(component.files).toEqual([first, second]);
+    expect(component.previews.length).toBe(2);
+  });
+
+  it('rejects a separate selection when it would exceed the limit', () => {
+    component.maxFiles = 3;
+    const files = [1, 2, 3, 4].map(index => new File([String(index)], `${index}.png`, { type: 'image/png' }));
+
+    component.onInput({ target: { files: files.slice(0, 3), value: '' } } as unknown as Event);
+    component.onInput({ target: { files: [files[3]], value: '' } } as unknown as Event);
+
+    expect(component.error).toContain('Maksimal 3 file');
+    expect(component.files).toEqual(files.slice(0, 3));
+  });
+
   it('rejects files larger than the configured limit', () => {
     const file = new File([new Uint8Array(1024 * 1024 + 1)], 'large.png', { type: 'image/png' });
     component.onInput({ target: { files: [file], value: '' } } as unknown as Event);

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -78,10 +79,10 @@ func TestOvernightScheduleDeadlineUsesFollowingDay(t *testing.T) {
 
 func TestValidateConfiguredHomeLocationUsesGoogleMapsHomePoint(t *testing.T) {
 	home := models.EmployeeHomeLocation{
-		GoogleMapsURL: "https://www.google.com/maps/@-6.200000,106.800000,17z",
-		LatitudeRumah: -6.200000,
+		GoogleMapsURL:  "https://www.google.com/maps/@-6.200000,106.800000,17z",
+		LatitudeRumah:  -6.200000,
 		LongitudeRumah: 106.800000,
-		RadiusMeter: 100,
+		RadiusMeter:    100,
 	}
 
 	valid, source, err := validateConfiguredHomeLocation(home, -6.200100, 106.800000)
@@ -101,5 +102,52 @@ func TestValidateConfiguredHomeLocationRequiresGoogleMapsLink(t *testing.T) {
 	}, -6.2, 106.8)
 	if err == nil || valid || source != "tidak_tervalidasi" || err.Error() != "Anda belum mengatur lokasi rumah untuk absensi WFH" {
 		t.Fatalf("missing home link should fail as unconfigured: valid=%v source=%s err=%v", valid, source, err)
+	}
+}
+
+func TestShouldSendWFHAttendanceNotificationOnlyForHomeBaseWorkType(t *testing.T) {
+	if !shouldSendWFHAttendanceNotification(models.WorkType{Nama: "WFH", IsHomeBase: true}) {
+		t.Fatal("WFH/home-base work type should trigger Kehadiran WFH notification")
+	}
+	if shouldSendWFHAttendanceNotification(models.WorkType{Nama: "WFO", IsHomeBase: false}) {
+		t.Fatal("non-WFH work type must not trigger Kehadiran WFH notification")
+	}
+}
+
+func TestWFHAttendanceNotificationPayloadContainsRequiredDetails(t *testing.T) {
+	employee := models.Employee{
+		NIK: "EMP001",
+		User: &models.User{
+			Nama: "Budi Santoso",
+		},
+	}
+	record := models.AttendanceRecord{
+		Status: models.StatusHadir,
+	}
+	at := time.Date(2026, 9, 16, 8, 15, 0, 0, jakartaLocation)
+
+	title, message := wfhAttendanceNotificationPayload(employee, record, at, "Jl. Rumah No. 10")
+
+	if title != "Kehadiran WFH Karyawan" {
+		t.Fatalf("title: got %q", title)
+	}
+	for _, want := range []string{"Budi Santoso", "16 Sep 2026 08:15", "Jenis: WFH", "Status: Hadir", "Jl. Rumah No. 10"} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("message %q should contain %q", message, want)
+		}
+	}
+}
+
+func TestWFHAttendanceNotificationPayloadFallsBackToNIKAndDefaultLocation(t *testing.T) {
+	employee := models.Employee{NIK: "EMP001"}
+	record := models.AttendanceRecord{Status: models.StatusTerlambat}
+	at := time.Date(2026, 9, 16, 8, 15, 0, 0, jakartaLocation)
+
+	_, message := wfhAttendanceNotificationPayload(employee, record, at, " ")
+
+	for _, want := range []string{"EMP001", "Status: Terlambat", "Lokasi rumah tervalidasi"} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("message %q should contain %q", message, want)
+		}
 	}
 }

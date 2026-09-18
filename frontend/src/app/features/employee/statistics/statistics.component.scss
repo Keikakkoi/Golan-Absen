@@ -176,12 +176,26 @@
     margin-top: 6px;
 
     .wt-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       background: var(--mint-1);
       color: var(--green-deep);
       padding: 6px 12px;
       border-radius: 20px;
       font-size: 0.8rem;
       font-weight: 600;
+
+      .worktype-icon {
+        width: 14px;
+        height: 14px;
+        flex: 0 0 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
     }
   }
 }

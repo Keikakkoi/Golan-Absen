@@ -52,13 +52,7 @@
     </div>
   </div>
 
-  <div class="current-role-badge" *ngIf="!isMenuLoading; else roleSkeleton">
-    <span class="role-caption">Akses akun</span>
-    <strong>{{ userRole === 'HRD' ? 'HRD / Admin' : userRole }}</strong>
-  </div>
-  <ng-template #roleSkeleton><app-ui-skeleton type="text" ariaLabel="Memuat akun"></app-ui-skeleton></ng-template>
-
-  <div class="theme-switcher" *ngIf="darkModeEnabled">
+  <div class="theme-switcher" *ngIf="darkModeEnabled || isAdmin">
     <button
       type="button"
       class="theme-toggle"

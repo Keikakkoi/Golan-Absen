@@ -92,7 +92,14 @@ func GetManagerDashboard(c *fiber.Ctx) error {
 		}
 	}
 	weekly := managerWeeklyAttendance(ids)
-	return c.JSON(fiber.Map{"team_members": len(team), "hadir_hari_ini": present, "belum_absen_hari_ini": belumAbsen, "izin_pending": pending, "weekly": weekly, "missing_work_reports": missingWorkReportRows(ids, attendanceNow())})
+	// The manager dashboard warning is personal. Team attendance and report
+	// monitoring remain available through the team reports screens.
+	var managerEmployee models.Employee
+	managerWarnings := []fiber.Map{}
+	if config.DB.Where("user_id = ?", managerID).First(&managerEmployee).Error == nil {
+		managerWarnings = missingWorkReportRowsForEmployee(managerEmployee.ID, attendanceNow())
+	}
+	return c.JSON(fiber.Map{"team_members": len(team), "hadir_hari_ini": present, "belum_absen_hari_ini": belumAbsen, "izin_pending": pending, "weekly": weekly, "missing_work_reports": managerWarnings})
 }
 
 func managerWeeklyAttendance(ids []uint) []fiber.Map {
@@ -149,7 +156,10 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 	}
 	byEmployee := map[string]models.AttendanceRecord{}
 	for _, record := range records {
-		byEmployee[recordKey(record.EmployeeID, record.Tanggal)] = record
+		if record.EmployeeID == nil {
+			continue
+		}
+		byEmployee[recordKey(*record.EmployeeID, record.Tanggal)] = record
 	}
 	rows := []fiber.Map{}
 	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
@@ -357,7 +367,7 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 	if err := config.DB.Preload("Employee.User").Where("id = ?", c.Params("id")).First(&report).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Logbook not found"})
 	}
-	if !containsUint(ids, report.EmployeeID) {
+	if report.EmployeeID == nil || !containsUint(ids, *report.EmployeeID) {
 		return c.Status(403).JSON(fiber.Map{"error": "Logbook is outside your team"})
 	}
 	var input struct {

@@ -40,18 +40,44 @@
         <div class="golan-card map-card">
           <div class="card-header-flex">
             <h3>Peta Lokasi Real-time</h3>
-            <div class="form-group-compact">
-              <select class="form-control-compact" [(ngModel)]="tipeKerja" (ngModelChange)="onTipeKerjaChange()" [disabled]="hasCheckedIn">
-                <option *ngFor="let wt of workTypes" [value]="wt.Nama">
+            <div class="form-group-compact event-type-picker" [class.is-open]="openTipeKerja" [class.is-disabled]="hasCheckedIn">
+              <button
+                type="button"
+                class="form-control-compact event-type-trigger"
+                [attr.aria-expanded]="openTipeKerja"
+                aria-haspopup="listbox"
+                aria-label="Pilih tipe event"
+                aria-controls="checkin-event-type-options"
+                [disabled]="hasCheckedIn"
+                (click)="$event.stopPropagation(); toggleTipeKerja()"
+                (keydown)="onTipeKerjaKeydown($event)">
+                <span>{{ tipeKerja }}</span>
+                <span class="event-type-chevron" aria-hidden="true"></span>
+              </button>
+              <div
+                id="checkin-event-type-options"
+                class="event-type-menu"
+                *ngIf="openTipeKerja"
+                role="listbox"
+                aria-label="Pilihan tipe event"
+                (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  class="event-type-option"
+                  *ngFor="let wt of workTypes"
+                  role="option"
+                  [attr.aria-selected]="tipeKerja === wt.Nama"
+                  [class.is-selected]="tipeKerja === wt.Nama"
+                  (click)="selectTipeKerja(wt.Nama)">
                   {{ wt.Nama }}
-                </option>
-              </select>
+                </button>
+              </div>
             </div>
           </div>
           <div
             *ngIf="locationError"
             class="alert alert-danger"
-            [class.outside-radius-message]="locationError === 'Posisi Anda di luar radius kantor.'">
+            [class.outside-radius-message]="locationError.includes('di luar radius')">
             {{ locationError }}
           </div>
           <div id="map" class="map-container"></div>
@@ -59,6 +85,9 @@
             <span class="status-pill" [class.status-hadir]="isGpsActive && isLocationValid" [class.status-alpha]="!isGpsActive || !isLocationValid">
               {{ statusText }}
             </span>
+            <small class="location-accuracy" *ngIf="isGpsActive && currentAccuracy > 0">
+              Akurasi ±{{ currentAccuracy | number:'1.0-0' }} m
+            </small>
           </div>
         </div>
 

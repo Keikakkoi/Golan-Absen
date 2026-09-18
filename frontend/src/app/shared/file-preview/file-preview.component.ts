@@ -42,7 +42,14 @@ export class FilePreviewComponent implements OnChanges, OnDestroy {
   onInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     const selected = Array.from(input.files || []);
-    const result = this.validate(selected);
+    // Keep previous files when the picker is opened again. This lets users
+    // choose screenshots one at a time while still enforcing maxFiles.
+    const selectedKeys = new Set(selected.map(file => this.fileKey(file)));
+    const next = [
+      ...this.files.filter(file => !selectedKeys.has(this.fileKey(file))),
+      ...selected
+    ];
+    const result = this.validate(next);
     if (!result.valid) {
       this.error = result.message;
       this.validationChange.emit(result);
@@ -50,9 +57,9 @@ export class FilePreviewComponent implements OnChanges, OnDestroy {
       return;
     }
     this.error = '';
-    this.files = selected;
+    this.files = next;
     this.rebuildPreviews();
-    this.filesChange.emit(selected);
+    this.filesChange.emit(next);
     this.validationChange.emit(result);
     input.value = '';
   }
@@ -96,6 +103,10 @@ export class FilePreviewComponent implements OnChanges, OnDestroy {
       }
     }
     return { valid: true, message: '' };
+  }
+
+  private fileKey(file: File): string {
+    return `${file.name}:${file.size}:${file.lastModified}`;
   }
 
   private rebuildPreviews(): void {

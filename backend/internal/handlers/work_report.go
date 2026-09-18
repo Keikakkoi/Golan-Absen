@@ -6,6 +6,7 @@ import (
 	"log"
 	"mime/multipart"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	miniogo "github.com/minio/minio-go/v7"
+	"gorm.io/gorm"
 )
 
 func SetupWorkReportRoutes(api fiber.Router) {
@@ -25,9 +27,6 @@ func SetupWorkReportRoutes(api fiber.Router) {
 	reportGroup.Use(middleware.Protected())
 
 	reportGroup.Get("/columns", GetWorkReportColumns)
-	reportGroup.Post("/columns", CreateWorkReportColumn)
-	reportGroup.Put("/columns/:id", UpdateWorkReportColumn)
-	reportGroup.Delete("/columns/:id", DeleteWorkReportColumn)
 
 	reportGroup.Get("/compliance", GetWorkReportCompliance)
 	reportGroup.Get("/deadline", GetWorkReportDeadline)
@@ -54,77 +53,6 @@ func GetWorkReportColumns(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(columns)
-}
-
-func CreateWorkReportColumn(c *fiber.Ctx) error {
-	if role := c.Locals("role").(models.Role); role != models.RoleHRD {
-		return c.Status(403).JSON(fiber.Map{"error": "Only HRD can manage report columns"})
-	}
-	var input struct {
-		NamaKolom  string `json:"nama_kolom"`
-		TipeInput  string `json:"tipe_input"`
-		Opsi       string `json:"opsi"`
-		Aktif      bool   `json:"aktif"`
-		WajibDiisi bool   `json:"wajib_diisi"`
-		Urutan     int    `json:"urutan"`
-	}
-
-	if err := c.BodyParser(&input); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	column := models.WorkReportColumn{
-		NamaKolom:  input.NamaKolom,
-		TipeInput:  input.TipeInput,
-		Opsi:       input.Opsi,
-		Aktif:      input.Aktif,
-		WajibDiisi: input.WajibDiisi,
-		Urutan:     input.Urutan,
-	}
-
-	if err := config.DB.Create(&column).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to create column"})
-	}
-
-	return c.JSON(column)
-}
-
-func UpdateWorkReportColumn(c *fiber.Ctx) error {
-	if role := c.Locals("role").(models.Role); role != models.RoleHRD {
-		return c.Status(403).JSON(fiber.Map{"error": "Only HRD can manage report columns"})
-	}
-	id := c.Params("id")
-	var column models.WorkReportColumn
-	if err := config.DB.First(&column, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Column not found"})
-	}
-
-	var input struct {
-		NamaKolom  string `json:"nama_kolom"`
-		TipeInput  string `json:"tipe_input"`
-		Opsi       string `json:"opsi"`
-		Aktif      bool   `json:"aktif"`
-		WajibDiisi bool   `json:"wajib_diisi"`
-		Urutan     int    `json:"urutan"`
-	}
-
-	if err := c.BodyParser(&input); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	config.DB.Model(&column).Updates(input)
-	return c.JSON(column)
-}
-
-func DeleteWorkReportColumn(c *fiber.Ctx) error {
-	if role := c.Locals("role").(models.Role); role != models.RoleHRD {
-		return c.Status(403).JSON(fiber.Map{"error": "Only HRD can manage report columns"})
-	}
-	id := c.Params("id")
-	if err := config.DB.Delete(&models.WorkReportColumn{}, id).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete column"})
-	}
-	return c.JSON(fiber.Map{"message": "Column deleted successfully"})
 }
 
 func GetWorkReports(c *fiber.Ctx) error {
@@ -201,13 +129,19 @@ func CreateWorkReport(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
+	if err := validateRealisasiKegiatan(input.RealisasiKegiatan, true); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
-	t, err := time.Parse("2006-01-02", input.Tanggal)
+	t, err := time.ParseInLocation("2006-01-02", input.Tanggal, jakartaLocation)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid date format"})
 	}
 	if _, ok := getWorkReportSchedule(emp.ID, t); !ok {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Tidak ada shift aktif atau jadwal shift untuk tanggal laporan ini. Hubungi admin untuk penjadwalan shift."})
+	}
+	if err := validateWorkReportSubmission(emp.ID, t, attendanceNow()); err != nil {
+		return c.Status(err.Code).JSON(fiber.Map{"error": err.Message})
 	}
 
 	statusLogbook := "submitted"
@@ -240,7 +174,7 @@ func CreateWorkReport(c *fiber.Ctx) error {
 	}
 
 	report := models.WorkReport{
-		EmployeeID:         emp.ID,
+		EmployeeID:         &emp.ID,
 		Tanggal:            t,
 		Tugas:              input.Tugas,
 		Judul:              input.Judul,
@@ -292,7 +226,7 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	if userRole != string(models.RoleHRD) {
 		var emp models.Employee
 		if err := config.DB.Where("user_id = ?", userID).First(&emp).Error; err == nil {
-			if report.EmployeeID != emp.ID {
+			if report.EmployeeID == nil || *report.EmployeeID != emp.ID {
 				return c.Status(403).JSON(fiber.Map{"error": "Not your report"})
 			}
 		}
@@ -302,11 +236,27 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
+	if err := validateRealisasiKegiatan(input.RealisasiKegiatan, false); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if userRole != string(models.RoleHRD) && report.EmployeeID != nil {
+		targetDate := report.Tanggal
+		if input.Tanggal != "" {
+			parsed, parseErr := time.ParseInLocation("2006-01-02", input.Tanggal, jakartaLocation)
+			if parseErr != nil {
+				return c.Status(400).JSON(fiber.Map{"error": "Invalid date format"})
+			}
+			targetDate = parsed
+		}
+		if err := validateWorkReportSubmission(*report.EmployeeID, targetDate, attendanceNow()); err != nil {
+			return c.Status(err.Code).JSON(fiber.Map{"error": err.Message})
+		}
+	}
 
 	updates := map[string]interface{}{}
 
 	if input.Tanggal != "" {
-		if t, err := time.Parse("2006-01-02", input.Tanggal); err == nil {
+		if t, err := time.ParseInLocation("2006-01-02", input.Tanggal, jakartaLocation); err == nil {
 			updates["tanggal"] = t
 		}
 	}
@@ -375,14 +325,62 @@ func DeleteWorkReport(c *fiber.Ctx) error {
 	role := string(c.Locals("role").(models.Role))
 	if role != string(models.RoleHRD) {
 		var employee models.Employee
-		if err := config.DB.Where("user_id = ?", c.Locals("user_id").(uint)).First(&employee).Error; err != nil || report.EmployeeID != employee.ID {
+		if err := config.DB.Where("user_id = ?", c.Locals("user_id").(uint)).First(&employee).Error; err != nil || report.EmployeeID == nil || *report.EmployeeID != employee.ID {
 			return c.Status(403).JSON(fiber.Map{"error": "Not your report"})
 		}
 	}
-	if err := config.DB.Delete(&report).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete report"})
+	if report.EmployeeID == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Report tidak memiliki karyawan"})
+	}
+	attachments, err := deleteWorkReportData(config.DB, report.ID, *report.EmployeeID, report.Tanggal)
+	if err != nil {
+		log.Printf("work report deletion failed: report_id=%d: %v", report.ID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": fmt.Sprintf("Failed to delete report: %v", err)})
+	}
+	for _, attachment := range attachments {
+		if attachment.StorageKey == "" || minio.Client == nil {
+			continue
+		}
+		if err := minio.Client.RemoveObject(context.Background(), minio.BucketName, attachment.StorageKey, miniogo.RemoveObjectOptions{}); err != nil {
+			// The database deletion is already committed. Keep the API successful and
+			// log orphan cleanup failures so they can be retried operationally.
+			log.Printf("work report attachment storage cleanup failed: report_id=%d storage_key=%q: %v", report.ID, attachment.StorageKey, err)
+		}
 	}
 	return c.JSON(fiber.Map{"message": "Report deleted successfully"})
+}
+
+// deleteWorkReportData removes the dependent rows before the report row. The
+// caller performs storage cleanup only after this transaction commits.
+func deleteWorkReportData(db *gorm.DB, reportID uint, employeeID uint, tanggal time.Time) ([]models.WorkReportAttachment, error) {
+	var attachments []models.WorkReportAttachment
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("work_report_id = ?", reportID).Find(&attachments).Error; err != nil {
+			return fmt.Errorf("load attachments: %w", err)
+		}
+		// Use an explicit statement so the dependent-row delete remains
+		// unambiguous with older database schemas and legacy columns.
+		result := tx.Exec("DELETE FROM work_report_attachments WHERE work_report_id = ?", reportID)
+		if result.Error != nil {
+			return fmt.Errorf("delete attachments: %w", result.Error)
+		}
+		if result.RowsAffected < int64(len(attachments)) {
+			return fmt.Errorf("delete attachments: expected at least %d rows, deleted %d", len(attachments), result.RowsAffected)
+		}
+		if err := tx.Exec(`INSERT INTO work_report_deletions (created_at, updated_at, employee_id, tanggal)
+			VALUES (NOW(), NOW(), ?, ?)
+			ON CONFLICT (employee_id, tanggal) DO NOTHING`, employeeID, tanggal).Error; err != nil {
+			return fmt.Errorf("record report deletion: %w", err)
+		}
+		if err := tx.Delete(&models.WorkReport{}, reportID).Error; err != nil {
+			return fmt.Errorf("delete report: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return attachments, nil
 }
 
 func GetWorkReportCompliance(c *fiber.Ctx) error {
@@ -472,7 +470,9 @@ func workReportStatusMap(reports []models.WorkReport) map[string]bool {
 		if strings.EqualFold(strings.TrimSpace(report.StatusSesuai), "tidak membuat laporan kerja") {
 			continue
 		}
-		status[fmt.Sprintf("%d_%s", report.EmployeeID, report.Tanggal.Format("2006-01-02"))] = true
+		if report.EmployeeID != nil {
+			status[fmt.Sprintf("%d_%s", *report.EmployeeID, report.Tanggal.Format("2006-01-02"))] = true
+		}
 	}
 	return status
 }
@@ -491,6 +491,20 @@ type workReportInput struct {
 	StatusSesuai       string `json:"status_sesuai"`
 	Status             string `json:"status"`
 	StatusLogbook      string `json:"status_logbook"`
+}
+
+const realisasiKegiatanError = "Realisasi kegiatan harus berupa angka persentase antara 0% sampai 100%, contoh: 20%, 50%, atau 100%."
+
+var realisasiKegiatanPattern = regexp.MustCompile(`^(100|[1-9]?\d)%$`)
+
+func validateRealisasiKegiatan(value string, required bool) error {
+	if value == "" && !required {
+		return nil
+	}
+	if !realisasiKegiatanPattern.MatchString(value) {
+		return fmt.Errorf("%s", realisasiKegiatanError)
+	}
+	return nil
 }
 
 func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeader, error) {

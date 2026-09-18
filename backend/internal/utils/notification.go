@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 	"time"
 
 	"absensi-golan-backend/config"
@@ -26,6 +27,17 @@ type NotificationEvent struct {
 // settings are treated as enabled so existing installations remain functional
 // while they are being migrated.
 func CreateNotification(db *gorm.DB, userID uint, role models.Role, notificationType, title, message string) error {
+	return createNotification(db, userID, role, notificationType, title, message, nil)
+}
+
+// CreateAttendanceNotification makes attendance notifications idempotent per
+// recipient and attendance record. Duplicate requests are rejected by the
+// database unique index without affecting the saved attendance.
+func CreateAttendanceNotification(db *gorm.DB, userID uint, role models.Role, notificationType, title, message string, attendanceID uint) error {
+	return createNotification(db, userID, role, notificationType, title, message, &attendanceID)
+}
+
+func createNotification(db *gorm.DB, userID uint, role models.Role, notificationType, title, message string, referenceID *uint) error {
 	var setting models.NotificationSetting
 	err := db.Where("tipe_notifikasi = ? AND role = ?", notificationType, role).First(&setting).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -36,12 +48,19 @@ func CreateNotification(db *gorm.DB, userID uint, role models.Role, notification
 	}
 
 	notification := models.Notification{
-		UserID: userID,
-		Judul:  title,
-		Pesan:  message,
-		Waktu:  time.Now(),
+		UserID:         userID,
+		Judul:          title,
+		Pesan:          message,
+		TipeNotifikasi: notificationType,
+		ReferenceID:    referenceID,
+		Waktu:          time.Now(),
 	}
 	if err := db.Create(&notification).Error; err != nil {
+		// A concurrent retry may win the reference unique index. It means the
+		// intended notification already exists, not that the attendance failed.
+		if referenceID != nil && strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
+			return nil
+		}
 		return err
 	}
 

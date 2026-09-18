@@ -11,6 +11,8 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
+import { Subject } from 'rxjs';
+import { finalize, takeUntil, timeout } from 'rxjs/operators';
 
 @Component({
   selector: 'app-profile',
@@ -61,6 +63,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
   photoError = '';
   successMessage = '';
   errorMessage = '';
+  private readonly destroy$ = new Subject<void>();
+  private profileRequestId = 0;
+  private homeLocationRequestId = 0;
+  private destroyed = false;
 
   // Leaflet Home base map
   private map!: L.Map;
@@ -86,9 +92,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.map) {
-      this.map.remove();
-    }
+    this.destroyed = true;
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.destroyMap();
+    if (this.profilePhotoPreviewUrl) URL.revokeObjectURL(this.profilePhotoPreviewUrl);
   }
 
   setActiveTab(tab: string): void {
@@ -101,6 +109,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   loadProfile(): void {
+    const requestId = ++this.profileRequestId;
     const token = this.authService.getToken();
     if (!token) {
       this.profileData = null;
@@ -110,23 +119,22 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     
-    this.http.get<any>('http://localhost:8080/api/v1/employee/profile', { headers }).subscribe({
+    this.isLoading = true;
+    this.http.get<any>('http://localhost:8080/api/v1/employee/profile', { headers }).pipe(
+      timeout(15000), takeUntil(this.destroy$), finalize(() => {
+        if (requestId === this.profileRequestId) this.isLoading = false;
+      })
+    ).subscribe({
       next: (data) => {
+        if (requestId !== this.profileRequestId || this.destroyed) return;
         // Keep one profile source for every role, while accepting the direct
         // response and the common {data: ...}/{profile: ...} API envelopes.
-        const profile = data?.data || data?.profile || data?.user || data || null;
-        this.profileData = profile;
+        const profile = this.normalizeProfile(data);
         if (!profile) {
-          this.isLoading = false;
           this.errorMessage = 'Data profil belum tersedia.';
           return;
         }
-        // Normalize the alternate response key once so all roles use the same
-        // profile source in the template and map.
-        if (!this.profileData.Employee && this.profileData.employee) {
-          this.profileData.Employee = this.profileData.employee;
-        }
-        this.profileData.WorkSchedules = profile.WorkSchedules || profile.work_schedules || [];
+        this.profileData = profile;
         this.updateForm.nama = profile.Nama || profile.nama || '';
         this.updateForm.email = profile.Email || profile.email || '';
         const employee = profile.Employee || profile.employee || {};
@@ -134,7 +142,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.updateForm.alamat_rumah = homeLoc?.AlamatRumah || homeLoc?.alamat_rumah || '';
         this.updateForm.google_maps_url = homeLoc?.GoogleMapsURL || homeLoc?.google_maps_url || '';
         this.errorMessage = '';
-        this.isLoading = false;
         this.loadHomeLocationWorkflow();
         
         if (this.activeTab === 'profile') {
@@ -142,10 +149,30 @@ export class ProfileComponent implements OnInit, OnDestroy {
         }
       },
       error: (error) => {
+        if (requestId !== this.profileRequestId || this.destroyed) return;
         this.errorMessage = this.apiError(error, 'Gagal memuat profil.');
-        this.isLoading = false;
       }
     });
+  }
+
+  private normalizeProfile(response: any): any | null {
+    let value = response?.data ?? response?.profile ?? response?.user ?? response;
+    if (value?.data || value?.profile || value?.user) value = value.data ?? value.profile ?? value.user;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const employee = value.Employee ?? value.employee ?? {};
+    const division = employee.Division ?? employee.division ?? {};
+    const position = employee.Position ?? employee.position ?? {};
+    const home = employee.HomeLocation ?? employee.home_location ?? null;
+    return {
+      ...value,
+      Employee: { ...employee, Division: division, Position: position, HomeLocation: home },
+      WorkSchedules: Array.isArray(value.WorkSchedules) ? value.WorkSchedules :
+        (Array.isArray(value.work_schedules) ? value.work_schedules : []),
+      Nama: value.Nama ?? value.nama ?? '',
+      Email: value.Email ?? value.email ?? '',
+      Role: value.Role ?? value.role ?? '',
+      Status: value.Status ?? value.status ?? ''
+    };
   }
 
   private authHeaders(): HttpHeaders {
@@ -165,9 +192,15 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   private loadHomeLocationWorkflow(): void {
+    const requestId = ++this.homeLocationRequestId;
     this.homeLocationLoading = true;
-    this.http.get<any>('http://localhost:8080/api/v1/employee/profile/home-location', { headers: this.authHeaders() }).subscribe({
+    this.http.get<any>('http://localhost:8080/api/v1/employee/profile/home-location', { headers: this.authHeaders() }).pipe(
+      timeout(10000), takeUntil(this.destroy$), finalize(() => {
+        if (requestId === this.homeLocationRequestId) this.homeLocationLoading = false;
+      })
+    ).subscribe({
       next: response => {
+        if (requestId !== this.homeLocationRequestId || this.destroyed) return;
         this.homeLocation = response?.active || response?.data?.active || null;
         if (this.homeLocation) {
           this.homeLocationForm.alamat_rumah = this.homeLocation.AlamatRumah || this.homeLocation.alamat_rumah || '';
@@ -181,11 +214,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
           this.homeLocationForm.latitude = null;
           this.homeLocationForm.longitude = null;
         }
-        this.http.get<any>('http://localhost:8080/api/v1/employee/profile/home-location/requests', { headers: this.authHeaders() }).subscribe({
+        this.http.get<any>('http://localhost:8080/api/v1/employee/profile/home-location/requests', { headers: this.authHeaders() }).pipe(
+          timeout(10000), takeUntil(this.destroy$), finalize(() => {
+            if (requestId === this.homeLocationRequestId) this.homeLocationLoading = false;
+          })
+        ).subscribe({
           next: requests => {
             const rows = Array.isArray(requests) ? requests : requests?.data;
             this.homeLocationRequests = Array.isArray(rows) ? rows : [];
-            this.homeLocationLoading = false;
           },
           error: error => this.homeLocationError(error)
         });
@@ -230,12 +266,29 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.homeLocationForm.longitude = null;
   }
 
+  retryProfile(): void {
+    this.errorMessage = '';
+    this.loadProfile();
+  }
+
+  private destroyMap(): void {
+    try {
+      this.homeCircle?.remove();
+      this.homeMarker?.remove();
+      this.map?.off();
+      this.map?.remove();
+    } catch { /* Leaflet may already have removed the container during teardown. */ }
+    this.homeCircle = undefined as any;
+    this.homeMarker = undefined as any;
+    this.map = undefined as any;
+  }
+
   resolveGoogleMapsUrl(): void {
     const url = this.homeLocationForm.google_maps_url.trim();
     if (!url || this.homeLocationForm.latitude !== null || this.homeLocationForm.longitude !== null) return;
     this.http.get<any>('http://localhost:8080/api/v1/google-maps/resolve', {
       headers: this.authHeaders(), params: { url }
-    }).subscribe({
+    }).pipe(timeout(10000), takeUntil(this.destroy$)).subscribe({
       next: result => {
         this.homeLocationForm.latitude = Number(result.latitude);
         this.homeLocationForm.longitude = Number(result.longitude);
@@ -245,6 +298,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   async submitHomeLocationRequest(): Promise<void> {
+    if (this.homeLocationSubmitting) return;
     const f = this.homeLocationForm;
     this.errorMessage = '';
     if (!this.authService.getToken()) {
@@ -292,16 +346,17 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }).forEach(([key, value]) => body.append(key, String(value ?? '')));
     if (this.homeLocationAttachment) body.append('lampiran', this.homeLocationAttachment, this.homeLocationAttachment.name);
     this.homeLocationSubmitting = true;
-    this.http.post<any>('http://localhost:8080/api/v1/employee/profile/home-location/requests', body, { headers: this.authHeaders() }).subscribe({
+    this.http.post<any>('http://localhost:8080/api/v1/employee/profile/home-location/requests', body, { headers: this.authHeaders() }).pipe(
+      timeout(20000), takeUntil(this.destroy$), finalize(() => this.homeLocationSubmitting = false)
+    ).subscribe({
       next: () => {
-        this.homeLocationSubmitting = false;
         this.successMessage = 'Pengajuan perubahan lokasi WFH berhasil dikirim dan menunggu persetujuan admin.';
         this.homeLocationForm = { ...this.homeLocationForm, alamat_rumah: '', latitude: null, longitude: null, alasan: '', google_maps_url: '' };
         this.homeLocationAttachment = null; this.homeLocationAttachmentName = '';
         this.loadHomeLocationWorkflow(); this.alert.success('Pengajuan lokasi WFH berhasil dikirim');
       },
       error: async error => {
-        this.homeLocationSubmitting = false;
+        this.errorMessage = this.apiError(error, 'Gagal mengirim pengajuan lokasi WFH.');
         await this.alert.error('Pengajuan gagal', this.apiError(error, 'Gagal mengirim pengajuan lokasi WFH.'));
       }
     });
@@ -315,8 +370,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   initHomeMap(): void {
     setTimeout(() => {
-      if (!this.profileData || !this.profileData.Employee) return;
-      const home = this.profileData.Employee.HomeLocation || this.profileData.Employee.home_location;
+      if (this.destroyed || !this.profileData || !this.profileData.Employee) return;
+      const home = this.profileData.Employee.HomeLocation || {};
       const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.profileData.Employee.HomeLatitude ?? 0);
       const hLng = Number(home?.LongitudeRumah ?? home?.longitude_rumah ?? this.profileData.Employee.HomeLongitude ?? 0);
       const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 100);
@@ -324,15 +379,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
       const mapContainer = document.getElementById('profile-home-map');
       if (!mapContainer) return;
 
-      if (this.map) {
-        this.map.remove();
-      }
+      this.destroyMap();
 
       // Default to office location or a general center if home is not set
       const centerLat = hLat !== 0 ? hLat : -6.1202471;
       const centerLng = hLng !== 0 ? hLng : 106.7118952;
 
-      this.map = L.map('profile-home-map').setView([centerLat, centerLng], 16);
+      try {
+        this.map = L.map(mapContainer).setView([centerLat, centerLng], 16);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(this.map);
@@ -363,10 +417,15 @@ export class ProfileComponent implements OnInit, OnDestroy {
           .addTo(this.map)
           .bindPopup(`Geofence Radius Rumah Anda (${homeRadius} Meter)`);
       }
+      } catch {
+        this.destroyMap();
+        this.errorMessage = 'Peta lokasi tidak dapat dimuat, tetapi data profil tetap tersedia.';
+      }
     }, 100);
   }
 
   async updateProfile(): Promise<void> {
+    if (this.isSubmitting) return;
     this.successMessage = '';
     this.errorMessage = '';
 
@@ -384,24 +443,25 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
 
-    this.http.put<any>('http://localhost:8080/api/v1/employee/profile', payload, { headers }).subscribe({
+    this.http.put<any>('http://localhost:8080/api/v1/employee/profile', payload, { headers }).pipe(
+      timeout(15000), takeUntil(this.destroy$), finalize(() => this.isSubmitting = false)
+    ).subscribe({
       next: (res) => {
         this.successMessage = 'Profil berhasil diperbarui.';
         localStorage.setItem('name', payload.nama);
         this.profileData.Nama = payload.nama;
-        this.isSubmitting = false;
         this.alert.success('Profil berhasil diperbarui');
         this.loadProfile();
       },
       error: (err) => {
         this.errorMessage = err.error?.error || 'Gagal memperbarui profil.';
-        this.isSubmitting = false;
         this.alert.error('Gagal memperbarui profil', this.errorMessage);
       }
     });
   }
 
   async updatePassword(): Promise<void> {
+    if (this.isSubmitting) return;
 
     if (!this.updateForm.old_password || !this.updateForm.password || !this.updateForm.confirm_password) {
       this.errorMessage = 'Semua field password harus diisi.';
@@ -424,20 +484,21 @@ export class ProfileComponent implements OnInit, OnDestroy {
     };
 
     const token = this.authService.getToken();
+    if (!token) { this.isSubmitting = false; this.errorMessage = 'Sesi login tidak ditemukan. Silakan login kembali.'; return; }
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
 
-    this.http.put<any>('http://localhost:8080/api/v1/employee/profile', payload, { headers }).subscribe({
+    this.http.put<any>('http://localhost:8080/api/v1/employee/profile', payload, { headers }).pipe(
+      timeout(15000), takeUntil(this.destroy$), finalize(() => this.isSubmitting = false)
+    ).subscribe({
       next: (res) => {
         this.successMessage = 'Password berhasil diubah.';
         this.updateForm.old_password = '';
         this.updateForm.password = '';
         this.updateForm.confirm_password = '';
-        this.isSubmitting = false;
         this.alert.success('Password berhasil diubah');
       },
       error: (err) => {
         this.errorMessage = err.error?.error || 'Gagal mengubah password. Pastikan password lama benar.';
-        this.isSubmitting = false;
         this.alert.error('Gagal mengubah password', this.errorMessage);
       }
     });
@@ -487,21 +548,21 @@ export class ProfileComponent implements OnInit, OnDestroy {
     const token = this.authService.getToken();
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
 
-    this.http.post<any>('http://localhost:8080/api/v1/employee/profile/photo', formData, { headers }).subscribe({
+    this.http.post<any>('http://localhost:8080/api/v1/employee/profile/photo', formData, { headers }).pipe(
+      timeout(20000), takeUntil(this.destroy$), finalize(() => this.isUploadingPhoto = false)
+    ).subscribe({
       next: (res) => {
         if (this.profilePhotoPreviewUrl) URL.revokeObjectURL(this.profilePhotoPreviewUrl);
-        if (this.profileData.Employee) {
+        if (this.profileData?.Employee && res?.foto_profil_url) {
           this.profileData.Employee.FotoProfilURL = res.foto_profil_url;
         }
         this.selectedPhoto = null;
         this.photoPreviewFile = null;
         this.profilePhotoPreviewUrl = '';
-        this.isUploadingPhoto = false;
         this.successMessage = 'Pas foto berhasil diperbarui.';
         this.alert.success('Pas foto berhasil diperbarui');
       },
       error: (err) => {
-        this.isUploadingPhoto = false;
         this.photoError = err.error?.error || 'Gagal mengunggah pas foto.';
         this.alert.error('Gagal mengunggah pas foto', this.photoError);
       }
@@ -509,6 +570,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   async updateEmail(): Promise<void> {
+    if (this.isSubmitting) return;
     this.successMessage = '';
     this.errorMessage = '';
 
@@ -537,18 +599,18 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.http.put<any>('http://localhost:8080/api/v1/employee/email', {
       email,
       current_password: this.updateForm.email_password
-    }, { headers }).subscribe({
+    }, { headers }).pipe(
+      timeout(15000), takeUntil(this.destroy$), finalize(() => this.isSubmitting = false)
+    ).subscribe({
       next: (res) => {
-        this.profileData.Email = res.Email || email;
+        this.profileData.Email = res?.Email || res?.email || email;
         this.updateForm.email = this.profileData.Email;
         this.updateForm.email_password = '';
-        this.isSubmitting = false;
         this.successMessage = 'Alamat email berhasil diganti.';
         this.alert.success('Email berhasil diganti');
         this.loadProfile();
       },
       error: (err) => {
-        this.isSubmitting = false;
         this.errorMessage = err.error?.error || 'Gagal mengganti alamat email.';
         this.alert.error('Gagal mengganti email', this.errorMessage);
       }

@@ -1,7 +1,16 @@
-.form-card,.table-card{margin-bottom:24px}.field-group{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;color:var(--text-dark);font-weight:600}.field-group .golan-input{font-weight:400}.field-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.toolbar{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}.toolbar .golan-input{min-width:120px}.muted{color:var(--text-dark-lo)}@media(max-width:700px){.field-row{grid-template-columns:1fr}.panel-heading{align-items:stretch;flex-direction:column}.toolbar{align-items:stretch}}
+.form-card,.table-card{margin-bottom:24px}.form-card{scroll-margin-top:16px}.field-group{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;color:var(--text-dark);font-weight:600}.field-group .golan-input{font-weight:400}.field-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.toolbar{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}.toolbar .golan-input{min-width:120px}.muted{color:var(--text-dark-lo)}@media(max-width:700px){.field-row{grid-template-columns:1fr}.panel-heading{align-items:stretch;flex-direction:column}.toolbar{align-items:stretch}}
+.form-card .btn-outline-primary { min-height: 34px; padding: 7px 11px; font-family: var(--font-body); font-size: .82rem; font-weight: 600; }
 .screenshot-preview-grid { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .75rem; }
 .screenshot-preview-grid img, .report-thumb img { width: 72px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
-.report-thumb { display: inline-block; margin: 2px; }
+.report-thumb { display: inline-flex; margin: 0; }
+.logbook-screenshot-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
 
 .status-filter-dropdown {
   position: relative;
@@ -41,6 +50,13 @@
    must be defined here instead of relying on another feature's stylesheet. */
 .intern-logbook-table .status-pill,
 .modal-card .status-pill {
+  // Draft and Approved use the pill color as their status indicator; do not
+  // render the generic dot inherited from the global status-pill style.
+  &.status-success::before,
+  &.status-pending::before {
+    display: none;
+  }
+
   &.status-success {
     background-color: #dcfce7;
     color: #166534;
@@ -122,10 +138,10 @@
 
 .intern-logbook-table th:nth-child(1), .intern-logbook-table td:nth-child(1) { width: 112px; }
 .intern-logbook-table th:nth-child(2), .intern-logbook-table td:nth-child(2) { width: 135px; }
-.intern-logbook-table th:nth-child(3), .intern-logbook-table td:nth-child(3) { width: 220px; }
-.intern-logbook-table th:nth-child(4), .intern-logbook-table td:nth-child(4) { width: 110px; }
+.intern-logbook-table th:nth-child(3), .intern-logbook-table td:nth-child(3) { width: 320px; }
+.intern-logbook-table th:nth-child(4), .intern-logbook-table td:nth-child(4) { width: 240px; }
 .intern-logbook-table th:nth-child(5), .intern-logbook-table td:nth-child(5) { width: 112px; }
-.intern-logbook-table th:nth-child(6), .intern-logbook-table td:nth-child(6) { width: 160px; }
+.intern-logbook-table th:nth-child(6), .intern-logbook-table td:nth-child(6) { width: 260px; }
 .intern-logbook-table th:nth-child(7), .intern-logbook-table td:nth-child(7) { width: 300px; }
 
 .intern-logbook-table td:first-child,
@@ -134,6 +150,10 @@
 .intern-logbook-actions,
 .intern-logbook-actions button {
   white-space: nowrap;
+}
+
+.intern-logbook-table td:nth-child(4) {
+  overflow: hidden;
 }
 
 .intern-logbook-table .status-pill {
@@ -146,6 +166,7 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-start;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -158,6 +179,23 @@
   flex: 0 1 auto;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+.intern-logbook-actions .icon-button {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+}
+
+@media (min-width: 769px) {
+  /* Do not let the action column absorb unused table width. */
+  .intern-logbook-table th:last-child,
+  .intern-logbook-table td:last-child {
+    width: 300px !important;
+    max-width: 300px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -223,15 +261,24 @@
     white-space: nowrap;
   }
 
+  .intern-logbook-table td:nth-child(4) {
+    overflow: hidden;
+  }
+
   .intern-logbook-table td:last-child { border-bottom: 0; }
   .intern-logbook-table .status-pill { justify-self: start; }
   .intern-logbook-table td:last-child {
     min-width: 0;
     overflow: hidden;
+    /* Keep the action controls compact instead of stretching the second
+       mobile grid column across the whole card. */
+    grid-template-columns: minmax(92px, 34%) minmax(0, max-content);
   }
 
   .intern-logbook-actions {
     gap: 8px;
+    justify-content: flex-start;
+    width: fit-content;
     padding-right: 8px;
   }
 

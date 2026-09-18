@@ -15,8 +15,6 @@ const DEFAULT_PREFERENCES: EmployeePreferences = {
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  private readonly preferencesKey = 'employee_preferences';
-  private readonly themeKey = 'theme';
   private readonly darkModeEnabledSubject = new BehaviorSubject<boolean>(
     this.readPreferences().darkMode
   );
@@ -39,48 +37,92 @@ export class ThemeService {
     return this.readPreferences();
   }
 
-  savePreferences(preferences: EmployeePreferences): void {
-    localStorage.setItem(this.preferencesKey, JSON.stringify(preferences));
+  /** Switches the storage namespace when the authenticated account changes. */
+  setUserContext(userId: number | string | null): void {
+    if (userId === null || userId === undefined || String(userId) === '') return;
+    localStorage.setItem('user_id', String(userId));
+    const preferences = this.readPreferences();
     this.darkModeEnabledSubject.next(preferences.darkMode);
-
-    // The profile checkbox is the user's explicit request to enable/disable
-    // dark mode, so apply it immediately. The sidebar can still toggle the
-    // active palette afterwards and the choice remains persisted in `theme`.
-    this.setActiveTheme(preferences.darkMode);
+    this.setActiveTheme(preferences.darkMode && this.readTheme() !== 'light');
   }
 
-  toggleTheme(): void {
-    if (!this.darkModeEnabledSubject.value) return;
-    this.setActiveTheme(!this.darkModeSubject.value);
+  savePreferences(preferences: EmployeePreferences): void {
+    const key = this.scopedKey('employee_preferences');
+    if (!key) return;
+    localStorage.setItem(key, JSON.stringify(preferences));
+    this.darkModeEnabledSubject.next(preferences.darkMode);
+
+    // Profile controls whether the navbar switcher is available. Enabling it
+    // must not change the current palette; the navbar button does that.
+    if (!preferences.darkMode) this.clearActiveTheme(true);
+  }
+
+  toggleTheme(syncPreference = false): void {
+    const darkMode = !this.darkModeSubject.value;
+
+    // For regular users, the Profile checkbox controls whether the navbar
+    // toggle is available; turning the active palette off must not disable
+    // that checkbox and make the toggle disappear.
+    if (syncPreference) {
+      const preferences = this.readPreferences();
+      this.savePreferences({ ...preferences, darkMode });
+      // A navbar click is an explicit request to change the active palette;
+      // unlike Profile save, it should apply immediately.
+      this.setActiveTheme(darkMode);
+      return;
+    }
+
+    if (this.darkModeEnabledSubject.value) this.setActiveTheme(darkMode);
   }
 
   applyStoredTheme(): void {
-    const enabled = this.darkModeEnabledSubject.value;
-    this.setActiveTheme(enabled && localStorage.getItem(this.themeKey) === 'dark');
+    // Read the scoped preference again instead of relying only on the subject.
+    // This matters when the account context was restored after this service
+    // was constructed, or when another settings screen just saved a value.
+    const preferences = this.readPreferences();
+    this.darkModeEnabledSubject.next(preferences.darkMode);
+    this.setActiveTheme(preferences.darkMode && this.readTheme() === 'dark');
   }
 
-  clearActiveTheme(): void {
+  clearActiveTheme(persistLight = false): void {
     document.body.classList.remove('dark-theme');
+    if (persistLight) {
+      const key = this.scopedKey('theme');
+      if (key) localStorage.setItem(key, 'light');
+    }
     this.darkModeSubject.next(false);
   }
 
   private setActiveTheme(isDark: boolean): void {
     const active = isDark && this.darkModeEnabledSubject.value;
     document.body.classList.toggle('dark-theme', active);
-    localStorage.setItem(this.themeKey, active ? 'dark' : 'light');
+    const key = this.scopedKey('theme');
+    if (key) localStorage.setItem(key, active ? 'dark' : 'light');
     this.darkModeSubject.next(active);
   }
 
   private readPreferences(): EmployeePreferences {
-    const rawPreferences = localStorage.getItem(this.preferencesKey);
+    const key = this.scopedKey('employee_preferences');
+    if (!key) return { ...DEFAULT_PREFERENCES };
+    const rawPreferences = localStorage.getItem(key);
     if (!rawPreferences) return { ...DEFAULT_PREFERENCES };
 
     try {
       const parsed = JSON.parse(rawPreferences);
       return { ...DEFAULT_PREFERENCES, ...(parsed || {}) };
     } catch {
-      localStorage.removeItem(this.preferencesKey);
+      localStorage.removeItem(key);
       return { ...DEFAULT_PREFERENCES };
     }
+  }
+
+  private readTheme(): string {
+    const key = this.scopedKey('theme');
+    return key ? (localStorage.getItem(key) || 'light') : 'light';
+  }
+
+  private scopedKey(name: string): string | null {
+    const userId = localStorage.getItem('user_id');
+    return userId ? `golan:${name}:user:${userId}` : null;
   }
 }

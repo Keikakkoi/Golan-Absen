@@ -11,8 +11,12 @@
   flex-wrap: wrap; 
   align-items: center; 
   
-  .btn-secondary {
+  .btn-outline-primary {
     min-height: 42px;
+    padding: 7px 11px;
+    font-family: var(--font-body);
+    font-size: .82rem;
+    font-weight: 600;
   }
 }
 
@@ -112,6 +116,7 @@
 .notification-list {
   padding: 0;
   overflow: hidden;
+  border-radius: 14px;
 }
 
 .notification-item {
@@ -129,6 +134,14 @@
 
 .notification-item:last-child { border-bottom: 0; }
 .notification-item.unread { background: var(--mint-0); }
+.notification-item:first-of-type {
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+.notification-item:last-of-type {
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
 
 .notification-dot {
   width: 8px;
@@ -161,6 +174,25 @@ body.dark-theme .notification-item {
 
 body.dark-theme .notification-item.unread {
   background: var(--surface-raised) !important;
+}
+
+body.dark-theme .notification-list {
+  border-radius: 14px;
+}
+
+/* Admin notification tabs use a light blue surface by default. Keep the
+   inactive tab readable on the dark application background. */
+:host-context(body.dark-theme) .admin-notification-tabs a {
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+  background: var(--surface-muted) !important;
+}
+
+:host-context(body.dark-theme) .admin-notification-tabs a:hover,
+:host-context(body.dark-theme) .admin-notification-tabs a.active {
+  border-color: var(--green) !important;
+  color: #fff !important;
+  background: var(--green) !important;
 }
 
 @media (max-width: 640px) {

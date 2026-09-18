@@ -52,6 +52,7 @@ export class AdminManagementComponent implements OnInit {
   homeTab: 'active' | 'requests' = 'active';
   homeRequests: any[] = [];
   homePendingCount = 0;
+  selectedHomeRequest: any = null;
 
   employees: any[] = [];
   quotas: any[] = [];
@@ -152,6 +153,10 @@ export class AdminManagementComponent implements OnInit {
 
   async saveSchedule(): Promise<void> {
     if (!this.scheduleForm.HariKerja?.length) { this.alert.error('Hari kerja belum dipilih', 'Pilih minimal satu hari kerja.'); return; }
+    if (String(this.scheduleForm.NamaShift || '').trim().toLowerCase().startsWith('reguler')) {
+      this.alert.error('Shift Reguler dikelola otomatis', 'Gunakan Pengaturan Umum. Shift Reguler tidak dapat dibuat atau diduplikasi dari daftar ini.');
+      return;
+    }
     const wasEditing = !!this.editingScheduleId;
     const action = wasEditing ? 'mengubah shift ini' : 'menyimpan shift baru';
     if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
@@ -224,14 +229,27 @@ export class AdminManagementComponent implements OnInit {
   async approveHomeRequest(item: any): Promise<void> {
     if (!await this.alert.confirm('Setujui pengajuan lokasi?', 'Lokasi baru akan aktif sesuai tanggal mulai berlaku.')) return;
     this.isSaving = true;
-    this.http.post(`${this.api}/admin/home-location-requests/${item.ID}/approve`, {}, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.alert.success('Pengajuan disetujui'); this.loadHomeLocations(); }, error: err => { this.isSaving = false; this.alert.error('Gagal menyetujui pengajuan', err.error?.error || 'Gagal memproses pengajuan'); } });
+    this.http.post(`${this.api}/admin/home-location-requests/${item.ID}/approve`, {}, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.closeHomeRequestDetail(); this.alert.success('Pengajuan disetujui'); this.loadHomeLocations(); }, error: err => { this.isSaving = false; this.alert.error('Gagal menyetujui pengajuan', err.error?.error || 'Gagal memproses pengajuan'); } });
   }
 
   async rejectHomeRequest(item: any): Promise<void> {
     const reason = await this.alert.textarea('Alasan penolakan', 'Tuliskan alasan agar karyawan dapat memperbaiki pengajuan.');
     if (!reason) return;
     this.isSaving = true;
-    this.http.post(`${this.api}/admin/home-location-requests/${item.ID}/reject`, { alasan_penolakan: reason }, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.alert.success('Pengajuan ditolak'); this.loadHomeRequests(); }, error: err => { this.isSaving = false; this.alert.error('Gagal menolak pengajuan', err.error?.error || 'Gagal memproses pengajuan'); } });
+    this.http.post(`${this.api}/admin/home-location-requests/${item.ID}/reject`, { alasan_penolakan: reason }, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.closeHomeRequestDetail(); this.alert.success('Pengajuan ditolak'); this.loadHomeRequests(); }, error: err => { this.isSaving = false; this.alert.error('Gagal menolak pengajuan', err.error?.error || 'Gagal memproses pengajuan'); } });
+  }
+
+  openHomeRequestDetail(item: any): void { this.selectedHomeRequest = item; }
+  closeHomeRequestDetail(): void { this.selectedHomeRequest = null; }
+  isPendingHomeRequest(item: any): boolean { return item?.Status === 'Menunggu Persetujuan'; }
+  isImageAttachment(item: any): boolean {
+    const value = String(item?.AttachmentName || item?.AttachmentURL || '').split('?')[0].toLowerCase();
+    return /\.(png|jpe?g|webp|gif|bmp|svg)$/.test(value);
+  }
+  homeMapsUrl(latitude: any, longitude: any, url?: string): string {
+    if (url) return url;
+    if (latitude === null || latitude === undefined || longitude === null || longitude === undefined) return '';
+    return `https://www.google.com/maps?q=${latitude},${longitude}`;
   }
 
   homePageChanged(page: number): void {

@@ -30,6 +30,27 @@
   flex: 0 0 auto;
 }
 
+/* Keep all row actions on the same 34px CRUD-button grid. */
+.employee-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.employee-action-buttons .icon-button {
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.employee-action-buttons .icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+
 .employee-actions button,
 .employee-csv-upload {
   box-sizing: border-box;
@@ -825,6 +846,18 @@
   background: var(--surface);
 }
 
+:host-context(body.dark-theme) .employee-action-buttons .icon-button.view {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .employee-action-buttons .icon-button.view:hover {
+  background: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
 :host-context(body.dark-theme) .employee-csv-upload ::ng-deep .file-preview-picker {
   border-color: var(--mint-2);
   background: var(--mint-1);
@@ -845,4 +878,50 @@
   border-color: var(--mint-2);
   background: var(--surface);
   color: var(--text-dark);
+}
+
+/* Match the work-report export menu while keeping this override local to the
+   employee-management component. Light-mode styles above remain unchanged. */
+:host-context(body.dark-theme) .employee-export-trigger {
+  border-color: #475569;
+  background: #334155;
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .employee-export-trigger:hover,
+:host-context(body.dark-theme) .employee-export-trigger[aria-expanded="true"] {
+  border-color: #64748b;
+  background: #3b4b63;
+  color: #f8fafc;
+}
+
+:host-context(body.dark-theme) .employee-export-menu {
+  width: 220px;
+  padding: 4px 0;
+  border: 1px solid #475569;
+  background: #1e293b;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .35);
+}
+
+:host-context(body.dark-theme) .employee-export-menu button {
+  min-height: 40px;
+  padding: 10px 16px;
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 184, .18);
+  background: transparent;
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .employee-export-menu button:first-of-type {
+  border-top: 0;
+}
+
+:host-context(body.dark-theme) .employee-export-menu button:hover,
+:host-context(body.dark-theme) .employee-export-menu button:focus-visible {
+  background: #26364d;
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .employee-export-divider {
+  display: none;
 }

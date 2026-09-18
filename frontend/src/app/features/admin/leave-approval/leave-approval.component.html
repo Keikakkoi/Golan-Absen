@@ -87,7 +87,7 @@
               </td>
               <td class="leave-actions-cell">
                 <div class="table-actions">
-                  <button class="icon-button view btn-view-detail icon-only" type="button" aria-label="Lihat detail pengajuan" title="Lihat detail pengajuan" (click)="openDetail(req)"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
+                  <button class="icon-button view" type="button" aria-label="Lihat detail pengajuan" title="Lihat detail pengajuan" (click)="openDetail(req)"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
                   <div *ngIf="canDecide(req)" class="action-group">
                     <button class="icon-button approve" type="button" aria-label="Setujui pengajuan" title="Setujui pengajuan" (click)="updateStatus(req.ID, 'Approved')">
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>

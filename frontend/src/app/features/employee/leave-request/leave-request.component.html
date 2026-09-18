@@ -137,12 +137,18 @@
                   <td data-label="Approver">{{ approverLabel(req) }}</td>
                   <td data-label="Alasan Penolakan">{{ rejectionReason(req) }}</td>
                   <td data-label="Lampiran">
-                    <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="link-action btn-view-detail compact">Lihat</a>
+                    <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="icon-button view" aria-label="Lihat lampiran" title="Lihat lampiran">
+                      <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+                    </a>
                     <span *ngIf="!req.LampiranURL" class="text-muted">-</span>
                   </td>
-                  <td data-label="Aksi">
-                    <button type="button" class="btn-secondary btn-sm btn-view-detail compact" (click)="openDetail(req)">Detail</button>
-                    <button *ngIf="req.Status === 'Pending' || req.Status === 'Approved' || req.Status === 'pending_manager_approval' || req.Status === 'manager_approved'" type="button" class="btn-secondary btn-sm compact" (click)="cancelRequest(req)">Batal</button>
+                  <td data-label="Aksi" class="leave-request-actions">
+                    <button type="button" class="icon-button view" (click)="openDetail(req)" aria-label="Lihat detail pengajuan" title="Lihat detail pengajuan">
+                      <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+                    </button>
+                    <button *ngIf="isCancellable(req)" type="button" class="icon-button delete leave-cancel-action" (click)="cancelRequest(req)" aria-label="Batalkan pengajuan" title="Batalkan pengajuan">
+                      <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -173,7 +179,11 @@
       <div class="detail-row">
         <span>Status</span>
         <strong>
-          <span class="status-pill" [class.status-menunggu]="selectedLeave.Status === 'Pending'" [class.status-hadir]="selectedLeave.Status === 'Approved'" [class.status-alpha]="selectedLeave.Status === 'Rejected' || selectedLeave.Status === 'Cancelled'">
+          <span class="status-pill status-detail-badge status-detail-neutral" [ngClass]="{
+            'status-detail-approved': selectedLeave.Status === 'Approved' || selectedLeave.Status === 'manager_approved' || selectedLeave.Status === 'hrd_approved',
+            'status-detail-pending': selectedLeave.Status === 'Pending' || selectedLeave.Status === 'pending_manager_approval' || selectedLeave.Status === 'pending_hrd_approval',
+            'status-detail-rejected': selectedLeave.Status === 'Rejected' || selectedLeave.Status === 'manager_rejected' || selectedLeave.Status === 'hrd_rejected'
+          }">
             {{ statusLabel(selectedLeave.Status) }}
           </span>
         </strong>

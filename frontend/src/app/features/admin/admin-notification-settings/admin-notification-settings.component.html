@@ -17,7 +17,7 @@
       <div *ngIf="!isLoading">
         <p *ngIf="errorMessage" class="error-state">{{ errorMessage }}</p>
         <p *ngIf="successMessage" class="success-state">{{ successMessage }}</p>
-        <p class="settings-intro">Atur preferensi pengiriman notifikasi berdasarkan role penerima.</p>
+        <p class="settings-intro">Atur preferensi pengiriman notifikasi berdasarkan role penerima. Untuk HRD, aktifkan <strong>Kehadiran WFH</strong> agar setiap check-in WFH yang berhasil muncul sebagai notifikasi in-app.</p>
 
         <div class="role-tabs" role="tablist" aria-label="Pilih role">
           <button *ngFor="let role of roles" type="button" class="role-tab" [class.selected]="selectedRole === role.value" (click)="selectRole(role.value)" role="tab" [attr.aria-selected]="selectedRole === role.value">
@@ -31,14 +31,14 @@
         </div>
 
         <div class="stats-grid">
-          <div class="stat-card"><span class="stat-icon purple">✦</span><div><strong>{{ activeCount }}</strong><span>Notifikasi aktif</span></div></div>
-          <div class="stat-card"><span class="stat-icon blue">✉</span><div><strong>{{ emailCount }}</strong><span>Email aktif</span></div></div>
-          <div class="stat-card"><span class="stat-icon green">●</span><div><strong>{{ inAppCount }}</strong><span>In-app aktif</span></div></div>
+          <div class="stat-card"><span class="stat-icon purple"><svg aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg></span><div><strong>{{ activeCount }}</strong><span>Notifikasi aktif</span></div></div>
+          <div class="stat-card"><span class="stat-icon blue"><svg aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#mail"></use></svg></span><div><strong>{{ emailCount }}</strong><span>Email aktif</span></div></div>
+          <div class="stat-card"><span class="stat-icon green"><svg aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#dashboard"></use></svg></span><div><strong>{{ inAppCount }}</strong><span>In-app aktif</span></div></div>
         </div>
 
         <div class="settings-toolbar">
-          <label class="search-box"><span aria-hidden="true">⌕</span><input type="search" [(ngModel)]="searchTerm" placeholder="Cari tipe notifikasi..." aria-label="Cari tipe notifikasi"></label>
-          <div class="filter-group" aria-label="Filter status"><button type="button" [class.active]="statusFilter === 'all'" (click)="statusFilter = 'all'">Semua <b>{{ roleSettings.length }}</b></button><button type="button" [class.active]="statusFilter === 'active'" (click)="statusFilter = 'active'">Aktif <b>{{ activeCount }}</b></button><button type="button" [class.active]="statusFilter === 'inactive'" (click)="statusFilter = 'inactive'">Nonaktif <b>{{ roleSettings.length - activeCount }}</b></button></div>
+          <label class="search-box"><svg class="search-box-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg><input type="search" [(ngModel)]="searchTerm" placeholder="Cari tipe notifikasi..." aria-label="Cari tipe notifikasi"></label>
+          <div class="filter-group" aria-label="Filter status"><button type="button" [class.active]="statusFilter === 'all'" (click)="statusFilter = 'all'">Semua <b>{{ totalToggleCount }}</b></button><button type="button" [class.active]="statusFilter === 'active'" (click)="statusFilter = 'active'">Aktif <b>{{ activeCount }}</b></button><button type="button" [class.active]="statusFilter === 'inactive'" (click)="statusFilter = 'inactive'">Nonaktif <b>{{ inactiveCount }}</b></button></div>
           <div class="bulk-actions"><button type="button" class="btn-light" (click)="setAllChannels(true)" [disabled]="roleSettings.length === 0">Aktifkan Semua</button><button type="button" class="btn-light danger-text" (click)="setAllChannels(false)" [disabled]="roleSettings.length === 0">Nonaktifkan Semua</button></div>
         </div>
 
@@ -48,7 +48,7 @@
               <td><strong>{{ setting.TipeNotifikasi }}</strong></td><td class="description-cell">{{ descriptionFor(setting.TipeNotifikasi) }}</td>
               <td><label class="switch-label"><span class="switch"><input type="checkbox" [(ngModel)]="setting.IsEmailEnabled" [attr.aria-label]="'Email untuk ' + setting.TipeNotifikasi"><span class="slider"></span></span><span [class.enabled-text]="setting.IsEmailEnabled">{{ setting.IsEmailEnabled ? 'Aktif' : 'Nonaktif' }}</span></label></td>
               <td><label class="switch-label"><span class="switch"><input type="checkbox" [(ngModel)]="setting.IsInAppEnabled" [attr.aria-label]="'In-app untuk ' + setting.TipeNotifikasi"><span class="slider"></span></span><span [class.enabled-text]="setting.IsInAppEnabled">{{ setting.IsInAppEnabled ? 'Aktif' : 'Nonaktif' }}</span></label></td>
-              <td><span class="status-pill" [class.active]="setting.IsEmailEnabled || setting.IsInAppEnabled">{{ setting.IsEmailEnabled || setting.IsInAppEnabled ? 'Aktif' : 'Nonaktif' }}</span></td>
+              <td><span class="status-pill" [class.active]="setting.IsInAppEnabled" [class.inactive]="!setting.IsInAppEnabled">{{ setting.IsInAppEnabled ? 'Aktif' : 'Nonaktif' }}</span></td>
             </tr><tr *ngIf="visibleSettings.length === 0"><td colspan="5" class="filtered-empty">Tidak ada tipe notifikasi yang cocok dengan filter.</td></tr></tbody>
           </table>
         </div>

@@ -1,23 +1,3 @@
-// Custom Theming for Angular Material
-@use '@angular/material' as mat;
-
-@include mat.core();
-
-$frontend-theme: mat.define-theme((
-  color: (
-    theme-type: light,
-    primary: mat.$azure-palette,
-    tertiary: mat.$blue-palette,
-  ),
-  density: (
-    scale: 0,
-  )
-));
-
-:root {
-  @include mat.all-component-themes($frontend-theme);
-}
-
 /* ==========================================
    15.2 PALET WARNA (Design System Tokens)
    ========================================== */
@@ -181,7 +161,12 @@ body.dark-theme .topbar-notification-item.unread {
   background-color: #26364d;
 }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  /* Keep the layout width stable while SweetAlert2 temporarily locks page
+     scrolling and hides the scrollbar. */
+  scrollbar-gutter: stable;
+}
 
 html, body { 
   height: 100%; 
@@ -319,6 +304,12 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--warning);
   }
 
+  // Warning statuses already include an explicit warning icon in their text.
+  // Do not add the generic status dot as a second indicator.
+  &.status-warning::before {
+    display: none;
+  }
+
   &.status-alpha, &.status-tidak-hadir {
     background-color: #FBEEEE;
     color: var(--absent);
@@ -327,6 +318,11 @@ h1, h2, h3, h4, h5, h6 {
   &.status-menunggu, &.status-pending {
     background-color: #F1F5F9;
     color: var(--text-dark-lo);
+  }
+
+  &.status-cancelled {
+    background-color: #F1F5F9;
+    color: #475569;
   }
 }
 
@@ -543,7 +539,7 @@ h1, h2, h3, h4, h5, h6 {
   transform: none;
   box-shadow: none;
 }
-.btn-view-detail.icon-only { width: 40px; height: 40px; padding: 0; }
+.btn-view-detail.icon-only { width: 34px; height: 34px; padding: 0; }
 .btn-view-detail.compact { min-height: 32px; padding: 6px 10px; font-size: 0.78rem; }
 .btn-view-detail i,
 .btn-view-detail svg { flex: 0 0 auto; width: 15px; height: 15px; font-size: 15px; }
@@ -1494,7 +1490,7 @@ body.dark-theme .dropdown-menu-custom .dropdown-item:hover {
   text-decoration: none;
 }
 
-.icon-button.btn-view-detail.icon-only { width: 40px; height: 40px; padding: 0; }
+.icon-button.btn-view-detail.icon-only { width: 34px; height: 34px; padding: 0; }
 .btn-view-detail.compact,
 .btn-small.btn-view-detail.compact,
 .btn-secondary.btn-view-detail.compact,
@@ -3111,9 +3107,7 @@ body.dark-theme .main-content
 body.dark-theme .main-content
   .calendar-header button,
 body.dark-theme .main-content
-  .file-button,
-body.dark-theme .main-content
-  .dropdown-item {
+  .file-button {
   background: var(--surface-muted) !important;
   background-color: var(--surface-muted) !important;
   border: 1px solid var(--border-strong) !important;
@@ -3134,9 +3128,7 @@ body.dark-theme .main-content .today-btn:hover,
 body.dark-theme .main-content .month-nav:hover,
 body.dark-theme .main-content .section-tabs button:hover,
 body.dark-theme .main-content .view-toggle button:hover,
-body.dark-theme .main-content .calendar-header button:hover,
-body.dark-theme .main-content .file-button:hover,
-body.dark-theme .main-content .dropdown-item:hover {
+body.dark-theme .main-content .calendar-header button:hover {
   background: var(--mint-1) !important;
   background-color: var(--mint-1) !important;
   border-color: var(--green) !important;
@@ -3189,6 +3181,21 @@ body.dark-theme .main-content .btn-warning {
   background-color: var(--warning) !important;
   border-color: var(--warning) !important;
   color: #172b3a !important;
+}
+
+/* SweetAlert dialogs must stay above application modals (including detail panels). */
+.swal2-container {
+  z-index: 3000 !important;
+}
+
+/* SweetAlert2 adds padding-right to the body to compensate for the hidden
+   scrollbar. The stable gutter above already reserves that space, so the
+   extra padding would make the whole application jump horizontally. */
+body.swal2-shown {
+  padding-right: 0 !important;
+  /* Keep the page scrollbar visible while SweetAlert is open. SweetAlert2
+     normally applies overflow:hidden to the body, which hides the scrollbar. */
+  overflow-y: scroll !important;
 }
 
 body.dark-theme .main-content .btn-info,
@@ -3338,6 +3345,72 @@ body.dark-theme app-pagination .pagination-summary label {
   margin-left: 8px !important;
 }
 
+/* Final dark-mode guard for custom export menus. This also covers the menu's
+   top and bottom padding, which previously remained white. */
+body.dark-theme .dropdown-menu-custom {
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  border: 1px solid #475569 !important;
+  outline: none !important;
+  padding: 4px 0 !important;
+}
+
+body.dark-theme .dropdown-menu-custom > .dropdown-item {
+  background: #1e293b !important;
+  border: 0 !important;
+  outline: none !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .dropdown-menu-custom > .dropdown-item:hover {
+  background: #26364d !important;
+  border: 0 !important;
+}
+
+body.dark-theme .dropdown-menu-custom > .dropdown-item[style*='border-top'] {
+  border-top: 1px solid var(--border-strong) !important;
+}
+
+/* Export menus: neutral dropdown items must not inherit the generic dark-mode
+   button border, and the print divider must remain a dark separator. */
+body.dark-theme .main-content .dropdown-menu-custom {
+  background: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .35) !important;
+}
+
+body.dark-theme .main-content .dropdown-menu-custom .dropdown-item {
+  min-height: 40px;
+  border: 0 !important;
+  border-top-color: transparent !important;
+  background: transparent !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .dropdown-menu-custom .dropdown-item:hover {
+  border: 0 !important;
+  background: var(--surface-raised) !important;
+  color: var(--text-dark) !important;
+}
+
+body.dark-theme .main-content .dropdown-menu-custom .dropdown-item[style*='border-top'] {
+  border-top: 1px solid var(--border-strong) !important;
+}
+
+/* Leave detail modal: keep the actual information text readable in dark mode.
+   This global rule intentionally comes last so legacy theme compatibility
+   selectors cannot override the modal's semantic text colors. */
+body.dark-theme .leave-detail-modal .modal-header h3,
+body.dark-theme .leave-detail-modal .detail-row strong,
+body.dark-theme .leave-detail-modal .detail-block p {
+  color: #f8fafc !important;
+}
+
+body.dark-theme .leave-detail-modal .detail-row > span,
+body.dark-theme .leave-detail-modal .detail-block > span {
+  color: #cbd5e1 !important;
+}
+
 /* Make the custom page-size chevron visible on the dark pagination control. */
 body.dark-theme app-pagination .page-size-chevron {
   border-right-color: #cbd5e1 !important;
@@ -3436,6 +3509,7 @@ body.dark-theme .team-reports-toolbar select option:checked {
 .filter-native-menu {
   position: fixed;
   z-index: 2000;
+  min-width: 220px;
   max-height: 360px;
   overflow-y: scroll;
   padding: 4px 0;
@@ -3468,18 +3542,19 @@ body.dark-theme .team-reports-toolbar select option:checked {
 .filter-native-option {
   display: block;
   width: calc(100% - 8px);
-  min-height: 37px;
+  min-height: 34px;
   margin: 0 4px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: #183b56;
   cursor: pointer;
   font: inherit;
-  font-size: 16px;
+  font-size: 13px !important;
   line-height: 1.2;
   text-align: left;
+  white-space: nowrap;
 }
 
 .filter-native-option:hover,
@@ -3517,6 +3592,72 @@ body.dark-theme .filter-native-menu::-webkit-scrollbar-thumb {
 body.dark-theme .filter-native-menu {
   scrollbar-color: #526b87 transparent;
 }
+
+/* Custom date picker for filter date inputs. */
+.filter-date-menu {
+  position: fixed;
+  z-index: 2001;
+  width: 320px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #d8e8f8;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(24, 59, 86, .16);
+  color: #183b56;
+}
+
+.filter-date-header,
+.filter-date-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-date-header strong {
+  flex: 1;
+  color: #183b56;
+  font-size: 16px;
+  text-transform: capitalize;
+}
+
+.filter-date-action {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #1269e3;
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+}
+
+.filter-date-action:hover { background: #e8f2fc; }
+.filter-date-header .filter-date-action { font-size: 26px; line-height: 1; }
+.filter-date-footer { justify-content: space-between; margin-top: 8px; }
+.filter-date-footer .filter-date-action { padding: 0 10px; }
+
+.filter-date-weekdays,
+.filter-date-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.filter-date-weekdays { margin: 14px 0 5px; color: #60758b; font-size: 12px; font-weight: 700; text-align: center; }
+.filter-date-day { min-height: 34px; border: 0; border-radius: 7px; background: transparent; color: #183b56; cursor: pointer; font: inherit; font-size: 14px; }
+.filter-date-day:hover:not(:disabled), .filter-date-day.selected { background: #e8f2fc; color: #1269e3; font-weight: 700; }
+.filter-date-day:disabled { cursor: default; color: #b6c1cb; opacity: .7; }
+.filter-date-day.outside { visibility: hidden; }
+
+body.dark-theme .filter-date-menu { border-color: #475569; background: #172033; box-shadow: 0 8px 24px rgba(2, 8, 23, .42); color: #e2e8f0; }
+body.dark-theme .filter-date-header strong, body.dark-theme .filter-date-day { color: #e2e8f0; }
+body.dark-theme .filter-date-weekdays { color: #94a3b8; }
+body.dark-theme .filter-date-action { color: #8ed0ff; }
+body.dark-theme .filter-date-action:hover, body.dark-theme .filter-date-day:hover:not(:disabled), body.dark-theme .filter-date-day.selected { background: #294866; color: #8ed0ff; }
+body.dark-theme .filter-date-day:disabled { color: #64748b; }
 
 /* ================================================================
    COMPACT DESKTOP DENSITY

@@ -25,7 +25,6 @@ export class WorkReportAdminComponent implements OnInit {
   allReports: WorkReport[] = [];
   columns: WorkReportColumn[] = [];
   isLoading = true;
-  viewMode: 'reports' | 'columns' = 'reports';
   isExportOpen = false;
   pageSizeOptions = [10, 25, 50, 100];
   pageSize = 25;
@@ -47,11 +46,6 @@ export class WorkReportAdminComponent implements OnInit {
   uniqueRoles: string[] = [];
   projects: any[] = [];
 
-  // Column Form
-  isEditingColumn = false;
-  editingColumnId: number | null = null;
-  colForm: Partial<WorkReportColumn> = this.resetColForm();
-
   constructor(
     private workReportService: WorkReportService,
     private alertService: AlertService,
@@ -62,29 +56,27 @@ export class WorkReportAdminComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadData();
+    this.loadColumns();
     this.loadDivisionsAndRoles();
   }
 
   loadData() {
     this.isLoading = true;
-    if (this.viewMode === 'reports') {
-      this.workReportService.getWorkReports(undefined, this.filterOptions.startDate, this.filterOptions.endDate, this.filterOptions.project_id).subscribe({
-        next: (res) => {
-          this.allReports = res;
-          this.applyFilters(false);
-          this.isLoading = false;
-        },
-        error: () => this.isLoading = false
-      });
-    } else {
-      this.workReportService.getColumns().subscribe({
-        next: (res) => {
-          this.columns = res;
-          this.isLoading = false;
-        },
-        error: () => this.isLoading = false
-      });
-    }
+    this.workReportService.getWorkReports(undefined, this.filterOptions.startDate, this.filterOptions.endDate, this.filterOptions.project_id).subscribe({
+      next: (res) => {
+        this.allReports = res;
+        this.applyFilters(false);
+        this.isLoading = false;
+      },
+      error: () => this.isLoading = false
+    });
+  }
+
+  private loadColumns() {
+    this.workReportService.getColumns().subscribe({
+      next: (res) => this.columns = res,
+      error: () => this.columns = []
+    });
   }
 
   getHeaders() {
@@ -161,8 +153,8 @@ export class WorkReportAdminComponent implements OnInit {
     if (this.filterOptions.status) {
       if (this.filterOptions.status === 'Menunggu') {
         temp = temp.filter(r => (!r.status_sesuai || r.status_sesuai === 'Menunggu') && !this.isNoReport(r));
-      } else if (this.filterOptions.status === 'tidak membuat laporan kerja') {
-        temp = temp.filter(r => this.isNoReport(r) || r.status_sesuai === 'tidak membuat laporan kerja');
+      } else if (['Sudah membuat laporan', 'Belum membuat laporan', 'Laporan belum lengkap'].includes(this.filterOptions.status)) {
+        temp = temp.filter(r => this.reportStatus(r) === this.filterOptions.status);
       } else {
         temp = temp.filter(r => r.status_sesuai === this.filterOptions.status);
       }
@@ -320,13 +312,9 @@ export class WorkReportAdminComponent implements OnInit {
     window.setTimeout(scrollToPagination, 80);
   }
 
-  switchMode(mode: 'reports' | 'columns') {
-    this.viewMode = mode;
-    this.loadData();
-  }
-
   // HR Validation
   updateValidation(report: WorkReport, event: any) {
+    if (this.isNoReport(report)) return;
     const newVal = event.target.value;
     if (!newVal) return;
     
@@ -340,67 +328,6 @@ export class WorkReportAdminComponent implements OnInit {
         this.alertService.error('Gagal mengupdate validasi');
       }
     });
-  }
-
-  // Column Management
-  resetColForm(): Partial<WorkReportColumn> {
-    return {
-      nama_kolom: '',
-      tipe_input: 'text',
-      opsi: '',
-      aktif: true,
-      wajib_diisi: false,
-      urutan: 0
-    };
-  }
-
-  openColumnForm(col?: WorkReportColumn) {
-    this.isEditingColumn = true;
-    if (col) {
-      this.editingColumnId = col.ID;
-      this.colForm = { ...col };
-    } else {
-      this.editingColumnId = null;
-      this.colForm = this.resetColForm();
-    }
-  }
-
-  closeColumnForm() {
-    this.isEditingColumn = false;
-  }
-
-  saveColumn() {
-    if (this.editingColumnId) {
-      this.workReportService.updateColumn(this.editingColumnId, this.colForm).subscribe({
-        next: () => {
-          this.alertService.success('Kolom berhasil diupdate');
-          this.closeColumnForm();
-          this.loadData();
-        },
-        error: () => this.alertService.error('Gagal mengupdate kolom')
-      });
-    } else {
-      this.workReportService.createColumn(this.colForm).subscribe({
-        next: () => {
-          this.alertService.success('Kolom berhasil ditambahkan');
-          this.closeColumnForm();
-          this.loadData();
-        },
-        error: () => this.alertService.error('Gagal menambahkan kolom')
-      });
-    }
-  }
-
-  deleteColumn(id: number) {
-    if (confirm('Yakin ingin menghapus kolom ini?')) {
-      this.workReportService.deleteColumn(id).subscribe({
-        next: () => {
-          this.alertService.success('Kolom dihapus');
-          this.loadData();
-        },
-        error: () => this.alertService.error('Gagal menghapus kolom')
-      });
-    }
   }
 
   toggleExportDropdown() {
@@ -450,7 +377,9 @@ export class WorkReportAdminComponent implements OnInit {
               <th class="bg-yellow">Rencana Minggu Depan</th>
               <th class="bg-yellow">Link Artikel</th>
               <th class="bg-yellow">Catatan Tambahan</th>
-              <th class="bg-yellow">Status Validasi</th>
+              <th class="bg-yellow">Status Laporan</th>
+              <th class="bg-yellow">Status Waktu</th>
+              <th class="bg-yellow">Bukti Pengisian</th>
               <th class="bg-yellow">Aksi & Validasi</th>`;
               
     customHeaders.forEach(ch => {
@@ -470,8 +399,9 @@ export class WorkReportAdminComponent implements OnInit {
       const dept = r.Employee?.Division?.NamaDivisi || '-';
       const jabatan = r.Employee?.Position?.NamaJabatan || '-';
       const userName = this.getEmployeeName(r);
-      const statusReport = this.isNoReport(r) ? 'tidak membuat laporan kerja' : 'Sudah Report';
-      const statusValidation = r.status_sesuai || (this.isNoReport(r) ? 'tidak membuat laporan kerja' : 'Menunggu');
+      const statusReport = this.reportStatus(r);
+      const statusTime = r.is_late_submission ? 'Terlambat' : 'Tepat waktu';
+      const statusValidation = this.validationLabel(r);
       
       html += `
         <tr>
@@ -489,6 +419,8 @@ export class WorkReportAdminComponent implements OnInit {
           <td>${r.link_artikel ? `<a href="${r.link_artikel}">${r.link_artikel}</a>` : '-'}</td>
           <td style="text-align: left;">${(r.catatan_tambahan || '').replace(/</g, '&lt;')}</td>
           <td>${statusReport}</td>
+          <td>${statusTime}</td>
+          <td>${r.attachments?.length ? `${r.attachments.length} screenshot` : 'Belum ada laporan kerja'}</td>
           <td>${statusValidation}</td>`;
           
       let customData: any = {};
@@ -532,7 +464,7 @@ export class WorkReportAdminComponent implements OnInit {
     // Create CSV content manually
     let csvContent = "data:text/csv;charset=utf-8,";
     // Headers
-    const headers = ["No", "Tanggal", "Nama Karyawan", "Divisi", "Jabatan", "Tugas", "Judul", "Deskripsi", "Realisasi", "Kendala", "Rencana", "Status Report", "Status Validasi"];
+    const headers = ["No", "Tanggal", "Nama Karyawan", "Divisi", "Jabatan", "Tugas", "Judul", "Deskripsi", "Realisasi", "Kendala", "Rencana", "Status Laporan", "Status Waktu", "Status Validasi"];
     const customHeaders = this.columns.map(c => `"${c.nama_kolom.replace(/"/g, '""')}"`);
     csvContent += headers.concat(customHeaders).join(",") + "\n";
     
@@ -549,8 +481,9 @@ export class WorkReportAdminComponent implements OnInit {
         `"${(r.realisasi_kegiatan || '').replace(/"/g, '""')}"`,
         `"${(r.kendala || '').replace(/"/g, '""')}"`,
         `"${(r.rencana_minggu_depan || '').replace(/"/g, '""')}"`,
-        `"${(this.isNoReport(r) ? 'tidak membuat laporan kerja' : 'Sudah Report').replace(/"/g, '""')}"`,
-        `"${(r.status_sesuai || (this.isNoReport(r) ? 'tidak membuat laporan kerja' : 'Menunggu')).replace(/"/g, '""')}"`
+        `"${this.reportStatus(r).replace(/"/g, '""')}"`,
+        `"${(r.is_late_submission ? 'Terlambat' : 'Tepat waktu').replace(/"/g, '""')}"`,
+        `"${this.validationLabel(r).replace(/"/g, '""')}"`
       ];
 
       // Custom fields
@@ -601,12 +534,12 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
-    const headers = ['No', 'Hari/Tanggal', 'Nama', 'Divisi', 'Jabatan', 'Tugas', 'Judul Golan Nusantara / Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Status Report', 'Status Validasi'];
+    const headers = ['No', 'Hari/Tanggal', 'Nama', 'Divisi', 'Jabatan', 'Tugas', 'Judul Golan Nusantara / Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Status Laporan', 'Status Waktu', 'Status Validasi'];
     const rows = this.reports.map((r, index) => {
       const customData: Record<string, unknown> = {};
       try { Object.assign(customData, JSON.parse(r.custom_fields || '{}')); } catch { /* laporan tetap dapat diekspor meski custom field rusak */ }
       const customValues = this.columns.map(column => customData[column.ID] ?? '-');
-      return [index + 1, this.formatReportDate(r.tanggal), this.getEmployeeName(r), r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', r.tugas || '-', r.judul || '-', r.deskripsi_kegiatan || '-', r.realisasi_kegiatan || '-', r.kendala || '-', r.rencana_minggu_depan || '-', r.link_artikel || '-', r.catatan_tambahan || '-', this.isNoReport(r) ? 'Tidak membuat laporan kerja' : 'Sudah Report', r.status_sesuai || (this.isNoReport(r) ? 'Tidak membuat laporan kerja' : 'Menunggu'), ...customValues];
+      return [index + 1, this.formatReportDate(r.tanggal), this.getEmployeeName(r), r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', r.tugas || '-', r.judul || '-', r.deskripsi_kegiatan || '-', r.realisasi_kegiatan || '-', r.kendala || '-', r.rencana_minggu_depan || '-', r.link_artikel || '-', r.catatan_tambahan || '-', this.reportStatus(r), r.is_late_submission ? 'Terlambat' : 'Tepat waktu', this.validationLabel(r), ...customValues];
     });
     return { headers: headers.concat(this.columns.map(column => column.nama_kolom)), rows };
   }
@@ -622,6 +555,26 @@ export class WorkReportAdminComponent implements OnInit {
 
   getEmployeeName(report: WorkReport): string {
     return report.Employee?.User?.Nama || 'Unknown';
+  }
+
+  reportStatus(report: WorkReport): string {
+    if (this.isNoReport(report)) return 'Belum membuat laporan';
+    return this.isIncompleteReport(report) ? 'Laporan belum lengkap' : 'Sudah membuat laporan';
+  }
+
+  isIncompleteReport(report: WorkReport): boolean {
+    return !this.isNoReport(report) && (!report.tugas || !report.judul || !report.deskripsi_kegiatan);
+  }
+
+  hasCompleteReport(report: WorkReport): boolean {
+    return this.reportStatus(report) === 'Sudah membuat laporan';
+  }
+
+  validationLabel(report: WorkReport): string {
+    if (report.status_sesuai === 'Sesuai') return 'Validasi laporan';
+    if (report.status_sesuai === 'Tidak Sesuai') return 'Tolak laporan';
+    if (report.status_sesuai === 'Minta Perbaikan') return 'Minta perbaikan';
+    return 'Menunggu validasi';
   }
 
   isNoReport(report: WorkReport): boolean {

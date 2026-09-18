@@ -55,6 +55,11 @@
 .map-card {
   display: flex;
   flex-direction: column;
+  position: relative;
+  /* The event-type menu opens outside the header. Keep it above the alert
+     and Leaflet layers that follow it in the card. */
+  z-index: 30;
+  overflow: visible;
 
   /* Keep the office-radius warning readable in both themes without changing
      the appearance of other location or application alerts. */
@@ -62,13 +67,19 @@
     background-color: #FBEEEE;
     color: #9B1C2C;
     border: 1px solid #D98A93;
+    position: relative;
+    z-index: 0;
   }
 
   .card-header-flex {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
     margin-bottom: 16px;
+    position: relative;
+    z-index: 100;
 
     h3 {
       margin: 0;
@@ -77,15 +88,16 @@
   }
 
   .map-container {
+    position: relative;
     height: 300px;
     width: 100%;
     border-radius: 10px;
     border: 1px solid var(--mint-2);
     margin-bottom: 14px;
-    z-index: 10;
+    z-index: 1;
   }
 
-  .status-indicator-pill {
+.status-indicator-pill {
     display: flex;
     justify-content: flex-start;
   }
@@ -204,24 +216,142 @@
 
 /* Compact Forms */
 .form-group-compact {
+  position: relative;
+  z-index: 200;
   margin: 0;
 
   .form-control-compact {
-    padding: 6px 12px;
-    border: 1px solid var(--mint-2);
-    border-radius: 6px;
-    background-color: white;
+    box-sizing: border-box;
+    min-width: 148px;
+    min-height: 40px;
+    padding: 8px 36px 8px 13px;
+    border: 1px solid #2f80ed;
+    border-radius: 8px;
+    background-color: #ffffff;
     font-family: var(--font-body);
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--green-deep);
+    color: #1769aa;
     outline: none;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+
+    &:hover {
+      border-color: #1769aa;
+      background-color: #f7fbff;
+    }
 
     &:focus {
-      border-color: var(--green);
-      box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.1);
+      border-color: #1769aa;
+      box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.18);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
     }
   }
+
+  .event-type-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    text-align: left;
+  }
+
+  .event-type-chevron {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-65%) rotate(45deg);
+    transition: transform 0.2s ease;
+    pointer-events: none;
+  }
+
+  &.is-open {
+    z-index: 1000;
+
+    .event-type-chevron {
+      transform: translateY(-25%) rotate(225deg);
+    }
+  }
+
+  .event-type-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: 0;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    height: auto !important;
+    max-height: none !important;
+    overflow: hidden;
+    padding: 5px;
+    border: 1px solid #b9d9fb;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 12px 24px rgba(15, 54, 86, 0.18);
+  }
+
+  .event-type-option {
+    width: 100%;
+    display: flex !important;
+    flex: 0 0 38px;
+    height: 38px !important;
+    min-height: 38px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: #1769aa;
+    font: 600 0.875rem var(--font-body);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover,
+    &:focus-visible {
+      outline: none;
+      background: #2f80ed;
+      color: #ffffff;
+    }
+
+    &.is-selected {
+      background: #eaf3ff;
+      color: #1769aa;
+      font-weight: 700;
+    }
+
+    &.is-selected:hover,
+    &.is-selected:focus-visible {
+      background: #1769aa;
+      color: #ffffff;
+    }
+  }
+
+  @media (max-width: 520px) {
+    flex: 1 1 100%;
+
+    .form-control-compact {
+      width: 100%;
+    }
+
+    .event-type-menu {
+      right: auto;
+      width: 100%;
+    }
+  }
+}
+
+.location-accuracy {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted-color, #64748b);
+  font-size: 0.78rem;
 }

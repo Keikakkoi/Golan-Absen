@@ -1,21 +1,21 @@
 <div class="dashboard-container admin-theme">
   <app-admin-sidebar></app-admin-sidebar>
 
-  <div class="main-content admin-dashboard-page">
+  <main class="main-content admin-dashboard-page" aria-labelledby="admin-dashboard-title">
     <div class="header">
       <div class="welcome-text">
-        <h2>Dashboard HRD</h2>
+        <h1 id="admin-dashboard-title">Dashboard HRD</h1>
         <p>Selamat datang, {{ adminName }}. Ringkasan diperbarui otomatis<span *ngIf="lastUpdated"> · {{ lastUpdated }}</span>.</p>
       </div>
       <div class="notification-wrapper">
-        <button class="notif-btn" type="button" (click)="toggleNotifications()" aria-label="Buka notifikasi">
+        <button class="notif-btn" type="button" (click)="toggleNotifications()" aria-label="Buka notifikasi HRD" [attr.aria-expanded]="showNotifications" aria-controls="admin-notification-menu">
           <svg class="notif-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
-          <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+          <span class="badge" *ngIf="unreadCount > 0" [attr.aria-label]="unreadCount + ' notifikasi belum dibaca'">{{ unreadCount }}</span>
         </button>
-        <div class="notif-dropdown" *ngIf="showNotifications">
+        <div class="notif-dropdown" id="admin-notification-menu" *ngIf="showNotifications" role="menu" aria-label="Notifikasi HRD">
           <div class="notif-header">Notifikasi HRD</div>
           <div class="notif-body">
-            <button class="notif-item" type="button" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca" (click)="markAsRead(notif)">
+            <button class="notif-item" type="button" role="menuitem" *ngFor="let notif of notifications" [class.unread]="!notif.StatusBaca" (click)="markAsRead(notif)">
               <strong>{{ notif.Judul }}</strong><p>{{ notif.Pesan }}</p><small>{{ notif.Waktu | date:'medium' }}</small>
             </button>
             <div class="notif-empty" *ngIf="notifications.length === 0">Tidak ada notifikasi.</div>
@@ -34,35 +34,35 @@
     </div>
 
     <div class="stats-grid" *ngIf="!isLoading">
-      <div class="golan-card stat-card admin-stat">
+      <section class="golan-card stat-card admin-stat" aria-label="Total karyawan">
         <h4>Total Karyawan</h4>
         <div class="value">{{ stats.total_karyawan }} <span class="unit">Orang</span></div>
-      </div>
-      <div class="golan-card stat-card admin-stat">
+      </section>
+      <section class="golan-card stat-card admin-stat" aria-label="Karyawan hadir hari ini">
         <h4>Hadir Hari Ini</h4>
         <div class="value">{{ stats.hadir_hari_ini }} <span class="unit">Karyawan</span></div>
-      </div>
-      <div class="golan-card stat-card admin-stat">
+      </section>
+      <section class="golan-card stat-card admin-stat" aria-label="Karyawan belum absen hari ini">
         <h4>Belum Absen Hari Ini</h4>
-        <div class="value" style="color: var(--warning);">{{ stats.belum_absen_hari_ini || 0 }} <span class="unit">Karyawan</span></div>
-      </div>
+        <div class="value warning-value">{{ stats.belum_absen_hari_ini || 0 }} <span class="unit">Karyawan</span></div>
+      </section>
 
-      <div class="golan-card stat-card admin-stat">
+      <section class="golan-card stat-card admin-stat" aria-label="Karyawan izin atau cuti hari ini">
         <h4>Izin / Cuti Hari Ini</h4>
-        <div class="value" style="color: var(--warning);">{{ stats.izin_cuti_hari_ini }} <span class="unit">Karyawan</span></div>
-      </div>
-      <div class="golan-card stat-card admin-stat">
+        <div class="value warning-value">{{ stats.izin_cuti_hari_ini }} <span class="unit">Karyawan</span></div>
+      </section>
+      <section class="golan-card stat-card admin-stat" aria-label="Peserta magang aktif">
         <h4>Magang Aktif</h4>
         <div class="value">{{ stats.magang_aktif }} <span class="unit">Peserta</span></div>
-      </div>
-      <div class="golan-card stat-card admin-stat">
+      </section>
+      <section class="golan-card stat-card admin-stat" aria-label="Logbook pending">
         <h4>Logbook Pending</h4>
-        <div class="value" style="color: var(--warning);">{{ stats.logbook_pending }} <span class="unit">Logbook</span></div>
-      </div>
-      <div class="golan-card stat-card admin-stat">
+        <div class="value warning-value">{{ stats.logbook_pending }} <span class="unit">Logbook</span></div>
+      </section>
+      <section class="golan-card stat-card admin-stat" aria-label="Karyawan belum isi laporan">
         <h4>Belum Isi Laporan</h4>
-        <div class="value" style="color: var(--warning);">{{ stats.missing_work_report_count || 0 }} <span class="unit">Karyawan</span></div>
-      </div>
+        <div class="value warning-value">{{ stats.missing_work_report_count || 0 }} <span class="unit">Karyawan</span></div>
+      </section>
     </div>
 
     <app-dashboard-charts role="admin"></app-dashboard-charts>
@@ -89,5 +89,5 @@
         <button class="btn-primary mt-2" routerLink="/admin/role-operations">Buka Operasional</button>
       </div>
     </div>
-  </div>
+  </main>
 </div>

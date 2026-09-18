@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
@@ -7,9 +7,14 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
+import { AlertService } from '../../../core/services/alert.service';
+import Swal from 'sweetalert2';
 
 @Component({ selector: 'app-intern-logbook', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent, FilePreviewComponent], templateUrl: './intern-logbook.component.html', styleUrls: ['./intern-logbook.component.scss'] })
 export class InternLogbookComponent implements OnInit {
+  @ViewChild('editLogbookForm') editLogbookForm?: ElementRef<HTMLElement>;
+  private editScrollTimer: ReturnType<typeof setTimeout> | null = null;
+
   logbooks: any[] = []; message = ''; error = ''; saving = false;
   page = 1; pageSize = 25; pageSizeOptions = [10, 25, 50, 100]; isLoading = false;
   editingId: number | null = null; start = ''; end = ''; statusFilter = ''; isExportOpen = false;
@@ -18,12 +23,21 @@ export class InternLogbookComponent implements OnInit {
   deadlineInfo: any = null; deadlineError = '';
   form = { tanggal: new Date().toISOString().slice(0, 10), tugas: '', deskripsi_kegiatan: '', kendala: '', status: 'draft' };
   selectedScreenshots: File[] = []; screenshotPreviews: string[] = [];
-  constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService) {}
+  constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService, private alert: AlertService) {}
   ngOnInit(): void { this.load(); this.loadDeadline(); }
   loadDeadline(): void { this.deadlineInfo = null; this.deadlineError = ''; if (!this.form.tanggal) return; this.http.get<any>('http://localhost:8080/api/v1/work-reports/deadline', { params: new HttpParams().set('date', this.form.tanggal), headers: this.headers() }).subscribe({ next: data => this.deadlineInfo = data, error: e => this.deadlineError = e.error?.error || 'Informasi batas waktu tidak tersedia.' }); }
-  load(): void { this.isLoading = true; let params = new HttpParams(); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end); if (this.statusFilter) params = params.set('status', this.statusFilter); this.http.get<any>('http://localhost:8080/api/v1/internship/logbooks', { params, headers: this.headers() }).subscribe({ next: response => { this.logbooks = Array.isArray(response) ? response : (response.data || []); this.page = 1; this.isLoading = false; }, error: e => { this.error = 'Gagal memuat logbook: ' + (e.error?.error || 'Unknown error'); this.isLoading = false; } }); }
+  load(resetPage = true): void { this.isLoading = true; let params = new HttpParams(); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end); if (this.statusFilter) params = params.set('status', this.statusFilter); this.http.get<any>('http://localhost:8080/api/v1/internship/logbooks', { params, headers: this.headers() }).subscribe({ next: response => { this.logbooks = Array.isArray(response) ? response : (response.data || []); this.page = resetPage ? 1 : Math.min(this.page, Math.max(1, Math.ceil(this.logbooks.length / this.pageSize))); this.isLoading = false; }, error: e => { this.error = 'Gagal memuat logbook: ' + (e.error?.error || 'Unknown error'); this.isLoading = false; } }); }
   get displayedLogbooks(): any[] { return this.logbooks.slice((this.page - 1) * this.pageSize, this.page * this.pageSize); }
+  get dateAlreadyLogged(): boolean {
+    if (this.editingId) return false;
+    return this.logbooks.some(item => String(item.tanggal || item.Tanggal || '').slice(0, 10) === this.form.tanggal);
+  }
   logbookStatus(item: any): string { return String(item?.status_logbook || item?.StatusLogbook || 'draft').trim().toLowerCase(); }
+  canEdit(item: any): boolean { return this.logbookStatus(item) === 'draft'; }
+  canDelete(item: any): boolean {
+    const status = this.logbookStatus(item);
+    return status === 'draft' || status === 'rejected';
+  }
   logbookStatusClass(item: any): string {
     return `status-${this.logbookStatus(item) === 'approved' ? 'success' : this.logbookStatus(item) === 'rejected' ? 'danger' : this.logbookStatus(item) === 'submitted' ? 'warning' : 'pending'}`;
   }
@@ -41,10 +55,41 @@ export class InternLogbookComponent implements OnInit {
   statusFilterLabel(): string { return this.statusFilter ? this.statusFilter.charAt(0).toUpperCase() + this.statusFilter.slice(1) : 'Semua status'; }
   @HostListener('document:click') closeStatusFilter(): void { this.statusFilterOpen = false; this.statusFilterDropUp = false; }
   save(targetStatus?: string): void {
+    if (this.dateAlreadyLogged) {
+      this.error = 'Logbook untuk tanggal tersebut sudah dibuat. Silakan gunakan tombol Edit jika statusnya masih Draft.';
+      return;
+    }
     if (!this.form.tanggal || !this.form.deskripsi_kegiatan.trim()) {
       this.error = 'Tanggal dan kegiatan wajib diisi.';
       return;
     }
+    if (targetStatus === 'submitted') {
+      const scrollPosition = { left: window.scrollX, top: window.scrollY };
+      Swal.fire({
+        title: 'Kirim logbook sekarang?',
+        text: 'Setelah dikirim, logbook akan masuk untuk ditinjau dan tidak dapat diubah.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Kirim',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#2F80ED',
+        cancelButtonColor: '#6c757d',
+        position: 'center',
+        heightAuto: false,
+        scrollbarPadding: false,
+        focusConfirm: false,
+        focusCancel: false,
+        didOpen: () => window.scrollTo(scrollPosition)
+      }).then(result => {
+        if (result.isConfirmed) this.executeSave(targetStatus);
+        window.scrollTo(scrollPosition);
+      });
+      return;
+    }
+    this.executeSave(targetStatus);
+  }
+
+  private executeSave(targetStatus?: string): void {
     if (targetStatus) {
       this.form.status = targetStatus;
     }
@@ -68,13 +113,61 @@ export class InternLogbookComponent implements OnInit {
       }
     });
   }
-  onScreenshotsSelected(event: Event): void { const input = event.target as HTMLInputElement; const files = Array.from(input.files || []); if (files.length > 3 || files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) { this.error = 'Maksimal 3 screenshot JPG/PNG/WEBP, masing-masing 5MB.'; input.value = ''; return; } this.selectedScreenshots = files; this.screenshotPreviews = files.map(file => URL.createObjectURL(file)); }
+  onScreenshotsSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const selected = Array.from(input.files || []);
+    const selectedKeys = new Set(selected.map(file => this.fileKey(file)));
+    const files = [
+      ...this.selectedScreenshots.filter(file => !selectedKeys.has(this.fileKey(file))),
+      ...selected
+    ];
+    if (files.length > 3 || files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
+      this.error = 'Maksimal 3 screenshot JPG/PNG/WEBP, masing-masing 5MB.';
+      input.value = '';
+      return;
+    }
+    this.error = '';
+    this.screenshotPreviews.forEach(url => URL.revokeObjectURL(url));
+    this.selectedScreenshots = files;
+    this.screenshotPreviews = files.map(file => URL.createObjectURL(file));
+    input.value = '';
+  }
   onScreenshotFilesChange(files: File[]): void { this.selectedScreenshots = files; this.screenshotPreviews = files.map(file => URL.createObjectURL(file)); }
-  edit(item: any): void { const status = item.status_logbook || item.StatusLogbook || 'draft'; if (status === 'approved' || status === 'submitted') return; this.editingId = item.id || item.ID; this.form = { tanggal: String(item.tanggal || item.Tanggal || '').slice(0, 10), tugas: item.tugas || item.Tugas || '', deskripsi_kegiatan: item.deskripsi_kegiatan || item.DeskripsiKegiatan || '', kendala: item.kendala || item.Kendala || '', status: status }; this.loadDeadline(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  cancelEdit(): void { this.editingId = null; this.form = { tanggal: new Date().toISOString().slice(0, 10), tugas: '', deskripsi_kegiatan: '', kendala: '', status: 'draft' }; this.screenshotPreviews.forEach(url => URL.revokeObjectURL(url)); this.selectedScreenshots = []; this.screenshotPreviews = []; this.loadDeadline(); }
+  private fileKey(file: File): string { return `${file.name}:${file.size}:${file.lastModified}`; }
+  edit(item: any): void {
+    if (!this.canEdit(item)) return;
+
+    this.editingId = item.id || item.ID;
+    this.form = {
+      tanggal: String(item.tanggal || item.Tanggal || '').slice(0, 10),
+      tugas: item.tugas || item.Tugas || '',
+      deskripsi_kegiatan: item.deskripsi_kegiatan || item.DeskripsiKegiatan || '',
+      kendala: item.kendala || item.Kendala || '',
+      status: 'draft'
+    };
+    this.loadDeadline();
+    this.scrollToEditForm();
+  }
+  private scrollToEditForm(): void {
+    // Wait for the heading/state to be rendered before measuring the target.
+    if (this.editScrollTimer) clearTimeout(this.editScrollTimer);
+    this.editScrollTimer = setTimeout(() => {
+      this.editScrollTimer = null;
+      this.editLogbookForm?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+    }, 0);
+  }
+  cancelEdit(): void { if (this.editScrollTimer) { clearTimeout(this.editScrollTimer); this.editScrollTimer = null; } this.editingId = null; this.form = { tanggal: new Date().toISOString().slice(0, 10), tugas: '', deskripsi_kegiatan: '', kendala: '', status: 'draft' }; this.screenshotPreviews.forEach(url => URL.revokeObjectURL(url)); this.selectedScreenshots = []; this.screenshotPreviews = []; this.loadDeadline(); }
   viewDetail(item: any): void { this.selectedLogbookDetail = item; }
   closeDetail(): void { this.selectedLogbookDetail = null; }
-  deleteLogbook(item: any): void { const id = item.id || item.ID; const status = item.status_logbook || item.StatusLogbook; if (status === 'approved' || status === 'submitted') return; if (!confirm('Apakah Anda yakin ingin menghapus logbook ini?')) return; this.http.delete(`http://localhost:8080/api/v1/internship/logbooks/${id}`, { headers: this.headers() }).subscribe({ next: () => { this.message = 'Logbook berhasil dihapus.'; this.load(); }, error: e => { this.error = e.error?.error || 'Gagal menghapus logbook'; } }); }
+  async deleteLogbook(item: any): Promise<void> {
+    const id = item.id || item.ID;
+    if (!this.canDelete(item)) return;
+    if (!await this.alert.confirm('Hapus logbook?', 'Apakah Anda yakin ingin menghapus logbook ini?', 'Ya, hapus')) return;
+    this.http.delete(`http://localhost:8080/api/v1/internship/logbooks/${id}`, { headers: this.headers() }).subscribe({
+      next: async () => { this.message = ''; this.error = ''; await this.alert.success('Logbook berhasil dihapus', 'Draft logbook telah dihapus.'); this.load(false); },
+      error: e => { this.error = e.error?.error || 'Gagal menghapus logbook'; }
+    });
+  }
   toggleExportDropdown(): void { this.isExportOpen = !this.isExportOpen; }
   exportCSV(): void { this.isExportOpen = false; this.reportExport.downloadCsv('logbook-harian.csv', ['Tanggal', 'Tugas', 'Kegiatan', 'Status'], this.logbooks.map(item => [item.tanggal || item.Tanggal, item.tugas || item.Tugas, item.deskripsi_kegiatan || item.DeskripsiKegiatan, item.status_logbook || item.StatusLogbook])); }
   exportExcel(): void { this.isExportOpen = false; this.reportExport.downloadExcel('logbook-harian.xls', ['Tanggal', 'Tugas', 'Kegiatan', 'Status'], this.logbooks.map(item => [item.tanggal || item.Tanggal, item.tugas || item.Tugas, item.deskripsi_kegiatan || item.DeskripsiKegiatan, item.status_logbook || item.StatusLogbook])); }

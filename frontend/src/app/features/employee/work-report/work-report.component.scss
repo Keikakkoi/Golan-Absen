@@ -4,6 +4,14 @@
   gap: 1rem;
 }
 
+.work-report-secondary-action {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 600;
+}
+
 .reporting-month-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .reporting-month-toolbar label { display: flex; align-items: center; gap: .5rem; font-size: .85rem; }
 .reporting-month-toolbar select { color: inherit; background: var(--mint-0); border: 1px solid var(--border-color); border-radius: 6px; padding: .35rem .5rem; min-width: 150px; }
@@ -54,7 +62,10 @@
     &:hover .hover-info {
       opacity: 1;
       visibility: visible;
-      transform: translateY(0);
+      // Keep the tooltip centered on this date while removing the hidden
+      // state offset. Using only translateY here drops translateX(-50%),
+      // which makes the tooltip appear over the next date.
+      transform: translate(-50%, 0);
     }
   }
 
@@ -144,7 +155,7 @@
   overflow-wrap: anywhere;
   word-break: normal;
   line-height: 1.4;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .report-history-table th:nth-child(1),
@@ -187,6 +198,39 @@
   color: #1d4ed8;
   background: #dbeafe;
   border: 1px solid #93c5fd;
+}
+
+/* Report validation badges and CRUD buttons must keep their own dark-mode
+   contrast instead of inheriting the light status-pill defaults. */
+:host-context(body.dark-theme) .report-history-table .status-badge.status-pending,
+:host-context(body.dark-theme) .report-history-table .status-badge.status-menunggu {
+  background: var(--surface-muted) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark-lo) !important;
+}
+
+:host-context(body.dark-theme) .report-history-table .status-badge.status-hadir {
+  background: #14532d !important;
+  color: #86efac !important;
+}
+
+:host-context(body.dark-theme) .report-history-table .status-badge.status-alpha,
+:host-context(body.dark-theme) .report-history-table .status-badge.status-tidak-hadir {
+  background: #450a0a !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .report-history-table .icon-button.edit,
+:host-context(body.dark-theme) .report-history-table .icon-button.delete {
+  background: var(--surface-muted) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .report-history-table .icon-button.edit:hover,
+:host-context(body.dark-theme) .report-history-table .icon-button.delete:hover {
+  background: var(--mint-1) !important;
+  border-color: var(--green) !important;
 }
 
 @media (max-width: 640px) {
@@ -267,3 +311,30 @@
 .screenshot-preview-grid { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .75rem; }
 .screenshot-preview-grid img, .report-thumb img { width: 72px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
 .report-thumb { display: inline-block; margin: 2px; }
+
+/* Export menu dark-mode overrides are scoped to this component so the light
+   theme and other dropdowns keep their existing appearance. */
+:host-context(body.dark-theme) .export-dropdown .dropdown-menu-custom {
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  border: 1px solid #475569 !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35) !important;
+  padding: 4px 0 !important;
+}
+
+:host-context(body.dark-theme) .export-dropdown .dropdown-menu-custom .dropdown-item {
+  background: transparent !important;
+  border: 0 !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.18) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .export-dropdown .dropdown-menu-custom .dropdown-item:first-child {
+  border-top: 0 !important;
+}
+
+:host-context(body.dark-theme) .export-dropdown .dropdown-menu-custom .dropdown-item:hover,
+:host-context(body.dark-theme) .export-dropdown .dropdown-menu-custom .dropdown-item:focus-visible {
+  background: #26364d !important;
+  color: var(--text-dark) !important;
+}

@@ -140,6 +140,42 @@
     }
   }
 
+  .division-table {
+    th,
+    td {
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .actions {
+      justify-content: flex-start;
+    }
+  }
+
+  .position-table {
+    th,
+    td {
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .actions {
+      justify-content: flex-start;
+    }
+  }
+
+  .project-table {
+    th,
+    td {
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .actions {
+      justify-content: flex-start;
+    }
+  }
+
 }
 
 @media (max-width: 768px) {
@@ -227,4 +263,12 @@
     }
   }
 
+}
+
+.modal-actions .btn-outline-primary {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 600;
 }

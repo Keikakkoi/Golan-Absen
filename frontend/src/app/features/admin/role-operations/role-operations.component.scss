@@ -38,6 +38,56 @@
   vertical-align: middle;
 }
 
+/* Compact status pills for the Absensi Tim table, matching the reference
+   treatment used by the attendance/logbook tables. */
+.role-operations-page section.team-filter-panel:first-of-type td:nth-child(3) {
+  white-space: nowrap !important;
+}
+
+.role-operations-page section.team-filter-panel:first-of-type .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.role-operations-page section.team-filter-panel:first-of-type .status-pill::before {
+  width: 8px;
+  height: 8px;
+}
+
+/* Apply the same compact sizing to the status column in Laporan Tim /
+   Logbook, which is the team-filter panel immediately after Absensi Tim. */
+.role-operations-page section.team-filter-panel + section.team-filter-panel td:last-child {
+  white-space: nowrap !important;
+}
+
+.role-operations-page section.team-filter-panel + section.team-filter-panel td:last-child .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.role-operations-page section.team-filter-panel + section.team-filter-panel td:last-child .status-pill::before {
+  width: 8px;
+  height: 8px;
+}
+
 .role-operations-page .golan-table td:first-child,
 .role-operations-page .golan-table th:first-child {
   white-space: nowrap !important;
@@ -56,6 +106,13 @@
 .role-operations-logbook-table .col-filling { width: 112px; }
 .role-operations-logbook-table .col-review { width: 210px; }
 .role-operations-logbook-table .col-actions { width: 132px; }
+
+.role-operations-logbook-table .logbook-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
 
 .role-operations-logbook-table td:nth-child(2) > div:first-child,
 .role-operations-logbook-table td:nth-child(3),
@@ -756,6 +813,53 @@
   color: var(--text-dark) !important;
 }
 
+/* Certificate table typography: keep the participant data readable without
+   making every document label and action look like a heading. */
+.role-operations-page .role-operations-certificate-table {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.role-operations-page .role-operations-certificate-table th {
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+}
+
+.role-operations-page .role-operations-certificate-table td {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.role-operations-page .role-operations-certificate-table .certificate-participant-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.role-operations-page .role-operations-certificate-table .role-badge,
+.role-operations-page .role-operations-certificate-table .file-picker-name,
+.role-operations-page .role-operations-certificate-table .file-name {
+  font-size: 11px;
+}
+
+.role-operations-page .role-operations-certificate-table .status-pill {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.role-operations-page .role-operations-certificate-table .document-file-list strong,
+.role-operations-page .role-operations-certificate-table .document-action-row strong {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.role-operations-page .role-operations-certificate-table .cert-link,
+.role-operations-page .role-operations-certificate-table .muted-file,
+.role-operations-page .role-operations-certificate-table .btn-small,
+.role-operations-page .role-operations-certificate-table .file-picker-button {
+  font-size: 12px;
+}
+
 /* Light mode action colors. Keep these scoped to light mode so the shared
    dark-theme overrides continue to define the dark appearance. */
 :host-context(body:not(.dark-theme)) .role-operations-page .btn-small.btn-view-detail,
@@ -975,6 +1079,15 @@
   min-width: 1180px;
 }
 
+.leave-refresh-action {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(1),
 .role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(1) { width: 21%; }
 .role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(2),
@@ -1048,6 +1161,321 @@
   }
 }
 
+/* Final certificate-table sizing overrides. The shared .cert-link and
+   .status-pill styles are intentionally roomier for other screens; this
+   table needs a compact, consistent rhythm because several controls share
+   each row. */
+.role-operations-page .role-operations-certificate-table th,
+.role-operations-page .role-operations-certificate-table td {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  vertical-align: top;
+}
+
+.role-operations-page .role-operations-certificate-table th {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+
+.role-operations-page .role-operations-certificate-table .certificate-participant-name {
+  font-size: 13px !important;
+  line-height: 1.3 !important;
+}
+
+.role-operations-page .role-operations-certificate-table .role-badge,
+.role-operations-page .role-operations-certificate-table .file-name,
+.role-operations-page .role-operations-certificate-table .file-picker-name {
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+.role-operations-page .role-operations-certificate-table .status-pill {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+  padding: 4px 9px;
+}
+
+.role-operations-page .role-operations-certificate-table .document-file-list,
+.role-operations-page .role-operations-certificate-table .document-actions {
+  gap: 6px;
+}
+
+.role-operations-page .role-operations-certificate-table .document-file-list > div,
+.role-operations-page .role-operations-certificate-table .document-action-row {
+  gap: 4px;
+  padding-bottom: 6px;
+}
+
+.role-operations-page .role-operations-certificate-table .document-file-list strong,
+.role-operations-page .role-operations-certificate-table .document-action-row strong,
+.role-operations-page .role-operations-certificate-table .cert-link,
+.role-operations-page .role-operations-certificate-table .muted-file,
+.role-operations-page .role-operations-certificate-table .btn-small,
+.role-operations-page .role-operations-certificate-table .file-picker-button {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+.role-operations-page .role-operations-certificate-table .cert-link {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-weight: 600;
+}
+
+.role-operations-page .role-operations-certificate-table .document-action-row .btn-small {
+  min-height: 28px;
+  padding: 5px 8px;
+}
+
+.role-operations-page .role-operations-certificate-table .file-picker {
+  min-height: 32px;
+  padding: 3px 6px;
+}
+
+.role-operations-page .role-operations-certificate-table .file-picker-button {
+  min-height: 26px;
+  padding: 5px 8px;
+}
+
+/* Match the typography used by the Admin "Approval Izin & Cuti" table. */
+.role-operations-page .role-operations-logbook-table,
+.role-operations-page .role-operations-certificate-table {
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.role-operations-page .role-operations-logbook-table th,
+.role-operations-page .role-operations-logbook-table td,
+.role-operations-page .role-operations-certificate-table th,
+.role-operations-page .role-operations-certificate-table td {
+  padding: 0.75rem 0.8rem;
+  font-size: inherit;
+  line-height: inherit;
+  vertical-align: top;
+}
+
+.role-operations-page .role-operations-logbook-table th,
+.role-operations-page .role-operations-certificate-table th {
+  font-size: 0.75rem !important;
+  line-height: 1.25 !important;
+}
+
+.role-operations-page .role-operations-logbook-table .status-pill,
+.role-operations-page .role-operations-certificate-table .status-pill {
+  font-size: 0.8125rem !important;
+  line-height: 1.4 !important;
+}
+
+/* Certificate status colors: each state has its own meaning and treatment. */
+.role-operations-page .role-operations-certificate-table .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.75rem !important;
+  font-weight: 600;
+}
+
+.role-operations-page .role-operations-certificate-table .status-pill::before {
+  width: 8px;
+  height: 8px;
+}
+
+.role-operations-page .role-operations-certificate-table .status-certificate-uploaded {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.role-operations-page .role-operations-certificate-table .status-certificate-ongoing {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.role-operations-page .role-operations-certificate-table .status-certificate-ongoing::before {
+  display: none;
+}
+
+.role-operations-page .role-operations-certificate-table .status-certificate-pending {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.role-operations-page .role-operations-logbook-table .btn-small,
+.role-operations-page .role-operations-certificate-table .btn-small,
+.role-operations-page .role-operations-certificate-table .file-picker-button {
+  font-size: 0.8rem !important;
+  line-height: 1.2 !important;
+}
+
+.role-operations-page .role-operations-certificate-table .certificate-participant-name,
+.role-operations-page .role-operations-certificate-table .document-file-list strong,
+.role-operations-page .role-operations-certificate-table .document-action-row strong,
+.role-operations-page .role-operations-certificate-table .cert-link,
+.role-operations-page .role-operations-certificate-table .muted-file,
+.role-operations-page .role-operations-certificate-table .file-name {
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+}
+
+.role-operations-page .role-operations-certificate-table .role-badge,
+.role-operations-page .role-operations-logbook-table .role-badge {
+  font-size: 0.72rem !important;
+  line-height: 1.3 !important;
+}
+
+.role-operations-page .role-badge {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+}
+
+.role-operations-page .role-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -2px;
+}
+
+/* Center every table value consistently. */
+.role-operations-page .role-operations-logbook-table th,
+.role-operations-page .role-operations-logbook-table td,
+.role-operations-page .role-operations-certificate-table th,
+.role-operations-page .role-operations-certificate-table td {
+  text-align: center;
+}
+
+.role-operations-page .role-operations-logbook-table td > div,
+.role-operations-page .role-operations-logbook-table .report-thumb,
+.role-operations-page .role-operations-certificate-table .certificate-participant-content,
+.role-operations-page .role-operations-certificate-table .document-file-list,
+.role-operations-page .role-operations-certificate-table .document-actions {
+  align-items: center;
+  justify-content: center;
+}
+
+.role-operations-page .role-operations-certificate-table .document-file-list > div,
+.role-operations-page .role-operations-certificate-table .document-action-row {
+  align-items: center;
+  justify-content: center;
+}
+
+.role-operations-page .role-operations-certificate-table .document-file-list strong,
+.role-operations-page .role-operations-certificate-table .document-action-row strong,
+.role-operations-page .role-operations-certificate-table .document-action-row .muted-file {
+  text-align: center;
+}
+
+/* Keep the Logbook Magang table content aligned to the left. */
+.role-operations-page .role-operations-logbook-table th,
+.role-operations-page .role-operations-logbook-table td {
+  text-align: left;
+}
+
+.role-operations-page .role-operations-logbook-table td > div {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.role-operations-page .role-operations-certificate-table .cert-link {
+  justify-content: center;
+}
+
+/* Keep every upload field the same width inside the action column. */
+.role-operations-page .role-operations-certificate-table .document-actions .document-action-row {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.role-operations-page .role-operations-certificate-table .document-actions .document-action-row .file-picker {
+  width: 100%;
+  flex: 0 0 100%;
+  box-sizing: border-box;
+}
+
+/* Mobile: do not use a border as a column separator. The separator made the
+   horizontally scrollable table look clipped; normal cell padding is enough. */
+@media (max-width: 760px) {
+  /* Keep the document and action columns visually separate on phones. The
+     table remains horizontally scrollable, while long PDF names are clipped
+     inside their own cell instead of colliding with the next column. */
+  .role-operations-page .role-operations-certificate-table {
+    width: 1640px !important;
+    min-width: 1640px !important;
+  }
+
+  .role-operations-page .role-operations-certificate-table .certificate-col-documents {
+    width: 300px !important;
+  }
+
+  .role-operations-page .role-operations-certificate-table .certificate-col-actions {
+    width: 360px !important;
+  }
+
+  .role-operations-page .role-operations-certificate-table th:nth-child(7),
+  .role-operations-page .role-operations-certificate-table td:nth-child(7) {
+    border-left: 0 !important;
+    padding-left: 24px !important;
+  }
+
+  .role-operations-page .role-operations-certificate-table th:nth-child(6),
+  .role-operations-page .role-operations-certificate-table td:nth-child(6) {
+    padding-left: 44px !important;
+    padding-right: 32px !important;
+  }
+
+  .role-operations-page .role-operations-certificate-table td:nth-child(6) .document-file-list > div {
+    margin-left: 8px;
+  }
+
+  .role-operations-page .role-operations-certificate-table td:nth-child(6) .cert-link,
+  .role-operations-page .role-operations-certificate-table td:nth-child(6) .file-name {
+    display: inline-flex;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .role-operations-page .role-operations-certificate-table td:nth-child(6) .file-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Center the empty-file marker in the File Sertifikat column. */
+  .role-operations-page .role-operations-certificate-table td:nth-child(5) {
+    text-align: center !important;
+  }
+
+  .role-operations-page .role-operations-certificate-table td:nth-child(5) .muted-file {
+    display: block !important;
+    width: 100%;
+    text-align: center !important;
+  }
+
+  /* Keep the first four certificate fields centered on narrow screens too. */
+  .role-operations-page .role-operations-certificate-table th:nth-child(-n + 4),
+  .role-operations-page .role-operations-certificate-table td:nth-child(-n + 4) {
+    text-align: center !important;
+  }
+
+  .role-operations-page .role-operations-certificate-table td:nth-child(1) .certificate-participant-content {
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  .role-operations-page .role-operations-certificate-table tbody tr:hover td:nth-child(7) {
+    border-left: 0 !important;
+  }
+}
+
+
 /* Keep the admin team filters balanced inside each panel. */
 .team-filter-panel .panel-heading {
   display: grid;
@@ -1083,6 +1511,64 @@
 
 .team-filter-panel .export-dropdown > button {
   white-space: nowrap;
+}
+
+/* Absensi Tim uses the same export treatment as the manager attendance page. */
+.team-filter-panel .attendance-export-dropdown,
+.team-filter-panel .report-export-dropdown {
+  position: relative;
+  z-index: 2;
+}
+
+.team-filter-panel .attendance-export-dropdown .dropdown-menu-custom,
+.team-filter-panel .report-export-dropdown .dropdown-menu-custom {
+  min-width: 220px;
+  padding: 8px 0;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 39, 64, 0.14);
+}
+
+.team-filter-panel .attendance-export-dropdown .dropdown-item,
+.team-filter-panel .report-export-dropdown .dropdown-item {
+  display: flex !important;
+  align-items: center;
+  min-height: 40px;
+  padding: 10px 16px;
+  white-space: nowrap;
+}
+
+.team-filter-panel .attendance-export-dropdown .dropdown-item:hover,
+.team-filter-panel .report-export-dropdown .dropdown-item:hover {
+  background-color: var(--mint-0, #edf7fb);
+}
+
+.team-filter-panel .attendance-export-dropdown .export-icon,
+.team-filter-panel .report-export-dropdown .export-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+.team-filter-panel .attendance-export-dropdown .export-icon-csv,
+.team-filter-panel .attendance-export-dropdown .export-icon-print,
+.team-filter-panel .report-export-dropdown .export-icon-csv,
+.team-filter-panel .report-export-dropdown .export-icon-print { color: #17a2b8; }
+.team-filter-panel .attendance-export-dropdown .export-icon-excel,
+.team-filter-panel .report-export-dropdown .export-icon-excel { color: #28a745; }
+.team-filter-panel .attendance-export-dropdown .export-icon-json,
+.team-filter-panel .report-export-dropdown .export-icon-json { color: #ffc107; }
+.team-filter-panel .attendance-export-dropdown .export-icon-pdf,
+.team-filter-panel .report-export-dropdown .export-icon-pdf { color: #dc3545; }
+
+.team-filter-panel .attendance-export-dropdown .dropdown-item-print,
+.team-filter-panel .report-export-dropdown .dropdown-item-print {
+  border-top: 1px solid #eee;
+}
+
+body.dark-theme .team-filter-panel .attendance-export-dropdown .dropdown-item-print,
+body.dark-theme .team-filter-panel .report-export-dropdown .dropdown-item-print {
+  border-top-color: var(--border-color, #334155);
 }
 
 @media (max-width: 980px) {

@@ -38,4 +38,13 @@ describe('LeaveRequestComponent attachment handling', () => {
     await component.submitRequest();
     expect(component.errorMessage).toContain('JPG, PNG, WEBP, atau PDF');
   });
+
+  it('allows cancellation only while the request is awaiting approval', () => {
+    expect(component.isCancellable({ Status: 'Pending' })).toBeTrue();
+    expect(component.isCancellable({ Status: 'pending_manager_approval' })).toBeTrue();
+    expect(component.isCancellable({ Status: 'pending_hrd_approval' })).toBeTrue();
+    expect(component.isCancellable({ Status: 'Approved' })).toBeFalse();
+    expect(component.isCancellable({ Status: 'Rejected' })).toBeFalse();
+    expect(component.isCancellable({ Status: 'Cancelled' })).toBeFalse();
+  });
 });

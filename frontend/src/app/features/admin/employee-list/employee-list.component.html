@@ -343,7 +343,7 @@
           <div class="form-group"><label>Shift kerja</label><input [value]="formData.shift_kerja || 'Reguler'" name="shift_kerja" class="form-control" disabled /><small class="form-help">Shift hanya dapat diubah melalui menu Manajemen Jadwal Kerja / Shift.</small></div>
         </div>
 
-        <div class="form-group-row">
+        <div class="form-group-row" *ngIf="formData.role !== 'MANAJER'">
           <div class="form-group">
             <label>{{ formData.role === 'MAGANG' ? 'Manager pembimbing' : 'Manager (opsional)' }}</label>
             <select [(ngModel)]="formData.manager_id" (ngModelChange)="onManagerChange()" name="manager_id" class="form-control">
@@ -360,6 +360,14 @@
             </select>
             <small class="form-help" *ngIf="projects.length === 0">Belum ada project aktif. Tambahkan di menu Organisasi &amp; Jabatan.</small>
           </div>
+        </div>
+        <div class="form-group" *ngIf="formData.role === 'MANAJER'">
+          <label>Project (opsional)</label>
+          <select [(ngModel)]="formData.project_id" name="project_id" class="form-control">
+            <option [ngValue]="null">Tidak ada project</option>
+            <option *ngFor="let project of projects" [ngValue]="project.ID">{{ project.ID }} - {{ project.NamaProject }}</option>
+          </select>
+          <small class="form-help" *ngIf="projects.length === 0">Belum ada project aktif. Tambahkan di menu Organisasi &amp; Jabatan.</small>
         </div>
         <div class="form-group-row" *ngIf="formData.role === 'MAGANG'">
           <div class="form-group"><label>Institusi Pendidikan</label><input [(ngModel)]="formData.institution_name" name="institution_name" class="form-control" /></div>

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
@@ -50,7 +50,21 @@ interface PaginatedEventsResponse {
   templateUrl: './admin-events.component.html',
   styleUrls: ['./admin-events.component.scss']
 })
-export class AdminEventsComponent implements OnInit {
+export class AdminEventsComponent implements OnInit, OnDestroy {
+  readonly eventTypeOptions = [
+    { value: 'rapat', label: 'Rapat' },
+    { value: 'meeting', label: 'Meeting' },
+    { value: 'info', label: 'Informasi' },
+    { value: 'lainnya', label: 'Lainnya' }
+  ] as const;
+  openEventType = false;
+  readonly timeHours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
+  readonly timeMinutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
+  openTimePicker: 'start' | 'end' | null = null;
+  private timeDraft: Record<'start' | 'end', { hour: string; minute: string }> = {
+    start: { hour: '', minute: '' },
+    end: { hour: '', minute: '' }
+  };
   currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   selectedYear = new Date().getFullYear();
   availableYears: number[] = [];
@@ -79,6 +93,8 @@ export class AdminEventsComponent implements OnInit {
   tablePageSizeOptions = [10, 25, 50, 100];
   tableTotal = 0;
   isLoadingTable = false;
+  private dayRefreshTimer?: ReturnType<typeof setInterval>;
+  private dayRefreshTick = 0;
 
   form = this.emptyForm();
   private readonly baseUrl = 'http://localhost:8080/api/v1/admin/events';
@@ -106,6 +122,15 @@ export class AdminEventsComponent implements OnInit {
     this.loadHolidays();
     this.loadEvents();
     this.loadTableEvents();
+
+    // Re-evaluate date-based status while the page remains open across midnight.
+    this.dayRefreshTimer = setInterval(() => {
+      this.dayRefreshTick = Date.now();
+    }, 60_000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.dayRefreshTimer) clearInterval(this.dayRefreshTimer);
   }
 
   getHeaders(): HttpHeaders {
@@ -165,6 +190,12 @@ export class AdminEventsComponent implements OnInit {
     this.tablePageSize = size;
     this.tablePage = 1;
     this.loadTableEvents();
+  }
+
+  isEventActive(event: CompanyEvent): boolean {
+    // Keep the manual switch authoritative for events explicitly disabled by HRD.
+    // For manually active events, compare calendar dates in Jakarta time only.
+    return event.StatusAktif !== false && this.dateKey(event.Tanggal) >= this.jakartaTodayKey();
   }
 
   loadHolidays(): void {
@@ -284,6 +315,94 @@ export class AdminEventsComponent implements OnInit {
 
   closeModal(): void {
     this.showModal = false;
+    this.openTimePicker = null;
+    this.openEventType = false;
+  }
+
+  toggleTimePicker(picker: 'start' | 'end'): void {
+    this.openEventType = false;
+    if (this.openTimePicker === picker) {
+      this.openTimePicker = null;
+      return;
+    }
+
+    const value = picker === 'start' ? this.form.jam_mulai : this.form.jam_selesai;
+    this.timeDraft[picker] = /^\d{2}:\d{2}$/.test(value || '')
+      ? { hour: value.substring(0, 2), minute: value.substring(3, 5) }
+      : { hour: '', minute: '' };
+    this.openTimePicker = picker;
+  }
+
+  toggleEventType(): void {
+    this.openTimePicker = null;
+    this.openEventType = !this.openEventType;
+  }
+
+  selectEventType(value: string): void {
+    this.form.tipe = value;
+    this.openEventType = false;
+  }
+
+  get eventTypeLabel(): string {
+    return this.eventTypeOptions.find(option => option.value === this.form.tipe)?.label || 'Pilih tipe event';
+  }
+
+  onEventTypeKeydown(event: KeyboardEvent): void {
+    const currentIndex = Math.max(0, this.eventTypeOptions.findIndex(option => option.value === this.form.tipe));
+    let nextIndex = currentIndex;
+
+    if (event.key === 'Escape') {
+      this.openEventType = false;
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.toggleEventType();
+      return;
+    }
+    if (event.key === 'ArrowDown') nextIndex = Math.min(this.eventTypeOptions.length - 1, currentIndex + 1);
+    else if (event.key === 'ArrowUp') nextIndex = Math.max(0, currentIndex - 1);
+    else return;
+
+    event.preventDefault();
+    this.selectEventType(this.eventTypeOptions[nextIndex].value);
+  }
+
+  selectTimePart(picker: 'start' | 'end', part: 'hour' | 'minute', value: string): void {
+    const field = picker === 'start' ? 'jam_mulai' : 'jam_selesai';
+    const draft = this.timeDraft[picker];
+    if (part === 'hour') draft.hour = value;
+    else draft.minute = value;
+
+    if (draft.hour && draft.minute) {
+      this.form[field] = `${draft.hour}:${draft.minute}`;
+      this.openTimePicker = null;
+    }
+  }
+
+  timeValue(picker: 'start' | 'end'): string {
+    const value = picker === 'start' ? this.form.jam_mulai : this.form.jam_selesai;
+    return value && /^\d{2}:\d{2}$/.test(value) ? value : '--:--';
+  }
+
+  timePart(picker: 'start' | 'end', part: 'hour' | 'minute'): string {
+    if (this.openTimePicker === picker) return this.timeDraft[picker][part];
+    const value = picker === 'start' ? this.form.jam_mulai : this.form.jam_selesai;
+    if (!value || !/^\d{2}:\d{2}$/.test(value)) return '';
+    return part === 'hour' ? value.substring(0, 2) : value.substring(3, 5);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.event-time-picker')) this.openTimePicker = null;
+    if (!target.closest('.event-type-picker')) this.openEventType = false;
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.openTimePicker = null;
+    this.openEventType = false;
   }
 
   onFileSelected(event: Event): void {
@@ -392,5 +511,15 @@ export class AdminEventsComponent implements OnInit {
 
   private toDateKey(date: Date): string {
     return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+  }
+
+  private jakartaTodayKey(): string {
+    // Referencing the tick makes Angular re-evaluate this method after the interval fires.
+    void this.dayRefreshTick;
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${values['year']}-${values['month']}-${values['day']}`;
   }
 }

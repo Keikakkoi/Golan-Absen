@@ -25,6 +25,13 @@ export class TeamAttendanceComponent implements OnInit {
   get displayedRows(): any[] { return this.serverPaginated ? this.rows : this.rows.slice((this.page - 1) * this.pageSize, this.page * this.pageSize); }
   pageChanged(page: number): void { if (this.serverPaginated) this.load(page); else this.page = page; }
   pageSizeChanged(size: number): void { this.pageSize = size; if (this.serverPaginated) this.load(1); else this.page = 1; }
+  statusLabel(status: string): string { return status === 'Tidak hadir' ? 'Alpha' : status; }
+  statusClass(status: string): string {
+    if (status === 'Hadir') return 'status-hadir';
+    if (status === 'Tidak hadir') return 'status-alpha';
+    if (status === 'Terlambat') return 'status-terlambat';
+    return 'status-pending';
+  }
   toggleExportDropdown(): void { this.isExportOpen = !this.isExportOpen; }
   exportCSV(): void { this.isExportOpen = false; this.reportExport.downloadCsv('absensi-tim.csv', ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
   exportExcel(): void { this.isExportOpen = false; this.reportExport.downloadExcel('absensi-tim.xls', ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }

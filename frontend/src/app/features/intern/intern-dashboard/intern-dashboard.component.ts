@@ -45,7 +45,7 @@ interface CalendarDay {
 })
 export class InternDashboardComponent implements OnInit, OnDestroy {
   userName = localStorage.getItem('name') || 'Peserta Magang';
-  stats: any = { days_remaining: 0, progress_percent: 0, logbooks_submitted: 0, logbooks_approved: 0 };
+  stats: any = { days_remaining: 0, progress_percent: 0, logbooks_submitted: 0, logbooks_approved: 0, missing_work_reports: [] };
   statsLoading = true;
   statsError = '';
 

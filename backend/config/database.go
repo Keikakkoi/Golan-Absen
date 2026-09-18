@@ -24,6 +24,25 @@ func ConnectDB(cfg *Config) {
 	}
 
 	log.Println("Database connection established")
+	// Preserve detached attendance history: remove the legacy constraint before
+	// AutoMigrate inspects the nullable model field. On a fresh database the
+	// table does not exist yet, so this idempotent statement is intentionally ignored.
+	for _, statement := range []string{
+		"ALTER TABLE attendance_records ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE leave_requests ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE leave_quota ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE employee_home_locations ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE home_location_change_requests ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE employee_home_location_histories ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE work_reports ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE work_schedules ALTER COLUMN employee_id DROP NOT NULL",
+		"ALTER TABLE leave_approval_histories ALTER COLUMN decided_by DROP NOT NULL",
+		"ALTER TABLE internship_certificates ALTER COLUMN user_id DROP NOT NULL",
+		"ALTER TABLE internship_documents ALTER COLUMN user_id DROP NOT NULL",
+		"ALTER TABLE audit_logs ALTER COLUMN user_id DROP NOT NULL",
+	} {
+		_ = DB.Exec(statement)
+	}
 	// Backfill legacy rows before AutoMigrate attempts to enforce the model's
 	// NOT NULL constraint. This is harmless on a fresh database.
 	_ = DB.Exec("UPDATE employees SET shift_kerja = 'Reguler' WHERE shift_kerja IS NULL OR BTRIM(shift_kerja) = ''")
@@ -56,6 +75,7 @@ func ConnectDB(cfg *Config) {
 		&models.HelpdeskContact{},
 		&models.WorkReport{},
 		&models.WorkReportAttachment{},
+		&models.WorkReportDeletion{},
 		&models.WorkReportColumn{},
 		&models.InternshipCertificate{},
 		&models.InternshipDocument{},
@@ -71,26 +91,18 @@ func ConnectDB(cfg *Config) {
 	if err := DB.Exec("UPDATE employees SET shift_kerja = 'Reguler' WHERE shift_kerja IS NULL OR BTRIM(shift_kerja) = ''").Error; err != nil {
 		log.Printf("Failed to backfill employee shifts: %v", err)
 	}
+	if err := consolidateRegularSchedules(); err != nil {
+		log.Fatalf("Failed to consolidate regular shifts: %v", err)
+	}
+	// Reguler is the application-wide default and must have one canonical
+	// legacy row at most. Other shift names remain unrestricted.
+	if err := DB.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_work_schedules_single_reguler
+		ON work_schedules (LOWER(BTRIM(nama_shift)))
+		WHERE LOWER(BTRIM(nama_shift)) = 'reguler'`).Error; err != nil {
+		log.Fatalf("Failed to enforce unique regular shift: %v", err)
+	}
 	if err := DB.Exec("ALTER TABLE employees ALTER COLUMN shift_kerja SET DEFAULT 'Reguler', ALTER COLUMN shift_kerja SET NOT NULL").Error; err != nil {
 		log.Printf("Failed to enforce employee shift constraint: %v", err)
-	}
-	// Employee lifecycle policy B requires historical rows to survive after the
-	// employee row is removed. Keep the FK columns nullable and store an
-	// immutable identity snapshot in the historical tables.
-	for _, statement := range []string{
-		"ALTER TABLE attendance_records ALTER COLUMN employee_id DROP NOT NULL",
-		"ALTER TABLE leave_requests ALTER COLUMN employee_id DROP NOT NULL",
-		"ALTER TABLE leave_quota ALTER COLUMN employee_id DROP NOT NULL",
-		"ALTER TABLE work_reports ALTER COLUMN employee_id DROP NOT NULL",
-		"ALTER TABLE employee_home_locations ALTER COLUMN employee_id DROP NOT NULL",
-		"ALTER TABLE home_location_change_requests ALTER COLUMN employee_id DROP NOT NULL",
-		"ALTER TABLE employee_home_location_histories ALTER COLUMN employee_id DROP NOT NULL",
-		"ALTER TABLE work_schedules ALTER COLUMN employee_id DROP NOT NULL",
-		"ALTER TABLE audit_logs ALTER COLUMN user_id DROP NOT NULL",
-	} {
-		if err := DB.Exec(statement).Error; err != nil {
-			log.Printf("Failed to prepare employee lifecycle schema (%s): %v", statement, err)
-		}
 	}
 	if err := DB.Exec("UPDATE work_schedules SET hari_kerja = '[1,2,3,4,5,6]' WHERE hari_kerja IS NULL OR BTRIM(hari_kerja) = '' OR hari_kerja = '[]'").Error; err != nil {
 		log.Printf("Failed to backfill work schedule days: %v", err)
@@ -110,11 +122,14 @@ func ConnectDB(cfg *Config) {
 	var existingCerts []models.InternshipCertificate
 	DB.Find(&existingCerts)
 	for _, cert := range existingCerts {
+		if cert.UserID == nil {
+			continue
+		}
 		var logCount int64
 		DB.Model(&models.CertificateIssuanceLog{}).Where("user_id = ?", cert.UserID).Count(&logCount)
 		if logCount == 0 {
 			DB.Create(&models.CertificateIssuanceLog{
-				UserID:        cert.UserID,
+				UserID:        *cert.UserID,
 				CertificateNo: cert.CertificateNo,
 				IssuedAt:      cert.IssuedAt,
 				Action:        "INITIAL_ISSUANCE",
@@ -142,11 +157,10 @@ func ConnectDB(cfg *Config) {
 	DB.Model(&models.WorkSchedule{}).Count(&wsCount)
 	_ = wsCount
 
-	// Seed WorkTypes
-	var wtCount int64
-	DB.Model(&models.WorkType{}).Count(&wtCount)
-	if wtCount == 0 {
-		DB.Create(&models.WorkType{
+	// Seed the built-in WorkTypes individually. This also repairs an existing
+	// database that already has WFO/WFH but is missing Dinas Luar.
+	defaultWorkTypes := []models.WorkType{
+		{
 			Nama:                  "WFO",
 			Deskripsi:             "Work From Office",
 			IsDefault:             true,
@@ -156,8 +170,8 @@ func ConnectDB(cfg *Config) {
 			WajibSelfie:           true,
 			WarnaLabel:            "#3B82F6",
 			StatusAktif:           true,
-		})
-		DB.Create(&models.WorkType{
+		},
+		{
 			Nama:                  "WFH",
 			Deskripsi:             "Work From Home",
 			IsDefault:             false,
@@ -167,8 +181,8 @@ func ConnectDB(cfg *Config) {
 			WajibSelfie:           true,
 			WarnaLabel:            "#10B981",
 			StatusAktif:           true,
-		})
-		DB.Create(&models.WorkType{
+		},
+		{
 			Nama:                  "Dinas Luar",
 			Deskripsi:             "Penugasan Kerja Luar Kota / Client",
 			IsDefault:             false,
@@ -178,8 +192,13 @@ func ConnectDB(cfg *Config) {
 			WajibSelfie:           true,
 			WarnaLabel:            "#F59E0B",
 			StatusAktif:           true,
-		})
-		log.Println("Seeded default work types")
+		},
+	}
+	for _, workType := range defaultWorkTypes {
+		result := DB.Where("nama = ?", workType.Nama).FirstOrCreate(&workType)
+		if result.Error == nil && result.RowsAffected > 0 {
+			log.Printf("Seeded default work type: %s", workType.Nama)
+		}
 	}
 
 	seedNotificationSettings()
@@ -207,6 +226,49 @@ func ConnectDB(cfg *Config) {
 		})
 		log.Println("Seeded default helpdesk contact")
 	}
+}
+
+// consolidateRegularSchedules keeps the oldest global Reguler row as the
+// canonical legacy record and removes only duplicate Reguler rows. Attendance
+// records do not contain a work_schedule_id; schedules only reference an
+// employee, so there is no schedule FK to repoint before deleting duplicates.
+func consolidateRegularSchedules() error {
+	tx := DB.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+	var rows []models.WorkSchedule
+	if err := tx.Where("LOWER(BTRIM(nama_shift)) = ?", "reguler").
+		Order("CASE WHEN employee_id IS NULL AND tanggal IS NULL THEN 0 ELSE 1 END").
+		Order("id asc").Find(&rows).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if len(rows) > 1 {
+		for _, duplicate := range rows[1:] {
+			if err := tx.Delete(&duplicate).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+		// Normalize only legacy Reguler employee values; custom shifts are not
+		// touched. The canonical row remains the single list entry.
+		if err := tx.Model(&models.Employee{}).
+			Where("LOWER(BTRIM(shift_kerja)) = ?", "reguler").
+			Update("shift_kerja", "Reguler").Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	// Keep the legacy employee label canonical as well. This does not touch
+	// employees assigned to any other shift.
+	if err := tx.Model(&models.Employee{}).
+		Where("LOWER(BTRIM(shift_kerja)) = ?", "reguler").
+		Update("shift_kerja", "Reguler").Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit().Error
 }
 
 func seedRegularWorkSchedules() {

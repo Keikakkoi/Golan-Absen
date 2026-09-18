@@ -76,7 +76,7 @@ type Project struct {
 // InternshipCertificate records generated or manually uploaded certificate metadata.
 type InternshipCertificate struct {
 	Model
-	UserID        uint `gorm:"uniqueIndex;not null"`
+	UserID        *uint `gorm:"uniqueIndex"`
 	User          User
 	IssuedAt      time.Time  `gorm:"type:date;not null"`
 	CertificateNo string     `gorm:"size:80;uniqueIndex;not null"`
@@ -93,7 +93,7 @@ type InternshipCertificate struct {
 // DocumentType is either nilai_magang or keterangan_lulus.
 type InternshipDocument struct {
 	Model
-	UserID       uint `gorm:"uniqueIndex:idx_internship_document_user_type;not null"`
+	UserID       *uint `gorm:"uniqueIndex:idx_internship_document_user_type"`
 	User         User
 	DocumentType string     `gorm:"size:40;uniqueIndex:idx_internship_document_user_type;not null"`
 	FileURL      string     `gorm:"type:text"`
@@ -185,7 +185,7 @@ const (
 
 type AttendanceRecord struct {
 	Model
-	EmployeeID           uint   `gorm:"not null;index"`
+	EmployeeID           *uint  `gorm:"index"`
 	EmployeeNameSnapshot string `gorm:"size:100" json:"employee_name_snapshot"`
 	EmployeeCodeSnapshot string `gorm:"size:40" json:"employee_code_snapshot"`
 	Employee             Employee
@@ -231,7 +231,7 @@ type WorkType struct {
 
 type EmployeeHomeLocation struct {
 	Model
-	EmployeeID     uint     `gorm:"uniqueIndex;not null"`
+	EmployeeID     *uint    `gorm:"uniqueIndex"`
 	Employee       Employee `gorm:"foreignKey:EmployeeID" json:"-"`
 	LatitudeRumah  float64  `gorm:"not null"`
 	LongitudeRumah float64  `gorm:"not null"`
@@ -253,7 +253,7 @@ const (
 // approval decision can be audited independently from the active location.
 type HomeLocationChangeRequest struct {
 	Model
-	EmployeeID       uint     `gorm:"not null;index"`
+	EmployeeID       *uint    `gorm:"index"`
 	Employee         Employee `gorm:"foreignKey:EmployeeID" json:"-"`
 	OldAddress       string   `gorm:"type:text"`
 	OldLatitude      float64
@@ -278,7 +278,7 @@ type HomeLocationChangeRequest struct {
 
 type EmployeeHomeLocationHistory struct {
 	Model
-	EmployeeID       uint                     `gorm:"not null;index"`
+	EmployeeID       *uint                    `gorm:"index"`
 	RequestID        *uint                    `gorm:"index"`
 	ChangedBy        uint                     `gorm:"not null;index"`
 	Status           HomeLocationChangeStatus `gorm:"type:varchar(30);not null"`
@@ -297,7 +297,7 @@ type EmployeeHomeLocationHistory struct {
 
 type AuditLog struct {
 	Model
-	UserID        uint `gorm:"not null;index"`
+	UserID        *uint `gorm:"index"`
 	User          User
 	Action        string `gorm:"size:50;not null"` // CREATE, UPDATE, DELETE, LOGIN
 	TableName     string `gorm:"size:50;not null"`
@@ -358,7 +358,7 @@ const (
 
 type LeaveRequest struct {
 	Model
-	EmployeeID           uint   `gorm:"not null;index"`
+	EmployeeID           *uint  `gorm:"index"`
 	EmployeeNameSnapshot string `gorm:"size:100" json:"employee_name_snapshot"`
 	EmployeeCodeSnapshot string `gorm:"size:40" json:"employee_code_snapshot"`
 	Employee             Employee
@@ -404,7 +404,7 @@ type LeaveApprovalHistory struct {
 	Model
 	LeaveRequestID uint `gorm:"not null;index"`
 	LeaveRequest   LeaveRequest
-	DecidedBy      uint        `gorm:"not null;index"`
+	DecidedBy      *uint       `gorm:"index"`
 	DecidedByUser  User        `gorm:"foreignKey:DecidedBy"`
 	Role           Role        `gorm:"type:varchar(20);not null"`
 	Status         LeaveStatus `gorm:"type:varchar(40);not null"`
@@ -429,7 +429,7 @@ type GeneralSetting struct {
 
 type LeaveQuota struct {
 	Model
-	EmployeeID uint `gorm:"not null;index"`
+	EmployeeID *uint `gorm:"index"`
 	Employee   Employee
 	Tahun      int    `gorm:"not null"`
 	JenisCuti  string `gorm:"size:50;not null"`
@@ -444,12 +444,14 @@ func (LeaveQuota) TableName() string {
 
 type Notification struct {
 	Model
-	UserID     uint `gorm:"not null;index"`
-	User       User
-	Judul      string `gorm:"size:100;not null"`
-	Pesan      string `gorm:"type:text;not null"`
-	StatusBaca bool   `gorm:"default:false"`
-	Waktu      time.Time
+	UserID         uint `gorm:"not null;index;uniqueIndex:idx_notification_reference"`
+	User           User
+	Judul          string `gorm:"size:100;not null"`
+	Pesan          string `gorm:"type:text;not null"`
+	TipeNotifikasi string `gorm:"size:50;uniqueIndex:idx_notification_reference"`
+	ReferenceID    *uint  `gorm:"uniqueIndex:idx_notification_reference"`
+	StatusBaca     bool   `gorm:"default:false"`
+	Waktu          time.Time
 }
 
 // PushSubscription stores a browser Push API subscription for one user.
@@ -510,7 +512,7 @@ type HelpdeskContact struct {
 
 type WorkReport struct {
 	Model
-	EmployeeID           uint                   `gorm:"not null;index" json:"EmployeeID"`
+	EmployeeID           *uint                  `gorm:"index" json:"EmployeeID"`
 	EmployeeNameSnapshot string                 `gorm:"size:100" json:"employee_name_snapshot"`
 	EmployeeCodeSnapshot string                 `gorm:"size:40" json:"employee_code_snapshot"`
 	Employee             Employee               `json:"Employee"`
@@ -553,6 +555,14 @@ type WorkReportAttachment struct {
 	FileName     string     `gorm:"size:255;not null" json:"file_name"`
 	MimeType     string     `gorm:"size:80;not null" json:"mime_type"`
 	FileSize     int64      `gorm:"not null" json:"file_size"`
+}
+
+// WorkReportDeletion prevents the automatic missing-report generator from
+// recreating a report that a user explicitly deleted for the same date.
+type WorkReportDeletion struct {
+	Model
+	EmployeeID uint      `gorm:"not null;uniqueIndex:idx_work_report_deletion_employee_date" json:"employee_id"`
+	Tanggal    time.Time `gorm:"type:date;not null;uniqueIndex:idx_work_report_deletion_employee_date" json:"tanggal"`
 }
 
 type WorkReportColumn struct {

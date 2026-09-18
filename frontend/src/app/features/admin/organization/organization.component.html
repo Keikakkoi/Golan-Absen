@@ -41,8 +41,12 @@
             <td>{{ d.NamaDivisi }}</td>
             <td>{{ d.Deskripsi }}</td>
             <td class="actions">
-              <button class="btn-sm btn-edit" (click)="openDeptModal(d)">Edit</button>
-              <button class="btn-sm btn-danger" (click)="deleteDivision(d.ID)">Hapus</button>
+              <button type="button" class="icon-button edit" (click)="openDeptModal(d)" aria-label="Edit divisi" title="Edit divisi">
+                <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
+              </button>
+              <button type="button" class="icon-button delete" (click)="deleteDivision(d.ID)" aria-label="Hapus divisi" title="Hapus divisi">
+                <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg>
+              </button>
             </td>
           </tr>
         </tbody>
@@ -78,8 +82,12 @@
             <td>{{ p.NamaJabatan }}</td>
             <td>{{ p.Deskripsi }}</td>
             <td class="actions">
-              <button class="btn-sm btn-edit" (click)="openPosModal(p)">Edit</button>
-              <button class="btn-sm btn-danger" (click)="deletePosition(p.ID)">Hapus</button>
+              <button type="button" class="icon-button edit" (click)="openPosModal(p)" aria-label="Edit jabatan" title="Edit jabatan">
+                <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
+              </button>
+              <button type="button" class="icon-button delete" (click)="deletePosition(p.ID)" aria-label="Hapus jabatan" title="Hapus jabatan">
+                <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg>
+              </button>
             </td>
           </tr>
         </tbody>
@@ -110,7 +118,14 @@
             <tr *ngFor="let p of projects">
               <td>{{ p.ID }}</td><td>{{ p.NamaProject }}</td><td>{{ p.Deskripsi || '-' }}</td>
               <td><span class="status-badge" [class.status-hadir]="p.StatusAktif" [class.status-alpha]="!p.StatusAktif">{{ p.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span></td>
-              <td class="actions"><button class="btn-sm btn-edit" (click)="openProjectModal(p)">Edit</button><button class="btn-sm btn-danger" (click)="deleteProject(p.ID)">Hapus</button></td>
+              <td class="actions">
+                <button type="button" class="icon-button edit" (click)="openProjectModal(p)" aria-label="Edit project" title="Edit project">
+                  <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
+                </button>
+                <button type="button" class="icon-button delete" (click)="deleteProject(p.ID)" aria-label="Hapus project" title="Hapus project">
+                  <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg>
+                </button>
+              </td>
             </tr>
             <tr *ngIf="projects.length === 0"><td colspan="5">Belum ada project. Tambahkan project untuk mengisi pilihan Project ID.</td></tr>
           </tbody>
@@ -138,7 +153,7 @@
         <textarea class="form-control" name="deskripsi_divisi" [(ngModel)]="deptForm.Deskripsi" rows="3"></textarea>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" (click)="closeDeptModal()">Batal</button>
+        <button type="button" class="btn-outline-primary" (click)="closeDeptModal()">Batal</button>
         <button type="submit" class="btn-primary">Simpan</button>
       </div>
     </form>
@@ -153,7 +168,7 @@
       <div class="form-group"><label>Nama Project</label><input type="text" class="form-control" name="nama_project" [(ngModel)]="projectForm.NamaProject" required></div>
       <div class="form-group"><label>Deskripsi</label><textarea class="form-control" name="deskripsi_project" [(ngModel)]="projectForm.Deskripsi" rows="3"></textarea></div>
       <div class="form-group" *ngIf="projectForm.ID"><label><input type="checkbox" name="status_project" [(ngModel)]="projectForm.StatusAktif"> Project aktif dan tersedia untuk karyawan</label></div>
-      <div class="modal-actions"><button type="button" class="btn-secondary" (click)="closeProjectModal()">Batal</button><button type="submit" class="btn-primary">Simpan</button></div>
+      <div class="modal-actions"><button type="button" class="btn-outline-primary" (click)="closeProjectModal()">Batal</button><button type="submit" class="btn-primary">Simpan</button></div>
     </form>
   </div>
 </div>
@@ -176,7 +191,7 @@
         <textarea class="form-control" name="deskripsi_jabatan" [(ngModel)]="posForm.Deskripsi" rows="3"></textarea>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" (click)="closePosModal()">Batal</button>
+        <button type="button" class="btn-outline-primary" (click)="closePosModal()">Batal</button>
         <button type="submit" class="btn-primary">Simpan</button>
       </div>
     </form>

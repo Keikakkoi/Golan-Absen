@@ -1,4 +1,16 @@
-<div *ngIf="visible" class="page-skeleton-overlay" aria-live="polite" aria-label="Memuat halaman">
-  <aside class="page-skeleton-sidebar"><app-ui-skeleton type="navbar"></app-ui-skeleton><app-ui-skeleton type="list" [rows]="8"></app-ui-skeleton></aside>
-  <main class="page-skeleton-main"><app-ui-skeleton type="navbar"></app-ui-skeleton><div class="page-skeleton-title"><app-ui-skeleton type="text"></app-ui-skeleton><app-ui-skeleton type="button"></app-ui-skeleton></div><app-ui-skeleton type="card" [cards]="4"></app-ui-skeleton><section class="page-skeleton-table"><app-ui-skeleton type="table" [rows]="5" [columns]="6"></app-ui-skeleton></section></main>
+<div *ngIf="visible" class="page-skeleton-overlay" [class.public-layout]="layout === 'public'" [class.auth-layout]="layout === 'auth'" [class.app-layout]="layout === 'app'" aria-live="polite" aria-label="Memuat halaman">
+  <ng-container [ngSwitch]="layout">
+    <main *ngSwitchCase="'public'" class="page-skeleton-public">
+      <app-ui-skeleton type="navbar"></app-ui-skeleton>
+      <section class="public-skeleton-hero"><div><app-ui-skeleton type="text"></app-ui-skeleton><app-ui-skeleton type="text"></app-ui-skeleton><app-ui-skeleton type="button"></app-ui-skeleton></div><app-ui-skeleton type="card" [cards]="1"></app-ui-skeleton></section>
+    </main>
+    <main *ngSwitchCase="'auth'" class="page-skeleton-auth">
+      <div class="auth-skeleton-brand"><app-ui-skeleton type="navbar"></app-ui-skeleton><app-ui-skeleton type="text"></app-ui-skeleton></div>
+      <section class="auth-skeleton-form"><app-ui-skeleton type="text"></app-ui-skeleton><app-ui-skeleton type="text" [rows]="4"></app-ui-skeleton><app-ui-skeleton type="button"></app-ui-skeleton></section>
+    </main>
+    <ng-container *ngSwitchDefault>
+      <aside class="page-skeleton-sidebar"><app-ui-skeleton type="navbar"></app-ui-skeleton><app-ui-skeleton type="list" [rows]="8"></app-ui-skeleton></aside>
+      <main class="page-skeleton-main"><app-ui-skeleton type="navbar"></app-ui-skeleton><div class="page-skeleton-title"><app-ui-skeleton type="text"></app-ui-skeleton><app-ui-skeleton type="button"></app-ui-skeleton></div><app-ui-skeleton type="card" [cards]="4"></app-ui-skeleton><section class="page-skeleton-table"><app-ui-skeleton type="table" [rows]="5" [columns]="6"></app-ui-skeleton></section></main>
+    </ng-container>
+  </ng-container>
 </div>

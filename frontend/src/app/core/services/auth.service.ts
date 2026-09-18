@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 
 export interface LoginResponse {
   token: string;
+  user_id: number;
   role: string;
   name: string;
   divisi?: string;
@@ -35,6 +36,7 @@ export class AuthService {
   
   constructor(private http: HttpClient, private router: Router, private themeService: ThemeService) {
     const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('user_id');
     const role = localStorage.getItem('role');
     const name = localStorage.getItem('name');
     const divisi = localStorage.getItem('divisi');
@@ -42,7 +44,12 @@ export class AuthService {
     const permissionsStr = localStorage.getItem('permissions');
     const permissions = permissionsStr ? JSON.parse(permissionsStr) : [];
     if (token) {
-      this.currentUserSubject.next({ token, role, name, divisi, jabatan, permissions });
+      const resolvedUserId = userId ? Number(userId) : this.userIdFromToken(token);
+      if (resolvedUserId) {
+        localStorage.setItem('user_id', String(resolvedUserId));
+        this.themeService.setUserContext(resolvedUserId);
+      }
+      this.currentUserSubject.next({ token, user_id: resolvedUserId, role, name, divisi, jabatan, permissions });
     }
   }
 
@@ -54,6 +61,7 @@ export class AuthService {
       .pipe(
         tap(response => {
           localStorage.setItem('token', response.token);
+          localStorage.setItem('user_id', String(response.user_id));
           localStorage.setItem('role', response.role);
           localStorage.setItem('name', response.name);
           if (response.divisi) {
@@ -68,6 +76,7 @@ export class AuthService {
             localStorage.setItem('permissions', JSON.stringify([]));
           }
           this.currentUserSubject.next(response);
+          this.themeService.setUserContext(response.user_id);
           this.themeService.applyStoredTheme();
         })
       );
@@ -112,6 +121,7 @@ export class AuthService {
   private clearSession(): void {
     this.themeService.clearActiveTheme();
     localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
     localStorage.removeItem('role');
     localStorage.removeItem('name');
     localStorage.removeItem('divisi');
@@ -160,6 +170,17 @@ export class AuthService {
       return Array.isArray(permissions) && permissions.includes(permission);
     } catch (e) {
       return false;
+    }
+  }
+
+  private userIdFromToken(token: string): number | null {
+    try {
+      const payload = token.split('.')[1];
+      if (!payload) return null;
+      const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      return Number.isFinite(Number(decoded.user_id)) ? Number(decoded.user_id) : null;
+    } catch {
+      return null;
     }
   }
 }

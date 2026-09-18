@@ -42,7 +42,7 @@ interface CalendarDay {
   styleUrls: ['./manager-dashboard.component.scss']
 })
 export class ManagerDashboardComponent implements OnInit, OnDestroy {
-  stats: any = { team_members: 0, hadir_hari_ini: 0, belum_absen_hari_ini: 0, izin_pending: 0, weekly: [] };
+  stats: any = { team_members: 0, hadir_hari_ini: 0, belum_absen_hari_ini: 0, izin_pending: 0, weekly: [], missing_work_reports: [] };
 
   currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   selectedDate = this.toDateKey(new Date());

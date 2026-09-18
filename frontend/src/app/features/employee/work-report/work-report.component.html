@@ -22,7 +22,7 @@
         <button class="btn btn-primary" *ngIf="viewMode === 'list'" (click)="openForm()">
           <i class="fas fa-plus" style="margin-right: 0.5rem;"></i> Buat Laporan
         </button>
-        <button class="btn btn-secondary" *ngIf="viewMode === 'form'" (click)="cancelForm()">
+        <button class="btn-outline-primary work-report-secondary-action" *ngIf="viewMode === 'form'" (click)="cancelForm()">
           <i class="fas fa-arrow-left" style="margin-right: 0.5rem;"></i> Kembali
         </button>
       </div>
@@ -115,7 +115,7 @@
                 </td>
                 <td style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.catatan_tambahan || '-'">{{ r.catatan_tambahan || '-' }}</td>
                 <td>
-                  <span class="status-badge status-{{ r.status_sesuai === 'Sesuai' ? 'hadir' : (r.status_sesuai === 'Tidak Sesuai' ? 'alpha' : 'pending') }}">
+                  <span class="status-badge status-{{ r.status_sesuai === 'Sesuai' ? 'hadir' : (r.status_sesuai === 'Tidak Sesuai' || (r.status_sesuai || '').toLowerCase() === 'tidak membuat laporan kerja' ? 'alpha' : 'pending') }}">
                     {{ r.status_sesuai || 'Menunggu' }}
                   </span>
                 </td>
@@ -166,7 +166,10 @@
 
           <div class="form-group">
             <label>Realisasi Kegiatan (Capaian Target, %) <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" formControlName="realisasi_kegiatan" placeholder="Contoh: 100%">
+            <input type="text" class="form-control" formControlName="realisasi_kegiatan" placeholder="Contoh: 100%" inputmode="numeric" maxlength="4" pattern="^(100|[1-9]?\d)%$" aria-describedby="realisasi-kegiatan-error">
+            <div id="realisasi-kegiatan-error" class="text-danger" role="alert" *ngIf="reportForm.get('realisasi_kegiatan')?.touched && reportForm.get('realisasi_kegiatan')?.invalid">
+              Realisasi kegiatan harus berupa angka persentase antara 0% sampai 100%, contoh: 20%, 50%, atau 100%.
+            </div>
           </div>
 
           <div class="form-group">
@@ -226,7 +229,7 @@
           </div>
 
           <div class="form-actions mt-4" style="display: flex; justify-content: flex-end; gap: 1rem;">
-            <button type="button" class="btn btn-secondary" (click)="cancelForm()">Batal</button>
+            <button type="button" class="btn-outline-primary work-report-secondary-action" (click)="cancelForm()">Batal</button>
             <button type="submit" class="btn btn-primary" [disabled]="reportForm.invalid || isSubmitting">
               {{ isSubmitting ? 'Mengirim...' : 'Kirim Laporan' }}
             </button>

@@ -4,6 +4,7 @@ import type Swal from 'sweetalert2';
 @Injectable({ providedIn: 'root' })
 export class AlertService {
   async confirm(title: string, text: string, confirmButtonText = 'Ya, lanjutkan'): Promise<boolean> {
+    const scrollPosition = { left: window.scrollX, top: window.scrollY };
     const sweetAlert = await this.load();
     const result = await sweetAlert.fire({
       icon: 'warning',
@@ -13,12 +14,18 @@ export class AlertService {
       confirmButtonText,
       cancelButtonText: 'Batal',
       reverseButtons: true,
-      focusCancel: true
+      focusCancel: false,
+      focusConfirm: false,
+      heightAuto: false,
+      scrollbarPadding: false,
+      didOpen: () => window.scrollTo(scrollPosition)
     });
+    window.scrollTo(scrollPosition);
     return result.isConfirmed;
   }
 
   async success(title: string, text = ''): Promise<void> {
+    const scrollPosition = { left: window.scrollX, top: window.scrollY };
     const sweetAlert = await this.load();
     await sweetAlert.fire({
       icon: 'success',
@@ -26,8 +33,12 @@ export class AlertService {
       text,
       confirmButtonText: 'OK',
       timer: 1800,
-      timerProgressBar: true
+      timerProgressBar: true,
+      heightAuto: false,
+      scrollbarPadding: false,
+      didOpen: () => window.scrollTo(scrollPosition)
     });
+    window.scrollTo(scrollPosition);
   }
 
   async error(title: string, text = ''): Promise<void> {

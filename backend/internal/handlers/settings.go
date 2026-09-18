@@ -295,6 +295,7 @@ func CreateSchedule(c *fiber.Ctx) error {
 	if err := c.BodyParser(&input); err != nil || input.NamaShift == "" || input.JamMulai == "" || input.JamSelesai == "" || input.Tanggal == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Nama shift, jam mulai, jam selesai, dan tanggal wajib diisi"})
 	}
+	input.NamaShift = strings.TrimSpace(input.NamaShift)
 	if isRegularShiftName(input.NamaShift) {
 		return c.Status(400).JSON(fiber.Map{"error": "Jadwal Reguler harus diatur dari Pengaturan Umum"})
 	}
@@ -369,6 +370,7 @@ func UpdateSchedule(c *fiber.Ctx) error {
 	if err := c.BodyParser(&input); err != nil || input.NamaShift == "" || input.JamMulai == "" || input.JamSelesai == "" || input.Tanggal == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Nama shift, jam mulai, jam selesai, dan tanggal wajib diisi"})
 	}
+	input.NamaShift = strings.TrimSpace(input.NamaShift)
 	if isRegularShiftName(input.NamaShift) {
 		return c.Status(400).JSON(fiber.Map{"error": "Jadwal Reguler harus diatur dari Pengaturan Umum"})
 	}
@@ -1817,7 +1819,9 @@ func UpdateNotificationSettings(c *fiber.Ctx) error {
 	utils.LogAction(userID, "UPDATE", "NotificationSetting", 0, "Admin updated notification settings")
 
 	var updatedSettings []models.NotificationSetting
-	config.DB.Order("role asc, tipe_notifikasi asc").Find(&updatedSettings)
+	if err := config.DB.Order("role asc, tipe_notifikasi asc").Find(&updatedSettings).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch updated notification settings"})
+	}
 	return c.JSON(updatedSettings)
 }
 

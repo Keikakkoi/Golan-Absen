@@ -2,12 +2,12 @@
  * across light/dark mode; surfaces and typography are supplied by CSS tokens. */
 export const DASHBOARD_CHART_THEME = {
   status: {
-    hadir: '#16a34a',
-    terlambat: '#f59e0b',
-    izin: '#2563eb',
-    alfa: '#dc2626',
-    pending: '#eab308',
-    neutral: '#64748b'
+    hadir: '#15803d',
+    terlambat: '#b26b00',
+    izin: '#1d4ed8',
+    alfa: '#b91c1c',
+    pending: '#9a5f00',
+    neutral: '#475569'
   },
   cssTokens: {
     card: 'var(--chart-card-bg)',

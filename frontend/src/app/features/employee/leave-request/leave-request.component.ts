@@ -77,6 +77,10 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     this.isLeaveTypeOpen = !this.isLeaveTypeOpen;
   }
 
+  isCancellable(request: any): boolean {
+    return ['Pending', 'pending_manager_approval', 'pending_hrd_approval'].includes(request?.Status);
+  }
+
   selectLeaveType(type: string, event: MouseEvent): void {
     event.stopPropagation();
     if (type === 'Cuti' && !this.canRequestCuti) return;
@@ -292,11 +296,16 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
     this.selectedFile = null;
   }
 
-  cancelRequest(request: any): void {
-    if (request.Status !== 'Pending' && request.Status !== 'Approved') return;
-    if (!confirm('Batalkan pengajuan ini? Kuota akan dikembalikan.')) return;
+  async cancelRequest(request: any): Promise<void> {
+    if (!this.isCancellable(request)) return;
+    if (!await this.alert.confirm('Batalkan pengajuan?', 'Pengajuan yang dibatalkan tidak dapat diajukan kembali.', 'Ya, batalkan')) return;
     this.http.delete<any>(`${this.baseUrl}/${request.ID}/cancel`, { headers: this.getHeaders() }).subscribe({
-      next: () => { this.loadMyLeaves(); this.loadLeavePolicy(); },
+      next: () => {
+        this.successMessage = 'Pengajuan berhasil dibatalkan.';
+        this.loadMyLeaves();
+        this.loadLeavePolicy();
+        this.alert.success('Pengajuan dibatalkan', 'Status pengajuan telah diubah menjadi Dibatalkan.');
+      },
       error: err => { this.alert.error('Gagal membatalkan pengajuan', err.error?.error || 'Gagal membatalkan pengajuan'); }
     });
   }

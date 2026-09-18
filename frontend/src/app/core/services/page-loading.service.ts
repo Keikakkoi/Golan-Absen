@@ -1,9 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 
+export type PageLayout = 'public' | 'auth' | 'app';
+
 /** Keeps a short, flicker-free loading state for initial API reads. */
 @Injectable({ providedIn: 'root' })
 export class PageLoadingService {
   readonly isVisible = signal(false);
+  readonly layout = signal<PageLayout>('app');
   private pending = 0;
   private showTimer?: ReturnType<typeof setTimeout>;
   private hideTimer?: ReturnType<typeof setTimeout>;
@@ -12,6 +15,10 @@ export class PageLoadingService {
   // from flashing through on pages whose request completes very quickly.
   private readonly showDelay = 0;
   private readonly minimumVisible = 220;
+
+  setLayout(layout: PageLayout): void {
+    this.layout.set(layout);
+  }
 
   begin(): void {
     if (this.hideTimer) { clearTimeout(this.hideTimer); this.hideTimer = undefined; }

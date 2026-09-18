@@ -46,18 +46,19 @@
 }
 
 /* Initial page entrance: keep the hero visible in its normal layout while
-   introducing its content with a subtle, one-time stagger. */
+   introducing its content with a subtle, one-time stagger. Keep elements
+   visible from the first paint so Lighthouse can measure FCP reliably. */
 .public-header { animation:header-enter .65s cubic-bezier(.22,1,.36,1) both; }
-.hero-copy > * { opacity:0; animation:hero-copy-enter .7s cubic-bezier(.22,1,.36,1) both; }
+.hero-copy > * { animation:hero-copy-enter .7s cubic-bezier(.22,1,.36,1) both; }
 .hero-copy > :nth-child(1) { animation-delay:80ms; }
 .hero-copy > :nth-child(2) { animation-delay:150ms; }
 .hero-copy > :nth-child(3) { animation-delay:220ms; }
 .hero-copy > :nth-child(4) { animation-delay:290ms; }
 .hero-copy > :nth-child(5) { animation-delay:360ms; }
 .hero-visual { animation:hero-visual-enter .85s cubic-bezier(.22,1,.36,1) 180ms both; }
-@keyframes header-enter { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
-@keyframes hero-copy-enter { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
-@keyframes hero-visual-enter { from { opacity:0; } to { opacity:1; } }
+@keyframes header-enter { from { transform:translateY(-12px); } to { transform:translateY(0); } }
+@keyframes hero-copy-enter { from { transform:translateY(24px); } to { transform:translateY(0); } }
+@keyframes hero-visual-enter { from { transform:translateY(12px); } to { transform:translateY(0); } }
 
 @media (prefers-reduced-motion: reduce) {
   .public-header,.hero-copy > *,.hero-visual { opacity:1; transform:none; animation:none; }

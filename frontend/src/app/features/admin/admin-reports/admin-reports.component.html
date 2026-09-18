@@ -193,7 +193,7 @@
                 </span>
                 <span *ngIf="req.IsCheckoutMissing" class="status-badge status-warning">⚠ Belum Check-out</span>
               </td>
-              <td style="padding: 0.75rem;"><button type="button" class="btn btn-secondary btn-detail" (click)="openReportDetail(req)">Lihat Detail</button></td>
+              <td style="padding: 0.75rem;"><button type="button" class="icon-button view" (click)="openReportDetail(req)" aria-label="Lihat detail absensi" title="Lihat detail absensi"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button></td>
             </tr>
           </tbody>
         </table>

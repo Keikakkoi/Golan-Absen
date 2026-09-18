@@ -7,8 +7,8 @@
 .dashboard-charts {
   --chart-card-bg: #fff;
   --chart-text: #172b3a;
-  --chart-text-secondary: #526f8c;
-  --chart-text-muted: #64748b;
+  --chart-text-secondary: #415a72;
+  --chart-text-muted: #4b5f76;
   --chart-grid: #cbd5e1;
   --chart-border: #e2e8f0;
   --chart-track: #f1f5f9;
@@ -62,7 +62,7 @@
 .line-chart svg { height:150px; width:100%; overflow:visible; background:repeating-linear-gradient(to bottom,transparent 0 36px,var(--chart-grid) 37px); }
 .line-chart line { stroke:var(--chart-grid); }
 .line-chart polyline { stroke-width:2; vector-effect:non-scaling-stroke; }
-.line-hadir { stroke:#16a34a; }.line-terlambat { stroke:#f59e0b; }.line-izin { stroke:#2563eb; }.line-alfa { stroke:#dc2626; }
+.line-hadir { stroke:#15803d; }.line-terlambat { stroke:#b26b00; }.line-izin { stroke:#1d4ed8; }.line-alfa { stroke:#b91c1c; }
 .line-legend { display:flex; gap:10px; flex-wrap:wrap; font-size:.72rem; color:var(--chart-text-secondary); }
 .line-legend i,.legend-list i { width:9px; height:9px; display:inline-block; border-radius:50%; margin-right:5px; }
 .donut-layout { display:flex; align-items:center; gap:18px; min-height:190px; }

@@ -170,7 +170,7 @@ func UploadAdminInternshipDocument(c *fiber.Ctx) error {
 	}
 	now := time.Now()
 	if findErr != nil {
-		doc.UserID = user.ID
+		doc.UserID = &user.ID
 		doc.DocumentType = docType
 	} else {
 	}

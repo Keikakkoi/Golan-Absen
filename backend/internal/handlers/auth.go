@@ -28,6 +28,7 @@ type LoginRequest struct {
 
 type LoginResponse struct {
 	Token   string      `json:"token"`
+	UserID  uint        `json:"user_id"`
 	Role    models.Role `json:"role"`
 	Name    string      `json:"name"`
 	Divisi  string      `json:"divisi"`
@@ -104,6 +105,7 @@ func Login(c *fiber.Ctx) error {
 
 	return c.JSON(LoginResponse{
 		Token:   token,
+		UserID:  user.ID,
 		Role:    user.Role,
 		Name:    user.Nama,
 		Divisi:  divisi,

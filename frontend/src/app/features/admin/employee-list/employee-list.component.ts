@@ -10,6 +10,7 @@ import { ReportExportService } from '../../../core/services/report-export.servic
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
+import { EMPLOYEE_CSV_HEADERS } from './employee-csv.schema';
 
 @Component({
   selector: 'app-employee-list',
@@ -121,28 +122,30 @@ export class EmployeeListComponent implements OnInit {
   }
 
   private buildEmployeeReport(): { headers: string[]; rows: string[][]; data: Record<string, string>[] } {
-    const headers = ['Kode karyawan', 'NIK/NIP', 'Nama lengkap', 'Jenis kelamin', 'Tempat dan tanggal lahir', 'Nomor telepon', 'Email', 'Alamat', 'Jabatan', 'Departemen', 'Status karyawan', 'Tanggal masuk', 'Shift kerja', 'Lokasi Rumah', 'Tanggal dibuat'];
+    // CSV uses the same ordered, machine-readable contract as the API importer.
+    // Report/PDF labels remain separate because those formats are for presentation.
+    const headers = [...EMPLOYEE_CSV_HEADERS];
     const value = (emp: any, ...keys: string[]): string => {
       for (const key of keys) {
         const parts = key.split('.'); let current = emp;
         for (const part of parts) current = current?.[part];
         if (current !== undefined && current !== null && current !== '') return String(current);
       }
-      return '-';
+      return '';
     };
     const date = (raw: any): string => {
-      if (!raw || String(raw).startsWith('0001-01-01')) return '-';
-      const parsed = new Date(raw); return Number.isNaN(parsed.getTime()) ? '-' : new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(parsed);
+      if (!raw || String(raw).startsWith('0001-01-01')) return '';
+      const parsed = new Date(raw); return Number.isNaN(parsed.getTime()) ? '' : new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(parsed);
     };
     const rows = this.filteredEmployees.map((emp) => [
-      value(emp, 'Employee.employee_code', 'Employee.EmployeeCode', 'employee_code'), value(emp, 'Employee.NIK', 'NIK'), value(emp, 'Nama', 'name'), value(emp, 'Employee.JenisKelamin', 'JenisKelamin', 'jenis_kelamin'),
-      (() => { const place = value(emp, 'Employee.TempatLahir', 'tempat_lahir'); const birthDate = date(emp.Employee?.TanggalLahir); return place === '-' && birthDate === '-' ? '-' : `${place} / ${birthDate}`; })(),
-      value(emp, 'Employee.NomorTelepon', 'NomorTelepon', 'nomor_telepon', 'phone'), value(emp, 'Email', 'email'), value(emp, 'Employee.Alamat', 'alamat', 'Alamat'),
-      value(emp, 'Employee.Position.NamaJabatan', 'Jabatan'), value(emp, 'Employee.Division.NamaDivisi', 'Departemen'), this.statusLabel(value(emp, 'Status', 'status')),
-      date(emp.Employee?.TanggalBergabung), value(emp, 'Employee.ShiftKerja', 'ShiftKerja', 'shift_kerja'), value(emp, 'Employee.HomeLocation.GoogleMapsURL', 'Employee.HomeLocation.google_maps_url'), date(emp.CreatedAt || emp.created_at)
+      value(emp, 'Employee.employee_code', 'Employee.EmployeeCode', 'employee_code'), value(emp, 'Employee.NIK', 'NIK'), value(emp, 'Nama', 'name'), value(emp, 'Email', 'email'),
+      value(emp, 'Role', 'role'), value(emp, 'Status', 'status'), value(emp, 'Employee.JenisKelamin', 'JenisKelamin', 'jenis_kelamin'), value(emp, 'Employee.TempatLahir', 'tempat_lahir'),
+      date(emp.Employee?.TanggalLahir), value(emp, 'Employee.NomorTelepon', 'NomorTelepon', 'nomor_telepon', 'phone'), value(emp, 'Employee.Alamat', 'alamat', 'Alamat'),
+      value(emp, 'Employee.ShiftKerja', 'ShiftKerja', 'shift_kerja'), value(emp, 'Employee.DivisionID', 'division_id'), value(emp, 'Employee.PositionID', 'position_id'),
+      date(emp.Employee?.TanggalBergabung), value(emp, 'Employee.HomeLatitude', 'home_latitude'), value(emp, 'Employee.HomeLongitude', 'home_longitude'), value(emp, 'Employee.HomeLocation.GoogleMapsURL', 'Employee.HomeLocation.google_maps_url'),
+      value(emp, 'ManagerID', 'manager_id'), value(emp, 'ProjectID', 'project_id'), value(emp, 'TeamID', 'team_id'), date(emp.InternshipStartDate), date(emp.InternshipEndDate), value(emp, 'MentorName', 'mentor_name'), value(emp, 'InstitutionName', 'institution_name'), ''
     ]);
-    const keys = ['kode_karyawan', 'nik_nip', 'nama_lengkap', 'jenis_kelamin', 'tempat_dan_tanggal_lahir', 'nomor_telepon', 'email', 'alamat', 'jabatan', 'departemen', 'status_karyawan', 'tanggal_masuk', 'shift_kerja', 'lokasi_rumah', 'tanggal_dibuat'];
-    const data = rows.map(row => Object.fromEntries(keys.map((key, i) => [key, row[i]])));
+    const data = rows.map(row => Object.fromEntries(headers.map((key, i) => [key, row[i]])));
     return { headers, rows, data };
   }
 
@@ -196,7 +199,11 @@ export class EmployeeListComponent implements OnInit {
   }
 
   onRoleChange(): void {
-    if (this.formData.role === 'MAGANG') {
+    // Manajer tidak boleh memiliki atasan; reset nilai lama agar tidak ikut tersimpan.
+    this.formData.manager_id = null;
+    if (this.formData.role === 'MANAJER') {
+      this.formData.mentor_name = '';
+    } else if (this.formData.role === 'MAGANG') {
       this.syncInternManagerName();
     }
   }
@@ -328,8 +335,22 @@ export class EmployeeListComponent implements OnInit {
 
   private async uploadEmployeesCsv(file: File): Promise<void> {
     if (!await this.alert.confirm('Unggah data karyawan?', 'Data dari file CSV akan ditambahkan ke sistem.')) return;
+    // FilePreviewComponent clears the native input after emitting the file.
+    // Clone the bytes first so FormData always uploads a fresh, readable file
+    // stream instead of relying on a browser File object tied to that input.
+    let fileBytes: ArrayBuffer;
+    try {
+      fileBytes = await file.arrayBuffer();
+    } catch {
+      this.alert.error('Unggah gagal', 'Isi file CSV tidak dapat dibaca oleh browser.');
+      return;
+    }
+    if (fileBytes.byteLength === 0) {
+      this.alert.error('Unggah gagal', 'CSV kosong.');
+      return;
+    }
     const body = new FormData();
-    body.append('file', file);
+    body.append('file', new File([fileBytes], file.name, { type: 'text/csv' }), file.name);
     this.http.post<any>(`${this.baseUrl}/import`, body, { headers: this.getHeaders() })
       .subscribe({
         next: (res) => {
@@ -421,7 +442,7 @@ export class EmployeeListComponent implements OnInit {
       home_latitude: emp.Employee?.HomeLatitude,
       home_longitude: emp.Employee?.HomeLongitude,
       home_google_maps_url: emp.Employee?.HomeLocation?.GoogleMapsURL || '',
-      manager_id: emp.ManagerID || null,
+      manager_id: emp.Role === 'MANAJER' ? null : (emp.ManagerID || null),
       project_id: emp.ProjectID || null,
       team_id: emp.TeamID || '',
       internship_start_date: emp.InternshipStartDate ? emp.InternshipStartDate.split('T')[0] : '',
@@ -463,6 +484,9 @@ export class EmployeeListComponent implements OnInit {
   }
 
   async saveEmployee(): Promise<void> {
+    if (this.formData.role === 'MANAJER') {
+      this.formData.manager_id = null;
+    }
     if (this.isPhotoValidationPending) {
       await this.alert.error('Validasi pas foto belum selesai', 'Tunggu sampai pemeriksaan dimensi foto selesai sebelum menyimpan.');
       return;
@@ -555,18 +579,23 @@ export class EmployeeListComponent implements OnInit {
     }
   }
 
-  async deleteEmployee(id: number): Promise<void> {
+  /** The directory endpoint identifies an employee by User.ID (emp.ID). */
+  async deleteEmployee(userId: number): Promise<void> {
     if (!await this.alert.confirm('Hapus data karyawan?', 'Data karyawan yang dihapus tidak dapat dipulihkan.', 'Ya, hapus')) return;
 
     const headers = this.getHeaders();
-    this.http.delete<any>(`${this.baseUrl}/${id}`, { headers })
+    this.http.delete<any>(`${this.baseUrl}/${userId}`, { headers })
       .subscribe({
         next: () => {
           this.loadEmployees();
-          this.alert.success('Data karyawan dihapus');
+          this.alert.success('Data karyawan berhasil dihapus');
         },
         error: (err) => {
-          this.alert.error('Gagal menghapus data', err.error?.error || 'Unknown error');
+          const backendMessage = typeof err.error === 'string'
+            ? err.error
+            : err.error?.error || err.error?.message || err.message || 'Gagal menghapus data karyawan';
+          const details = err.error?.details;
+          this.alert.error('Gagal menghapus data', details ? `${backendMessage}\n${details}` : backendMessage);
         }
       });
   }

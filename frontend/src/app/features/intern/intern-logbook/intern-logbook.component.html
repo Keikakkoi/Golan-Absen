@@ -9,7 +9,7 @@
     </div>
     <div *ngIf="message" class="alert alert-success">{{ message }}</div>
     <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
-    <section class="golan-card form-card">
+    <section #editLogbookForm class="golan-card form-card">
       <div class="panel-heading">
         <h3>{{ editingId ? "Edit Logbook" : "Catatan Hari Ini" }}</h3>
         <button
@@ -49,6 +49,10 @@
         <div *ngIf="deadlineError" class="alert alert-danger">
           {{ deadlineError }}
         </div>
+        <div *ngIf="dateAlreadyLogged" class="alert alert-warning">
+          Logbook untuk tanggal ini sudah dibuat. Logbook hanya boleh dibuat satu kali per hari.
+          Jika statusnya masih Draft, silakan gunakan tombol Edit pada riwayat logbook.
+        </div>
         <label class="field-group"
           ><span>Deskripsi kegiatan</span
           ><textarea
@@ -74,6 +78,7 @@
             accept="image/jpeg,image/png,image/webp"
             multiple
             (change)="onScreenshotsSelected($event)" />
+          <small *ngIf="selectedScreenshots.length">{{ selectedScreenshots.length }} file terpilih dari maksimal 3</small>
           <div
             class="screenshot-preview-grid"
             *ngIf="screenshotPreviews.length"
@@ -87,15 +92,15 @@
         <div style="display: flex; gap: 8px; margin-top: 1rem">
           <button
             type="button"
-            class="btn-secondary"
-            [disabled]="saving"
+            class="btn-outline-primary"
+            [disabled]="saving || dateAlreadyLogged"
             (click)="save('draft')"
           >
             <i class="fas fa-save"></i> Simpan Draft</button
           ><button
             type="button"
             class="btn-primary"
-            [disabled]="saving"
+            [disabled]="saving || dateAlreadyLogged"
             (click)="save('submitted')"
           >
             <i class="fas fa-paper-plane"></i>
@@ -229,19 +234,21 @@
                 }}
               </td>
               <td data-label="Screenshot">
-                <span
-                  *ngFor="let image of item.attachments || item.Attachments"
-                  class="report-thumb"
-                  ><a [href]="image.file_url || image.FileURL" target="_blank"
-                    ><img
-                      [src]="image.file_url || image.FileURL"
-                      [alt]="image.file_name || image.FileName" /></a></span
-                ><span
-                  *ngIf="
-                    !(item.attachments?.length || item.Attachments?.length)
-                  "
-                  >-</span
-                >
+                <div class="logbook-screenshot-list">
+                  <span
+                    *ngFor="let image of item.attachments || item.Attachments"
+                    class="report-thumb"
+                    ><a [href]="image.file_url || image.FileURL" target="_blank"
+                      ><img
+                        [src]="image.file_url || image.FileURL"
+                        [alt]="image.file_name || image.FileName" /></a></span
+                  ><span
+                    *ngIf="
+                      !(item.attachments?.length || item.Attachments?.length)
+                    "
+                    >-</span
+                  >
+                </div>
               </td>
               <td data-label="Status">
                 <span
@@ -257,41 +264,14 @@
               </td>
               <td data-label="Aksi">
                 <div class="intern-logbook-actions">
-                  <button
-                    type="button"
-                    class="btn-secondary btn-small"
-                    (click)="viewDetail(item)"
-                  >
-                    <i class="fas fa-eye"></i> Detail</button
-                  ><button
-                    type="button"
-                    class="btn-secondary btn-small"
-                    *ngIf="
-                      (item.status_logbook || item.StatusLogbook) === 'draft' ||
-                      (item.status_logbook || item.StatusLogbook) === 'rejected'
-                    "
-                    (click)="edit(item)"
-                  >
-                    <i class="fas fa-edit"></i> Edit</button
-                  ><button
-                    type="button"
-                    class="btn-danger btn-small"
-                    *ngIf="
-                      (item.status_logbook || item.StatusLogbook) === 'draft' ||
-                      (item.status_logbook || item.StatusLogbook) === 'rejected'
-                    "
-                    (click)="deleteLogbook(item)"
-                    style="
-                      background-color: #dc3545;
-                      color: #fff;
-                      border: none;
-                      border-radius: 4px;
-                      padding: 4px 8px;
-                      font-size: 12px;
-                      cursor: pointer;
-                    "
-                  >
-                    <i class="fas fa-trash"></i> Hapus
+                  <button type="button" class="icon-button view" (click)="viewDetail(item)" aria-label="Lihat detail logbook" title="Lihat detail logbook">
+                    <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+                  </button>
+                  <button *ngIf="canEdit(item)" type="button" class="icon-button edit" (click)="edit(item)" aria-label="Edit logbook" title="Edit logbook">
+                    <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
+                  </button>
+                  <button *ngIf="canDelete(item)" type="button" class="icon-button delete" (click)="deleteLogbook(item)" aria-label="Hapus logbook" title="Hapus logbook">
+                    <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg>
                   </button>
                 </div>
               </td>

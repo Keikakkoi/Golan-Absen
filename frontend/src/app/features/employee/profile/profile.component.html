@@ -30,11 +30,17 @@
     <div class="content-grid" style="grid-template-columns: 1fr;">
       <div class="golan-card">
         <app-ui-skeleton *ngIf="isLoading" type="profile" [rows]="6" ariaLabel="Memuat profil pengguna"></app-ui-skeleton>
-        <div *ngIf="!isLoading && !profileData && errorMessage" class="alert alert-danger" style="color: red; margin-bottom: 1rem; padding: 12px; background: #fdf2f2; border-radius: 6px;">{{ errorMessage }}</div>
+        <div *ngIf="!isLoading && !profileData" class="profile-state profile-state-error" role="alert">
+          <p>{{ errorMessage || 'Data profil belum tersedia.' }}</p>
+          <button type="button" class="btn-primary" (click)="retryProfile()">Coba lagi</button>
+        </div>
         
         <div *ngIf="!isLoading && profileData">
           <div *ngIf="successMessage" class="alert alert-success" style="color: #2F80ED; margin-bottom: 1rem; padding: 12px; background: #E8F2FF; border-radius: 6px;">{{ successMessage }}</div>
           <div *ngIf="errorMessage" class="alert alert-danger" style="color: red; margin-bottom: 1rem; padding: 12px; background: #fdf2f2; border-radius: 6px;">{{ errorMessage }}</div>
+          <div *ngIf="errorMessage" class="profile-retry-row">
+            <button type="button" class="btn-secondary" (click)="retryProfile()">Coba lagi</button>
+          </div>
 
           <!-- TAB 1: Profil Saya (Metadata, Division, Position, Address, Home Geofence Map) -->
           <div *ngIf="activeTab === 'profile'" class="tab-content-panel">
@@ -235,7 +241,7 @@
                 <label for="inAppNotif" style="font-weight: 500; cursor: pointer;">Tampilkan Notifikasi dalam Aplikasi</label>
               </div>
 
-              <button type="submit" class="btn-secondary">
+              <button type="submit" class="btn-primary">
                 Simpan Preferensi
               </button>
             </form>

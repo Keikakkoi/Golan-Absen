@@ -27,6 +27,8 @@ export class AttendanceService {
     formData.append('latitude', latitude.toString());
     formData.append('longitude', longitude.toString());
     formData.append('accuracy', accuracy.toString());
+    formData.append('location_timestamp', new Date().toISOString());
+    formData.append('location_source', 'browser-geolocation');
     if (selfieBlob) {
       formData.append('selfie', selfieBlob, 'selfie.jpg');
     }
@@ -37,14 +39,17 @@ export class AttendanceService {
     });
   }
 
-  checkOut(latitude: number, longitude: number, accuracy: number, selfieBlob: Blob | null): Observable<any> {
+  checkOut(latitude: number, longitude: number, accuracy: number, selfieBlob: Blob | null, tipeKerja: string = 'WFO'): Observable<any> {
     const formData = new FormData();
     formData.append('latitude', latitude.toString());
     formData.append('longitude', longitude.toString());
     formData.append('accuracy', accuracy.toString());
+    formData.append('location_timestamp', new Date().toISOString());
+    formData.append('location_source', 'browser-geolocation');
     if (selfieBlob) {
       formData.append('selfie', selfieBlob, 'selfie.jpg');
     }
+    formData.append('tipe_kerja', tipeKerja);
 
     return this.http.post<any>(`${this.apiUrl}/checkout`, formData, {
       headers: this.getHeaders()

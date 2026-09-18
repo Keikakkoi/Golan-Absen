@@ -38,9 +38,9 @@
     th,
     td {
       box-sizing: border-box;
-      padding: 10px 12px;
-      vertical-align: top;
-      line-height: 1.4;
+      padding: 8px 10px;
+      vertical-align: middle;
+      line-height: 1.25;
       overflow-wrap: anywhere;
       word-break: normal;
       white-space: normal !important;
@@ -52,22 +52,27 @@
     }
 
     /* Explicit widths keep every header aligned with its data column. */
-    th:nth-child(1), td:nth-child(1) { width: 52px; text-align: center; }
-    th:nth-child(2), td:nth-child(2) { width: 145px; }
-    th:nth-child(3), td:nth-child(3) { width: 150px; }
-    th:nth-child(4), td:nth-child(4) { width: 125px; }
-    th:nth-child(5), td:nth-child(5) { width: 125px; }
-    th:nth-child(6), td:nth-child(6) { width: 190px; }
-    th:nth-child(7), td:nth-child(7) { width: 190px; }
-    th:nth-child(8), td:nth-child(8) { width: 270px; }
-    th:nth-child(9), td:nth-child(9) { width: 170px; }
-    th:nth-child(10), td:nth-child(10) { width: 170px; }
-    th:nth-child(11), td:nth-child(11) { width: 170px; }
-    th:nth-child(12), td:nth-child(12) { width: 105px; }
-    th:nth-child(13), td:nth-child(13) { width: 170px; }
-    th:nth-child(14), td:nth-child(14) { width: 165px; }
-    th:nth-child(15), td:nth-child(15) { width: 155px; }
-    th:nth-child(16), td:nth-child(16) { width: 165px; }
+    th:nth-child(1), td:nth-child(1) { width: 45px; text-align: center; }
+    th:nth-child(2), td:nth-child(2) { width: 120px; }
+    th:nth-child(3), td:nth-child(3) { width: 135px; }
+    th:nth-child(4), td:nth-child(4) { width: 105px; }
+    th:nth-child(5), td:nth-child(5) { width: 105px; }
+    th:nth-child(6), td:nth-child(6) { width: 125px; }
+    th:nth-child(7), td:nth-child(7) { width: 145px; }
+    th:nth-child(8), td:nth-child(8) { width: 190px; }
+    th:nth-child(9), td:nth-child(9) { width: 135px; }
+    th:nth-child(10), td:nth-child(10) { width: 120px; }
+    th:nth-child(11), td:nth-child(11) { width: 130px; }
+    th:nth-child(12), td:nth-child(12) { width: 90px; }
+    th:nth-child(13), td:nth-child(13) { width: 115px; }
+    th:nth-child(14), td:nth-child(14) { width: 130px; }
+    th:nth-child(15), td:nth-child(15) { width: 135px; }
+    th:nth-child(16), td:nth-child(16) { width: 120px; }
+    th:nth-child(17), td:nth-child(17) { width: 150px; }
+
+    tbody tr {
+      height: auto;
+    }
 
     .text-cell {
       white-space: pre-wrap !important;
@@ -85,6 +90,24 @@
       width: 54px;
       height: 44px;
     }
+
+    /* The legacy late marker shares the evidence cell in older markup; keep
+       timing information visible only in the dedicated Status Waktu cell. */
+    td:nth-child(15) > .status-pill { display: none; }
+    td:nth-child(15):not(:has(.report-thumb))::after {
+      content: 'Belum ada laporan kerja';
+      display: inline-block;
+      padding: 7px 9px;
+      color: #991b1b;
+      background: #fef2f2;
+      border: 1px dashed #fca5a5;
+      border-radius: 7px;
+      font-size: .78rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    td:nth-child(16) .status-pill { white-space: nowrap; }
 
     select {
       width: 100% !important;
@@ -215,6 +238,17 @@
       border-color: transparent;
       box-shadow: none;
     }
+  }
+
+  .validation-locked {
+    display: block;
+    margin-bottom: 6px;
+    font-size: .72rem;
+  }
+
+  .status-success {
+    background: #ecfdf5;
+    color: #047857;
   }
 }
 

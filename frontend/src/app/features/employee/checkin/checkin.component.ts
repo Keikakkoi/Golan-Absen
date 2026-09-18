@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild, OnDestroy, AfterViewInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, OnDestroy, AfterViewInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AttendanceService } from '../../../core/services/attendance.service';
@@ -61,6 +61,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   map!: L.Map;
   marker!: L.Marker;
   circle!: L.Circle;
+  accuracyCircle!: L.Circle;
   homeCircle!: L.Circle;
   homeMarker!: L.Marker;
   officeMarker!: L.Marker;
@@ -73,6 +74,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   currentLat = 0;
   currentLng = 0;
   currentAccuracy = 0;
+  locationTimestamp = 0;
+  locationSource = '';
   distanceToOffice = 0;
   isGpsActive = false;
   statusText = 'Menghubungkan GPS...';
@@ -90,7 +93,14 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   isHardwareInitialized = false;
   
   tipeKerja: string = 'WFO';
-  workTypes: any[] = [];
+  private readonly fallbackWorkTypes = [
+    { Nama: 'WFO', IsHomeBase: false },
+    { Nama: 'WFH', IsHomeBase: true },
+    { Nama: 'Dinas Luar', IsHomeBase: false }
+  ];
+  // Keep the selector usable even before the API response arrives.
+  workTypes: any[] = this.fallbackWorkTypes.map(workType => ({ ...workType }));
+  openTipeKerja = false;
   
   stream!: MediaStream;
   watchId: number | null = null;
@@ -174,6 +184,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
           this.leaveStatus = this.hasLeaveToday ? todayRecord.Status : '';
           if (this.hasCheckedIn && !this.hasCheckedOut) {
             this.tipeKerja = todayRecord.TipeKerja;
+            this.updateMapGeofences();
+            this.checkRadius();
           }
         }
         
@@ -304,27 +316,52 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private loadWorkTypes(): void {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!token) {
+      this.applyWorkTypes(this.fallbackWorkTypes);
+      return;
+    }
     
     this.http.get<any[]>('http://localhost:8080/api/v1/worktypes', {
       headers: { Authorization: `Bearer ${token}` }
     }).subscribe({
       next: (data) => {
-        this.workTypes = data;
-        if (this.workTypes.length > 0) {
-          const wfo = this.workTypes.find(w => w.Nama === 'WFO');
-          // Jika sudah check-in hari ini, jangan timpa tipeKerja yang sudah diambil dari record hari ini
-          if (!this.hasCheckedIn) {
-            this.tipeKerja = wfo ? wfo.Nama : this.workTypes[0].Nama;
-          } else if (this.todayRecord?.TipeKerja) {
-            this.tipeKerja = this.todayRecord.TipeKerja;
-          }
-        }
-        // Pastikan geofence diperbarui setelah workTypes/tipoKerja diset
-        this.updateMapGeofences();
+        this.applyWorkTypes(data);
       },
-      error: (err) => console.error('Failed to load work types', err)
+      error: (err) => {
+        console.error('Failed to load work types', err);
+        this.applyWorkTypes(this.fallbackWorkTypes);
+      }
     });
+  }
+
+  private applyWorkTypes(apiWorkTypes: any[] | null | undefined): void {
+    const workTypes = Array.isArray(apiWorkTypes) ? apiWorkTypes.filter(w => w?.Nama) : [];
+    const merged = [...workTypes];
+
+    // The API remains the source for custom types, while the three built-in
+    // choices remain available if an old/empty database or stale cache omits
+    // one of them.
+    for (const fallback of this.fallbackWorkTypes) {
+      if (!merged.some(workType => workType.Nama === fallback.Nama)) {
+        merged.push({ ...fallback });
+      }
+    }
+
+    // A record from today wins over any default selected while requests race.
+    // Keep its option visible even if an administrator removed that type later.
+    const recordedType = this.todayRecord?.TipeKerja;
+    if (this.hasCheckedIn && recordedType && !merged.some(workType => workType.Nama === recordedType)) {
+      merged.push({ Nama: recordedType, IsHomeBase: recordedType === 'WFH' });
+    }
+
+    this.workTypes = merged;
+    if (this.hasCheckedIn && recordedType) {
+      this.tipeKerja = recordedType;
+    } else {
+      this.tipeKerja = merged.find(workType => workType.Nama === 'WFO')?.Nama || merged[0]?.Nama || 'WFO';
+    }
+    this.updateMapGeofences();
+    this.checkRadius();
   }
 
   private loadOfficeInfo(): void {
@@ -427,6 +464,53 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     this.checkRadius();
   }
 
+  toggleTipeKerja(): void {
+    if (this.hasCheckedIn) return;
+    this.openTipeKerja = !this.openTipeKerja;
+  }
+
+  selectTipeKerja(value: string): void {
+    if (this.hasCheckedIn) return;
+    this.tipeKerja = value;
+    this.openTipeKerja = false;
+    this.onTipeKerjaChange();
+  }
+
+  onTipeKerjaKeydown(event: KeyboardEvent): void {
+    if (this.hasCheckedIn) return;
+
+    const currentIndex = Math.max(0, this.workTypes.findIndex(wt => wt.Nama === this.tipeKerja));
+    let nextIndex = currentIndex;
+
+    if (event.key === 'Escape') {
+      this.openTipeKerja = false;
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.toggleTipeKerja();
+      return;
+    }
+    if (event.key === 'ArrowDown') nextIndex = Math.min(this.workTypes.length - 1, currentIndex + 1);
+    else if (event.key === 'ArrowUp') nextIndex = Math.max(0, currentIndex - 1);
+    else return;
+
+    event.preventDefault();
+    const nextType = this.workTypes[nextIndex];
+    if (nextType) this.selectTipeKerja(nextType.Nama);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.event-type-picker')) this.openTipeKerja = false;
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.openTipeKerja = false;
+  }
+
   private startLocationTracking(): void {
     if (!navigator.geolocation) {
       this.locationError = 'Geolocation tidak didukung oleh browser Anda.';
@@ -436,11 +520,25 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    this.statusText = 'Mencari lokasi GPS...';
     this.watchId = navigator.geolocation.watchPosition(
       (position) => {
+        const accuracy = Number(position.coords.accuracy);
+        if (!Number.isFinite(accuracy) || accuracy < 0) return;
+
+        // Keep the best fix during acquisition. Once a usable fix exists,
+        // accept a newer nearby-quality fix so a user who moves is not stuck
+        // on an old coordinate.
+        const shouldUseFix = this.locationTimestamp === 0
+          || accuracy < this.currentAccuracy
+          || (position.timestamp > this.locationTimestamp && accuracy <= Math.max(this.currentAccuracy * 1.5, 30));
+        if (!shouldUseFix) return;
+
         this.currentLat = position.coords.latitude;
         this.currentLng = position.coords.longitude;
-        this.currentAccuracy = position.coords.accuracy;
+        this.currentAccuracy = accuracy;
+        this.locationTimestamp = position.timestamp || Date.now();
+        this.locationSource = accuracy <= 30 ? 'GPS akurasi tinggi' : 'GPS/perangkat';
         this.isGpsActive = true;
         this.locationError = '';
 
@@ -453,7 +551,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         this.locationError = `Aktifkan GPS untuk melanjutkan absensi. (Err: ${error.message || error.code})`;
         this.statusText = `GPS Tidak Aktif · Err: ${error.message || error.code}`;
       },
-      { enableHighAccuracy: true, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
     );
   }
 
@@ -467,6 +565,14 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       }).addTo(this.map).bindPopup('Posisi Karyawan (Anda)');
       
       this.map.setView([this.currentLat, this.currentLng], 17);
+    }
+    if (this.accuracyCircle) {
+      this.accuracyCircle.setLatLng([this.currentLat, this.currentLng]).setRadius(this.currentAccuracy);
+    } else {
+      this.accuracyCircle = L.circle([this.currentLat, this.currentLng], {
+        color: '#2F80ED', fillColor: '#2F80ED', fillOpacity: 0.08, weight: 1,
+        radius: this.currentAccuracy
+      }).addTo(this.map);
     }
   }
 
@@ -497,7 +603,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         const homeLatLng = L.latLng(hLat, hLng);
         const homeDistance = Math.round(userLatLng.distanceTo(homeLatLng));
         const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 100);
-        this.isLocationValid = homeDistance <= homeRadius;
+        this.isLocationValid = homeDistance <= homeRadius + Math.min(this.currentAccuracy, 50);
         if (!this.isLocationValid) {
           this.locationError = 'Posisi Anda di luar radius rumah.';
         } else {
@@ -512,19 +618,23 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         this.statusText = 'Memuat profil karyawan...';
       }
     } else if (this.tipeKerja === 'WFO') {
-      this.isLocationValid = this.distanceToOffice <= this.radius;
+      this.isLocationValid = this.distanceToOffice <= this.radius + Math.min(this.currentAccuracy, 50);
       if (!this.isLocationValid) {
-        this.locationError = 'Posisi Anda di luar radius kantor.';
-      } else {
-        this.locationError = '';
-      }
+          this.locationError = 'Posisi Anda di luar radius kantor.';
+        } else {
+          this.locationError = '';
+        }
       this.statusText = this.isLocationValid
         ? `Lokasi terverifikasi · radius ${this.distanceToOffice} meter dari kantor`
         : `Lokasi di luar radius · radius ${this.distanceToOffice} meter dari kantor`;
     } else {
       this.isLocationValid = true;
       this.locationError = '';
-      this.statusText = `Lokasi terverifikasi (Remote) · radius ${this.distanceToOffice} meter dari kantor`;
+      this.statusText = 'Lokasi tidak memerlukan validasi radius untuk tipe kerja ini';
+    }
+
+    if (this.isGpsActive && this.currentAccuracy > 0 && this.isLocationValid) {
+      this.statusText += ` · akurasi ±${Math.round(this.currentAccuracy)} m`;
     }
   }
 
@@ -623,7 +733,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       this.currentLat, 
       this.currentLng, 
       this.currentAccuracy, 
-      this.capturedBlob
+      this.capturedBlob,
+      this.tipeKerja
     ).subscribe({
       next: () => {
         this.isSubmitting = false;

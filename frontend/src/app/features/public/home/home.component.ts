@@ -4,6 +4,7 @@ import { HttpContext } from '@angular/common/http';
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
+import { environment } from '../../../../environments/environment';
 
 interface AttendanceSummary {
   team_present_percentage: number;
@@ -80,8 +81,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   loadSummary(background = false): void {
-    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
-    this.http.get<AttendanceSummary>('http://localhost:8080/api/v1/public/attendance-summary', { context }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, true);
+    this.http.get<AttendanceSummary>(`${environment.apiUrl}/public/attendance-summary`, { context }).subscribe({
       next: summary => {
         this.summary = summary;
         this.error = false;

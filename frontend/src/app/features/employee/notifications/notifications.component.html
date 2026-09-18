@@ -12,7 +12,7 @@
           <svg aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
           <span>{{ pushBusy ? (pushEnabled ? 'Menonaktifkan...' : 'Mengaktifkan...') : (pushEnabled ? 'Nonaktifkan push' : 'Aktifkan push') }}</span>
         </button>
-        <button class="btn-secondary" type="button" (click)="markAllAsRead()" [disabled]="unreadCount === 0">Tandai semua dibaca</button>
+        <button class="btn-outline-primary" type="button" (click)="markAllAsRead()" [disabled]="unreadCount === 0">Tandai semua dibaca</button>
       </div>
     </div>
 

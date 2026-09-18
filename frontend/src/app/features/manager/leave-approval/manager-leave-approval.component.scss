@@ -1,4 +1,4 @@
-.toolbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px}.toolbar label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:var(--text-dark)}.note-input{min-width:130px}.btn-small{border:0;border-radius:6px;padding:7px 9px;color:#fff;cursor:pointer;margin:2px;font-weight:700}.approve{background:var(--green)}.reject{background:var(--absent)}.status-pill{display:inline-block;border-radius:999px;background:var(--mint-1);padding:5px 9px;font-size:12px;font-weight:700}.muted{color:var(--text-dark-lo)}
+.toolbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px}.toolbar label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:var(--text-dark)}.note-input{min-width:130px}.btn-small{border:1px solid transparent;border-radius:8px;padding:6px 11px;cursor:pointer;margin:2px;font-weight:700;font-size:14px;line-height:1.2;white-space:nowrap;transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease}.leave-approval-actions .btn-small.approve{background:#e1f3e6;color:#159447;border-color:#9bd8ae}.leave-approval-actions .btn-small.reject{background:#fbe3e5;color:#e62f3d;border-color:#f3a9af}.leave-approval-actions .btn-small:hover{box-shadow:0 2px 5px rgba(31,52,73,.12)}.leave-approval-actions .btn-small.approve:hover{background:#d2ecd9}.leave-approval-actions .btn-small.reject:hover{background:#f8d5d9}.action-icon{font-size:18px;font-weight:800;line-height:0;vertical-align:-1px;margin-right:4px}.status-pill{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;border-radius:999px;background:var(--mint-1);padding:5px 11px;font-size:12px;font-weight:700}.muted{color:var(--text-dark-lo)}
 
 /* Keep this table readable on narrow screens; the wrapper is the only scroll area. */
 .leave-approval-table-wrapper {
@@ -12,6 +12,8 @@
 
 .leave-approval-table {
   table-layout: fixed;
+  width: 100%;
+  min-width: 1280px;
 }
 
 .leave-approval-table th,
@@ -31,6 +33,29 @@
   word-break: break-word;
 }
 
+.leave-approval-table .leave-col-member { width: 170px; }
+.leave-approval-table .leave-col-type { width: 110px; }
+.leave-approval-table .leave-col-period { width: 185px; }
+.leave-approval-table .leave-col-reason { width: 220px; }
+.leave-approval-table .leave-col-rejection { width: 220px; }
+.leave-approval-table .leave-col-note { width: 175px; }
+.leave-approval-table .leave-col-action {
+  width: 200px;
+  min-width: 200px;
+}
+
+.leave-approval-table .leave-col-note .note-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.leave-approval-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 @media (max-width: 768px) {
   .leave-approval-table-wrapper {
     overflow-x: auto !important;
@@ -42,6 +67,26 @@
   }
 }
 
+/* Keep the two approval actions compact and equal-sized. */
+.leave-approval-actions .btn-small {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-size: 0;
+}
+
+.leave-approval-actions .btn-small .action-icon {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+
 @media (max-width: 600px) {
   .toolbar{align-items:stretch;flex-direction:column}
 
@@ -50,8 +95,8 @@
   }
 
   .leave-approval-table {
-    min-width: 1px !important;
-    width: 1250px !important;
+    min-width: 1280px !important;
+    width: 1280px !important;
   }
 
   .leave-approval-table th,
@@ -73,7 +118,7 @@
   .leave-approval-table .leave-col-reason { width: 220px !important; }
   .leave-approval-table .leave-col-rejection { width: 220px !important; }
   .leave-approval-table .leave-col-note { width: 175px !important; }
-  .leave-approval-table .leave-col-action { width: 170px !important; }
+  .leave-approval-table .leave-col-action { width: 200px !important; min-width: 200px !important; }
 
   .leave-approval-table .note-input {
     width: 100%;
@@ -90,12 +135,11 @@
   }
 
   .leave-approval-actions .btn-small {
-    width: 100%;
-    min-height: 38px;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
     margin: 0;
-    padding: 8px 10px;
-    line-height: 1.25;
-    white-space: normal;
-    overflow-wrap: anywhere;
+    padding: 0;
   }
 }

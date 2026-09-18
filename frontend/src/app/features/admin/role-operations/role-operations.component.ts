@@ -331,8 +331,12 @@ export class RoleOperationsComponent implements OnInit {
     this.reportExport.downloadCsv(filename, headers, rows);
   }
   exportLogbooks(): void { this.openExportMenu = null; this.exportRows('logbook-magang.csv', ['Tanggal', 'Peserta', 'Tugas', 'Kegiatan', 'Status', 'Catatan Review'], this.logbooks.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || '-', row.review_notes || row.ReviewNotes || '-'])); }
-  exportAttendance(): void { this.openExportMenu = null; this.exportRows('absensi-tim.csv', ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.attendanceRows.map(row => [row.nama, row.tanggal, row.status, row.jam_masuk, row.jam_pulang])); }
-  exportReports(): void { this.openExportMenu = null; this.exportRows('laporan-tim.csv', ['Tanggal', 'Anggota', 'Tugas', 'Kegiatan', 'Status'], this.teamReports.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama, row.tugas || row.Tugas, row.deskripsi_kegiatan || row.DeskripsiKegiatan, row.status_logbook || row.StatusLogbook || row.status_sesuai || row.StatusSesuai])); }
+  private attendanceExportHeaders = ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'];
+  private attendanceExportRows(): any[][] { return this.attendanceRows.map(row => [row.nama, row.tanggal, row.checkout_missing ? 'Belum Check-out' : row.status, row.jam_masuk || '-', row.jam_pulang || '-']); }
+  exportAttendance(): void { this.openExportMenu = null; this.reportExport.downloadCsv('absensi-tim.csv', this.attendanceExportHeaders, this.attendanceExportRows()); }
+  private reportExportHeaders = ['Tanggal', 'Anggota', 'Tugas', 'Kegiatan', 'Status'];
+  private reportExportRows(): any[][] { return this.teamReports.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || row.status_sesuai || row.StatusSesuai || '-']); }
+  exportReports(): void { this.openExportMenu = null; this.reportExport.downloadCsv('laporan-tim.csv', this.reportExportHeaders, this.reportExportRows()); }
   exportCertificates(): void { this.openExportMenu = null; this.exportRows('sertifikat-magang.csv', ['Peserta', 'Institusi', 'Tanggal Selesai', 'Status', 'File'], this.certificates.map(row => [row.nama, row.institution_name, row.internship_end_date, row.uploaded ? 'Sudah diupload' : (!this.isInternshipEnded(row) ? 'Masa magang berlangsung' : 'Belum diupload'), row.file_name])); }
   toggleExportDropdown(menu: string): void { this.openExportMenu = this.openExportMenu === menu ? null : menu; }
   exportLogbooksExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('logbook-magang.xls', ['Tanggal', 'Peserta', 'Tugas', 'Kegiatan', 'Status', 'Catatan Review'], this.logbooks.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || '-', row.review_notes || row.ReviewNotes || '-'])); }
@@ -343,22 +347,20 @@ export class RoleOperationsComponent implements OnInit {
     const rows = this.logbooks.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || '-', row.review_notes || row.ReviewNotes || '-']);
     void this.reportExport.downloadPdf(`laporan-logbook-magang-${this.exportDate()}.pdf`, 'Laporan Logbook Magang', this.exportDate(), headers, rows);
   }
-  exportAttendanceExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('absensi-tim.xls', ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.attendanceRows.map(row => [row.nama, row.tanggal, row.status, row.jam_masuk, row.jam_pulang])); }
+  exportAttendanceExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('absensi-tim.xls', this.attendanceExportHeaders, this.attendanceExportRows()); }
   exportAttendanceJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('absensi-tim.json', this.attendanceRows); }
   exportAttendancePDF(): void {
     this.openExportMenu = null;
-    const headers = ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'];
-    const rows = this.attendanceRows.map(row => [row.nama, row.tanggal, row.status, row.jam_masuk, row.jam_pulang]);
-    void this.reportExport.downloadPdf(`laporan-absensi-tim-${this.exportDate()}.pdf`, 'Laporan Absensi Tim', this.exportDate(), headers, rows);
+    void this.reportExport.downloadPdf(`laporan-absensi-tim-${this.exportDate()}.pdf`, 'Laporan Absensi Tim', this.exportDate(), this.attendanceExportHeaders, this.attendanceExportRows());
   }
-  exportReportsExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('laporan-tim.xls', ['Tanggal', 'Anggota', 'Tugas', 'Kegiatan', 'Status'], this.teamReports.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama, row.tugas || row.Tugas, row.deskripsi_kegiatan || row.DeskripsiKegiatan, row.status_logbook || row.StatusLogbook || row.status_sesuai || row.StatusSesuai])); }
+  printAttendance(): void { this.openExportMenu = null; this.reportExport.printReport('Absensi Tim', this.date, this.attendanceExportHeaders, this.attendanceExportRows()); }
+  exportReportsExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('laporan-tim.xls', this.reportExportHeaders, this.reportExportRows()); }
   exportReportsJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('laporan-tim.json', this.teamReports); }
   exportReportsPDF(): void {
     this.openExportMenu = null;
-    const headers = ['Tanggal', 'Anggota', 'Tugas', 'Kegiatan', 'Status'];
-    const rows = this.teamReports.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || row.status_sesuai || row.StatusSesuai || '-']);
-    void this.reportExport.downloadPdf(`laporan-tim-magang-manejer-${this.exportDate()}.pdf`, 'Laporan Tim MAGANG & MANAJER', this.exportDate(), headers, rows);
+    void this.reportExport.downloadPdf(`laporan-tim-magang-manejer-${this.exportDate()}.pdf`, 'Laporan Tim MAGANG & MANAJER', this.reportDateRange(), this.reportExportHeaders, this.reportExportRows());
   }
+  printReports(): void { this.openExportMenu = null; this.reportExport.printReport('Laporan Tim / Logbook', this.reportDateRange(), this.reportExportHeaders, this.reportExportRows()); }
   exportCertificatesExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('sertifikat-magang.xls', ['Peserta', 'Institusi', 'Tanggal Selesai', 'Status', 'File'], this.certificates.map(row => [row.nama, row.institution_name, row.internship_end_date, row.uploaded ? 'Sudah diupload' : (!this.isInternshipEnded(row) ? 'Masa magang berlangsung' : 'Belum diupload'), row.file_name])); }
   exportCertificatesJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('sertifikat-magang.json', this.certificates); }
   exportCertificatesPDF(): void {
@@ -379,6 +381,11 @@ export class RoleOperationsComponent implements OnInit {
 
   private exportDate(): string {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+  }
+
+  private reportDateRange(): string {
+    if (!this.start && !this.end) return 'Semua tanggal';
+    return `${this.start || 'Awal'} - ${this.end || 'Sekarang'}`;
   }
 
   loadTeam(): void {
@@ -425,6 +432,7 @@ export class RoleOperationsComponent implements OnInit {
   }
 
   get displayedAttendanceRows(): any[] { return this.attendanceServerPaginated ? this.attendanceRows : this.attendanceRows.slice((this.attendancePage - 1) * this.attendancePageSize, this.attendancePage * this.attendancePageSize); }
+  attendanceStatusLabel(status: string): string { return status === 'Tidak hadir' ? 'Alpha' : status; }
   get displayedTeamReports(): any[] { return this.reportsServerPaginated ? this.teamReports : this.teamReports.slice((this.reportsPage - 1) * this.reportsPageSize, this.reportsPage * this.reportsPageSize); }
   attendancePageChanged(page: number): void { this.loadAttendance(page); }
   attendancePageSizeChanged(size: number): void { this.attendancePageSize = size; this.loadAttendance(1); }

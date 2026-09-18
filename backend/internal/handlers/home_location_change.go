@@ -198,7 +198,7 @@ func CreateHomeLocationRequest(c *fiber.Ctx) error {
 		return c.Status(409).JSON(fiber.Map{"error": "Masih ada pengajuan yang menunggu persetujuan"})
 	}
 	old, _ := effectiveHomeLocation(config.DB, employee.ID, time.Now())
-	row := models.HomeLocationChangeRequest{EmployeeID: employee.ID, OldAddress: old.AlamatRumah, OldLatitude: old.LatitudeRumah, OldLongitude: old.LongitudeRumah, OldRadiusMeter: old.RadiusMeter, OldGoogleMapsURL: old.GoogleMapsURL, NewAddress: strings.TrimSpace(input.Address), NewLatitude: input.Latitude, NewLongitude: input.Longitude, NewRadiusMeter: input.Radius, NewGoogleMapsURL: strings.TrimSpace(input.GoogleMapsURL), EffectiveDate: date, Reason: strings.TrimSpace(input.Reason), Status: models.HomeLocationPending}
+	row := models.HomeLocationChangeRequest{EmployeeID: &employee.ID, OldAddress: old.AlamatRumah, OldLatitude: old.LatitudeRumah, OldLongitude: old.LongitudeRumah, OldRadiusMeter: old.RadiusMeter, OldGoogleMapsURL: old.GoogleMapsURL, NewAddress: strings.TrimSpace(input.Address), NewLatitude: input.Latitude, NewLongitude: input.Longitude, NewRadiusMeter: input.Radius, NewGoogleMapsURL: strings.TrimSpace(input.GoogleMapsURL), EffectiveDate: date, Reason: strings.TrimSpace(input.Reason), Status: models.HomeLocationPending}
 	if file, fileErr := c.FormFile("lampiran"); fileErr == nil && file != nil {
 		if file.Size > 5*1024*1024 || storage.Client == nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Lampiran maksimal 5 MB atau penyimpanan belum tersedia"})
@@ -240,7 +240,7 @@ func CreateHomeLocationRequest(c *fiber.Ctx) error {
 
 func GetHomeLocationRequests(c *fiber.Ctx) error {
 	var rows []models.HomeLocationChangeRequest
-	query := config.DB.Preload("Employee.User").Order("created_at desc")
+	query := config.DB.Preload("Employee.User").Preload("Reviewer").Order("created_at desc")
 	if err := query.Find(&rows).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal memuat pengajuan lokasi WFH"})
 	}
@@ -255,6 +255,9 @@ func GetHomeLocationRequests(c *fiber.Ctx) error {
 				Nama string `json:"Nama"`
 			} `json:"User"`
 		} `json:"Employee"`
+		Reviewer *struct {
+			Nama string `json:"Nama"`
+		} `json:"Reviewer,omitempty"`
 	}
 	data := make([]homeLocationRequestView, 0, len(rows))
 	for _, row := range rows {
@@ -264,6 +267,11 @@ func GetHomeLocationRequests(c *fiber.Ctx) error {
 			view.Employee.User = &struct {
 				Nama string `json:"Nama"`
 			}{Nama: row.Employee.User.Nama}
+		}
+		if row.Reviewer != nil {
+			view.Reviewer = &struct {
+				Nama string `json:"Nama"`
+			}{Nama: row.Reviewer.Nama}
 		}
 		data = append(data, view)
 	}

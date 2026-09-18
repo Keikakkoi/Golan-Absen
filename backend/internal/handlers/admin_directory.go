@@ -48,7 +48,9 @@ func GetHomeLocations(c *fiber.Ctx) error {
 	config.DB.Find(&locations)
 	byEmployee := make(map[uint]models.EmployeeHomeLocation)
 	for _, location := range locations {
-		byEmployee[location.EmployeeID] = location
+		if location.EmployeeID != nil {
+			byEmployee[*location.EmployeeID] = location
+		}
 	}
 	result := make([]fiber.Map, 0, len(employees))
 	for _, employee := range employees {
@@ -112,7 +114,7 @@ func UpdateHomeLocation(c *fiber.Ctx) error {
 	var location models.EmployeeHomeLocation
 	err = config.DB.Where("employee_id = ?", employee.ID).First(&location).Error
 	if err != nil {
-		location = models.EmployeeHomeLocation{EmployeeID: employee.ID}
+		location = models.EmployeeHomeLocation{EmployeeID: &employee.ID}
 	}
 	location.LatitudeRumah = input.LatitudeRumah
 	location.LongitudeRumah = input.LongitudeRumah
@@ -187,7 +189,8 @@ func UpsertLeaveQuota(c *fiber.Ctx) error {
 	var quota models.LeaveQuota
 	err = config.DB.Where("employee_id = ? AND tahun = ? AND jenis_cuti = ?", uint(employeeID), input.Tahun, input.JenisCuti).First(&quota).Error
 	if err != nil {
-		quota = models.LeaveQuota{EmployeeID: uint(employeeID), Tahun: input.Tahun, JenisCuti: input.JenisCuti}
+		employeeIDValue := uint(employeeID)
+		quota = models.LeaveQuota{EmployeeID: &employeeIDValue, Tahun: input.Tahun, JenisCuti: input.JenisCuti}
 	}
 	quota.SisaKuota = input.SisaKuota
 	if err := config.DB.Save(&quota).Error; err != nil {

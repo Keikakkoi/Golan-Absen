@@ -131,15 +131,4 @@ export class WorkReportService {
     return this.http.get<WorkReportColumn[]>(`${this.apiUrl}/columns`, { params, headers: this.getHeaders() });
   }
 
-  createColumn(column: Partial<WorkReportColumn>): Observable<WorkReportColumn> {
-    return this.http.post<WorkReportColumn>(`${this.apiUrl}/columns`, column, { headers: this.getHeaders() });
-  }
-
-  updateColumn(id: number, column: Partial<WorkReportColumn>): Observable<WorkReportColumn> {
-    return this.http.put<WorkReportColumn>(`${this.apiUrl}/columns/${id}`, column, { headers: this.getHeaders() });
-  }
-
-  deleteColumn(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/columns/${id}`, { headers: this.getHeaders() });
-  }
 }

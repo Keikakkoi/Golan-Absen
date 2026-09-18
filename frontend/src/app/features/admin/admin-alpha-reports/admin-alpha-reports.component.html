@@ -95,7 +95,7 @@
                   Tindakan Lanjut
                 </span>
               </td>
-              <td style="padding: 1rem;"><button type="button" class="link-button btn-view-detail compact" (click)="toggleDetails(summary.employee_id)">{{ expandedEmployeeId === summary.employee_id ? 'Tutup' : 'Lihat' }}</button></td>
+              <td style="padding: 1rem;"><button type="button" class="icon-button view" (click)="toggleDetails(summary.employee_id)" [attr.aria-label]="expandedEmployeeId === summary.employee_id ? 'Tutup detail alpha' : 'Lihat detail alpha'" [title]="expandedEmployeeId === summary.employee_id ? 'Tutup detail alpha' : 'Lihat detail alpha'"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button></td>
             </tr>
             <tr *ngIf="expandedEmployeeId === summary.employee_id" class="detail-row">
               <td colspan="6">

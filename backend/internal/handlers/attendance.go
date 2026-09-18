@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"mime/multipart"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"absensi-golan-backend/internal/models"
 	auditutils "absensi-golan-backend/internal/utils"
 	"absensi-golan-backend/pkg/minio"
-	"absensi-golan-backend/pkg/utils"
 	"github.com/gofiber/fiber/v2"
 	miniogo "github.com/minio/minio-go/v7"
 )
@@ -45,7 +43,7 @@ func CheckIn(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 
 	var employee models.Employee
-	if err := config.DB.Where("user_id = ?", userID).First(&employee).Error; err != nil {
+	if err := config.DB.Preload("User").Where("user_id = ?", userID).First(&employee).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee profile not found"})
 	}
 
@@ -100,10 +98,12 @@ func CheckIn(c *fiber.Ctx) error {
 	latStr := c.FormValue("latitude")
 	lonStr := c.FormValue("longitude")
 	accStr := c.FormValue("accuracy")
+	logLocationMetadata(c.FormValue("location_timestamp"), c.FormValue("location_source"))
 
-	lat, _ := strconv.ParseFloat(latStr, 64)
-	lon, _ := strconv.ParseFloat(lonStr, 64)
-	acc, _ := strconv.ParseFloat(accStr, 64)
+	lat, lon, acc, locationErr := parseAttendanceLocation(latStr, lonStr, accStr)
+	if locationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": locationErr.Error()})
+	}
 
 	tipeKerja := c.FormValue("tipe_kerja")
 	if tipeKerja == "" {
@@ -118,13 +118,12 @@ func CheckIn(c *fiber.Ctx) error {
 		wt.IsHomeBase = (tipeKerja == "WFH")
 	}
 
-	var distance float64
 	var dalamRadius bool
 	radiusTervalidasi := "tidak_tervalidasi"
 
 	if wt.IsHomeBase {
 		var validationErr error
-		dalamRadius, radiusTervalidasi, validationErr = validateHomeAttendanceLocation(employee.ID, lat, lon)
+		dalamRadius, radiusTervalidasi, validationErr = validateHomeAttendanceLocation(employee.ID, lat, lon, acc)
 		if validationErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Error()})
 		}
@@ -134,8 +133,7 @@ func CheckIn(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Office location not configured"})
 		}
 		// Use office coordinates
-		distance = utils.HaversineDistance(lat, lon, office.Latitude, office.Longitude)
-		dalamRadius = distance <= office.RadiusMeter
+		dalamRadius = validateCoordinatesAgainstRadius("WFO", lat, lon, acc, office.Latitude, office.Longitude, office.RadiusMeter)
 		radiusTervalidasi = "kantor"
 		if !dalamRadius {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Location outside of allowed radius for WFO"})
@@ -173,7 +171,7 @@ func CheckIn(c *fiber.Ctx) error {
 	}
 
 	record := models.AttendanceRecord{
-		EmployeeID:          employee.ID,
+		EmployeeID:          &employee.ID,
 		Tanggal:             workDate,
 		JamMasuk:            &now,
 		IsLate:              now.After(lateTime),
@@ -200,6 +198,10 @@ func CheckIn(c *fiber.Ctx) error {
 	var hrdUsers []models.User
 	if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
 		for _, hrd := range hrdUsers {
+			if shouldSendWFHAttendanceNotification(wt) {
+				_ = notifyWFHAttendance(hrd, employee, record, now)
+				continue
+			}
 			_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Check-In", "Check-In Karyawan", fmt.Sprintf("%s melakukan check-in pada %s (%s)", employee.NIK, now.Format("02 Jan 2006 15:04"), wt.Nama))
 		}
 	}
@@ -215,6 +217,32 @@ func CheckIn(c *fiber.Ctx) error {
 		"status":  status,
 		"time":    nowStr,
 	})
+}
+
+func notifyWFHAttendance(hrd models.User, employee models.Employee, record models.AttendanceRecord, at time.Time) error {
+	location := "Lokasi rumah tervalidasi"
+	var home models.EmployeeHomeLocation
+	if err := config.DB.Where("employee_id = ?", employee.ID).First(&home).Error; err == nil && strings.TrimSpace(home.AlamatRumah) != "" {
+		location = home.AlamatRumah
+	}
+	title, message := wfhAttendanceNotificationPayload(employee, record, at, location)
+	return auditutils.CreateAttendanceNotification(config.DB, hrd.ID, models.RoleHRD, "Kehadiran WFH", title, message, record.ID)
+}
+
+func shouldSendWFHAttendanceNotification(workType models.WorkType) bool {
+	return workType.IsHomeBase
+}
+
+func wfhAttendanceNotificationPayload(employee models.Employee, record models.AttendanceRecord, at time.Time, location string) (string, string) {
+	name := employee.NIK
+	if employee.User != nil && strings.TrimSpace(employee.User.Nama) != "" {
+		name = employee.User.Nama
+	}
+	if strings.TrimSpace(location) == "" {
+		location = "Lokasi rumah tervalidasi"
+	}
+	message := fmt.Sprintf("%s melakukan absensi pada %s. Jenis: WFH. Status: %s. Lokasi: %s.", name, at.Format("02 Jan 2006 15:04"), record.Status, location)
+	return "Kehadiran WFH Karyawan", message
 }
 
 func CheckOut(c *fiber.Ctx) error {
@@ -259,10 +287,12 @@ func CheckOut(c *fiber.Ctx) error {
 	latStr := c.FormValue("latitude")
 	lonStr := c.FormValue("longitude")
 	accStr := c.FormValue("accuracy")
+	logLocationMetadata(c.FormValue("location_timestamp"), c.FormValue("location_source"))
 
-	lat, _ := strconv.ParseFloat(latStr, 64)
-	lon, _ := strconv.ParseFloat(lonStr, 64)
-	acc, _ := strconv.ParseFloat(accStr, 64)
+	lat, lon, acc, locationErr := parseAttendanceLocation(latStr, lonStr, accStr)
+	if locationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": locationErr.Error()})
+	}
 
 	var wt models.WorkType
 	if err := config.DB.Where("nama = ?", record.TipeKerja).First(&wt).Error; err != nil {
@@ -275,7 +305,7 @@ func CheckOut(c *fiber.Ctx) error {
 
 	if wt.IsHomeBase {
 		var validationErr error
-		dalamRadius, radiusTervalidasi, validationErr = validateHomeAttendanceLocation(employee.ID, lat, lon)
+		dalamRadius, radiusTervalidasi, validationErr = validateHomeAttendanceLocation(employee.ID, lat, lon, acc)
 		if validationErr != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Error()})
 		}
@@ -284,8 +314,7 @@ func CheckOut(c *fiber.Ctx) error {
 		if err := config.DB.First(&office).Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Office location not configured"})
 		}
-		distance := utils.HaversineDistance(lat, lon, office.Latitude, office.Longitude)
-		dalamRadius = distance <= office.RadiusMeter
+		dalamRadius = validateCoordinatesAgainstRadius("WFO", lat, lon, acc, office.Latitude, office.Longitude, office.RadiusMeter)
 		radiusTervalidasi = "kantor"
 		if !dalamRadius {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Location outside of allowed radius for WFO"})
@@ -345,25 +374,34 @@ func CheckOut(c *fiber.Ctx) error {
 // validateHomeAttendanceLocation is the single WFH geofence rule used by
 // check-in and check-out. The link is required; coordinates are the values
 // resolved from that link when the home location was saved.
-func validateHomeAttendanceLocation(employeeID uint, latitude, longitude float64) (bool, string, error) {
+func validateHomeAttendanceLocation(employeeID uint, latitude, longitude float64, accuracyValues ...float64) (bool, string, error) {
+	accuracy := firstAccuracy(accuracyValues)
 	home, err := effectiveHomeLocation(config.DB, employeeID, attendanceNow())
 	if err != nil || strings.TrimSpace(home.GoogleMapsURL) == "" {
 		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
 	}
-	return validateConfiguredHomeLocation(home, latitude, longitude)
+	return validateConfiguredHomeLocation(home, latitude, longitude, accuracy)
 }
 
-func validateConfiguredHomeLocation(home models.EmployeeHomeLocation, latitude, longitude float64) (bool, string, error) {
+func validateConfiguredHomeLocation(home models.EmployeeHomeLocation, latitude, longitude float64, accuracyValues ...float64) (bool, string, error) {
+	accuracy := firstAccuracy(accuracyValues)
 	if strings.TrimSpace(home.GoogleMapsURL) == "" {
 		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
 	}
 	if home.LatitudeRumah == 0 || home.LongitudeRumah == 0 || home.RadiusMeter <= 0 {
 		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
 	}
-	if utils.HaversineDistance(latitude, longitude, home.LatitudeRumah, home.LongitudeRumah) > home.RadiusMeter {
+	if !validateCoordinatesAgainstRadius("WFH", latitude, longitude, accuracy, home.LatitudeRumah, home.LongitudeRumah, home.RadiusMeter) {
 		return false, "rumah", fmt.Errorf("Lokasi berada di luar radius rumah")
 	}
 	return true, "rumah", nil
+}
+
+func firstAccuracy(values []float64) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+	return values[0]
 }
 
 func GetAttendanceHistory(c *fiber.Ctx) error {
@@ -570,7 +608,10 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 	}
 	existingMap := make(map[string]models.AttendanceRecord, len(records))
 	for _, record := range records {
-		existingMap[fmt.Sprintf("%d:%s", record.EmployeeID, normalizeAttendanceDate(record.Tanggal).Format("2006-01-02"))] = record
+		if record.EmployeeID == nil {
+			continue
+		}
+		existingMap[fmt.Sprintf("%d:%s", *record.EmployeeID, normalizeAttendanceDate(record.Tanggal).Format("2006-01-02"))] = record
 	}
 
 	for _, employee := range employees {
@@ -601,7 +642,7 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 
 			if isOnLeave {
 				record := models.AttendanceRecord{
-					EmployeeID: employee.ID,
+					EmployeeID: &employee.ID,
 					Tanggal:    day,
 					TipeKerja:  "WFO",
 					Status:     leaveStatus,
@@ -619,7 +660,7 @@ func reconcileMissingAttendanceRecords(now time.Time) error {
 			}
 
 			record := models.AttendanceRecord{
-				EmployeeID: employee.ID,
+				EmployeeID: &employee.ID,
 				Tanggal:    day,
 				TipeKerja:  "WFO",
 				Status:     models.StatusAlpha,
@@ -656,11 +697,14 @@ func closeExpiredAttendanceRecords(now time.Time) error {
 		return err
 	}
 	for _, record := range records {
+		if record.EmployeeID == nil {
+			continue
+		}
 		recordDate, err := time.ParseInLocation("2006-01-02", record.Tanggal.Format("2006-01-02"), jakartaLocation)
 		if err != nil {
 			continue
 		}
-		schedule := getAttendanceSchedule(record.EmployeeID, recordDate)
+		schedule := getAttendanceSchedule(*record.EmployeeID, recordDate)
 		_, _, _, _, deadline := attendanceWindow(recordDate.Add(12*time.Hour), schedule)
 		if now.Before(deadline) {
 			continue

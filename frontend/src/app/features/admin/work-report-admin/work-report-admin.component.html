@@ -5,18 +5,13 @@
     <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
       <h2>Manajemen Laporan Kerja</h2>
       <div class="view-toggle" style="display: flex; gap: 0.5rem;">
-        <button class="btn" [ngClass]="viewMode === 'reports' ? 'btn-primary' : 'btn-secondary'" (click)="switchMode('reports')">
+        <button class="btn btn-primary">
           <i class="fas fa-list" style="margin-right: 0.5rem;"></i> Laporan Karyawan
-        </button>
-        <button class="btn" [ngClass]="viewMode === 'columns' ? 'btn-primary' : 'btn-secondary'" (click)="switchMode('columns')">
-          <i class="fas fa-columns" style="margin-right: 0.5rem;"></i> Atur Kolom Form
         </button>
       </div>
     </div>
 
-    <!-- VIEW REPORTS -->
-    <ng-container *ngIf="viewMode === 'reports'">
-      <div class="golan-card">
+    <div class="golan-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
           <h3>Daftar Laporan Masuk</h3>
           <div class="export-dropdown" *ngIf="reports.length > 0 || allReports.length > 0">
@@ -101,14 +96,16 @@
             </div>
 
             <div class="filter-group">
-              <label>Status Validasi HR</label>
+              <label>Status Laporan / Validasi HR</label>
               <div class="input-wrapper select-wrapper">
                 <select class="filter-input" [(ngModel)]="filterOptions.status" (ngModelChange)="onFilterChange()">
                   <option value="">Semua Status</option>
                   <option value="Menunggu">Menunggu</option>
                   <option value="Sesuai">Sesuai</option>
                   <option value="Tidak Sesuai">Tidak Sesuai</option>
-                  <option value="tidak membuat laporan kerja">tidak membuat laporan kerja</option>
+                  <option value="Sudah membuat laporan">Sudah membuat laporan</option>
+                  <option value="Belum membuat laporan">Belum membuat laporan</option>
+                  <option value="Laporan belum lengkap">Laporan belum lengkap</option>
                 </select>
                 <i class="fas fa-chevron-down icon-right"></i>
               </div>
@@ -136,7 +133,7 @@
         </div>
 
         <div class="golan-table-responsive work-report-table-wrapper">
-          <app-ui-skeleton *ngIf="isLoading" type="table" [rows]="6" [columns]="16" ariaLabel="Memuat daftar laporan masuk"></app-ui-skeleton>
+          <app-ui-skeleton *ngIf="isLoading" type="table" [rows]="6" [columns]="17" ariaLabel="Memuat daftar laporan masuk"></app-ui-skeleton>
           <p *ngIf="isLoading" class="table-scroll-hint">Geser ke samping untuk melihat kolom lainnya.</p>
           <table class="golan-table table-bordered table-sm work-report-table" *ngIf="!isLoading && reports.length > 0">
             <thead>
@@ -154,8 +151,9 @@
                 <th class="th-yellow">Rencana Minggu Depan</th>
                 <th class="th-yellow">Link Artikel</th>
                 <th class="th-yellow">Catatan Tambahan</th>
-                <th class="th-yellow">Status Validasi</th>
-                <th class="th-yellow">Screenshot / Pengisian</th>
+                <th class="th-yellow">Status Laporan</th>
+                <th class="th-yellow">Bukti Pengisian</th>
+                <th class="th-yellow">Status Waktu</th>
                 <th style="width: 150px; text-align: center;" class="th-yellow">Aksi & Validasi</th>
               </tr>
             </thead>
@@ -178,24 +176,29 @@
                 </td>
                 <td class="text-cell" [title]="r.catatan_tambahan || '-'">{{ r.catatan_tambahan || '-' }}</td>
                 <td>
-                  <span *ngIf="isNoReport(r)" class="status-badge status-alpha">tidak membuat laporan kerja</span>
-                  <span *ngIf="!isNoReport(r)" class="status-badge status-hadir">Sudah Report</span>
+                  <span *ngIf="isNoReport(r)" class="status-badge status-alpha">Belum membuat laporan kerja</span>
+                  <span *ngIf="isIncompleteReport(r)" class="status-badge status-warning">Laporan belum lengkap</span>
+                  <span *ngIf="hasCompleteReport(r)" class="status-badge status-hadir">Sudah membuat laporan</span>
                 </td>
                 <td><span *ngIf="r.is_late_submission" class="status-pill status-warning">⚠ Terlambat</span><span *ngFor="let image of r.attachments" class="report-thumb"><a [href]="image.file_url" target="_blank"><img [src]="image.file_url" [alt]="image.file_name"></a></span></td>
                 <td>
-                  <span class="print-only" style="display: none;">{{ r.status_sesuai || (isNoReport(r) ? 'tidak membuat laporan kerja' : 'Menunggu') }}</span>
+                  <span class="status-pill" [class.status-warning]="r.is_late_submission" [class.status-success]="!r.is_late_submission">{{ r.is_late_submission ? 'Terlambat' : 'Tepat waktu' }}</span>
+                </td>
+                <td>
+                  <span class="print-only" style="display: none;">{{ validationLabel(r) }}</span>
                   <select class="form-control no-print" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 500; border-radius: 4px;" 
-                          [value]="r.status_sesuai || (isNoReport(r) ? 'tidak membuat laporan kerja' : '')" 
+                          [value]="r.status_sesuai || ''"
                           (change)="updateValidation(r, $event)"
+                          [disabled]="isNoReport(r)"
                           [ngStyle]="{
-                            'background-color': r.status_sesuai === 'Sesuai' ? '#d4edda' : (r.status_sesuai === 'Tidak Sesuai' ? '#f8d7da' : ((isNoReport(r) || r.status_sesuai === 'tidak membuat laporan kerja') ? '#f8d7da' : '')),
-                            'color': r.status_sesuai === 'Sesuai' ? '#155724' : (r.status_sesuai === 'Tidak Sesuai' ? '#721c24' : ((isNoReport(r) || r.status_sesuai === 'tidak membuat laporan kerja') ? '#721c24' : '#333')),
-                            'border-color': r.status_sesuai === 'Sesuai' ? '#c3e6cb' : (r.status_sesuai === 'Tidak Sesuai' ? '#f5c6cb' : ((isNoReport(r) || r.status_sesuai === 'tidak membuat laporan kerja') ? '#f5c6cb' : '#ccc'))
+                            'background-color': r.status_sesuai === 'Sesuai' ? '#d4edda' : (r.status_sesuai === 'Tidak Sesuai' ? '#f8d7da' : (isNoReport(r) ? '#f8d7da' : '')),
+                            'color': r.status_sesuai === 'Sesuai' ? '#155724' : (r.status_sesuai === 'Tidak Sesuai' ? '#721c24' : (isNoReport(r) ? '#721c24' : '#333')),
+                            'border-color': r.status_sesuai === 'Sesuai' ? '#c3e6cb' : (r.status_sesuai === 'Tidak Sesuai' ? '#f5c6cb' : (isNoReport(r) ? '#f5c6cb' : '#ccc'))
                           }">
                     <option value="">-- Pilih --</option>
-                    <option value="Sesuai">Sesuai</option>
-                    <option value="Tidak Sesuai">Tidak Sesuai</option>
-                    <option value="tidak membuat laporan kerja">tidak membuat laporan kerja</option>
+                    <option value="Sesuai">Validasi laporan</option>
+                    <option value="Tidak Sesuai">Tolak laporan</option>
+                    <option value="Minta Perbaikan">Minta perbaikan</option>
                   </select>
                 </td>
               </tr>
@@ -209,104 +212,7 @@
         <div #paginationBar class="no-print" *ngIf="!isLoading || reports.length > 0">
           <app-pagination [totalItems]="reports.length" [currentPage]="currentPage" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="goToPage($event)" (pageSizeChange)="pageSize = $event; onPageSizeChange()"></app-pagination>
         </div>
-      </div>
-    </ng-container>
-
-    <!-- VIEW COLUMNS -->
-    <ng-container *ngIf="viewMode === 'columns'">
-      <div class="golan-card">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-          <h3>Kolom Form Laporan Tambahan</h3>
-          <button class="btn btn-primary" (click)="openColumnForm()">+ Tambah Kolom</button>
-        </div>
-
-        <div class="golan-table-responsive" *ngIf="!isEditingColumn">
-          <table class="golan-table" *ngIf="columns.length > 0">
-            <thead>
-              <tr>
-                <th>Urutan</th>
-                <th>Nama Kolom</th>
-                <th>Tipe Input</th>
-                <th>Status</th>
-                <th>Wajib</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let col of columns">
-                <td>{{ col.urutan }}</td>
-                <td>{{ col.nama_kolom }}</td>
-                <td>{{ col.tipe_input }}</td>
-                <td>
-                  <span class="status-badge" [ngClass]="col.aktif ? 'status-hadir' : 'status-alpha'">
-                    {{ col.aktif ? 'Aktif' : 'Non-aktif' }}
-                  </span>
-                </td>
-                <td>{{ col.wajib_diisi ? 'Ya' : 'Tidak' }}</td>
-                <td class="no-print" style="text-align: center;">
-                  <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                  <button class="icon-button edit" (click)="openColumnForm(col)">
-                    <svg aria-hidden="true" style="width: 16px; height: 16px;"><use href="assets/sidebar-icons.svg#edit"></use></svg>
-                  </button>
-                  <button class="icon-button delete" (click)="deleteColumn(col.ID)">
-                    <svg aria-hidden="true" style="width: 16px; height: 16px;"><use href="assets/sidebar-icons.svg#trash"></use></svg>
-                  </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div *ngIf="columns.length === 0" class="empty-state">
-            Belum ada kolom tambahan.
-          </div>
-        </div>
-
-        <!-- FORM COLUMN -->
-        <form class="auth-form" *ngIf="isEditingColumn" (ngSubmit)="saveColumn()">
-          <h4>{{ editingColumnId ? 'Edit Kolom' : 'Tambah Kolom Baru' }}</h4>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Nama Kolom <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="nama_kolom" [(ngModel)]="colForm.nama_kolom" required>
-            </div>
-            <div class="form-group">
-              <label>Tipe Input <span class="text-danger">*</span></label>
-              <select class="form-control" name="tipe_input" [(ngModel)]="colForm.tipe_input" required>
-                <option value="text">Teks Pendek</option>
-                <option value="textarea">Teks Panjang (Textarea)</option>
-                <option value="dropdown">Pilihan (Dropdown)</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="form-group" *ngIf="colForm.tipe_input === 'dropdown'">
-            <label>Pilihan (Format JSON Array, cth: ["Opsi 1", "Opsi 2"])</label>
-            <input type="text" class="form-control" name="opsi" [(ngModel)]="colForm.opsi">
-          </div>
-
-          <div class="form-row">
-            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
-              <input type="checkbox" name="aktif" [(ngModel)]="colForm.aktif" id="chkAktif">
-              <label for="chkAktif" style="margin: 0;">Aktif Tampilkan</label>
-            </div>
-            <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
-              <input type="checkbox" name="wajib_diisi" [(ngModel)]="colForm.wajib_diisi" id="chkWajib">
-              <label for="chkWajib" style="margin: 0;">Wajib Diisi</label>
-            </div>
-            <div class="form-group">
-              <label>Urutan Tampil</label>
-              <input type="number" class="form-control" name="urutan" [(ngModel)]="colForm.urutan">
-            </div>
-          </div>
-
-          <div class="form-actions mt-4" style="display: flex; justify-content: flex-end; gap: 1rem;">
-            <button type="button" class="btn btn-secondary" (click)="closeColumnForm()">Batal</button>
-            <button type="submit" class="btn btn-primary">Simpan Kolom</button>
-          </div>
-        </form>
-
-      </div>
-    </ng-container>
+    </div>
 
   </div>
 </div>

@@ -1,15 +1,20 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/middleware"
 	"absensi-golan-backend/internal/models"
+	"absensi-golan-backend/pkg/minio"
 
 	"github.com/gofiber/fiber/v2"
+	miniogo "github.com/minio/minio-go/v7"
+	"gorm.io/gorm"
 )
 
 func SetupInternshipRoutes(api fiber.Router) {
@@ -357,7 +362,7 @@ func ensureInternshipCertificate(user models.User) models.InternshipCertificate 
 	if config.DB.Where("user_id = ?", user.ID).First(&certificate).Error == nil {
 		return certificate
 	}
-	certificate = models.InternshipCertificate{UserID: user.ID, IssuedAt: time.Now(), CertificateNo: fmt.Sprintf("MAGANG-%06d", user.ID)}
+	certificate = models.InternshipCertificate{UserID: &user.ID, IssuedAt: time.Now(), CertificateNo: fmt.Sprintf("MAGANG-%06d", user.ID)}
 	config.DB.Create(&certificate)
 	recordCertificateIssuance(user.ID, certificate.CertificateNo, "AUTO_GENERATED")
 	return certificate
@@ -418,12 +423,15 @@ func CreateInternshipLogbook(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
 	}
-	date, err := time.Parse("2006-01-02", input.Tanggal)
+	date, err := time.ParseInLocation("2006-01-02", input.Tanggal, jakartaLocation)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Tanggal wajib berformat YYYY-MM-DD"})
 	}
 	if _, ok := getWorkReportSchedule(user.Employee.ID, date); !ok {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Tidak ada shift aktif atau jadwal shift untuk tanggal logbook ini. Hubungi admin untuk penjadwalan shift."})
+	}
+	if err := validateWorkReportSubmission(user.Employee.ID, date, attendanceNow()); err != nil {
+		return c.Status(err.Code).JSON(fiber.Map{"error": err.Message})
 	}
 	status := input.Status
 	if status == "" {
@@ -434,26 +442,15 @@ func CreateInternshipLogbook(c *fiber.Ctx) error {
 	}
 
 	var existing models.WorkReport
-	if config.DB.Where("employee_id = ? AND tanggal = ?", user.Employee.ID, date).First(&existing).Error == nil {
-		updates := map[string]interface{}{
-			"tugas":              input.Tugas,
-			"deskripsi_kegiatan": input.DeskripsiKegiatan,
-			"kendala":            input.Kendala,
-			"status_logbook":     status,
-			"is_late_submission": existing.IsLateSubmission || isLateWorkReportSubmission(user.Employee.ID, date),
-		}
-		if err := config.DB.Model(&existing).Updates(updates).Error; err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Failed to update logbook"})
-		}
-		if len(files) > 0 {
-			saveWorkReportAttachments(existing.ID, user.Employee.NIK, files)
-		}
-		config.DB.Preload("Attachments").First(&existing, existing.ID)
-		WsHub.Broadcast <- fiber.Map{"event": "logbook_updated"}
-		return c.Status(200).JSON(existing)
+	existingErr := config.DB.Where("employee_id = ? AND tanggal = ?", user.Employee.ID, date).First(&existing).Error
+	if existingErr == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Logbook untuk tanggal tersebut sudah dibuat. Gunakan menu edit jika statusnya masih Draft."})
+	}
+	if existingErr != nil && existingErr != gorm.ErrRecordNotFound {
+		return c.Status(500).JSON(fiber.Map{"error": "Gagal memeriksa logbook pada tanggal tersebut"})
 	}
 
-	report := models.WorkReport{EmployeeID: user.Employee.ID, Tanggal: date, Tugas: input.Tugas, DeskripsiKegiatan: input.DeskripsiKegiatan, Kendala: input.Kendala, StatusLogbook: status, IsLateSubmission: isLateWorkReportSubmission(user.Employee.ID, date)}
+	report := models.WorkReport{EmployeeID: &user.Employee.ID, Tanggal: date, Tugas: input.Tugas, DeskripsiKegiatan: input.DeskripsiKegiatan, Kendala: input.Kendala, StatusLogbook: status, IsLateSubmission: isLateWorkReportSubmission(user.Employee.ID, date)}
 	if err := config.DB.Create(&report).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create logbook"})
 	}
@@ -483,11 +480,24 @@ func UpdateInternshipLogbook(c *fiber.Ctx) error {
 	}
 	updates := map[string]interface{}{"tugas": input.Tugas, "deskripsi_kegiatan": input.DeskripsiKegiatan, "kendala": input.Kendala}
 	if input.Tanggal != "" {
-		date, parseErr := time.Parse("2006-01-02", input.Tanggal)
+		date, parseErr := time.ParseInLocation("2006-01-02", input.Tanggal, jakartaLocation)
 		if parseErr != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid tanggal"})
 		}
+		var existing models.WorkReport
+		queryErr := config.DB.Where("employee_id = ? AND tanggal = ? AND id <> ?", user.Employee.ID, date, report.ID).First(&existing).Error
+		if queryErr == nil {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Sudah ada logbook lain untuk tanggal tersebut"})
+		}
+		if queryErr != nil && queryErr != gorm.ErrRecordNotFound {
+			return c.Status(500).JSON(fiber.Map{"error": "Gagal memeriksa tanggal logbook"})
+		}
 		updates["tanggal"] = date
+		if err := validateWorkReportSubmission(user.Employee.ID, date, attendanceNow()); err != nil {
+			return c.Status(err.Code).JSON(fiber.Map{"error": err.Message})
+		}
+	} else if err := validateWorkReportSubmission(user.Employee.ID, report.Tanggal, attendanceNow()); err != nil {
+		return c.Status(err.Code).JSON(fiber.Map{"error": err.Message})
 	}
 	status := input.Status
 	if status == "draft" || status == "submitted" {
@@ -518,8 +528,21 @@ func DeleteInternshipLogbook(c *fiber.Ctx) error {
 	if report.StatusLogbook == "submitted" || report.StatusLogbook == "approved" {
 		return c.Status(409).JSON(fiber.Map{"error": "Logbook dengan status Submitted atau Approved tidak dapat dihapus"})
 	}
-	if err := config.DB.Delete(&report).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Gagal menghapus logbook"})
+	if report.EmployeeID == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Logbook tidak memiliki data karyawan"})
+	}
+	attachments, err := deleteWorkReportData(config.DB, report.ID, *report.EmployeeID, report.Tanggal)
+	if err != nil {
+		log.Printf("internship logbook deletion failed: report_id=%d: %v", report.ID, err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menghapus logbook"})
+	}
+	for _, attachment := range attachments {
+		if attachment.StorageKey == "" || minio.Client == nil {
+			continue
+		}
+		if err := minio.Client.RemoveObject(context.Background(), minio.BucketName, attachment.StorageKey, miniogo.RemoveObjectOptions{}); err != nil {
+			log.Printf("internship logbook attachment cleanup failed: report_id=%d storage_key=%q: %v", report.ID, attachment.StorageKey, err)
+		}
 	}
 	WsHub.Broadcast <- fiber.Map{"event": "logbook_deleted"}
 	return c.JSON(fiber.Map{"message": "Logbook berhasil dihapus"})

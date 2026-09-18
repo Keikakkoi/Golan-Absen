@@ -51,10 +51,14 @@
   color: #243b53;
   font-weight: 700;
   line-height: 1.25;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
 }
-.leave-table td { min-height: 56px; }
+.leave-table td {
+  min-height: 56px;
+  text-align: center;
+  vertical-align: middle;
+}
 .leave-col-employee { width: 190px; }
 .leave-col-approver { width: 150px; }
 .leave-col-type { width: 90px; }
@@ -63,6 +67,20 @@
 .leave-col-attachment { width: 160px; }
 .leave-col-status { width: 260px; min-width: 260px; }
 .leave-col-actions { width: 160px; min-width: 160px; }
+
+/* Keep the last approval columns aligned with their centered headers. */
+.leave-table th:nth-child(7),
+.leave-table td:nth-child(7),
+.leave-table th:nth-child(8),
+.leave-table td:nth-child(8),
+.leave-table th:nth-child(9),
+.leave-table td:nth-child(9),
+.leave-table th:nth-child(10),
+.leave-table td:nth-child(10) {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
 .leave-employee-cell { font-weight: 500; }
 .leave-employee-name,
 .leave-employee-nik { display: block; }
@@ -91,6 +109,11 @@
 .leave-muted-text { color: #9ca3af; }
 .leave-table .status-badge { white-space: nowrap; }
 .leave-table .btn-view-detail { white-space: nowrap; }
+.leave-table .leave-attachment-cell > a,
+.leave-table .leave-status-cell > .status-badge {
+  display: inline-flex;
+  margin-inline: auto;
+}
 
 .leave-toolbar {
   display: flex;
@@ -141,6 +164,11 @@
   min-width: 100%;
 }
 
+.leave-actions-cell .table-actions {
+  width: 100%;
+  justify-content: center;
+}
+
 .action-group {
   display: flex;
   flex: 0 0 auto;
@@ -150,7 +178,11 @@
 .table-actions .icon-button {
   flex: 0 0 36px;
   width: 36px;
+  min-width: 36px;
   height: 36px;
+  min-height: 36px;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .table-actions .icon-button.action-completed {
@@ -668,6 +700,55 @@
     background: #f1f5f9;
     border-color: #94a3b8;
   }
+}
+
+/* Dark mode overrides for the leave detail modal. The modal has legacy light
+   surfaces that otherwise make the reason text disappear against the card. */
+:host-context(body.dark-theme) .leave-detail-modal {
+  background: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .modal-header,
+:host-context(body.dark-theme) .leave-detail-modal .modal-footer {
+  background: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .modal-title-box h3,
+:host-context(body.dark-theme) .leave-detail-modal .employee-name,
+:host-context(body.dark-theme) .leave-detail-modal .grid-value,
+:host-context(body.dark-theme) .leave-detail-modal .section-label,
+:host-context(body.dark-theme) .leave-detail-modal .attachment-title {
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .request-id,
+:host-context(body.dark-theme) .leave-detail-modal .grid-label,
+:host-context(body.dark-theme) .leave-detail-modal .dept-tag,
+:host-context(body.dark-theme) .leave-detail-modal .attachment-sub {
+  color: var(--text-dark-lo) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .employee-profile-card,
+:host-context(body.dark-theme) .leave-detail-modal .detail-grid .grid-item,
+:host-context(body.dark-theme) .leave-detail-modal .reason-box,
+:host-context(body.dark-theme) .leave-detail-modal .notes-box,
+:host-context(body.dark-theme) .leave-detail-modal .no-attachment-box {
+  background: var(--surface-raised) !important;
+  border-color: var(--border-strong) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .reason-box p,
+:host-context(body.dark-theme) .leave-detail-modal .notes-box p,
+:host-context(body.dark-theme) .leave-detail-modal .no-attachment-box {
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .btn-close {
+  background: var(--surface-muted) !important;
+  color: var(--text-dark-lo) !important;
 }
 
 @media (max-width: 640px) {

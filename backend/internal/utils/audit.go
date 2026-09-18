@@ -34,7 +34,7 @@ func LogActionWithDB(db *gorm.DB, userID uint, action string, tableName string, 
 	}
 	log.Printf("audit log actor validated from authenticated user context: user_id=%d action=%s table=%s record_id=%d", userID, action, tableName, recordID)
 	auditLog := models.AuditLog{
-		UserID:        userID,
+		UserID:        &userID,
 		Action:        action,
 		TableName:     tableName,
 		RecordID:      recordID,

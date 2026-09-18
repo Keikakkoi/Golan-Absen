@@ -12,7 +12,7 @@
         <label>Dari Tanggal<input type="date" class="golan-input" [(ngModel)]="start" aria-label="Dari Tanggal" title="Format: dd/mm/yyyy"></label>
         <label>Sampai Tanggal<input type="date" class="golan-input" [(ngModel)]="end" aria-label="Sampai Tanggal" title="Format: dd/mm/yyyy"></label>
         <button type="button" class="btn-primary report-filter-action" (click)="applyFilters()" [disabled]="isLoading || isRefreshing">Filter</button>
-        <button type="button" class="btn btn-secondary report-refresh-action" (click)="refreshReports()" [disabled]="isLoading || isRefreshing" [attr.aria-busy]="isRefreshing">
+        <button type="button" class="btn-outline-primary report-refresh-action" (click)="refreshReports()" [disabled]="isLoading || isRefreshing" [attr.aria-busy]="isRefreshing">
           <i class="fas fa-sync-alt" [class.fa-spin]="isRefreshing" aria-hidden="true"></i>
           {{ isRefreshing ? 'Memuat...' : 'Segarkan' }}
         </button>
@@ -80,7 +80,14 @@
               <td>
                 <div style="font-weight: 600;">{{ row.Employee?.User?.Nama || '-' }}</div>
                 <small class="role-badge" *ngIf="row.Employee?.User?.Role" style="font-size: 11px; display: inline-block; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); margin-top: 2px; color: var(--muted-color);">
-                  {{ row.Employee?.User?.Role === 'MAGANG' ? '🎓 Magang' : '👤 Karyawan' }}
+                  <ng-container *ngIf="row.Employee?.User?.Role === 'MAGANG'; else employeeRole">
+                    <svg class="role-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#graduation-cap"></use></svg>
+                    Magang
+                  </ng-container>
+                  <ng-template #employeeRole>
+                    <svg class="role-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#user"></use></svg>
+                    Karyawan
+                  </ng-template>
                 </small>
               </td>
               <td>{{ row.tugas || row.Tugas || '-' }}</td>
@@ -110,11 +117,11 @@
               </td>
               <td>
                 <div class="report-action-buttons">
-                  <button *ngIf="canReview(row)" type="button" class="btn-small approve" (click)="reviewLogbook(row.id || row.ID, 'approved')" title="Setujui logbook">
-                    <i class="fas fa-check"></i> Approve
+                  <button *ngIf="canReview(row)" type="button" class="icon-button approve" (click)="reviewLogbook(row.id || row.ID, 'approved')" aria-label="Setujui logbook" title="Setujui logbook">
+                    <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
                   </button>
-                  <button *ngIf="canReview(row)" type="button" class="btn-small reject" (click)="reviewLogbook(row.id || row.ID, 'rejected')" title="Tolak logbook">
-                    <i class="fas fa-times"></i> Reject
+                  <button *ngIf="canReview(row)" type="button" class="icon-button reject" (click)="reviewLogbook(row.id || row.ID, 'rejected')" aria-label="Tolak logbook" title="Tolak logbook">
+                    <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#x"></use></svg>
                   </button>
                 </div>
               </td>

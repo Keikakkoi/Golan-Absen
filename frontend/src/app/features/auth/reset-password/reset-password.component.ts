@@ -14,6 +14,8 @@ import { AuthService } from '../../../core/services/auth.service';
 export class ResetPasswordComponent implements OnInit {
   newPassword = '';
   confirmPassword = '';
+  showNewPassword = false;
+  showConfirmPassword = false;
   token = '';
   
   isLoading = false;
@@ -21,6 +23,14 @@ export class ResetPasswordComponent implements OnInit {
   errorMessage = '';
 
   constructor(private route: ActivatedRoute, private authService: AuthService) {}
+
+  toggleNewPasswordVisibility(): void {
+    this.showNewPassword = !this.showNewPassword;
+  }
+
+  toggleConfirmPasswordVisibility(): void {
+    this.showConfirmPassword = !this.showConfirmPassword;
+  }
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {

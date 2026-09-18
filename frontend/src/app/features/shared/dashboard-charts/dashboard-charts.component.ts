@@ -62,6 +62,18 @@ export class DashboardChartsComponent implements OnInit, OnDestroy {
       { label: 'Alfa', key: 'alfa', value: this.trendValue('alfa'), rate: this.trendRate('alfa', total) }
     ];
   }
+  get trendDescription(): string {
+    return `Ringkasan 30 hari: ${this.trendSummary.map(item => `${item.label} ${item.value} (${item.rate} persen)`).join(', ')}.`;
+  }
+  get todayStatusDescription(): string {
+    return this.listDescription('Komposisi status absensi', this.data.today_status);
+  }
+  get comparisonDescription(): string {
+    return this.listDescription(this.isAdmin ? 'Kehadiran antar departemen' : 'Kehadiran per anggota tim', this.data.comparison);
+  }
+  get reportStatusDescription(): string {
+    return this.listDescription(this.isIntern ? 'Status logbook' : 'Status laporan kerja', this.isIntern ? this.data.logbook_status : this.data.report_status);
+  }
   totalPoint(item: ChartPoint): number { return Number(item.hadir || 0) + Number(item.terlambat || 0) + Number(item.izin || 0) + Number(item.alfa || 0); }
   private trendValue(key: keyof ChartPoint): number { return this.data.attendance_trend.reduce((sum, item) => sum + Number(item[key] || 0), 0); }
   private trendRate(key: keyof ChartPoint, total: number): number { return total ? Math.round(this.trendValue(key) / total * 100) : 0; }
@@ -71,6 +83,11 @@ export class DashboardChartsComponent implements OnInit, OnDestroy {
   dateLabel(value: string): string { return value ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short' }).format(new Date(`${value}T00:00:00`)) : '-'; }
   color(label: string): string { const key = label.toLowerCase(); if (key.includes('hadir') || key.includes('approved') || key.includes('selesai')) return this.chartTheme.status.hadir; if (key.includes('izin') || key.includes('cuti') || key.includes('submitted')) return this.chartTheme.status.izin; if (key.includes('terlambat') || key.includes('late')) return this.chartTheme.status.terlambat; if (key.includes('alfa') || key.includes('reject') || key.includes('ditolak')) return this.chartTheme.status.alfa; if (key.includes('pending')) return this.chartTheme.status.pending; return this.chartTheme.status.neutral; }
   track(_: number, item: ChartValue): string { return item.label; }
+  private listDescription(title: string, values: ChartValue[]): string {
+    const items = values.filter(item => Number.isFinite(Number(item.value)));
+    if (!items.length) return `${title}: belum ada data.`;
+    return `${title}: ${items.map(item => `${item.label} ${item.value}`).join(', ')}.`;
+  }
   private normalize(value: DashboardChartData | null): DashboardChartData { const safe = value || this.emptyData(); return { attendance_trend: safe.attendance_trend || [], today_status: safe.today_status || [], comparison: safe.comparison || [], report_status: safe.report_status || [], logbook_status: safe.logbook_status || [], internship: safe.internship || { progress_percent: 0, days_remaining: 0 } }; }
   private emptyData(): DashboardChartData { return { attendance_trend: [], today_status: [], comparison: [], report_status: [], logbook_status: [], internship: { progress_percent: 0, days_remaining: 0 } }; }
   private dateKey(date: Date): string { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }

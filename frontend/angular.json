@@ -54,8 +54,29 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "20kB",
-                  "maximumError": "40kB"
+                  "maximumWarning": "35kB",
+                  "maximumError": "60kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "local-production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.local-production.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                    "maximumWarning": "2.3MB",
+                    "maximumError": "2.5MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "35kB",
+                  "maximumError": "60kB"
                 }
               ],
               "outputHashing": "all"

@@ -13,6 +13,7 @@ func TestCoordinatesFromText(t *testing.T) {
 		{"maps at URL", "https://www.google.com/maps/@-6.136949,106.699001,17z", -6.136949, 106.699001},
 		{"maps data URL", "https://www.google.com/maps/data=!3m1!4b1!3d-6.136949!4d106.699001", -6.136949, 106.699001},
 		{"encoded query", "https://www.google.com/maps?q=-6.123165%2C106.8068848", -6.123165, 106.8068848},
+		{"short link redirect URL", "https://www.google.com/maps/search/-6.168445,+106.707379?entry=tts", -6.168445, 106.707379},
 	}
 
 	for _, tt := range tests {

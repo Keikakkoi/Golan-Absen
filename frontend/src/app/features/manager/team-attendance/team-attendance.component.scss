@@ -145,6 +145,22 @@ body.dark-theme .team-attendance-toolbar .dropdown-item-print {
 .team-attendance-table th:nth-child(5),
 .team-attendance-table td:nth-child(5) { width: 15%; }
 
+/* Match the compact status treatment used in the attendance reference. */
+.team-attendance-table .status-cell { white-space: nowrap !important; }
+.team-attendance-table .status-pill {
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.team-attendance-table .status-pill::before { width: 8px; height: 8px; }
+.team-attendance-table .status-pill.status-hadir { background: #dbeafe; color: #2563eb; }
+.team-attendance-table .status-pill.status-alpha,
+.team-attendance-table .status-pill.status-tidak-hadir { background: #fee2e2; color: #dc2626; }
+.team-attendance-table .status-pill.status-terlambat { background: #fef3c7; color: #d97706; }
+
 /* Keep the team attendance filters compact on phone-sized screens. */
 @media (max-width: 768px) {
   .team-report-card {

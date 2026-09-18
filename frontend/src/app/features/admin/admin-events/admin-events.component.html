@@ -4,7 +4,6 @@
   <div class="main-content events-page">
     <div class="header page-header">
       <div>
-        <span class="eyebrow">HRD / Admin</span>
         <h2>Kalender & Event Perusahaan</h2>
         <p>Atur agenda yang akan tampil di dashboard seluruh karyawan.</p>
       </div>
@@ -60,7 +59,7 @@
             <div class="event-time">{{ event.JamMulai }}<span *ngIf="event.JamSelesai">–{{ event.JamSelesai }}</span></div>
             <div class="event-copy">
               <strong>{{ event.Judul }}</strong>
-              <span>{{ event.Tipe | titlecase }} · {{ event.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span>
+              <span>{{ event.Tipe | titlecase }} · {{ isEventActive(event) ? 'Aktif' : 'Nonaktif' }}</span>
               <p>{{ event.Deskripsi || 'Tidak ada deskripsi.' }}</p>
               <small *ngIf="event.Lokasi">Lokasi: {{ event.Lokasi }}</small>
               <div *ngIf="event.FileAttachmentURL" class="event-attachment" style="margin-top: 6px;">
@@ -133,7 +132,7 @@
               </td>
               <td>{{ event.Tipe | titlecase }}</td>
               <td>{{ event.Lokasi || '-' }}</td>
-              <td><span class="status-badge" [class.status-hadir]="event.StatusAktif" [class.status-alpha]="!event.StatusAktif">{{ event.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span></td>
+              <td><span class="status-badge" [class.status-hadir]="isEventActive(event)" [class.status-alpha]="!isEventActive(event)">{{ isEventActive(event) ? 'Aktif' : 'Nonaktif' }}</span></td>
               <td class="actions"><button class="icon-button edit" type="button" (click)="openEditModal(event)" aria-label="Edit event" title="Edit event"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button><button class="icon-button delete" type="button" (click)="deleteEvent(event)" aria-label="Hapus event" title="Hapus event"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button></td>
             </tr>
           </tbody>
@@ -145,7 +144,7 @@
                 <span class="event-mobile-label">Judul</span>
                 <strong>{{ event.Judul }}</strong>
               </div>
-              <span class="status-badge" [class.status-hadir]="event.StatusAktif" [class.status-alpha]="!event.StatusAktif">{{ event.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span>
+              <span class="status-badge" [class.status-hadir]="isEventActive(event)" [class.status-alpha]="!isEventActive(event)">{{ isEventActive(event) ? 'Aktif' : 'Nonaktif' }}</span>
             </div>
             <div class="event-mobile-details">
               <div class="event-mobile-field"><span>Tanggal</span><strong>{{ event.Tanggal | date:'dd MMM yyyy' }}</strong></div>
@@ -192,11 +191,51 @@
     <form (ngSubmit)="saveEvent()">
       <div class="form-grid">
         <div class="form-group"><label for="event-date">Tanggal <b>*</b></label><input id="event-date" type="date" class="golan-input" name="tanggal" [(ngModel)]="form.tanggal" required></div>
-        <div class="form-group"><label for="event-type">Tipe Event <b>*</b></label><select id="event-type" class="golan-input" name="tipe" [(ngModel)]="form.tipe"><option value="rapat">Rapat</option><option value="meeting">Meeting</option><option value="info">Informasi</option><option value="lainnya">Lainnya</option></select></div>
+        <div class="form-group">
+          <label id="event-type-label" for="event-type">Tipe Event <b>*</b></label>
+          <div class="event-type-picker" [class.is-open]="openEventType" [class.is-error]="!form.tipe">
+            <select id="event-type" class="event-type-native" name="tipe" [(ngModel)]="form.tipe" tabindex="-1" aria-hidden="true">
+              <option *ngFor="let option of eventTypeOptions" [value]="option.value">{{ option.label }}</option>
+            </select>
+            <button type="button" class="golan-input event-type-trigger" [attr.aria-expanded]="openEventType" aria-haspopup="listbox" aria-labelledby="event-type-label" aria-controls="event-type-options" (click)="$event.stopPropagation(); toggleEventType()" (keydown)="onEventTypeKeydown($event)">
+              <span>{{ eventTypeLabel }}</span>
+              <i class="fas fa-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div id="event-type-options" class="event-type-menu" *ngIf="openEventType" role="listbox" aria-labelledby="event-type-label" (click)="$event.stopPropagation()">
+              <button type="button" class="event-type-option" *ngFor="let option of eventTypeOptions" role="option" [attr.aria-selected]="form.tipe === option.value" [class.is-selected]="form.tipe === option.value" (click)="selectEventType(option.value)">
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="form-grid">
-        <div class="form-group"><label for="event-start">Jam Mulai <b>*</b></label><input id="event-start" type="time" class="golan-input" name="jam_mulai" [(ngModel)]="form.jam_mulai" required></div>
-        <div class="form-group"><label for="event-end">Jam Selesai <span>(opsional)</span></label><input id="event-end" type="time" class="golan-input" name="jam_selesai" [(ngModel)]="form.jam_selesai"></div>
+        <div class="form-group">
+          <label for="event-start">Jam Mulai <b>*</b></label>
+          <div class="event-time-picker" [class.is-open]="openTimePicker === 'start'">
+            <button id="event-start" type="button" class="golan-input event-time-trigger" [attr.aria-expanded]="openTimePicker === 'start'" aria-haspopup="listbox" (click)="$event.stopPropagation(); toggleTimePicker('start')">
+              <span [class.is-placeholder]="timeValue('start') === '--:--'">{{ timeValue('start') }}</span>
+              <i class="fas fa-clock" aria-hidden="true"></i>
+            </button>
+            <div class="event-time-menu" *ngIf="openTimePicker === 'start'" role="listbox" aria-label="Pilih jam mulai" (click)="$event.stopPropagation()">
+              <div class="event-time-column"><span class="event-time-column-label">Jam</span><button type="button" *ngFor="let hour of timeHours" [class.is-selected]="timePart('start', 'hour') === hour" (click)="selectTimePart('start', 'hour', hour)">{{ hour }}</button></div>
+              <div class="event-time-column"><span class="event-time-column-label">Menit</span><button type="button" *ngFor="let minute of timeMinutes" [class.is-selected]="timePart('start', 'minute') === minute" (click)="selectTimePart('start', 'minute', minute)">{{ minute }}</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="event-end">Jam Selesai <span>(opsional)</span></label>
+          <div class="event-time-picker" [class.is-open]="openTimePicker === 'end'">
+            <button id="event-end" type="button" class="golan-input event-time-trigger" [attr.aria-expanded]="openTimePicker === 'end'" aria-haspopup="listbox" (click)="$event.stopPropagation(); toggleTimePicker('end')">
+              <span [class.is-placeholder]="timeValue('end') === '--:--'">{{ timeValue('end') }}</span>
+              <i class="fas fa-clock" aria-hidden="true"></i>
+            </button>
+            <div class="event-time-menu" *ngIf="openTimePicker === 'end'" role="listbox" aria-label="Pilih jam selesai" (click)="$event.stopPropagation()">
+              <div class="event-time-column"><span class="event-time-column-label">Jam</span><button type="button" *ngFor="let hour of timeHours" [class.is-selected]="timePart('end', 'hour') === hour" (click)="selectTimePart('end', 'hour', hour)">{{ hour }}</button></div>
+              <div class="event-time-column"><span class="event-time-column-label">Menit</span><button type="button" *ngFor="let minute of timeMinutes" [class.is-selected]="timePart('end', 'minute') === minute" (click)="selectTimePart('end', 'minute', minute)">{{ minute }}</button></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="form-group"><label for="event-title">Judul Event <b>*</b></label><input id="event-title" type="text" class="golan-input" name="judul" [(ngModel)]="form.judul" placeholder="Contoh: Meeting dengan investor" required></div>
       <div class="form-group"><label for="event-location">Lokasi <span>(opsional)</span></label><input id="event-location" type="text" class="golan-input" name="lokasi" [(ngModel)]="form.lokasi" placeholder="Contoh: Ruang Meeting Utama / Online"></div>

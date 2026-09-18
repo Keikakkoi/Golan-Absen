@@ -152,7 +152,10 @@ func chartStatus(ids []uint, date time.Time) []chartValue {
 	}
 	seen := make(map[uint]bool)
 	for _, row := range rows {
-		seen[row.EmployeeID] = true
+		if row.EmployeeID == nil {
+			continue
+		}
+		seen[*row.EmployeeID] = true
 		switch row.Status {
 		case models.StatusHadir:
 			values[0].Value++

@@ -73,6 +73,19 @@ func TestManagerCanOnlyProcessPendingManagerApproval(t *testing.T) {
 	}
 }
 
+func TestCancellableLeaveStatuses(t *testing.T) {
+	for _, status := range []models.LeaveStatus{models.LeaveStatusPending, models.LeaveStatusPendingManager, models.LeaveStatusPendingHRD} {
+		if !isCancellableLeaveStatus(status) {
+			t.Fatalf("status %q should be cancellable while awaiting approval", status)
+		}
+	}
+	for _, status := range []models.LeaveStatus{models.LeaveStatusApproved, models.LeaveStatusRejected, models.LeaveStatusCancelled, models.LeaveStatusManagerApproved, models.LeaveStatusManagerRejected, models.LeaveStatusHRDApproved, models.LeaveStatusHRDRejected} {
+		if isCancellableLeaveStatus(status) {
+			t.Fatalf("status %q must not be cancellable", status)
+		}
+	}
+}
+
 func TestAdminLeaveWorkflowIncludesEmployeesAndInterns(t *testing.T) {
 	for _, role := range []models.Role{models.RoleKaryawan, models.RoleMagang, models.RoleManajer} {
 		if !isAdminLeaveWorkflowRole(role) {

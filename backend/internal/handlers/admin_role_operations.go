@@ -133,14 +133,19 @@ func GetAdminInternshipCertificates(c *fiber.Ctx) error {
 	config.DB.Find(&documents)
 	byUser := map[uint]models.InternshipCertificate{}
 	for _, certificate := range certificates {
-		byUser[certificate.UserID] = certificate
+		if certificate.UserID != nil {
+			byUser[*certificate.UserID] = certificate
+		}
 	}
 	docsByUser := map[uint]map[string]models.InternshipDocument{}
 	for _, document := range documents {
-		if docsByUser[document.UserID] == nil {
-			docsByUser[document.UserID] = map[string]models.InternshipDocument{}
+		if document.UserID == nil {
+			continue
 		}
-		docsByUser[document.UserID][document.DocumentType] = document
+		if docsByUser[*document.UserID] == nil {
+			docsByUser[*document.UserID] = map[string]models.InternshipDocument{}
+		}
+		docsByUser[*document.UserID][document.DocumentType] = document
 	}
 	today := attendanceBusinessDate(attendanceNow())
 	result := make([]fiber.Map, 0, len(users))
@@ -263,7 +268,7 @@ func UploadAdminInternshipCertificate(c *fiber.Ctx) error {
 	}
 	now := time.Now()
 	if findErr != nil {
-		certificate = models.InternshipCertificate{UserID: user.ID, IssuedAt: now, CertificateNo: fmt.Sprintf("MAGANG-%06d", user.ID)}
+		certificate = models.InternshipCertificate{UserID: &user.ID, IssuedAt: now, CertificateNo: fmt.Sprintf("MAGANG-%06d", user.ID)}
 	}
 	uploader := c.Locals("user_id").(uint)
 	cfg := config.LoadConfig()

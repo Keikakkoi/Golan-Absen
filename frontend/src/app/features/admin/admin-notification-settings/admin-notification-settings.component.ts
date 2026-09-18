@@ -41,6 +41,7 @@ export class AdminNotificationSettingsComponent implements OnInit {
   searchTerm = '';
   statusFilter: 'all' | 'active' | 'inactive' = 'all';
   private savedState = '';
+  private savedSettings: NotificationSetting[] = [];
   isLoading = true;
   isSaving = false;
   errorMessage = '';
@@ -70,13 +71,21 @@ export class AdminNotificationSettingsComponent implements OnInit {
     const query = this.searchTerm.trim().toLowerCase();
     return this.roleSettings.filter(setting => {
       const matchesSearch = !query || `${setting.TipeNotifikasi} ${this.descriptionFor(setting.TipeNotifikasi)}`.toLowerCase().includes(query);
-      const isActive = setting.IsEmailEnabled || setting.IsInAppEnabled;
-      const matchesStatus = this.statusFilter === 'all' || (this.statusFilter === 'active' ? isActive : !isActive);
+      const hasActiveChannel = setting.IsEmailEnabled || setting.IsInAppEnabled;
+      const hasInactiveChannel = !setting.IsEmailEnabled || !setting.IsInAppEnabled;
+      const matchesStatus = this.statusFilter === 'all'
+        || (this.statusFilter === 'active' ? hasActiveChannel : hasInactiveChannel);
       return matchesSearch && matchesStatus;
     });
   }
 
-  get activeCount(): number { return this.roleSettings.filter(setting => setting.IsEmailEnabled || setting.IsInAppEnabled).length; }
+  /** Counters describe channels/toggles: email and in-app are counted separately. */
+  get totalToggleCount(): number { return this.roleSettings.length * 2; }
+  get activeCount(): number {
+    return this.roleSettings.filter(setting => setting.IsEmailEnabled).length
+      + this.roleSettings.filter(setting => setting.IsInAppEnabled).length;
+  }
+  get inactiveCount(): number { return this.totalToggleCount - this.activeCount; }
   get emailCount(): number { return this.roleSettings.filter(setting => setting.IsEmailEnabled).length; }
   get inAppCount(): number { return this.roleSettings.filter(setting => setting.IsInAppEnabled).length; }
   get hasUnsavedChanges(): boolean { return this.settingsState() !== this.savedState; }
@@ -147,6 +156,7 @@ export class AdminNotificationSettingsComponent implements OnInit {
         } else {
           this.settings = [];
         }
+        this.savedSettings = this.settings.map(setting => ({ ...setting }));
         this.savedState = this.settingsState();
         this.isLoading = false;
       },
@@ -168,10 +178,12 @@ export class AdminNotificationSettingsComponent implements OnInit {
     }
     if (!await this.alert.confirm('Simpan pengaturan notifikasi?', 'Perubahan pengaturan notifikasi akan diterapkan.')) return;
     this.isSaving = true;
+    const previousSettings = this.savedSettings.map(setting => ({ ...setting }));
     const headers = this.getHeaders();
     this.http.put<NotificationSetting[]>(this.baseUrl, this.roleSettings, { headers }).subscribe({
       next: (data) => {
         this.settings = data;
+        this.savedSettings = this.settings.map(setting => ({ ...setting }));
         this.savedState = this.settingsState();
         this.isSaving = false;
         this.successMessage = 'Pengaturan notifikasi berhasil disimpan.';
@@ -179,6 +191,7 @@ export class AdminNotificationSettingsComponent implements OnInit {
       },
       error: (err) => {
         console.error('Failed to save settings', err);
+        this.settings = previousSettings;
         this.errorMessage = err.error?.error || 'Gagal menyimpan pengaturan.';
         this.isSaving = false;
         this.alert.error('Gagal menyimpan pengaturan', this.errorMessage);

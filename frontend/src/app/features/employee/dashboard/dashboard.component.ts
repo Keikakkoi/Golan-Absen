@@ -54,7 +54,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     today_check_out: '',
     can_check_in: false,
     can_check_out: false,
-    attendance_message: ''
+    attendance_message: '',
+    missing_work_reports: []
   };
 
   notifications: AppNotification[] = [];

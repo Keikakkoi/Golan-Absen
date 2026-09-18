@@ -1,0 +1,13 @@
+# Absensi Golan Digital Kreatif
+
+Absensi Golan Digital Kreatif adalah aplikasi web internal PT. Golan Digital Kreatif untuk membantu pengelolaan absensi, laporan kerja, dan aktivitas operasional tim.
+
+## Public pages
+
+- [Beranda](https://domain-anda-nanti.com/)
+- [Login](https://domain-anda-nanti.com/login)
+
+## Crawl guidance
+
+Halaman publik dapat digunakan untuk memahami fungsi umum aplikasi. Area autentikasi seperti admin, employee, manager, intern, reset password, dan halaman bantuan internal tidak ditujukan untuk crawling publik.
+

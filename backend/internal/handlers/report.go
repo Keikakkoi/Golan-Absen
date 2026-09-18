@@ -237,6 +237,14 @@ func GetAdminReports(c *fiber.Ctx) error {
 	if err := query.Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch reports"})
 	}
+	for i := range records {
+		// Deleted employees keep immutable identity snapshots, so historical
+		// attendance remains readable even after employee_id is detached.
+		if records[i].Employee.ID == 0 {
+			records[i].Employee.NIK = records[i].EmployeeCodeSnapshot
+			records[i].Employee.User = &models.User{Nama: records[i].EmployeeNameSnapshot}
+		}
+	}
 	// Mask any legacy Terlambat records to Hadir
 	for i := range records {
 		if records[i].Status == models.StatusTerlambat {
@@ -282,6 +290,12 @@ func ExportAdminReportsCSV(c *fiber.Ctx) error {
 	var records []models.AttendanceRecord
 	if err := query.Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch reports"})
+	}
+	for i := range records {
+		if records[i].Employee.ID == 0 {
+			records[i].Employee.NIK = records[i].EmployeeCodeSnapshot
+			records[i].Employee.User = &models.User{Nama: records[i].EmployeeNameSnapshot}
+		}
 	}
 
 	c.Set("Content-Type", "text/csv")
@@ -402,7 +416,10 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	}
 	attendanceByEmployeeDate := make(map[string]models.AttendanceRecord)
 	for _, record := range records {
-		attendanceByEmployeeDate[fmt.Sprintf("%d:%s", record.EmployeeID, record.Tanggal.Format("2006-01-02"))] = record
+		if record.EmployeeID == nil {
+			continue
+		}
+		attendanceByEmployeeDate[fmt.Sprintf("%d:%s", *record.EmployeeID, record.Tanggal.Format("2006-01-02"))] = record
 	}
 
 	var holidays []models.Holiday
@@ -439,7 +456,10 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 	// process, while also detecting missing attendance for completed workdays.
 	for _, record := range records {
 		if record.Status == models.StatusAlpha {
-			summary, ok := employeesByID[record.EmployeeID]
+			if record.EmployeeID == nil {
+				continue
+			}
+			summary, ok := employeesByID[*record.EmployeeID]
 			if !ok {
 				continue
 			}
@@ -533,7 +553,10 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 	}
 	attendance := make(map[string]models.AttendanceRecord)
 	for _, record := range records {
-		attendance[fmt.Sprintf("%d:%s", record.EmployeeID, record.Tanggal.Format("2006-01-02"))] = record
+		if record.EmployeeID == nil {
+			continue
+		}
+		attendance[fmt.Sprintf("%d:%s", *record.EmployeeID, record.Tanggal.Format("2006-01-02"))] = record
 	}
 	today := attendanceNow()
 	lastCompletedDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location()).AddDate(0, 0, -1)
@@ -547,8 +570,11 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 		if record.Status != models.StatusAlpha {
 			continue
 		}
+		if record.EmployeeID == nil {
+			continue
+		}
 		for _, employee := range employees {
-			if employee.ID != record.EmployeeID {
+			if employee.ID != *record.EmployeeID {
 				continue
 			}
 			name := ""
