@@ -13,19 +13,28 @@ import (
 
 const (
 	defaultMinimumMasaKerjaCutiBulan        = 3
+	defaultCutiQuotaHari                    = 12
 	defaultBatasLaporanSetelahCheckoutMenit = 60
 )
 
 func getGeneralSetting() models.GeneralSetting {
+	return getGeneralSettingFrom(config.DB)
+}
+
+func getGeneralSettingFrom(db *gorm.DB) models.GeneralSetting {
 	setting := models.GeneralSetting{
 		MinimumMasaKerjaCutiBulan:        defaultMinimumMasaKerjaCutiBulan,
+		DefaultCutiQuotaHari:             defaultCutiQuotaHari,
 		BatasLaporanSetelahCheckoutMenit: defaultBatasLaporanSetelahCheckoutMenit,
 	}
-	if config.DB == nil || config.DB.First(&setting).Error != nil {
+	if db == nil || db.First(&setting).Error != nil {
 		return setting
 	}
 	if setting.MinimumMasaKerjaCutiBulan < 0 {
 		setting.MinimumMasaKerjaCutiBulan = defaultMinimumMasaKerjaCutiBulan
+	}
+	if setting.DefaultCutiQuotaHari < 0 {
+		setting.DefaultCutiQuotaHari = defaultCutiQuotaHari
 	}
 	// Preserve the legacy value for databases that have not run the new migration.
 	if setting.BatasLaporanSetelahCheckoutMenit <= 0 && setting.BatasLaporanSetelahCheckoutJam > 0 {
@@ -58,15 +67,28 @@ func ensureCutiQuota(db *gorm.DB, employee models.Employee, year int, asOf time.
 	if db == nil || !isEligibleForCuti(employee, asOf, minimumMonths) {
 		return nil
 	}
+	return ensureDefaultCutiQuota(db, employee.ID, year, getGeneralSettingFrom(db).DefaultCutiQuotaHari)
+}
+
+// ensureDefaultCutiQuota is idempotent and intentionally does not overwrite an
+// existing balance. It is used inside the employee creation transaction so a
+// new employee and its initial quota are committed or rolled back together.
+func ensureDefaultCutiQuota(db *gorm.DB, employeeID uint, year, defaultBalance int) error {
+	if db == nil || employeeID == 0 || year < 2000 {
+		return nil
+	}
+	if defaultBalance < 0 {
+		defaultBalance = defaultCutiQuotaHari
+	}
 	var quota models.LeaveQuota
-	result := db.Where("employee_id = ? AND tahun = ? AND jenis_cuti = ?", employee.ID, year, models.LeaveTypeCuti).First(&quota)
+	result := db.Where("employee_id = ? AND tahun = ? AND jenis_cuti = ?", employeeID, year, models.LeaveTypeCuti).First(&quota)
 	if result.Error == nil {
 		return nil
 	}
 	if result.Error != gorm.ErrRecordNotFound {
 		return result.Error
 	}
-	return db.Create(&models.LeaveQuota{EmployeeID: &employee.ID, Tahun: year, JenisCuti: models.LeaveTypeCuti, SisaKuota: 12}).Error
+	return db.Create(&models.LeaveQuota{EmployeeID: &employeeID, Tahun: year, JenisCuti: models.LeaveTypeCuti, SisaKuota: defaultBalance}).Error
 }
 
 func workReportDeadline(record models.AttendanceRecord, schedule models.WorkSchedule, setting models.GeneralSetting) time.Time {

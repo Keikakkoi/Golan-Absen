@@ -23,7 +23,6 @@
 }
 
 .main-content > .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
-.compliance-warning { margin-top: 24px; margin-bottom: 24px; }
 .dashboard-feedback { grid-column: 1 / -1; padding: 10px 14px; border-radius: 8px; font-size: .85rem; }
 .dashboard-feedback.loading { color: var(--text-dark-lo); background: var(--mint-1); }
 .dashboard-feedback.error { color: #b42318; background: #fee4e2; }

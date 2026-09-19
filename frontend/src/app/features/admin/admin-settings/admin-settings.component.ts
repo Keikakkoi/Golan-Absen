@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -55,6 +55,10 @@ export class AdminSettingsComponent implements OnInit {
   };
   jamMulaiLayanan = '08:00';
   jamSelesaiLayanan = '17:00';
+  readonly timeHours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
+  readonly timeMinutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
+  openTimePicker: string | null = null;
+  private timeDraft: Record<string, { hour: string; minute: string }> = {};
 
   // Holidays
   holidays: any[] = [];
@@ -138,6 +142,7 @@ export class AdminSettingsComponent implements OnInit {
     return {
       ...data,
       MinimumMasaKerjaCutiBulan: data?.MinimumMasaKerjaCutiBulan ?? data?.minimum_masa_kerja_cuti_bulan ?? 3,
+      DefaultCutiQuotaHari: data?.DefaultCutiQuotaHari ?? data?.default_cuti_quota_hari ?? 12,
       BatasLaporanSetelahCheckoutMenit: minutes ?? (legacyHours != null ? Number(legacyHours) * 60 : 60)
     };
   }
@@ -147,6 +152,7 @@ export class AdminSettingsComponent implements OnInit {
     this.isSavingGeneral = true;
     const body = {
       minimum_masa_kerja_cuti_bulan: Number(this.general.MinimumMasaKerjaCutiBulan),
+      default_cuti_quota_hari: Number(this.general.DefaultCutiQuotaHari),
       batas_laporan_setelah_checkout_menit: Number(this.general.BatasLaporanSetelahCheckoutMenit)
     };
     this.http.put(`${this.baseUrl}/settings/general`, body, { headers: this.getHeaders() }).subscribe({
@@ -269,6 +275,53 @@ export class AdminSettingsComponent implements OnInit {
           this.isSavingHelpdesk = false;
         },
       });
+  }
+
+  toggleTimePicker(key: string, value: string): void {
+    if (this.openTimePicker === key) {
+      this.openTimePicker = null;
+      return;
+    }
+    this.timeDraft[key] = /^\d{2}:\d{2}$/.test(value || '')
+      ? { hour: value.substring(0, 2), minute: value.substring(3, 5) }
+      : { hour: '', minute: '' };
+    this.openTimePicker = key;
+  }
+
+  selectTimePart(key: string, part: 'hour' | 'minute', value: string, target: any, field: string): void {
+    const draft = this.timeDraft[key] || { hour: '', minute: '' };
+    draft[part] = value;
+    this.timeDraft[key] = draft;
+    if (draft.hour && draft.minute) {
+      target[field] = `${draft.hour}:${draft.minute}`;
+      this.openTimePicker = null;
+    }
+  }
+
+  selectServiceTimePart(key: string, part: 'hour' | 'minute', value: string, field: 'jamMulaiLayanan' | 'jamSelesaiLayanan'): void {
+    this.selectTimePart(key, part, value, this, field);
+  }
+
+  timeValue(value: string): string {
+    return value && /^\d{2}:\d{2}$/.test(value) ? value : '--:--';
+  }
+
+  timePart(key: string, value: string, part: 'hour' | 'minute'): string {
+    if (this.openTimePicker === key) return this.timeDraft[key]?.[part] || '';
+    return /^\d{2}:\d{2}$/.test(value || '')
+      ? (part === 'hour' ? value.substring(0, 2) : value.substring(3, 5))
+      : '';
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.settings-time-picker')) this.openTimePicker = null;
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.openTimePicker = null;
   }
 
   // --- HOLIDAYS ---

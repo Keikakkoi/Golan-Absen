@@ -181,6 +181,10 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch attendance records"})
 	}
 
+	// Statistics are daily, so tolerate legacy/race-created duplicate rows and
+	// expose only one attendance record per business date.
+	records = deduplicateAttendanceRecords(records)
+
 	var countHadir, countTerlambat, countAlpha int64
 	var totalCheckInSecs int64
 	var checkInCount int64
@@ -477,6 +481,9 @@ func UpdateInternshipLogbook(c *fiber.Ctx) error {
 	input, files, err := parseWorkReportInput(c)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
+	}
+	if err := deleteRequestedWorkReportAttachments(c, report.ID); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	updates := map[string]interface{}{"tugas": input.Tugas, "deskripsi_kegiatan": input.DeskripsiKegiatan, "kendala": input.Kendala}
 	if input.Tanggal != "" {

@@ -191,6 +191,25 @@ export class ProfileComponent implements OnInit, OnDestroy {
     );
   }
 
+  formatProcessedAt(value: string | Date | null | undefined): string {
+    if (!value) return '-';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+
+    const parts = new Intl.DateTimeFormat('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Jakarta'
+    }).formatToParts(date);
+    const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value || '';
+    return `${part('day')} ${part('month')} ${part('year')} ${part('hour')}:${part('minute')}`;
+  }
+
   private loadHomeLocationWorkflow(): void {
     const requestId = ++this.homeLocationRequestId;
     this.homeLocationLoading = true;

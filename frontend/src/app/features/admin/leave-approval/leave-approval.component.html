@@ -28,6 +28,19 @@
             <option value="Cancelled">Dibatalkan</option>
           </select>
         </label>
+        <div class="export-dropdown" style="position: relative; margin-left: auto;">
+          <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()">
+            <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak
+            <i class="fas fa-chevron-down" style="margin-left: 0.5rem; font-size: 0.8rem;"></i>
+          </button>
+          <div class="dropdown-menu-custom" *ngIf="isExportOpen">
+            <button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV</button>
+            <button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)</button>
+            <button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON</button>
+            <button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF</button>
+            <button type="button" class="dropdown-item" (click)="printReport()" style="border-top: 1px solid #eee;"><i class="fas fa-print" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Cetak Laporan</button>
+          </div>
+        </div>
       </div>
       
       <div class="table-container leave-table-container">
@@ -40,6 +53,8 @@
             <col class="leave-col-date">
             <col class="leave-col-reason">
             <col class="leave-col-reason">
+            <col class="leave-col-note">
+            <col class="leave-col-note">
             <col class="leave-col-attachment">
             <col class="leave-col-status">
             <col class="leave-col-actions">
@@ -52,7 +67,9 @@
               <th scope="col">Tanggal Mulai</th>
               <th scope="col">Tanggal Selesai</th>
               <th scope="col">Alasan</th>
-              <th scope="col">Alasan Penolakan</th>
+              <th scope="col">Alasan Ditolak</th>
+              <th scope="col">Catatan Admin</th>
+              <th scope="col">Catatan Manajer</th>
               <th scope="col">Lampiran</th>
               <th scope="col">Status</th>
               <th scope="col">Aksi</th>
@@ -69,7 +86,15 @@
               <td class="leave-date-cell">{{ req.TanggalMulai | date:'dd MMM yyyy' }}</td>
               <td class="leave-date-cell">{{ req.TanggalSelesai | date:'dd MMM yyyy' }}</td>
               <td class="leave-reason-cell">{{ req.Alasan }}</td>
-              <td class="leave-reason-cell">{{ req.RejectionReason || req.rejection_reason || '-' }}</td>
+              <td class="leave-reason-cell">{{ rejectionSource(req) }}<span *ngIf="req.RejectionReason || req.rejection_reason">: {{ req.RejectionReason || req.rejection_reason }}</span><span *ngIf="!(req.RejectionReason || req.rejection_reason)">-</span></td>
+              <td class="leave-note-cell">
+                <ng-container *ngIf="canAddAdminNote(req); else savedAdminNote">
+                  <label class="sr-only" [for]="'admin-note-' + req.ID">Catatan Admin</label>
+                  <textarea class="admin-note-input" [id]="'admin-note-' + req.ID" [(ngModel)]="adminNotes[req.ID]" rows="3" placeholder="Tulis catatan atau alasan keputusan Admin..." [disabled]="isProcessing(req.ID)"></textarea>
+                </ng-container>
+                <ng-template #savedAdminNote><div class="note-source" [title]="displayAdminNote(req)">{{ displayAdminNote(req) }}</div></ng-template>
+              </td>
+              <td class="leave-note-cell"><div class="note-source" [title]="displayManagerNote(req)">{{ displayManagerNote(req) }}</div></td>
               <td class="leave-attachment-cell">
                 <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="btn-view-detail compact">Lihat Dokumen</a>
                 <span *ngIf="!req.LampiranURL" class="leave-muted-text">Tidak ada</span>
@@ -89,10 +114,10 @@
                 <div class="table-actions">
                   <button class="icon-button view" type="button" aria-label="Lihat detail pengajuan" title="Lihat detail pengajuan" (click)="openDetail(req)"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
                   <div *ngIf="canDecide(req)" class="action-group">
-                    <button class="icon-button approve" type="button" aria-label="Setujui pengajuan" title="Setujui pengajuan" (click)="updateStatus(req.ID, 'Approved')">
+                    <button class="icon-button approve" type="button" aria-label="Setujui pengajuan" title="Setujui pengajuan" [disabled]="isProcessing(req.ID)" (click)="updateStatus(req.ID, 'Approved')">
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
                     </button>
-                    <button class="icon-button reject" type="button" aria-label="Tolak pengajuan" title="Tolak pengajuan" (click)="updateStatus(req.ID, 'Rejected')">
+                    <button class="icon-button reject" type="button" aria-label="Tolak pengajuan" title="Tolak pengajuan" [disabled]="isProcessing(req.ID)" (click)="updateStatus(req.ID, 'Rejected')">
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#x"></use></svg>
                     </button>
                   </div>
@@ -210,7 +235,7 @@
       </div>
 
       <div class="detail-section" *ngIf="selectedRequest.Status === 'Rejected' || selectedRequest.Status === 'manager_rejected' || selectedRequest.Status === 'hrd_rejected'">
-        <span class="section-label">Alasan Penolakan</span>
+        <span class="section-label">Alasan Ditolak ({{ rejectionSource(selectedRequest) }})</span>
         <div class="reason-box rejection-reason-box"><p>{{ selectedRequest.RejectionReason || selectedRequest.rejection_reason || '-' }}</p></div>
       </div>
 
@@ -248,6 +273,18 @@
         <span class="section-label">Catatan Approval</span>
         <div class="notes-box">
           <p>{{ selectedRequest.Notes }}</p>
+        </div>
+      </div>
+      <div class="detail-section">
+        <span class="section-label">Catatan Manajer</span>
+        <div class="notes-box"><p>{{ managerNote(selectedRequest) }}</p></div>
+      </div>
+      <div class="detail-section">
+        <span class="section-label">Catatan Admin</span>
+        <div class="notes-box" *ngIf="!canAddAdminNote(selectedRequest)"><p>{{ adminNote(selectedRequest) }}</p></div>
+        <div class="note-editor detail-note-editor" *ngIf="canAddAdminNote(selectedRequest)">
+          <label [for]="'admin-note-detail-' + selectedRequest.ID">Catatan Admin</label>
+          <textarea [id]="'admin-note-detail-' + selectedRequest.ID" [(ngModel)]="adminNotes[selectedRequest.ID]" rows="3" placeholder="Tulis catatan atau alasan keputusan Admin..." [disabled]="isProcessing(selectedRequest.ID)"></textarea>
         </div>
       </div>
       <div class="detail-section" *ngIf="selectedRequest.ApprovalHistory?.length">

@@ -41,7 +41,8 @@ export class WorkReportComponent implements OnInit {
   refreshSuccess = '';
   userDivisi: string = '';
   selectedScreenshots: File[] = [];
-  screenshotPreviews: string[] = [];
+  existingScreenshots: any[] = [];
+  removedScreenshotIds: number[] = [];
   deadlineInfo: WorkReportDeadline | null = null;
   deadlineError = '';
   currentPage = 1;
@@ -231,6 +232,8 @@ export class WorkReportComponent implements OnInit {
     this.editingReportId = null;
     this.reportForm.reset();
     this.clearScreenshots();
+    this.existingScreenshots = [];
+    this.removedScreenshotIds = [];
     const workDate = date || localDateString();
     this.reportForm.patchValue({ tanggal: workDate });
     this.loadDeadline(workDate);
@@ -257,11 +260,19 @@ export class WorkReportComponent implements OnInit {
     this.editingReportId = null;
   }
 
+  canModifyReport(report: WorkReport): boolean {
+    const status = (report.status_sesuai || '').trim().toLowerCase();
+    return status !== 'sesuai' && status !== 'tidak membuat laporan kerja';
+  }
+
   editReport(r: WorkReport) {
+    if (!this.canModifyReport(r)) return;
     this.viewMode = 'form';
     this.isExportOpen = false;
     this.editingReportId = r.ID || null;
     this.clearScreenshots();
+    this.existingScreenshots = [...(r.attachments || [])];
+    this.removedScreenshotIds = [];
     
     // Parse custom fields if any
     let customFields = {};
@@ -291,37 +302,26 @@ export class WorkReportComponent implements OnInit {
     // a new state 'editingReportId' would be needed. 
   }
 
-  onScreenshotsSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const files = Array.from(input.files || []);
-    if (files.length > 3) {
-      this.alertService.error('Upload screenshot', 'Maksimal 3 gambar per laporan.');
-      input.value = '';
-      return;
-    }
-    const invalid = files.find(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024);
-    if (invalid) {
-      this.alertService.error('Upload screenshot', 'File harus JPG, PNG, atau WEBP dengan ukuran maksimal 5MB.');
-      input.value = '';
-      return;
-    }
-    this.selectedScreenshots = files;
-    this.screenshotPreviews = files.map(file => URL.createObjectURL(file));
-  }
-
   onScreenshotFilesChange(files: File[]): void {
     this.selectedScreenshots = files;
-    this.screenshotPreviews.forEach(url => URL.revokeObjectURL(url));
-    this.screenshotPreviews = files.map(file => URL.createObjectURL(file));
+  }
+
+  removeExistingScreenshot(index: number): void {
+    const screenshot = this.existingScreenshots[index];
+    const id = Number(screenshot?.id || screenshot?.ID);
+    if (id) this.removedScreenshotIds = [...this.removedScreenshotIds, id];
+    this.existingScreenshots = this.existingScreenshots.filter((_, i) => i !== index);
   }
 
   clearScreenshots(): void {
-    this.screenshotPreviews.forEach(url => URL.revokeObjectURL(url));
     this.selectedScreenshots = [];
-    this.screenshotPreviews = [];
+    this.existingScreenshots = [];
+    this.removedScreenshotIds = [];
   }
 
-  deleteReport(id: number) {
+  deleteReport(report: WorkReport) {
+    if (!this.canModifyReport(report) || !report.ID) return;
+    const id = report.ID;
     this.isExportOpen = false;
     Swal.fire({
       title: 'Hapus Laporan?',
@@ -408,6 +408,7 @@ export class WorkReportComponent implements OnInit {
     payload.append('catatan_tambahan', formValue.catatan_tambahan || '');
     payload.append('custom_fields', JSON.stringify(formValue.customFieldsForm || {}));
     this.selectedScreenshots.forEach(file => payload.append('screenshots', file, file.name));
+    if (this.removedScreenshotIds.length) payload.append('delete_attachment_ids', JSON.stringify(this.removedScreenshotIds));
 
     const request = this.editingReportId 
       ? this.workReportService.updateWorkReport(this.editingReportId, payload)
@@ -429,14 +430,25 @@ export class WorkReportComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting = false;
+        const reason = this.getErrorReason(err, 'Terjadi kesalahan saat menyimpan laporan kerja.');
         Swal.fire({
           icon: 'error',
-          title: 'Gagal',
-          text: (this.editingReportId ? 'Gagal memperbarui laporan: ' : 'Gagal mengirim laporan: ') + err.message,
+          title: this.editingReportId ? 'Gagal mengedit laporan kerja' : 'Gagal menambahkan laporan kerja',
+          text: reason,
           confirmButtonColor: '#2F80ED'
         });
       }
     });
+  }
+
+  private getErrorReason(error: any, fallback: string): string {
+    return typeof error?.error?.error === 'string'
+      ? error.error.error
+      : typeof error?.error?.message === 'string'
+        ? error.error.message
+        : typeof error?.message === 'string' && error.message !== 'Unknown Error'
+          ? error.message
+          : fallback;
   }
 
   exportExcel() {

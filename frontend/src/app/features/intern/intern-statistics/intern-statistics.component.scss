@@ -1,5 +1,14 @@
 @import '../intern-dashboard/intern-dashboard.component.scss';
 
+.intern-statistics-filter > .report-filter-action {
+  /* Use the same compact filter size as the other report toolbars. */
+  width: 111px;
+  min-width: 111px;
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+}
+
 /* Keep the date filter compact when the report toolbar stacks on phones. */
 @media (max-width: 768px) {
   .intern-statistics-filter {

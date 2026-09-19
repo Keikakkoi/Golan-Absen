@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"mime/multipart"
@@ -230,10 +231,16 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 				return c.Status(403).JSON(fiber.Map{"error": "Not your report"})
 			}
 		}
+		if isWorkReportLocked(report.StatusSesuai) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Laporan dengan status Sesuai atau Tidak membuat laporan kerja tidak dapat diubah"})
+		}
 	}
 
 	input, files, err := parseWorkReportInput(c)
 	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := deleteRequestedWorkReportAttachments(c, report.ID); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	if err := validateRealisasiKegiatan(input.RealisasiKegiatan, false); err != nil {
@@ -328,6 +335,9 @@ func DeleteWorkReport(c *fiber.Ctx) error {
 		if err := config.DB.Where("user_id = ?", c.Locals("user_id").(uint)).First(&employee).Error; err != nil || report.EmployeeID == nil || *report.EmployeeID != employee.ID {
 			return c.Status(403).JSON(fiber.Map{"error": "Not your report"})
 		}
+		if isWorkReportLocked(report.StatusSesuai) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Laporan dengan status Sesuai atau Tidak membuat laporan kerja tidak dapat dihapus"})
+		}
 	}
 	if report.EmployeeID == nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Report tidak memiliki karyawan"})
@@ -348,6 +358,11 @@ func DeleteWorkReport(c *fiber.Ctx) error {
 		}
 	}
 	return c.JSON(fiber.Map{"message": "Report deleted successfully"})
+}
+
+func isWorkReportLocked(status string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(status))
+	return normalized == "sesuai" || normalized == "tidak membuat laporan kerja"
 }
 
 // deleteWorkReportData removes the dependent rows before the report row. The
@@ -587,6 +602,35 @@ func saveWorkReportAttachments(reportID uint, nik string, files []*multipart.Fil
 		attachment := models.WorkReportAttachment{WorkReportID: reportID, FileURL: url, StorageKey: key, FileName: file.Filename, MimeType: file.Header.Get("Content-Type"), FileSize: file.Size}
 		if err := config.DB.Create(&attachment).Error; err != nil {
 			return fmt.Errorf("gagal menyimpan metadata screenshot")
+		}
+	}
+	return nil
+}
+
+func deleteRequestedWorkReportAttachments(c *fiber.Ctx, reportID uint) error {
+	raw := strings.TrimSpace(c.FormValue("delete_attachment_ids"))
+	if raw == "" {
+		return nil
+	}
+	var ids []uint
+	if err := json.Unmarshal([]byte(raw), &ids); err != nil {
+		return fmt.Errorf("daftar screenshot yang dihapus tidak valid")
+	}
+	for _, id := range ids {
+		var attachment models.WorkReportAttachment
+		if err := config.DB.Where("id = ? AND work_report_id = ?", id, reportID).First(&attachment).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				continue
+			}
+			return fmt.Errorf("gagal mencari screenshot")
+		}
+		if err := config.DB.Delete(&attachment).Error; err != nil {
+			return fmt.Errorf("gagal menghapus screenshot")
+		}
+		if attachment.StorageKey != "" && minio.Client != nil {
+			if err := minio.Client.RemoveObject(context.Background(), minio.BucketName, attachment.StorageKey, miniogo.RemoveObjectOptions{}); err != nil {
+				log.Printf("attachment cleanup failed: %v", err)
+			}
 		}
 	}
 	return nil

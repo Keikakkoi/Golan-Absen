@@ -1,4 +1,64 @@
 .role-operations-page .section-tabs{display:flex;gap:8px;margin-bottom:24px}.section-tabs button{border:1px solid var(--mint-2);background:var(--mint-0);color:var(--text-dark-lo);border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer;transition:.2s}.section-tabs button:hover,.section-tabs button.active{background:var(--green);color:#fff;border-color:var(--green)}.panel{margin-top:24px}.panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.toolbar{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}.toolbar .golan-input{min-width:120px}.note-input{min-width:130px}.btn-small{border:0;border-radius:6px;padding:7px 9px;color:#fff;cursor:pointer;margin:2px;font-weight:700}.btn-small:disabled{opacity:.55;cursor:not-allowed}.approve{background:var(--green)}.reject{background:var(--absent)}.muted{color:var(--text-dark-lo)}.member-stat{margin:18px 0}.bar-line{display:flex;height:12px;background:var(--mint-1);border-radius:99px;overflow:hidden;margin:8px 0}.present{background:var(--green)}.late{background:#f59e0b}.member-stat small{color:var(--text-dark-lo)}.actions{min-width:260px}.actions input[type=file]{max-width:170px;font-size:12px}.status-pill{display:inline-block;border-radius:999px;background:var(--mint-1);padding:5px 9px;font-size:12px;font-weight:700;color:var(--text-dark)}@media(max-width:760px){.panel-heading{align-items:stretch;flex-direction:column}.toolbar{width:100%;align-items:stretch}.toolbar>*{flex:1}.role-operations-page .section-tabs{overflow:auto}}@media print{app-admin-sidebar,.section-tabs,.toolbar,.btn-small,.btn-primary,.btn-secondary{display:none!important}.role-operations-page{padding:0}.panel{box-shadow:none;break-inside:avoid}}
+.statistics-manager-controls{display:flex;justify-content:flex-end;gap:8px;margin:0 0 16px}.statistics-manager-groups{display:grid;gap:12px;min-width:0}.statistics-manager-group{position:relative;width:100%;max-width:100%;border:1px solid var(--mint-2);border-radius:12px;overflow:hidden;background:var(--mint-0);box-sizing:border-box}.statistics-manager-header{width:100%;min-width:0;padding:16px 76px 16px 16px;box-sizing:border-box}.statistics-manager-summary{display:flex;flex:1 1 auto;flex-direction:column;gap:5px;min-width:0;overflow-wrap:anywhere}.statistics-manager-summary small{color:var(--text-dark-lo);font-weight:500;line-height:1.4}.statistics-manager-toggle{position:absolute;top:50%;right:16px;z-index:1;transform:translateY(-50%);display:grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid var(--mint-2);border-radius:50%;background:var(--mint-0);color:var(--text-dark);cursor:pointer;box-sizing:border-box;list-style:none}.statistics-manager-toggle::-webkit-details-marker{display:none}.statistics-manager-toggle:hover,.statistics-manager-toggle:focus-visible{background:var(--mint-1);outline:2px solid var(--green);outline-offset:-2px}.statistics-manager-group[open] .statistics-manager-toggle i{transform:rotate(180deg)}.statistics-manager-members{padding:0 16px 8px;box-sizing:border-box}.statistics-manager-members .member-stat{padding:12px 0;margin:0;border-top:1px solid var(--mint-2)}.statistics-member-heading{display:flex;justify-content:space-between;gap:12px;min-width:0}.statistics-member-heading strong{min-width:0;overflow-wrap:anywhere}.statistics-member-heading span{font-weight:700;color:var(--green);flex:0 0 auto}
+@media(max-width:760px){.statistics-manager-controls{flex-direction:column}.statistics-manager-controls button{width:100%}.statistics-manager-header{padding:14px}.statistics-manager-summary small{font-size:.78rem}.statistics-manager-members{padding:0 14px 6px}}
+
+.statistics-manager-header { position: relative; }
+
+/* Limit only the expanded member list so the manager header and toggle remain
+   visible while large teams can still be browsed comfortably. */
+.statistics-manager-members {
+  max-height: 460px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--mint-2) transparent;
+  scrollbar-width: thin;
+}
+.statistics-manager-members::-webkit-scrollbar { width: 8px; }
+.statistics-manager-members::-webkit-scrollbar-track { background: transparent; }
+.statistics-manager-members::-webkit-scrollbar-thumb {
+  background: var(--mint-2);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+.statistics-manager-members::-webkit-scrollbar-thumb:hover { background: var(--green); background-clip: padding-box; }
+
+@media (max-width: 760px) {
+  .statistics-manager-header { padding: 14px 68px 14px 14px; }
+  .statistics-manager-members { max-height: 400px; }
+}
+
+.statistics-manager-controls .btn-secondary {
+  min-height: 42px;
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--green);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: none;
+}
+
+.statistics-manager-controls .btn-secondary:hover,
+.statistics-manager-controls .btn-secondary:focus-visible {
+  background: var(--green-deep);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(47, 128, 237, 0.25);
+}
+
+.statistics-manager-controls .btn-secondary:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.statistics-manager-controls .btn-secondary:active {
+  transform: translateY(0);
+}
 
 /*
  * The global mobile table rule uses `overflow-wrap: anywhere`, which is useful
@@ -61,6 +121,34 @@
 .role-operations-page section.team-filter-panel:first-of-type .status-pill::before {
   width: 8px;
   height: 8px;
+}
+
+/* Attendance has no status class in the compact legacy template, so scope
+   the colors to the panel identified by its Absensi Tim status cell. */
+.role-operations-page .team-filter-panel .status-pill.status-hadir {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.role-operations-page .team-filter-panel .status-pill.status-izin {
+  background: #e0e7ff;
+  color: #4f46e5;
+}
+
+.role-operations-page .team-filter-panel .status-pill.status-warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.role-operations-page .team-filter-panel .status-pill.status-alpha,
+.role-operations-page .team-filter-panel .status-pill.status-tidak-hadir {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.role-operations-page .team-filter-panel .status-pill.status-terlambat {
+  background: #fef3c7;
+  color: #d97706;
 }
 
 /* Apply the same compact sizing to the status column in Laporan Tim /
@@ -1127,8 +1215,56 @@
   white-space: normal !important;
 }
 
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .status-pill {
+  min-height: 32px;
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  background: #dbeafe;
+  color: #1e3a5f;
+  font-size: .82rem;
+  font-weight: 600;
+}
+
 .role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .status-pill::before {
   margin: 0;
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(5),
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(5) {
+  padding-right: 22px;
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) th:nth-child(6),
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(6) {
+  padding-left: 22px;
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .status-pill.leave-status-success {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #bbf7d0 !important;
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .status-pill.leave-status-warning {
+  background: #fef3c7 !important;
+  color: #b7791f !important;
+  border-color: #fde68a !important;
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .status-pill.leave-status-danger {
+  background: #fee2e2 !important;
+  color: #b42318 !important;
+  border-color: #fecaca !important;
+}
+
+/* Keep the note field and action status visually separated. */
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:nth-child(5) .note-input {
+  width: calc(100% - 10px);
+}
+
+.role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .status-pill {
+  width: calc(100% - 10px);
+  margin-left: 10px;
 }
 
 .role-operations-page .golan-table:has(th:nth-child(6)):not(:has(th:nth-child(7))) td:last-child .btn-small {
@@ -1138,6 +1274,73 @@
   padding: 8px 10px;
   border-radius: 8px;
   white-space: nowrap;
+}
+
+/* Center Catatan and Aksi only in the team leave approval table. */
+.role-operations-page section:has(.leave-refresh-action) .golan-table th:nth-child(5),
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(5),
+.role-operations-page section:has(.leave-refresh-action) .golan-table th:nth-child(6),
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) {
+  text-align: center;
+}
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(5) .note-input {
+  margin-inline: auto;
+  text-align: left;
+}
+
+/* Approval notes are display-only in the team overview table. */
+.role-operations-page section:has(.leave-refresh-action) .golan-table td.leave-note-display {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill {
+  margin-inline: auto;
+}
+
+/* The team approval table must reserve a real gutter between the editable
+   note and status. This prevents the status pill from sitting on top of the
+   note input when the panel is narrower than the table. */
+.role-operations-page section:has(.leave-refresh-action) .golan-table {
+  min-width: 1120px;
+  table-layout: fixed;
+}
+.role-operations-page section:has(.leave-refresh-action) .golan-table th,
+.role-operations-page section:has(.leave-refresh-action) .golan-table td {
+  box-sizing: border-box;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.role-operations-page section:has(.leave-refresh-action) .golan-table th:nth-child(5),
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(5) {
+  width: 16%;
+  min-width: 180px;
+  padding-right: 20px;
+}
+.role-operations-page section:has(.leave-refresh-action) .golan-table th:nth-child(6),
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) {
+  width: 22%;
+  min-width: 220px;
+  padding-left: 20px;
+}
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(5) .note-input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill {
+  display: inline-flex;
+  width: 100%;
+  max-width: 200px;
+  min-width: 0;
+  box-sizing: border-box;
+  justify-content: center;
+  white-space: normal;
+  text-align: center;
 }
 
 @media (max-width: 768px) {
@@ -1503,14 +1706,66 @@
   box-sizing: border-box;
 }
 
+.team-filter-panel .report-toolbar > .date-filter-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.team-filter-panel .report-toolbar > .date-filter-label .golan-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .team-filter-panel .report-toolbar > .report-filter-action,
 .team-filter-panel .report-toolbar > .export-dropdown {
   width: auto;
   min-width: max-content;
 }
 
+.team-filter-panel .report-toolbar > .report-filter-action {
+  /* Keep the admin team filters consistent with the other filter bars. */
+  width: 111px;
+  min-width: 111px;
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+}
+
 .team-filter-panel .export-dropdown > button {
   white-space: nowrap;
+}
+
+.logbook-verification-panel .report-toolbar > .report-filter-action {
+  /* Match the standard team filter button size. */
+  width: 111px;
+  min-width: 111px;
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+}
+
+.certificate-filter-panel .report-toolbar > .report-filter-action {
+  /* Match the standard filter button size used across the team pages. */
+  width: 111px;
+  min-width: 111px;
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .logbook-verification-panel .report-toolbar > .report-filter-action {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .certificate-filter-panel .report-toolbar > .report-filter-action {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 /* Absensi Tim uses the same export treatment as the manager attendance page. */
@@ -1561,6 +1816,14 @@
 .team-filter-panel .attendance-export-dropdown .export-icon-pdf,
 .team-filter-panel .report-export-dropdown .export-icon-pdf { color: #dc3545; }
 
+/* Statistik Kehadiran Tim memakai panel khusus, jadi warnanya perlu selector sendiri. */
+.statistics-panel .report-export-dropdown .export-icon-csv,
+.statistics-panel .report-export-dropdown .export-icon-print { color: #17a2b8; }
+.statistics-panel .report-export-dropdown .export-icon-excel { color: #28a745; }
+.statistics-panel .report-export-dropdown .export-icon-json { color: #ffc107; }
+.statistics-panel .report-export-dropdown .export-icon-pdf { color: #dc3545; }
+.statistics-panel .report-export-dropdown .dropdown-item-print { border-top: 1px solid #eee; }
+
 .team-filter-panel .attendance-export-dropdown .dropdown-item-print,
 .team-filter-panel .report-export-dropdown .dropdown-item-print {
   border-top: 1px solid #eee;
@@ -1599,3 +1862,130 @@ body.dark-theme .team-filter-panel .report-export-dropdown .dropdown-item-print 
     grid-template-columns: 1fr;
   }
 }
+
+/* Logbook status badges in Laporan Tim / Logbook. Keep these rules last so
+   they win over the generic status-pill and table-specific overrides. */
+.role-operations-page .team-report-status {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  box-sizing: border-box;
+  gap: 0;
+  padding: 7px 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap !important;
+}
+
+.role-operations-page .team-report-status::before {
+  display: inline-block !important;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-right: 9px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.role-operations-page .team-report-status.status-success {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #bbf7d0 !important;
+}
+
+.role-operations-page .team-report-status.status-warning {
+  background: #fef3c7 !important;
+  color: #b7791f !important;
+  border-color: #fde68a !important;
+}
+
+.role-operations-page .team-report-status.status-danger {
+  background: #fee2e2 !important;
+  color: #b42318 !important;
+  border-color: #fecaca !important;
+}
+
+.role-operations-page .team-report-status.status-pending {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Logbook Magang badges use the same visual language as Laporan Tim. */
+.role-operations-page .role-operations-logbook-table .logbook-status,
+.role-operations-page .role-operations-logbook-table .status-pill.status-warning,
+.role-operations-page .role-operations-logbook-table .filling-status,
+.role-operations-page .detail-row .filling-status {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  box-sizing: border-box;
+  gap: 0;
+  padding: 7px 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 999px;
+  font-size: 0.8125rem !important;
+  font-weight: 600;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+}
+
+.role-operations-page .role-operations-logbook-table .logbook-status::before,
+.role-operations-page .role-operations-logbook-table .status-pill.status-warning::before,
+.role-operations-page .role-operations-logbook-table .filling-status::before,
+.role-operations-page .detail-row .filling-status::before {
+  display: inline-block !important;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-right: 9px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.role-operations-page .role-operations-logbook-table .logbook-status.status-success,
+.role-operations-page .role-operations-logbook-table .filling-status.status-success {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #bbf7d0 !important;
+}
+
+.role-operations-page .role-operations-logbook-table .logbook-status.status-warning,
+.role-operations-page .role-operations-logbook-table .filling-status.status-warning {
+  background: #fef3c7 !important;
+  color: #b7791f !important;
+  border-color: #fde68a !important;
+}
+
+.role-operations-page .role-operations-logbook-table .filling-status.status-danger,
+.role-operations-page .detail-row .filling-status.status-danger {
+  background: #fee2e2 !important;
+  color: #b42318 !important;
+  border-color: #fecaca !important;
+}
+
+.role-operations-page .role-operations-logbook-table .logbook-status.status-danger {
+  background: #fee2e2 !important;
+  color: #b42318 !important;
+  border-color: #fecaca !important;
+}
+
+.role-operations-page .role-operations-logbook-table .logbook-status.status-pending {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Late-submission status already has its own warning icon; do not add a dot. */
+.role-operations-page .role-operations-logbook-table .filling-status.status-danger::before,
+.role-operations-page .detail-row .filling-status.status-danger::before {
+  display: none !important;
+}
+.status-summary,.status-chip{display:inline-flex;align-items:center;gap:7px}.status-summary>span,.status-chip{display:inline-flex;align-items:center;gap:8px}.status-dot{display:inline-block;width:8px;height:8px;flex:0 0 8px;border-radius:50%;vertical-align:middle}.status-present{background:#16A34A}.status-late{background:#f59e0b}.status-leave{background:#8b5cf6}.status-alpha{background:#dc2626}.status-pending{background:#64748b}.status-neutral{background:#94a3b8}.statistics-manager-members .status-summary{display:flex;flex-wrap:wrap;gap:6px 10px;line-height:1.5}.statistics-manager-members .status-summary>span{white-space:nowrap}.bar-line .present{background:#16A34A}.bar-line .leave{background:#8b5cf6}.bar-line .alpha{background:#dc2626}.bar-line .pending{background:#64748b}.statistics-show-more{display:block;margin:12px auto 4px}

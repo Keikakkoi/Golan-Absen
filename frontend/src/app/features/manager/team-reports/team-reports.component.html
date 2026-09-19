@@ -1,12 +1,12 @@
 <div class="dashboard-container">
   <app-shared-sidebar></app-shared-sidebar>
   <main class="main-content">
+    <div class="header">
+      <h2>Laporan Tim</h2>
+      <p>Lihat laporan kerja dan logbook anggota tim yang berada di bawah Anda serta berikan catatan review.</p>
+    </div>
     <section class="golan-card team-report-card">
       <div class="team-filter-layout">
-        <div class="team-filter-heading">
-          <h2>Laporan Tim</h2>
-          <p>Lihat laporan kerja dan logbook anggota tim yang berada di bawah Anda serta berikan catatan review.</p>
-        </div>
         <div class="report-toolbar team-reports-toolbar">
         <label>Nama/NIK<input class="golan-input" [(ngModel)]="search" placeholder="Cari nama atau NIK..."></label>
         <label>Dari Tanggal<input type="date" class="golan-input" [(ngModel)]="start" aria-label="Dari Tanggal" title="Format: dd/mm/yyyy"></label>
@@ -100,11 +100,7 @@
                 </span>
               </td>
               <td>
-                <span class="status-pill" [ngClass]="{
-                  'status-success': logbookStatus(row) === 'approved',
-                  'status-warning': logbookStatus(row) === 'submitted',
-                  'status-danger': logbookStatus(row) === 'rejected'
-                }">
+                <span class="status-pill" [ngClass]="logbookStatusClass(row)">
                   {{ logbookStatus(row) || '-' }}
                 </span>
               </td>

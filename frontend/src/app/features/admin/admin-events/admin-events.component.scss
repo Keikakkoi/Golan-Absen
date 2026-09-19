@@ -326,7 +326,7 @@
   text-align: left;
   cursor: pointer;
 }
-.event-time-trigger i { color: var(--green-deep); font-size: 0.9rem; }
+.settings-time-icon { color: var(--green-deep); font-size: 1rem; line-height: 1; }
 .event-time-trigger .is-placeholder { color: #91a6ba; font-weight: 400; }
 .event-time-menu {
   position: absolute;
@@ -345,7 +345,7 @@
   background: #ffffff;
   box-shadow: 0 5px 14px rgba(24, 59, 86, .14);
 }
-.event-time-column { min-width: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #b8cbe0 transparent; }
+.event-time-column { min-width: 0; height: 240px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #b8cbe0 transparent; }
 .event-time-column::-webkit-scrollbar { width: 7px; }
 .event-time-column::-webkit-scrollbar-track { background: transparent; }
 .event-time-column::-webkit-scrollbar-thumb { border-radius: 999px; background: #b8cbe0; }

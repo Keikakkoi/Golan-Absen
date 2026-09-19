@@ -375,9 +375,13 @@ type LeaveRequest struct {
 	ApprovedBy           *uint                  // UserID of HRD/Admin/Manager who approved
 	ApprovedAt           *time.Time             `gorm:"type:timestamp"`
 	Notes                string                 `gorm:"type:text"`
+	Catatan              string                 `gorm:"type:text" json:"catatan"`
 	ManagerApprovedBy    *uint                  `gorm:"index"`
 	ManagerApprovedAt    *time.Time             `gorm:"type:timestamp"`
-	ManagerNotes         string                 `gorm:"type:text"`
+	ManagerNotes         string                 `gorm:"type:text" json:"manager_notes"`
+	AdminNoteBy          *uint                  `gorm:"index" json:"admin_note_by,omitempty"`
+	AdminNoteAt          *time.Time             `gorm:"type:timestamp" json:"admin_note_at,omitempty"`
+	AdminNotes           string                 `gorm:"type:text" json:"admin_notes"`
 	RejectionReason      string                 `gorm:"type:text" json:"rejection_reason"`
 	RejectedBy           *uint                  `gorm:"index" json:"rejected_by"`
 	RejectedAt           *time.Time             `gorm:"type:timestamp" json:"rejected_at"`
@@ -422,6 +426,7 @@ const (
 type GeneralSetting struct {
 	Model
 	MinimumMasaKerjaCutiBulan        int `gorm:"not null;default:3"`
+	DefaultCutiQuotaHari             int `gorm:"not null;default:12" json:"default_cuti_quota_hari"`
 	BatasLaporanSetelahCheckoutMenit int `gorm:"not null;default:60"`
 	// Deprecated: retained while existing installations are migrated to minutes.
 	BatasLaporanSetelahCheckoutJam int `gorm:"not null;default:1"`
@@ -429,10 +434,10 @@ type GeneralSetting struct {
 
 type LeaveQuota struct {
 	Model
-	EmployeeID *uint `gorm:"index"`
+	EmployeeID *uint `gorm:"index;uniqueIndex:idx_leave_quota_employee_year_type"`
 	Employee   Employee
-	Tahun      int    `gorm:"not null"`
-	JenisCuti  string `gorm:"size:50;not null"`
+	Tahun      int    `gorm:"not null;uniqueIndex:idx_leave_quota_employee_year_type"`
+	JenisCuti  string `gorm:"size:50;not null;uniqueIndex:idx_leave_quota_employee_year_type"`
 	SisaKuota  int    `gorm:"not null;default:12"`
 }
 

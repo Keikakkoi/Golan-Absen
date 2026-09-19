@@ -23,6 +23,10 @@
   }
 }
 
+.leave-history-card .golan-table td.leave-note-cell { white-space: normal !important; overflow-wrap: anywhere !important; }
+
+.leave-note-cell { min-width: 180px; max-width: 260px; white-space: normal; overflow-wrap: anywhere; }
+
 .leave-request-grid {
   display: flex;
   flex-direction: column;
@@ -365,6 +369,11 @@ body.dark-theme .file-name {
 }
 
 .status-menunggu {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.status-disetujui {
   background: #eff6ff;
   color: #2563eb;
 }

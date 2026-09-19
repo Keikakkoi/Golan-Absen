@@ -97,9 +97,29 @@ func TestAdminLeaveWorkflowIncludesEmployeesAndInterns(t *testing.T) {
 	}
 }
 
+func TestAdminLeaveNoteOnlyAllowsPendingRequests(t *testing.T) {
+	if !isAdminLeaveNoteStatus(models.LeaveStatusPendingHRD) {
+		t.Fatal("direct HRD approval requests should allow an admin note")
+	}
+	for _, status := range []models.LeaveStatus{models.LeaveStatusPending, models.LeaveStatusPendingManager, models.LeaveStatusApproved, models.LeaveStatusManagerApproved, models.LeaveStatusHRDApproved, models.LeaveStatusRejected, models.LeaveStatusCancelled} {
+		if isAdminLeaveNoteStatus(status) {
+			t.Fatalf("status %q must not allow an admin note", status)
+		}
+	}
+}
+
 func TestRejectionReasonMustNotAcceptWhitespace(t *testing.T) {
 	if reason := strings.TrimSpace(" \t\n"); reason != "" {
 		t.Fatalf("whitespace-only rejection reason should be empty, got %q", reason)
+	}
+}
+
+func TestNormalizeLeaveNoteTrimsAndSupportsLegacyNotes(t *testing.T) {
+	if got, err := normalizeLeaveNote("  ", "  Catatan lama  "); err != nil || got != "Catatan lama" {
+		t.Fatalf("normalizeLeaveNote() = %q, %v; want trimmed legacy note", got, err)
+	}
+	if _, err := normalizeLeaveNote(strings.Repeat("x", 2001), ""); err == nil {
+		t.Fatal("normalizeLeaveNote() should reject notes over 2000 characters")
 	}
 }
 

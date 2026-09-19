@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
@@ -8,6 +8,7 @@ import { ReportExportService } from '../../../core/services/report-export.servic
 import Swal from 'sweetalert2';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-admin-role-operations',
@@ -16,7 +17,7 @@ import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.
   templateUrl: './role-operations.component.html',
   styleUrls: ['./role-operations.component.scss']
 })
-export class RoleOperationsComponent implements OnInit {
+export class RoleOperationsComponent implements OnInit, OnDestroy {
 
   activeSection: 'internship' | 'team' = 'internship';
   internshipStats: any = {};
@@ -32,6 +33,8 @@ export class RoleOperationsComponent implements OnInit {
   attendanceRows: any[] = [];
   teamReports: any[] = [];
   teamStatistics: any = { members: [] };
+  statisticsManagerGroups: any[] = [];
+  expandedStatisticsManagers: Record<string, boolean> = {};
   leaveRequests: any[] = [];
   leavePage = 1;
   leavePageSize = 25;
@@ -40,7 +43,8 @@ export class RoleOperationsComponent implements OnInit {
   leaveLoading = false;
   private leaveServerPaginated = false;
   notes: Record<number, string> = {};
-  date = new Date().toISOString().slice(0, 10);
+  startDate = new Date().toISOString().slice(0, 10);
+  endDate = this.startDate;
   start = '';
   end = '';
   selectedLogbookStatus = '';
@@ -59,8 +63,13 @@ export class RoleOperationsComponent implements OnInit {
   openExportMenu: string | null = null;
   selectedLogbookDetail: any = null;
   private readonly api = 'http://localhost:8080/api/v1';
+  private disconnectRealtime?: () => void;
+  private refreshTimer?: ReturnType<typeof setInterval>;
+  private statisticsRefreshHandle?: ReturnType<typeof setTimeout>;
+  private statisticsRequestSequence = 0;
+  private statisticsRequestInFlight = false;
 
-  constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService) {}
+  constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService, private notificationService: NotificationService) {}
 
   isInternshipEnded(row: any): boolean {
     if (!row) return false;
@@ -75,6 +84,20 @@ export class RoleOperationsComponent implements OnInit {
 
   viewLogbookDetail(item: any): void { this.selectedLogbookDetail = item; }
   closeLogbookDetail(): void { this.selectedLogbookDetail = null; }
+  logbookStatusClass(item: any): string {
+    const status = String(item?.status_logbook || item?.StatusLogbook || item?.status_sesuai || item?.StatusSesuai || 'draft').trim().toLowerCase();
+    return status === 'approved'
+      ? 'status-success'
+      : status === 'submitted'
+        ? 'status-warning'
+        : status === 'rejected'
+          ? 'status-danger'
+          : 'status-pending';
+  }
+  logbookStatusLabel(item: any): string {
+    const status = String(item?.status_logbook || item?.StatusLogbook || item?.status_sesuai || item?.StatusSesuai || 'draft').trim().toLowerCase();
+    return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Draft';
+  }
   deleteLogbook(item: any): void {
     const id = item.id || item.ID;
     if (!id) return;
@@ -82,7 +105,9 @@ export class RoleOperationsComponent implements OnInit {
     this.http.delete(`${this.api}/admin/internship/logbooks/${id}`, { headers: this.headers() }).subscribe({ next: () => this.loadLogbooks(), error: e => this.fail(e) });
   }
 
-  ngOnInit(): void { this.loadInternship(); }
+  ngOnInit(): void { this.loadInternship(); this.disconnectRealtime = this.notificationService.connectRealtime(() => this.scheduleRealtimeTeamRefresh()); this.refreshTimer = setInterval(() => { if (this.activeSection === 'team') this.loadTeam(); }, 30_000); }
+  ngOnDestroy(): void { if (this.refreshTimer) clearInterval(this.refreshTimer); if (this.statisticsRefreshHandle) clearTimeout(this.statisticsRefreshHandle); this.disconnectRealtime?.(); }
+  private scheduleRealtimeTeamRefresh(): void { if (this.activeSection !== 'team' || this.statisticsRefreshHandle) return; this.statisticsRefreshHandle = setTimeout(() => { this.statisticsRefreshHandle = undefined; this.loadTeam(); }, 250); }
 
   selectSection(section: 'internship' | 'team'): void {
     this.activeSection = section;
@@ -347,13 +372,19 @@ export class RoleOperationsComponent implements OnInit {
     const rows = this.logbooks.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || '-', row.review_notes || row.ReviewNotes || '-']);
     void this.reportExport.downloadPdf(`laporan-logbook-magang-${this.exportDate()}.pdf`, 'Laporan Logbook Magang', this.exportDate(), headers, rows);
   }
+  printLogbooks(): void {
+    this.openExportMenu = null;
+    const headers = ['Tanggal', 'Peserta', 'Tugas', 'Kegiatan', 'Status', 'Catatan Review'];
+    const rows = this.logbooks.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || '-', row.review_notes || row.ReviewNotes || '-']);
+    this.reportExport.printReport('Laporan Logbook Magang', this.exportDate(), headers, rows);
+  }
   exportAttendanceExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('absensi-tim.xls', this.attendanceExportHeaders, this.attendanceExportRows()); }
   exportAttendanceJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('absensi-tim.json', this.attendanceRows); }
   exportAttendancePDF(): void {
     this.openExportMenu = null;
     void this.reportExport.downloadPdf(`laporan-absensi-tim-${this.exportDate()}.pdf`, 'Laporan Absensi Tim', this.exportDate(), this.attendanceExportHeaders, this.attendanceExportRows());
   }
-  printAttendance(): void { this.openExportMenu = null; this.reportExport.printReport('Absensi Tim', this.date, this.attendanceExportHeaders, this.attendanceExportRows()); }
+  printAttendance(): void { this.openExportMenu = null; this.reportExport.printReport('Absensi Tim', this.attendanceDateRange(), this.attendanceExportHeaders, this.attendanceExportRows()); }
   exportReportsExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('laporan-tim.xls', this.reportExportHeaders, this.reportExportRows()); }
   exportReportsJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('laporan-tim.json', this.teamReports); }
   exportReportsPDF(): void {
@@ -369,13 +400,37 @@ export class RoleOperationsComponent implements OnInit {
     const rows = this.certificates.map(row => [row.nama, row.institution_name, row.internship_end_date, row.uploaded ? 'Sudah diupload' : (!this.isInternshipEnded(row) ? 'Masa magang berlangsung' : 'Belum diupload'), row.file_name]);
     void this.reportExport.downloadPdf(`laporan-sertifikat-magang-${this.exportDate()}.pdf`, 'Laporan Sertifikat Magang', this.exportDate(), headers, rows);
   }
-  exportTeamStatisticsExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('statistik-kehadiran-tim.xls', ['Anggota', 'Hadir', 'Terlambat', 'Total'], (this.teamStatistics.members || []).map((row: any) => [row.Name, row.Hadir, row.Terlambat, row.Total])); }
+  printCertificates(): void {
+    this.openExportMenu = null;
+    const headers = ['Peserta', 'Institusi', 'Tanggal Selesai', 'Status', 'File'];
+    const rows = this.certificates.map(row => [row.nama, row.institution_name, row.internship_end_date, row.uploaded ? 'Sudah diupload' : (!this.isInternshipEnded(row) ? 'Masa magang berlangsung' : 'Belum diupload'), row.file_name]);
+    this.reportExport.printReport('Laporan Sertifikat Magang', this.exportDate(), headers, rows);
+  }
+  private readonly statisticsInitialVisibleMembers = 100;
+  private readonly statisticsVisibleStep = 100;
+  private buildStatisticsManagerGroups(members: any[]): any[] { const groups = new Map<string, any>(); for (const rawMember of members || []) { const totalHariKerja = Number(rawMember.TotalHariKerja ?? rawMember.Total ?? 0); const hadir = Number(rawMember.Hadir || 0); const terlambat = Number(rawMember.Terlambat || 0); const izinCuti = Number(rawMember.IzinCuti || 0); const alpha = Number(rawMember.Alpha || 0); const belumAbsen = Number(rawMember.BelumAbsen || 0); const percent = (value: number) => totalHariKerja ? value / totalHariKerja * 100 : 0; const member = { ...rawMember, totalHariKerja, hadirPercentage: percent(hadir), terlambatPercentage: percent(terlambat), izinCutiPercentage: percent(izinCuti), alphaPercentage: percent(alpha), belumAbsenPercentage: percent(belumAbsen), attendancePercentage: Number(rawMember.PersentaseKehadiran ?? (totalHariKerja ? Math.round((hadir + terlambat) / totalHariKerja * 100) : 0)) }; const name = member.manager_name?.trim() || 'Belum Ada Manajer'; const managerId = member.manager_id; const key = managerId !== null && managerId !== undefined && String(managerId).trim() !== '' ? `manager-${managerId}` : 'unassigned'; let group = groups.get(key); if (!group) { group = { key, name, members: [], visibleMembers: [], totalMembers: 0, hadir: 0, terlambat: 0, izinCuti: 0, alpha: 0, belumAbsen: 0, total: 0, percentage: 0, expanded: false, visibleLimit: this.statisticsInitialVisibleMembers }; groups.set(key, group); } group.members.push(member); group.totalMembers++; group.hadir += hadir; group.terlambat += terlambat; group.izinCuti += izinCuti; group.alpha += alpha; group.belumAbsen += belumAbsen; group.total += totalHariKerja; } for (const group of groups.values()) { group.percentage = group.total ? Math.round((group.hadir + group.terlambat) / group.total * 100) : 0; this.refreshVisibleStatisticsMembers(group); } return Array.from(groups.values()); }
+  private refreshVisibleStatisticsMembers(group: any): void { group.visibleMembers = group.members.slice(0, group.visibleLimit); }
+  get showStatisticsManagerControls(): boolean { return this.statisticsManagerGroups.length > 1; }
+  toggleStatisticsManager(key: string): void { const group = this.statisticsManagerGroups.find(item => item.key === key); if (!group) return; group.expanded = !group.expanded; this.expandedStatisticsManagers = { ...this.expandedStatisticsManagers, [key]: group.expanded }; }
+  expandStatisticsManagers(): void { for (const group of this.statisticsManagerGroups) { group.expanded = true; group.visibleLimit = this.statisticsInitialVisibleMembers; this.refreshVisibleStatisticsMembers(group); } this.expandedStatisticsManagers = Object.fromEntries(this.statisticsManagerGroups.map(group => [group.key, true])); }
+  collapseStatisticsManagers(): void { for (const group of this.statisticsManagerGroups) group.expanded = false; this.expandedStatisticsManagers = {}; }
+  showMoreStatisticsMembers(group: any): void { group.visibleLimit = Math.min(group.visibleLimit + this.statisticsVisibleStep, group.members.length); this.refreshVisibleStatisticsMembers(group); }
+  statisticsTrackBy(_: number, item: any): string { return item.key; }
+  statisticsMemberTrackBy(_: number, item: any): number | string { return item.ID ?? item.employee_id ?? item.Name; }
+  private teamStatisticsExportRows(): unknown[][] { return this.statisticsManagerGroups.flatMap(group => [[`Manajer: ${group.name}`, '', '', '', '', '', '', ''], ...group.members.map((row: any) => [group.name, row.Name || '-', row.Hadir || 0, row.Terlambat || 0, row.IzinCuti || 0, row.Alpha || 0, row.BelumAbsen || 0, row.TotalHariKerja ?? row.Total ?? 0, row.attendancePercentage])]); }
+  private teamStatisticsPrintableRows(): unknown[][] { return this.statisticsManagerGroups.flatMap(group => [[`${group.name} (${group.totalMembers} anggota)`, '', '', '', '', '', '', '', ''], ...group.members.map((row: any) => [group.name, row.Name || '-', row.Hadir || 0, row.Terlambat || 0, row.IzinCuti || 0, row.Alpha || 0, row.BelumAbsen || 0, row.TotalHariKerja ?? row.Total ?? 0, `${row.attendancePercentage}%`])]); }
+  exportTeamStatisticsExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('statistik-kehadiran-tim.xls', ['Manajer', 'Anggota', 'Hadir', 'Terlambat', 'Izin/Cuti', 'Alpha', 'Belum Absen', 'Total Hari Kerja', 'Persentase'], this.teamStatisticsExportRows()); }
   exportTeamStatisticsJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('statistik-kehadiran-tim.json', this.teamStatistics); }
   exportTeamStatisticsPDF(): void {
     this.openExportMenu = null;
-    const headers = ['Anggota', 'Hadir', 'Terlambat', 'Total'];
-    const rows = (this.teamStatistics.members || []).map((row: any) => [row.Name, row.Hadir, row.Terlambat, row.Total]);
+    const headers = ['Manajer', 'Anggota', 'Hadir', 'Terlambat', 'Persentase Kehadiran'];
+    const rows = this.teamStatisticsPrintableRows();
     void this.reportExport.downloadPdf(`laporan-statistik-tim-${this.exportDate()}.pdf`, 'Laporan Statistik Kehadiran Tim', this.exportDate(), headers, rows);
+  }
+  printTeamStatistics(): void {
+    this.openExportMenu = null;
+    const headers = ['Manajer', 'Anggota', 'Hadir', 'Terlambat', 'Izin/Cuti', 'Alpha', 'Belum Absen', 'Total Hari Kerja', 'Persentase Kehadiran'];
+    this.reportExport.printReport('Laporan Statistik Kehadiran Tim', this.exportDate(), headers, this.teamStatisticsPrintableRows());
   }
   printCurrent(): void { window.print(); }
 
@@ -386,6 +441,11 @@ export class RoleOperationsComponent implements OnInit {
   private reportDateRange(): string {
     if (!this.start && !this.end) return 'Semua tanggal';
     return `${this.start || 'Awal'} - ${this.end || 'Sekarang'}`;
+  }
+
+  private attendanceDateRange(): string {
+    if (!this.startDate && !this.endDate) return 'Semua tanggal';
+    return `${this.startDate || 'Awal'} - ${this.endDate || 'Sekarang'}`;
   }
 
   loadTeam(): void {
@@ -402,10 +462,30 @@ export class RoleOperationsComponent implements OnInit {
     this.http.get<any>(`${this.api}/manager/leaves`, { params, headers: this.headers() }).subscribe({
       next: response => {
         this.leaveServerPaginated = !Array.isArray(response) && Array.isArray(response?.data);
-        this.leaveRequests = this.leaveServerPaginated ? response.data : (response || []);
+        const requests = this.leaveServerPaginated ? response.data : (response || []);
+        this.leaveRequests = requests.map((request: any) => ({
+          ...request,
+          Status: this.leaveStatusLabel(request.Status)
+        }));
+        this.leaveRequests.forEach((request: any) => {
+          // The operational overview uses one compact Catatan column. Admin
+          // approval notes are the authoritative value there; retain manager
+          // and legacy fields as fallbacks for older requests.
+          // The operational overview uses one compact Catatan column. Admin
+          // approval notes are the authoritative value there; retain manager
+          // and legacy fields as fallbacks for older requests.
+          this.notes[request.ID] = request.admin_notes
+            || request.AdminNotes
+            || request.Notes
+            || request.notes
+            || request.manager_notes
+            || request.ManagerNotes
+            || '';
+        });
         this.leaveTotalItems = this.leaveServerPaginated ? Number(response.total || this.leaveRequests.length) : this.leaveRequests.length;
         this.leavePage = Number(response?.page || page);
         this.leaveLoading = false;
+        setTimeout(() => this.syncLeaveStatusStyles());
       },
       error: e => { this.leaveLoading = false; this.fail(e); }
     });
@@ -420,9 +500,39 @@ export class RoleOperationsComponent implements OnInit {
   leavePageChanged(page: number): void { this.loadLeaveRequests(page); }
   leavePageSizeChanged(size: number): void { this.leavePageSize = size; this.loadLeaveRequests(1); }
 
-  loadAttendance(page = 1): void {
-    this.attendancePage = page; this.attendanceLoading = true; let params = new HttpParams().set('date', this.date).set('page', page).set('limit', this.attendancePageSize); if (this.teamSearch) params = params.set('search', this.teamSearch); if (this.attendanceStatus) params = params.set('status', this.attendanceStatus);
-    this.http.get<any>(`${this.api}/manager/team/attendance`, { params, headers: this.headers() }).subscribe({ next: response => { this.attendanceServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.attendanceRows = this.attendanceServerPaginated ? response.data : (response || []); this.attendanceTotalItems = this.attendanceServerPaginated ? Number(response.total || this.attendanceRows.length) : this.attendanceRows.length; this.attendancePage = Number(response?.page || 1); this.attendanceLoading = false; }, error: e => { this.attendanceLoading = false; this.fail(e); } });
+  leaveStatusLabel(status: string): string {
+    return ({
+      pending_manager_approval: 'Menunggu Persetujuan Manajer',
+      manager_approved: 'Disetujui Manajer',
+      manager_rejected: 'Ditolak Manajer',
+      pending_hrd_approval: 'Menunggu Persetujuan HRD',
+      hrd_approved: 'Disetujui HRD',
+      hrd_rejected: 'Ditolak HRD',
+      Pending: 'Menunggu Persetujuan Manajer',
+      Approved: 'Disetujui',
+      Rejected: 'Ditolak'
+    } as Record<string, string>)[status] || status || '-';
+  }
+
+  private syncLeaveStatusStyles(): void {
+    const section = Array.from(document.querySelectorAll<HTMLElement>('.role-operations-page section'))
+      .find(item => item.querySelector('h3')?.textContent?.trim() === 'Persetujuan Izin Tim');
+    if (!section) return;
+    section.querySelectorAll('tbody tr').forEach((row, index) => {
+      const pill = row.querySelector<HTMLElement>('.status-pill');
+      const request = this.displayedLeaveRequests[index];
+      if (!pill || !request) return;
+      const status = String(request.Status || '').toLowerCase();
+      pill.classList.remove('leave-status-success', 'leave-status-warning', 'leave-status-danger', 'leave-status-pending');
+      pill.classList.add(status.includes('disetujui') ? 'leave-status-success' : status.includes('ditolak') || status.includes('cancel') ? 'leave-status-danger' : status.includes('menunggu') ? 'leave-status-warning' : 'leave-status-pending');
+    });
+  }
+
+  loadAttendance(page = 1, keepAttendanceVisible = false): void {
+    if (this.startDate && this.endDate && this.endDate < this.startDate) { this.errorMessage = 'Sampai tanggal tidak boleh lebih kecil dari Dari tanggal.'; return; }
+    this.errorMessage = '';
+    this.attendancePage = page; this.attendanceLoading = true; let params = new HttpParams().set('page', page).set('limit', this.attendancePageSize); if (this.startDate) params = params.set('start_date', this.startDate); if (this.endDate) params = params.set('end_date', this.endDate); if (this.teamSearch) params = params.set('search', this.teamSearch); if (this.attendanceStatus) params = params.set('status', this.attendanceStatus);
+    this.http.get<any>(`${this.api}/manager/team/attendance`, { params, headers: this.headers() }).subscribe({ next: response => { this.attendanceServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.attendanceRows = this.attendanceServerPaginated ? response.data : (response || []); this.attendanceTotalItems = this.attendanceServerPaginated ? Number(response.total || this.attendanceRows.length) : this.attendanceRows.length; this.attendancePage = Number(response?.page || 1); this.attendanceLoading = false; setTimeout(() => { this.syncAttendanceStatusStyles(); if (keepAttendanceVisible) this.keepAttendancePanelVisible(); }); }, error: e => { this.attendanceLoading = false; this.fail(e); } });
   }
 
   loadReports(page = 1): void {
@@ -432,16 +542,35 @@ export class RoleOperationsComponent implements OnInit {
   }
 
   get displayedAttendanceRows(): any[] { return this.attendanceServerPaginated ? this.attendanceRows : this.attendanceRows.slice((this.attendancePage - 1) * this.attendancePageSize, this.attendancePage * this.attendancePageSize); }
-  attendanceStatusLabel(status: string): string { return status === 'Tidak hadir' ? 'Alpha' : status; }
+  attendanceStatusLabel(status: string): string { const normalized = String(status || '').trim().toLowerCase(); return normalized === 'tidak hadir' || normalized === 'alpha' || normalized === 'alfa' ? 'Alpha' : status; }
+  attendanceStatusClass(status: string): string { const normalized = String(status || '').trim().toLowerCase(); return normalized === 'izin' ? 'status-izin' : ''; }
+  private syncAttendanceStatusStyles(): void {
+    const panel = Array.from(document.querySelectorAll<HTMLElement>('.role-operations-page section.team-filter-panel')).find(item => item.querySelector('h3')?.textContent?.trim() === 'Absensi Tim');
+    if (!panel) return;
+    panel.querySelectorAll('tbody tr').forEach((row, index) => {
+      const pill = row.querySelector<HTMLElement>('.status-pill');
+      const data = this.displayedAttendanceRows[index];
+      if (!pill || !data || data.checkout_missing) return;
+      const normalized = String(data.status || '').trim().toLowerCase();
+      pill.classList.remove('status-hadir', 'status-alpha', 'status-tidak-hadir', 'status-terlambat', 'status-pending');
+      pill.classList.add(normalized === 'hadir' ? 'status-hadir' : normalized === 'izin' ? 'status-izin' : normalized === 'terlambat' ? 'status-terlambat' : normalized === 'alpha' || normalized === 'alfa' || normalized === 'tidak hadir' ? 'status-alpha' : 'status-pending');
+    });
+  }
   get displayedTeamReports(): any[] { return this.reportsServerPaginated ? this.teamReports : this.teamReports.slice((this.reportsPage - 1) * this.reportsPageSize, this.reportsPage * this.reportsPageSize); }
-  attendancePageChanged(page: number): void { this.loadAttendance(page); }
-  attendancePageSizeChanged(size: number): void { this.attendancePageSize = size; this.loadAttendance(1); }
+  attendancePageChanged(page: number): void { this.loadAttendance(page, true); }
+  attendancePageSizeChanged(size: number): void { this.attendancePageSize = size; this.loadAttendance(1, true); }
+  private keepAttendancePanelVisible(): void {
+    const panel = Array.from(document.querySelectorAll<HTMLElement>('.role-operations-page section.team-filter-panel'))
+      .find(item => item.querySelector('h3')?.textContent?.trim() === 'Absensi Tim');
+    panel?.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }
   reportsPageChanged(page: number): void { this.loadReports(page); }
   reportsPageSizeChanged(size: number): void { this.reportsPageSize = size; this.loadReports(1); }
 
   loadStatistics(): void {
+    if (this.statisticsRequestInFlight) return; const sequence = ++this.statisticsRequestSequence; this.statisticsRequestInFlight = true;
     let params = new HttpParams(); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end);
-    this.http.get<any>(`${this.api}/manager/team/statistics`, { params, headers: this.headers() }).subscribe({ next: data => this.teamStatistics = data, error: e => this.fail(e) });
+    this.http.get<any>(`${this.api}/manager/team/statistics`, { params, headers: this.headers() }).subscribe({ next: data => { if (sequence === this.statisticsRequestSequence) { this.teamStatistics = data; this.statisticsManagerGroups = this.buildStatisticsManagerGroups(data?.members || []); this.expandedStatisticsManagers = {}; } this.statisticsRequestInFlight = false; }, error: e => { this.statisticsRequestInFlight = false; if (sequence === this.statisticsRequestSequence) this.fail(e); } });
   }
 
   exportTeamStatistics(): void {
@@ -449,9 +578,36 @@ export class RoleOperationsComponent implements OnInit {
     this.http.get(`${this.api}/manager/team/statistics`, { params, headers: this.headers(), responseType: 'blob' }).subscribe(blob => { const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'statistik-kehadiran-tim.csv'; link.click(); });
   }
 
-  decideLeave(id: number, status: 'Approved' | 'Rejected'): void {
-    this.http.put(`${this.api}/manager/leaves/${id}/approve`, { status, notes: this.notes[id] || '' }, { headers: this.headers() }).subscribe({ next: () => this.loadTeam(), error: e => this.fail(e) });
+  async decideLeave(id: number, status: 'Approved' | 'Rejected'): Promise<void> {
+    let rejection_reason = '';
+    if (status === 'Rejected') {
+      const result = await Swal.fire({ title: 'Alasan Ditolak', input: 'textarea', inputLabel: 'Alasan Ditolak', inputPlaceholder: 'Wajib diisi', showCancelButton: true, confirmButtonText: 'Tolak Pengajuan', cancelButtonText: 'Batal', inputValidator: value => !String(value || '').trim() ? 'Alasan Ditolak wajib diisi' : undefined });
+      if (!result.isConfirmed) return;
+      rejection_reason = String(result.value || '').trim();
+    } else {
+      const result = await Swal.fire({ title: 'Setujui pengajuan?', icon: 'question', showCancelButton: true, confirmButtonText: 'Setujui', cancelButtonText: 'Batal' });
+      if (!result.isConfirmed) return;
+    }
+    this.http.put(`${this.api}/manager/leaves/${id}/approve`, { status, notes: this.notes[id] || '', catatan: this.notes[id] || '', rejection_reason }, { headers: this.headers() }).subscribe({ next: () => this.loadTeam(), error: e => this.fail(e) });
   }
+
+  managerNote(request: any): string { return request?.manager_notes || request?.ManagerNotes || '-'; }
+  adminNote(request: any): string { return request?.admin_notes || request?.AdminNotes || '-'; }
+  leaveNote(request: any): string {
+    const admin = String(request?.admin_notes || request?.AdminNotes || '').trim();
+    const manager = String(request?.manager_notes || request?.ManagerNotes || '').trim();
+    const legacy = String(request?.Notes || request?.notes || request?.catatan || request?.Catatan || '').trim();
+    const notes: string[] = [];
+
+    if (admin) notes.push(`Catatan Admin: ${admin}`);
+    if (manager) notes.push(`Catatan Manajer: ${manager}`);
+    // Older records may only have the shared note field. Keep it visible
+    // without attributing it to the wrong approver.
+    if (!admin && !manager && legacy) notes.push(`Catatan: ${legacy}`);
+
+    return notes.join(' | ') || '-';
+  }
+  rejectionReason(request: any): string { return request?.RejectionReason || request?.rejection_reason || '-'; }
 
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }
   private fail(error: any): void {

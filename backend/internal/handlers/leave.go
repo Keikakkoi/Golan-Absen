@@ -84,6 +84,23 @@ func isAdminLeaveWorkflowRole(role models.Role) bool {
 	return role == models.RoleKaryawan || role == models.RoleMagang || role == models.RoleManajer
 }
 
+func isAdminLeaveNoteStatus(status models.LeaveStatus) bool {
+	// Admin/HRD may add a note only to requests routed directly to HRD.
+	// Requests waiting for the manager belong exclusively to the manager step.
+	return status == models.LeaveStatusPendingHRD
+}
+
+func normalizeLeaveNote(catatan, legacyNotes string) (string, error) {
+	note := strings.TrimSpace(catatan)
+	if note == "" {
+		note = strings.TrimSpace(legacyNotes)
+	}
+	if len(note) > 2000 {
+		return "", fmt.Errorf("Catatan maksimal 2000 karakter")
+	}
+	return note, nil
+}
+
 func calendarLeaveDays(start, end time.Time) int {
 	startDate := time.Date(start.In(jakartaLocation).Year(), start.In(jakartaLocation).Month(), start.In(jakartaLocation).Day(), 0, 0, 0, 0, jakartaLocation)
 	endDate := time.Date(end.In(jakartaLocation).Year(), end.In(jakartaLocation).Month(), end.In(jakartaLocation).Day(), 0, 0, 0, 0, jakartaLocation)
@@ -98,6 +115,7 @@ func SetupLeaveRoutes(router fiber.Router) {
 
 	admin := router.Group("/admin/leave", middleware.Protected())
 	admin.Get("/", GetAllLeaveRequests)
+	admin.Put("/:id/note", SaveAdminLeaveNote)
 	admin.Get("/:id", GetLeaveRequestDetail)
 	admin.Put("/:id/approve", ApproveRejectLeaveRequest)
 	leave.Delete("/:id/cancel", CancelLeaveRequest)
@@ -437,6 +455,7 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 	var req struct {
 		Status          string `json:"status"` // "Approved" or "Rejected"
 		Notes           string `json:"notes"`
+		Catatan         string `json:"catatan"`
 		RejectionReason string `json:"rejection_reason"`
 		AlasanPenolakan string `json:"alasan_penolakan"`
 	}
@@ -507,6 +526,10 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 	}
 
 	finalStatus := newStatus
+	note, noteErr := normalizeLeaveNote(req.Catatan, req.Notes)
+	if noteErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": noteErr.Error()})
+	}
 	if role == models.RoleManajer {
 		if newStatus == models.LeaveStatusApproved {
 			finalStatus = models.LeaveStatusManagerApproved
@@ -516,7 +539,7 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 		leaveReq.ManagerApprovedBy = &decisionUserID
 		decisionAt := time.Now()
 		leaveReq.ManagerApprovedAt = &decisionAt
-		leaveReq.ManagerNotes = req.Notes
+		leaveReq.ManagerNotes = note
 	} else {
 		if newStatus == models.LeaveStatusApproved {
 			finalStatus = models.LeaveStatusHRDApproved
@@ -528,7 +551,13 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 	leaveReq.Status = finalStatus
 	approvedAt := time.Now()
 	leaveReq.ApprovedAt = &approvedAt
-	leaveReq.Notes = req.Notes
+	if role == models.RoleHRD {
+		// Always persist the current textarea value together with the decision,
+		// including an intentional empty value. ManagerNotes is never touched.
+		leaveReq.AdminNotes = note
+		leaveReq.AdminNoteBy = &decisionUserID
+		leaveReq.AdminNoteAt = &approvedAt
+	}
 	if newStatus == models.LeaveStatusRejected {
 		rejectedAt := time.Now()
 		leaveReq.RejectionReason = rejectionReason
@@ -559,7 +588,7 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update leave request"})
 	}
-	historyNotes := req.Notes
+	historyNotes := note
 	if newStatus == models.LeaveStatusRejected {
 		historyNotes = rejectionReason
 	}
@@ -657,10 +686,49 @@ func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"message":          "Leave request processed successfully",
 		"status":           finalStatus,
+		"admin_notes":      leaveReq.AdminNotes,
+		"manager_notes":    leaveReq.ManagerNotes,
 		"rejection_reason": leaveReq.RejectionReason,
 		"rejected_by":      leaveReq.RejectedBy,
 		"rejected_at":      leaveReq.RejectedAt,
 	})
+}
+
+// SaveAdminLeaveNote stores an admin note without changing approval status or
+// the manager's note. The separate fields keep both sources distinguishable.
+func SaveAdminLeaveNote(c *fiber.Ctx) error {
+	if c.Locals("role").(models.Role) != models.RoleHRD {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Hanya admin yang dapat menambahkan catatan"})
+	}
+	var input struct {
+		Notes   string `json:"notes"`
+		Catatan string `json:"catatan"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+	notes, noteErr := normalizeLeaveNote(input.Catatan, input.Notes)
+	if noteErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": noteErr.Error()})
+	}
+	var request models.LeaveRequest
+	if err := config.DB.Preload("Employee.User").First(&request, c.Params("id")).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Leave request not found"})
+	}
+	if request.Employee.User == nil || !isAdminLeaveWorkflowRole(request.Employee.User.Role) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Pengajuan tidak valid untuk catatan admin"})
+	}
+	if !isAdminLeaveNoteStatus(request.Status) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Catatan admin hanya dapat diubah saat pengajuan menunggu persetujuan"})
+	}
+	now := time.Now()
+	adminID := c.Locals("user_id").(uint)
+	if err := config.DB.Model(&request).Updates(map[string]any{"admin_notes": notes, "admin_note_by": adminID, "admin_note_at": now}).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan catatan admin"})
+	}
+	request.AdminNotes, request.AdminNoteBy, request.AdminNoteAt = notes, &adminID, &now
+	WsHub.Broadcast <- fiber.Map{"event": "leave_note_updated"}
+	return c.JSON(request)
 }
 
 func statusLabel(status models.LeaveStatus) string {

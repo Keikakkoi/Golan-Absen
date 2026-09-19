@@ -27,11 +27,6 @@
 
     <app-dashboard-charts role="manager"></app-dashboard-charts>
 
-    <section class="golan-card compliance-warning" *ngFor="let item of stats.missing_work_reports">
-      <strong>⚠ Laporan kerja belum diisi</strong>
-      <p>{{ item.nama }} belum mengisi laporan kerja untuk {{ item.tanggal }}. Batas pengisian {{ item.deadline_label }}.</p>
-    </section>
-
     <!-- CALENDAR & EVENT SECTION (MATCHING DASH KARYAWAN EXACTLY) -->
     <div class="dashboard-lower-grid">
       <section class="golan-card calendar-card" aria-labelledby="calendar-title">

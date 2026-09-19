@@ -61,7 +61,7 @@
       <div class="golan-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
           <h3>Riwayat Laporan</h3>
-          <button class="btn btn-primary refresh-report-button" (click)="refreshReports()" [disabled]="isRefreshing" [attr.aria-busy]="isRefreshing" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+          <button class="btn-outline-primary refresh-report-button" (click)="refreshReports()" [disabled]="isRefreshing" [attr.aria-busy]="isRefreshing">
             <i class="fas fa-sync-alt" [class.fa-spin]="isRefreshing"></i> {{ isRefreshing ? 'Memuat...' : 'Segarkan' }}
           </button>
         </div>
@@ -120,10 +120,10 @@
                   </span>
                 </td>
                 <td class="no-print" style="text-align: center;">
-                  <button class="icon-button edit" style="margin-right: 0.25rem;" (click)="editReport(r)" title="Edit Laporan">
+                  <button *ngIf="canModifyReport(r)" class="icon-button edit" style="margin-right: 0.25rem;" (click)="editReport(r)" title="Edit Laporan">
                     <i class="fas fa-edit"></i>
                   </button>
-                  <button class="icon-button delete" (click)="deleteReport(r.ID!)" title="Hapus Laporan">
+                  <button *ngIf="canModifyReport(r)" class="icon-button delete" (click)="deleteReport(r)" title="Hapus Laporan">
                     <i class="fas fa-trash"></i>
                   </button>
                 </td>
@@ -204,9 +204,12 @@
 
           <div class="form-group">
             <label>Screenshot pekerjaan <small>(opsional, maksimal 3 file; JPG/PNG/WEBP, masing-masing 5MB)</small></label>
-            <app-file-preview [files]="selectedScreenshots" accept="image/jpeg,image/png,image/webp" [maxSizeMb]="5" [maxFiles]="3" label="Pilih screenshot" (filesChange)="onScreenshotFilesChange($event)"></app-file-preview>
-            <div class="screenshot-preview-grid" *ngIf="screenshotPreviews.length">
-              <img *ngFor="let preview of screenshotPreviews" [src]="preview" alt="Preview screenshot">
+            <app-file-preview [files]="selectedScreenshots" accept="image/jpeg,image/png,image/webp" [maxSizeMb]="5" [maxFiles]="3 - existingScreenshots.length" label="Pilih screenshot" (filesChange)="onScreenshotFilesChange($event)"></app-file-preview>
+            <div class="screenshot-preview-grid" *ngIf="existingScreenshots.length">
+              <div class="existing-screenshot" *ngFor="let screenshot of existingScreenshots; let i = index">
+                <button type="button" class="existing-screenshot-remove" (click)="removeExistingScreenshot(i)" title="Hapus file"><i class="fas fa-times"></i></button>
+                <img [src]="screenshot.file_url" [alt]="screenshot.file_name">
+              </div>
             </div>
           </div>
 

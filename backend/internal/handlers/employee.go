@@ -292,6 +292,7 @@ func GetProfile(c *fiber.Ctx) error {
 		}
 	}
 
+	today := attendanceBusinessDate(attendanceNow())
 	var schedules []models.WorkSchedule
 	if empID != 0 {
 		config.DB.Where("employee_id = ?", empID).Order("tanggal desc, id desc").Find(&schedules)
@@ -301,14 +302,46 @@ func GetProfile(c *fiber.Ctx) error {
 		config.DB.Where("employee_id IS NULL").Order("tanggal desc, id desc").Find(&schedules)
 	}
 
+	// Reguler is a weekly schedule. Always serialize the effective day's
+	// configuration for profile viewers instead of an old/static work_schedule
+	// row (for example, a legacy 09:00-17:00 row).
+	if empID != 0 {
+		effective := ResolveEffectiveSchedule(empID, today)
+		if effective.Source == "regular_default" {
+			// Profile displays the complete weekly Reguler schedule, not only
+			// today's row. Each configured working day becomes one table row.
+			var weekly []models.RegularWorkSchedule
+			if err := config.DB.Order("day_of_week asc").Find(&weekly).Error; err == nil {
+				schedules = make([]models.WorkSchedule, 0, len(weekly))
+				for _, day := range weekly {
+					if !day.IsWorkingDay || strings.TrimSpace(day.StartTime) == "" || strings.TrimSpace(day.EndTime) == "" {
+						continue
+					}
+					schedules = append(schedules, scheduleFromRegular(day))
+				}
+			}
+			if len(schedules) == 0 {
+				schedule := effective.Schedule
+				schedule.Tanggal = &today
+				schedules = []models.WorkSchedule{schedule}
+			}
+		} else if effective.Source == "system_fallback" && len(schedules) == 0 {
+			// Do not expose resolver fallback hours as if they were configured.
+			schedule := effective.Schedule
+			schedule.JamMulai, schedule.JamSelesai, schedule.HariKerja = "", "", "[]"
+			schedule.Tanggal = &today
+			schedules = []models.WorkSchedule{schedule}
+		}
+	}
+
 	if len(schedules) == 0 {
-		today := attendanceBusinessDate(attendanceNow())
 		effSchedule := getAttendanceSchedule(empID, today)
 		if effSchedule.Tanggal == nil {
 			effSchedule.Tanggal = &today
 		}
 		schedules = append(schedules, effSchedule)
 	}
+	schedules = expandProfileSchedules(schedules)
 
 	return c.JSON(struct {
 		models.User
@@ -319,6 +352,29 @@ func GetProfile(c *fiber.Ctx) error {
 		WorkSchedules:      schedules,
 		WorkSchedulesSnake: schedules,
 	})
+}
+
+// expandProfileSchedules makes the profile table represent the weekly shift:
+// one row per configured weekday. It only changes the response projection;
+// the stored WorkSchedule rows remain untouched.
+func expandProfileSchedules(schedules []models.WorkSchedule) []models.WorkSchedule {
+	expanded := make([]models.WorkSchedule, 0, len(schedules))
+	for _, schedule := range schedules {
+		// An explicit empty list means no working day and must not fall back to
+		// the legacy default Monday-Saturday.
+		if strings.TrimSpace(schedule.HariKerja) == "[]" {
+			expanded = append(expanded, schedule)
+			continue
+		}
+		for _, day := range schedule.WorkDays() {
+			daySchedule := schedule
+			if encoded, ok := models.EncodeWorkDays([]int{day}); ok {
+				daySchedule.HariKerja = encoded
+			}
+			expanded = append(expanded, daySchedule)
+		}
+	}
+	return expanded
 }
 
 func UpdateMyProfile(c *fiber.Ctx) error {
@@ -775,6 +831,18 @@ func CreateEmployee(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save employee home location"})
 		}
 	}
+	// Keep the initial quota in the same transaction as the user and employee.
+	// Interns do not use the employee cuti workflow, so preserve the existing
+	// application rule that excludes them from annual leave quotas.
+	if user.Role != models.RoleMagang {
+		setting := getGeneralSettingFrom(tx)
+		quotaYear := attendanceNow().In(jakartaLocation).Year()
+		if err := ensureDefaultCutiQuota(tx, employee.ID, quotaYear, setting.DefaultCutiQuotaHari); err != nil {
+			tx.Rollback()
+			log.Printf("CreateEmployee quota insert failed: user_id=%d employee_id=%d: %v", user.ID, employee.ID, err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Karyawan berhasil diproses, tetapi kuota cuti gagal dibuat. Tidak ada perubahan yang disimpan; silakan coba lagi."})
+		}
+	}
 
 	if err := tx.Commit().Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to commit transaction"})
@@ -1051,10 +1119,14 @@ func DeleteEmployee(c *fiber.Ctx) error {
 			}
 		}
 
-		// Quota and dated schedules remain useful for reports/audit, but no
-		// longer point at a live employee profile. The active home location is
-		// account data and can be removed; location requests/history are audit data.
-		for _, table := range []string{"leave_quota", "work_schedules", "home_location_change_requests", "employee_home_location_histories"} {
+		// Leave quotas are account configuration, not historical workflow
+		// records. Remove them with the employee so the quota directory cannot
+		// show an orphaned row as "Nama belum tersedia". Dated schedules and
+		// location request/history rows remain audit data and are detached.
+		if result := tx.Exec(`DELETE FROM leave_quota WHERE employee_id = ?`, employeeID); result.Error != nil {
+			return rollbackWithLog("menghapus kuota karyawan", result.Error)
+		}
+		for _, table := range []string{"work_schedules", "home_location_change_requests", "employee_home_location_histories"} {
 			if result := tx.Exec(fmt.Sprintf(`UPDATE %s SET employee_id = NULL WHERE employee_id = ?`, table), employeeID); result.Error != nil {
 				return rollbackWithLog("memutus referensi "+table, result.Error)
 			}
@@ -1309,6 +1381,15 @@ func ImportEmployees(c *fiber.Ctx) error {
 			if err = saveEmployeeHomeLocation(tx, employee.ID, homeLat, homeLng, value("home_google_maps_url")); err != nil {
 				tx.Rollback()
 				errors = append(errors, fmt.Sprintf("Baris %d: lokasi rumah tidak dapat disimpan", rowNumber))
+				continue
+			}
+		}
+		if !existing && role != models.RoleMagang {
+			setting := getGeneralSettingFrom(tx)
+			quotaYear := attendanceNow().In(jakartaLocation).Year()
+			if err = ensureDefaultCutiQuota(tx, employee.ID, quotaYear, setting.DefaultCutiQuotaHari); err != nil {
+				tx.Rollback()
+				errors = append(errors, fmt.Sprintf("Baris %d: kuota cuti gagal dibuat", rowNumber))
 				continue
 			}
 		}

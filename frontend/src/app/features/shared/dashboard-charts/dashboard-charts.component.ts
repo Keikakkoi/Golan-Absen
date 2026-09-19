@@ -8,7 +8,7 @@ import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-conte
 import { DASHBOARD_CHART_THEME } from './dashboard-chart-theme';
 
 export interface ChartValue { label: string; value: number; }
-export interface ChartPoint { date: string; hadir: number; terlambat: number; izin: number; alfa: number; }
+export interface ChartPoint { date: string; hadir: number; terlambat: number; izin: number; alfa: number; belum_absen: number; }
 export interface DashboardChartData {
   attendance_trend: ChartPoint[]; today_status: ChartValue[]; comparison: ChartValue[];
   report_status: ChartValue[]; logbook_status: ChartValue[];
@@ -25,21 +25,28 @@ export class DashboardChartsComponent implements OnInit, OnDestroy {
   loading = true; error = false;
   readonly chartTheme = DASHBOARD_CHART_THEME;
   private disconnect?: () => void;
+  private refreshTimer?: ReturnType<typeof setInterval>;
+  private refreshHandle?: ReturnType<typeof setTimeout>;
+  private requestSequence = 0;
+  private requestInFlight = false;
 
   constructor(private http: HttpClient, private auth: AuthService, private realtime: NotificationService) {}
 
-  ngOnInit(): void { this.load(); this.disconnect = this.realtime.connectRealtime(() => this.load(true)); }
-  ngOnDestroy(): void { this.disconnect?.(); }
+  ngOnInit(): void { this.load(); this.disconnect = this.realtime.connectRealtime(() => this.scheduleRefresh()); this.refreshTimer = setInterval(() => this.load(true), 30_000); }
+  ngOnDestroy(): void { if (this.refreshTimer) clearInterval(this.refreshTimer); if (this.refreshHandle) clearTimeout(this.refreshHandle); this.disconnect?.(); }
   retry(): void { this.load(); }
 
+  private scheduleRefresh(): void { if (this.refreshHandle) return; this.refreshHandle = setTimeout(() => { this.refreshHandle = undefined; this.load(true); }, 250); }
   load(background = false): void {
-    this.loading = true; this.error = false;
+    if (this.requestInFlight && background) return;
+    const sequence = ++this.requestSequence; this.requestInFlight = true;
+    this.loading = !background; this.error = false;
     const end = this.dateKey(new Date()); const startDate = new Date(); startDate.setDate(startDate.getDate() - 29);
     const params = `?start_date=${this.dateKey(startDate)}&end_date=${end}&period=30d`;
     const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
     this.http.get<DashboardChartData>(`http://localhost:8080/api/v1/dashboard/charts${params}`, { headers: this.headers(), context }).subscribe({
-      next: value => { this.data = this.normalize(value); this.loading = false; },
-      error: () => { this.error = true; this.loading = false; }
+      next: value => { if (sequence !== this.requestSequence) return; this.data = this.normalize(value); this.loading = false; this.requestInFlight = false; },
+      error: () => { if (sequence !== this.requestSequence) return; this.error = true; this.loading = false; this.requestInFlight = false; }
     });
   }
 
@@ -59,7 +66,8 @@ export class DashboardChartsComponent implements OnInit, OnDestroy {
       { label: 'Hadir', key: 'hadir', value: this.trendValue('hadir'), rate: this.trendRate('hadir', total) },
       { label: 'Terlambat', key: 'terlambat', value: this.trendValue('terlambat'), rate: this.trendRate('terlambat', total) },
       { label: 'Izin/Cuti', key: 'izin', value: this.trendValue('izin'), rate: this.trendRate('izin', total) },
-      { label: 'Alfa', key: 'alfa', value: this.trendValue('alfa'), rate: this.trendRate('alfa', total) }
+      { label: 'Alpha', key: 'alfa', value: this.trendValue('alfa'), rate: this.trendRate('alfa', total) }
+      ,{ label: 'Belum Absen', key: 'belum_absen', value: this.trendValue('belum_absen'), rate: this.trendRate('belum_absen', total) }
     ];
   }
   get trendDescription(): string {
@@ -74,21 +82,21 @@ export class DashboardChartsComponent implements OnInit, OnDestroy {
   get reportStatusDescription(): string {
     return this.listDescription(this.isIntern ? 'Status logbook' : 'Status laporan kerja', this.isIntern ? this.data.logbook_status : this.data.report_status);
   }
-  totalPoint(item: ChartPoint): number { return Number(item.hadir || 0) + Number(item.terlambat || 0) + Number(item.izin || 0) + Number(item.alfa || 0); }
+  totalPoint(item: ChartPoint): number { return Number(item.hadir || 0) + Number(item.terlambat || 0) + Number(item.izin || 0) + Number(item.alfa || 0) + Number(item.belum_absen || 0); }
   private trendValue(key: keyof ChartPoint): number { return this.data.attendance_trend.reduce((sum, item) => sum + Number(item[key] || 0), 0); }
   private trendRate(key: keyof ChartPoint, total: number): number { return total ? Math.round(this.trendValue(key) / total * 100) : 0; }
   linePoints(key: string): string { const points = this.data.attendance_trend; if (!points.length) return ''; return points.map((item, index) => `${(index / Math.max(1, points.length - 1)) * 100},${100 - (Number((item as any)[key]) || 0) / this.maxTrend * 90 - 5}`).join(' '); }
   get donutStyle(): string { const values = this.data.today_status; const total = values.reduce((sum, item) => sum + Number(item.value || 0), 0); if (!total) return '#cbd5e1 0 100%'; let offset = 0; return `conic-gradient(${values.map(item => { const next = offset + Number(item.value || 0) / total * 100; const segment = `${this.color(item.label)} ${offset}% ${next}%`; offset = next; return segment; }).join(',')})`; }
   barHeight(value: number, max: number): number { return max ? Math.max(3, value / max * 100) : 0; }
   dateLabel(value: string): string { return value ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short' }).format(new Date(`${value}T00:00:00`)) : '-'; }
-  color(label: string): string { const key = label.toLowerCase(); if (key.includes('hadir') || key.includes('approved') || key.includes('selesai')) return this.chartTheme.status.hadir; if (key.includes('izin') || key.includes('cuti') || key.includes('submitted')) return this.chartTheme.status.izin; if (key.includes('terlambat') || key.includes('late')) return this.chartTheme.status.terlambat; if (key.includes('alfa') || key.includes('reject') || key.includes('ditolak')) return this.chartTheme.status.alfa; if (key.includes('pending')) return this.chartTheme.status.pending; return this.chartTheme.status.neutral; }
+  color(label: string): string { const key = label.toLowerCase(); if (key.includes('hadir') || key.includes('approved') || key.includes('selesai')) return this.chartTheme.status.hadir; if (key.includes('submitted')) return this.chartTheme.status.terlambat; if (key.includes('izin') || key.includes('cuti')) return this.chartTheme.status.izin; if (key.includes('terlambat') || key.includes('late')) return this.chartTheme.status.terlambat; if (key.includes('alfa') || key.includes('reject') || key.includes('ditolak')) return this.chartTheme.status.alfa; if (key.includes('pending')) return this.chartTheme.status.pending; return this.chartTheme.status.neutral; }
   track(_: number, item: ChartValue): string { return item.label; }
   private listDescription(title: string, values: ChartValue[]): string {
     const items = values.filter(item => Number.isFinite(Number(item.value)));
     if (!items.length) return `${title}: belum ada data.`;
     return `${title}: ${items.map(item => `${item.label} ${item.value}`).join(', ')}.`;
   }
-  private normalize(value: DashboardChartData | null): DashboardChartData { const safe = value || this.emptyData(); return { attendance_trend: safe.attendance_trend || [], today_status: safe.today_status || [], comparison: safe.comparison || [], report_status: safe.report_status || [], logbook_status: safe.logbook_status || [], internship: safe.internship || { progress_percent: 0, days_remaining: 0 } }; }
+  private normalize(value: DashboardChartData | null): DashboardChartData { const safe = value || this.emptyData(); return { attendance_trend: (safe.attendance_trend || []).map(item => ({ ...item, belum_absen: Number(item.belum_absen || 0) })), today_status: safe.today_status || [], comparison: safe.comparison || [], report_status: safe.report_status || [], logbook_status: safe.logbook_status || [], internship: safe.internship || { progress_percent: 0, days_remaining: 0 } }; }
   private emptyData(): DashboardChartData { return { attendance_trend: [], today_status: [], comparison: [], report_status: [], logbook_status: [], internship: { progress_percent: 0, days_remaining: 0 } }; }
   private dateKey(date: Date): string { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }

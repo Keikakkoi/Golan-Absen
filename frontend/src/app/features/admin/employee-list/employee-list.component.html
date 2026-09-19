@@ -79,18 +79,20 @@
       <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
 
       <div class="employee-table-toolbar">
-        <span class="employee-table-count">{{ filteredEmployees.length }} karyawan ditampilkan</span>
-        <div class="employee-export">
-          <button type="button" class="employee-export-trigger" (click)="toggleExportMenu($event)" [attr.aria-expanded]="isExportMenuOpen" aria-haspopup="menu">
-            <i class="fas fa-file-download" aria-hidden="true"></i><span>Unduh / Cetak</span><i class="fas fa-chevron-down employee-export-chevron" aria-hidden="true"></i>
+        <div class="employee-table-heading">
+          <h3>Daftar Karyawan</h3>
+          <span class="employee-table-count">{{ filteredEmployees.length }} karyawan ditampilkan</span>
+        </div>
+        <div class="employee-export export-dropdown">
+          <button type="button" class="btn btn-secondary" (click)="toggleExportMenu($event)" [attr.aria-expanded]="isExportMenuOpen" aria-haspopup="menu">
+            <i class="fas fa-file-export" aria-hidden="true"></i> <span>Unduh / Cetak</span> <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
-          <div class="employee-export-menu" *ngIf="isExportMenuOpen" role="menu">
-            <button type="button" role="menuitem" (click)="exportEmployees('csv')"><i class="fas fa-file-csv export-icon csv"></i>Format CSV</button>
-            <button type="button" role="menuitem" (click)="exportEmployees('xls')"><i class="fas fa-file-excel export-icon xls"></i>Format Excel (XLSX)</button>
-            <button type="button" role="menuitem" (click)="exportEmployees('json')"><i class="fas fa-file-code export-icon json"></i>Format JSON</button>
-            <button type="button" role="menuitem" (click)="exportEmployees('pdf')"><i class="fas fa-file-pdf export-icon pdf"></i>Format PDF</button>
-            <div class="employee-export-divider"></div>
-            <button type="button" role="menuitem" (click)="exportEmployees('print')"><i class="fas fa-print export-icon print"></i>Cetak Laporan</button>
+          <div class="dropdown-menu-custom employee-export-menu" *ngIf="isExportMenuOpen" role="menu">
+            <button type="button" class="dropdown-item" role="menuitem" (click)="exportEmployees('csv')"><i class="fas fa-file-csv export-icon csv"></i>Format CSV</button>
+            <button type="button" class="dropdown-item" role="menuitem" (click)="exportEmployees('xls')"><i class="fas fa-file-excel export-icon xls"></i>Format Excel (XLSX)</button>
+            <button type="button" class="dropdown-item" role="menuitem" (click)="exportEmployees('json')"><i class="fas fa-file-code export-icon json"></i>Format JSON</button>
+            <button type="button" class="dropdown-item" role="menuitem" (click)="exportEmployees('pdf')"><i class="fas fa-file-pdf export-icon pdf"></i>Format PDF</button>
+            <button type="button" class="dropdown-item" role="menuitem" (click)="exportEmployees('print')"><i class="fas fa-print export-icon print"></i>Cetak Laporan</button>
           </div>
         </div>
       </div>
@@ -277,7 +279,7 @@
 
         <div class="form-group-row">
           <div class="form-group"><label>NIK/NIP <span class="required-mark">*</span></label><input type="text" [(ngModel)]="formData.nik" (input)="onNikInput($event)" name="nik" required minlength="16" maxlength="16" pattern="[0-9]{16}" inputmode="numeric" class="form-control" /></div>
-          <div class="form-group"><label>Jenis kelamin (opsional)</label><select [(ngModel)]="formData.jenis_kelamin" name="jenis_kelamin" class="form-control"><option value="">Pilih jenis kelamin</option><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
+          <div class="form-group"><label>Jenis kelamin (opsional)</label><select [(ngModel)]="formData.jenis_kelamin" name="jenis_kelamin" class="form-control employee-form-select employee-gender-select"><option value="">Pilih jenis kelamin</option><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
         </div>
         <div class="form-group-row">
           <div class="form-group"><label>Tempat lahir (opsional)</label><input [(ngModel)]="formData.tempat_lahir" name="tempat_lahir" class="form-control" /></div>
@@ -301,7 +303,7 @@
         <div class="form-group-row">
           <div class="form-group">
             <label>Role</label>
-            <select [(ngModel)]="formData.role" (ngModelChange)="onRoleChange()" name="role" class="form-control">
+            <select [(ngModel)]="formData.role" (ngModelChange)="onRoleChange()" name="role" class="form-control employee-form-select employee-role-select">
               <option value="Karyawan">Karyawan</option>
               <option value="HRD">HRD</option>
               <option value="MAGANG">MAGANG</option>
@@ -310,7 +312,7 @@
           </div>
           <div class="form-group">
             <label>Status Akun</label>
-            <select [(ngModel)]="formData.status" name="status" class="form-control">
+            <select [(ngModel)]="formData.status" name="status" class="form-control employee-form-select employee-status-select">
               <option value="aktif">Aktif</option>
               <option value="nonaktif">Nonaktif</option>
             </select>
@@ -320,14 +322,14 @@
         <div class="form-group-row">
           <div class="form-group">
             <label>Divisi</label>
-            <select [(ngModel)]="formData.division_id" name="division_id" class="form-control" required>
+            <select [(ngModel)]="formData.division_id" name="division_id" class="form-control employee-form-select employee-division-select" required>
               <option [ngValue]="0" disabled>Pilih Divisi</option>
               <option *ngFor="let div of divisions" [ngValue]="div.ID">{{ div.NamaDivisi }}</option>
             </select>
           </div>
           <div class="form-group">
             <label>Jabatan</label>
-            <select [(ngModel)]="formData.position_id" name="position_id" class="form-control" required>
+            <select [(ngModel)]="formData.position_id" name="position_id" class="form-control employee-form-select employee-position-select" required>
               <option [ngValue]="0" disabled>Pilih Jabatan</option>
               <option *ngFor="let pos of positions" [ngValue]="pos.ID">{{ pos.NamaJabatan }}</option>
             </select>
@@ -346,7 +348,7 @@
         <div class="form-group-row" *ngIf="formData.role !== 'MANAJER'">
           <div class="form-group">
             <label>{{ formData.role === 'MAGANG' ? 'Manager pembimbing' : 'Manager (opsional)' }}</label>
-            <select [(ngModel)]="formData.manager_id" (ngModelChange)="onManagerChange()" name="manager_id" class="form-control">
+            <select [(ngModel)]="formData.manager_id" (ngModelChange)="onManagerChange()" name="manager_id" class="form-control employee-form-select employee-manager-select">
               <option [ngValue]="null">Tidak ada manager</option>
               <option *ngFor="let manager of managers" [ngValue]="manager.ID">{{ manager.ID }} - {{ manager.Nama }}</option>
             </select>
@@ -354,7 +356,7 @@
           </div>
           <div class="form-group">
             <label>Project (opsional)</label>
-            <select [(ngModel)]="formData.project_id" name="project_id" class="form-control">
+            <select [(ngModel)]="formData.project_id" name="project_id" class="form-control employee-form-select employee-project-select">
               <option [ngValue]="null">Tidak ada project</option>
               <option *ngFor="let project of projects" [ngValue]="project.ID">{{ project.ID }} - {{ project.NamaProject }}</option>
             </select>
@@ -363,7 +365,7 @@
         </div>
         <div class="form-group" *ngIf="formData.role === 'MANAJER'">
           <label>Project (opsional)</label>
-          <select [(ngModel)]="formData.project_id" name="project_id" class="form-control">
+          <select [(ngModel)]="formData.project_id" name="project_id" class="form-control employee-form-select employee-project-select">
             <option [ngValue]="null">Tidak ada project</option>
             <option *ngFor="let project of projects" [ngValue]="project.ID">{{ project.ID }} - {{ project.NamaProject }}</option>
           </select>

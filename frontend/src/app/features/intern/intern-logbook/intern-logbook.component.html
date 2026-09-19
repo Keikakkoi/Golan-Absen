@@ -49,10 +49,6 @@
         <div *ngIf="deadlineError" class="alert alert-danger">
           {{ deadlineError }}
         </div>
-        <div *ngIf="dateAlreadyLogged" class="alert alert-warning">
-          Logbook untuk tanggal ini sudah dibuat. Logbook hanya boleh dibuat satu kali per hari.
-          Jika statusnya masih Draft, silakan gunakan tombol Edit pada riwayat logbook.
-        </div>
         <label class="field-group"
           ><span>Deskripsi kegiatan</span
           ><textarea
@@ -72,35 +68,35 @@
           ></textarea></label
         ><label class="field-group"
           ><span>Screenshot pekerjaan (maksimal 3 file, 5MB/file)</span
-          ><input
-            class="golan-input"
-            type="file"
+          ><app-file-preview
+            [files]="selectedScreenshots"
             accept="image/jpeg,image/png,image/webp"
-            multiple
-            (change)="onScreenshotsSelected($event)" />
-          <small *ngIf="selectedScreenshots.length">{{ selectedScreenshots.length }} file terpilih dari maksimal 3</small>
-          <div
-            class="screenshot-preview-grid"
-            *ngIf="screenshotPreviews.length"
-          >
-            <img
-              *ngFor="let preview of screenshotPreviews"
-              [src]="preview"
-              alt="Preview screenshot"
-            /></div
+            [maxSizeMb]="5"
+            [maxFiles]="3 - existingScreenshots.length"
+            label="Pilih File"
+            (filesChange)="onScreenshotFilesChange($event)"
+          ></app-file-preview>
+          <div class="screenshot-preview-grid" *ngIf="existingScreenshots.length">
+            <div class="existing-screenshot" *ngFor="let screenshot of existingScreenshots; let i = index">
+              <button type="button" class="existing-screenshot-remove" (click)="removeExistingScreenshot(i)" title="Hapus file">
+                <i class="fas fa-times"></i>
+              </button>
+              <img [src]="screenshot.file_url" [alt]="screenshot.file_name" />
+            </div>
+          </div
         ></label>
         <div style="display: flex; gap: 8px; margin-top: 1rem">
           <button
             type="button"
             class="btn-outline-primary"
-            [disabled]="saving || dateAlreadyLogged"
+            [disabled]="saving"
             (click)="save('draft')"
           >
             <i class="fas fa-save"></i> Simpan Draft</button
           ><button
             type="button"
             class="btn-primary"
-            [disabled]="saving || dateAlreadyLogged"
+            [disabled]="saving"
             (click)="save('submitted')"
           >
             <i class="fas fa-paper-plane"></i>
@@ -197,6 +193,18 @@
                   style="color: #dc3545; margin-right: 0.5rem; width: 16px"
                 ></i>
                 Format PDF
+              </button>
+              <button
+                type="button"
+                class="dropdown-item"
+                (click)="printReport()"
+                style="border-top: 1px solid #eee"
+              >
+                <i
+                  class="fas fa-print"
+                  style="color: #17a2b8; margin-right: 0.5rem; width: 16px"
+                ></i>
+                Cetak Laporan
               </button>
             </div>
           </div>

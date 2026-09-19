@@ -181,6 +181,17 @@ export class TeamReportsComponent implements OnInit {
     return this.normalizeStatus(row?.status_logbook || row?.StatusLogbook);
   }
 
+  logbookStatusClass(row: any): string {
+    const status = this.logbookStatus(row);
+    return status === 'approved'
+      ? 'status-success'
+      : status === 'submitted'
+        ? 'status-warning status-submitted'
+        : status === 'rejected'
+          ? 'status-danger'
+          : 'status-pending';
+  }
+
   canReview(row: any): boolean {
     const id = row?.id || row?.ID;
     return this.logbookStatus(row) === 'submitted' && !this.reviewingIds.has(id);

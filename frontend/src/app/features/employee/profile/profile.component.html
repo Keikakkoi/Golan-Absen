@@ -215,7 +215,7 @@
                 <div *ngIf="!homeLocationRequests.length" class="empty-state">Belum ada pengajuan lokasi WFH.</div>
                 <div *ngIf="homeLocationRequests.length" class="golan-table-responsive">
                   <table class="golan-table"><thead><tr><th>Status</th><th>Lokasi baru</th><th>Mulai berlaku</th><th>Alasan</th><th>Diproses</th></tr></thead><tbody>
-                    <tr *ngFor="let request of homeLocationRequests | slice:0:1"><td>{{ request.Status }}</td><td>{{ request.OldAddress || '-' }} → {{ request.NewAddress }}<br><small>{{ request.NewLatitude }}, {{ request.NewLongitude }} · {{ request.NewRadiusMeter }} m</small></td><td>{{ request.EffectiveDate | date:'dd MMM yyyy' }}</td><td>{{ request.RejectionReason || request.Reason }}</td><td>{{ request.ReviewerName || '-' }}<br>{{ request.ReviewedAt ? (request.ReviewedAt | date:'dd MMM yyyy HH:mm') : (request.CreatedAt | date:'dd MMM yyyy HH:mm') }}</td></tr>
+                    <tr *ngFor="let request of homeLocationRequests | slice:0:1"><td>{{ request.Status }}</td><td>{{ request.OldAddress || '-' }} → {{ request.NewAddress }}<br><small>{{ request.NewLatitude }}, {{ request.NewLongitude }} · {{ request.NewRadiusMeter }} m</small></td><td>{{ request.EffectiveDate | date:'dd MMM yyyy' }}</td><td>{{ request.RejectionReason || request.Reason }}</td><td>{{ formatProcessedAt(request.ReviewedAt) }}</td></tr>
                   </tbody></table>
                 </div>
               </div>

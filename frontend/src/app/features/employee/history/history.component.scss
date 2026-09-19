@@ -108,6 +108,16 @@
       white-space: nowrap;
       flex-shrink: 0;
       max-width: none;
+
+      &.status-izin {
+        background-color: #e0e7ff;
+        color: #4f46e5;
+      }
+
+      &.status-warning {
+        background-color: #fef3c7;
+        color: #d97706;
+      }
     }
 
     th:nth-child(1), td:nth-child(1) { min-width: 120px; }
@@ -266,8 +276,8 @@
           color: #c5221f;
         }
         &.status-izin {
-          background-color: #fef7e0;
-          color: #b06000;
+          background-color: #e0e7ff;
+          color: #4f46e5;
         }
         &.status-cuti {
           background-color: #f3e8fd;
@@ -592,6 +602,16 @@
   }
 }
 
+.history-modal-body .status-badge.status-izin {
+  background-color: #e0e7ff;
+  color: #4f46e5;
+}
+
+.history-modal-body .status-badge.status-warning {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
 /* Dark theme surfaces for this page. The base rules above intentionally keep
    the light theme colors, so override the legacy white surfaces only when the
    application theme is dark. */
@@ -657,8 +677,8 @@
       }
 
       &.status-izin {
-        background-color: #4a3a1a;
-        color: #fcd34d;
+        background-color: #312e81;
+        color: #c7d2fe;
       }
 
       &.status-cuti {

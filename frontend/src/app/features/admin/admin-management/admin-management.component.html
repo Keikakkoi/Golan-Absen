@@ -24,8 +24,9 @@
           </div>
           <div class="schedule-summary-item schedule-summary-hours">
             <span class="summary-label">JAM REGULER</span>
-            <strong>{{ regularHours.start }} <small>–</small> {{ regularHours.end }}</strong>
-            <span>referensi jam kerja</span>
+            <strong *ngIf="regularHours.start && regularHours.end">{{ regularHours.start }} <small>–</small> {{ regularHours.end }}</strong>
+            <strong *ngIf="!regularHours.start || !regularHours.end">{{ regularHours.status }}</strong>
+            <span>Referensi {{ scheduleStartDate ? 'tanggal terpilih' : 'hari ini' }}</span>
           </div>
         </div>
       </section>
@@ -87,15 +88,33 @@
             <div class="schedule-time-group">
               <span class="schedule-field-label">Jam kerja</span>
               <div class="schedule-time-fields">
-                <label class="schedule-field" for="schedule-start">
+                <div class="schedule-field schedule-time-picker-field">
                   <span>Mulai</span>
-                  <input id="schedule-start" type="time" class="golan-input" [(ngModel)]="scheduleForm.JamMulai" name="JamMulai" required>
-                </label>
+                  <div class="schedule-time-picker" [class.is-open]="activeTimePicker === 'start'">
+                    <button id="schedule-start" type="button" class="golan-input schedule-time-trigger" [attr.aria-expanded]="activeTimePicker === 'start'" aria-haspopup="listbox" (click)="toggleTimePicker('start')">
+                      <span>{{ timeValue('start') }}</span>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5v5l3.5 2"></path></svg>
+                    </button>
+                    <div class="schedule-time-menu" *ngIf="activeTimePicker === 'start'" role="listbox" aria-label="Pilih jam mulai">
+                      <div class="schedule-time-column"><strong>JAM</strong><button type="button" *ngFor="let hour of timeHours" [class.selected]="timePart('start', 'hour') === hour" (click)="selectTimePart('start', 'hour', hour)">{{ hour }}</button></div>
+                      <div class="schedule-time-column"><strong>MENIT</strong><button type="button" *ngFor="let minute of timeMinutes" [class.selected]="timePart('start', 'minute') === minute" (click)="selectTimePart('start', 'minute', minute)">{{ minute }}</button></div>
+                    </div>
+                  </div>
+                </div>
                 <span class="schedule-time-separator" aria-hidden="true">–</span>
-                <label class="schedule-field" for="schedule-end">
+                <div class="schedule-field schedule-time-picker-field">
                   <span>Selesai</span>
-                  <input id="schedule-end" type="time" class="golan-input" [(ngModel)]="scheduleForm.JamSelesai" name="JamSelesai" required>
-                </label>
+                  <div class="schedule-time-picker" [class.is-open]="activeTimePicker === 'end'">
+                    <button id="schedule-end" type="button" class="golan-input schedule-time-trigger" [attr.aria-expanded]="activeTimePicker === 'end'" aria-haspopup="listbox" (click)="toggleTimePicker('end')">
+                      <span>{{ timeValue('end') }}</span>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5v5l3.5 2"></path></svg>
+                    </button>
+                    <div class="schedule-time-menu" *ngIf="activeTimePicker === 'end'" role="listbox" aria-label="Pilih jam selesai">
+                      <div class="schedule-time-column"><strong>JAM</strong><button type="button" *ngFor="let hour of timeHours" [class.selected]="timePart('end', 'hour') === hour" (click)="selectTimePart('end', 'hour', hour)">{{ hour }}</button></div>
+                      <div class="schedule-time-column"><strong>MENIT</strong><button type="button" *ngFor="let minute of timeMinutes" [class.selected]="timePart('end', 'minute') === minute" (click)="selectTimePart('end', 'minute', minute)">{{ minute }}</button></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -164,7 +183,7 @@
             <table class="golan-table schedule-table">
               <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Jam kerja</th><th>Hari kerja</th><th>Toleransi</th><th>Aksi</th></tr></thead>
               <tbody>
-                <tr *ngFor="let schedule of schedules">
+                <tr *ngFor="let schedule of displayedSchedules">
                   <td>
                     <div class="schedule-name-cell">
                       <span class="schedule-row-icon" aria-hidden="true">
@@ -179,7 +198,7 @@
                   <td><span class="schedule-date">{{ schedule.Tanggal ? (schedule.Tanggal | date:'dd MMM yyyy') : '-' }}</span></td>
                   <td><span class="schedule-employee">{{ schedule.EmployeeID ? (schedule.Employee?.User?.Nama || '-') : 'Semua Karyawan (Global)' }}</span></td>
                   <td><span class="schedule-division">{{ schedule.EmployeeID ? (schedule.Employee?.Division?.NamaDivisi || '-') : 'Semua Divisi' }}</span></td>
-                  <td><span class="schedule-hours">{{ schedule.JamMulai | slice:0:5 }} <small>–</small> {{ schedule.JamSelesai | slice:0:5 }}</span></td>
+                  <td><span class="schedule-hours" *ngIf="scheduleTime(schedule, 'start') && scheduleTime(schedule, 'end')">{{ scheduleTime(schedule, 'start') }} <small>–</small> {{ scheduleTime(schedule, 'end') }}</span><span class="schedule-hours" *ngIf="!scheduleTime(schedule, 'start') || !scheduleTime(schedule, 'end')">{{ scheduleStatus(schedule) || 'Tidak ada jam kerja' }}</span></td>
                   <td><span class="schedule-days">{{ getWorkDaysLabel(schedule.HariKerja || schedule.hari_kerja) }}</span></td>
                   <td><span class="tolerance-pill">{{ schedule.ToleransiTerlambatMenit }} menit</span></td>
                   <td class="schedule-actions"><button *ngIf="schedule.NamaShift?.toLowerCase() !== 'reguler'" class="icon-button edit" type="button" (click)="editSchedule(schedule)" aria-label="Edit shift" title="Edit shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button><button *ngIf="schedule.NamaShift?.toLowerCase() !== 'reguler'" class="icon-button delete" type="button" (click)="deleteSchedule(schedule.ID)" aria-label="Hapus shift" title="Hapus shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button><span *ngIf="schedule.NamaShift?.toLowerCase() === 'reguler'" class="muted">Dikelola di Pengaturan Umum</span></td>
@@ -187,6 +206,16 @@
               </tbody>
             </table>
           </div>
+          <app-pagination
+            [totalItems]="schedules.length"
+            [currentPage]="schedulePage"
+            [pageSize]="schedulePageSize"
+            [pageSizeOptions]="schedulePageSizeOptions"
+            [loading]="isLoading"
+            [showEmpty]="false"
+            (pageChange)="schedulePageChanged($event)"
+            (pageSizeChange)="schedulePageSizeChanged($event)">
+          </app-pagination>
         </section>
       </div>
     </ng-container>
@@ -358,7 +387,7 @@
           <table class="golan-table quota-table">
             <thead><tr><th>Karyawan</th><th>Tahun</th><th>Jenis</th><th>Sisa Kuota</th><th>Aksi</th></tr></thead>
             <tbody>
-              <tr *ngFor="let quota of quotas">
+              <tr *ngFor="let quota of displayedQuotas">
                 <td><div class="quota-employee-name">{{ quota.Employee?.User?.Nama || 'Nama belum tersedia' }}</div><div class="code">{{ quota.Employee?.NIK || '—' }}</div></td>
                 <td><span class="year-label">{{ quota.Tahun }}</span></td>
                 <td><span class="quota-type-pill">{{ quota.JenisCuti }}</span></td>
@@ -372,6 +401,16 @@
             </tbody>
           </table>
         </div>
+        <app-pagination
+          [totalItems]="quotas.length"
+          [currentPage]="quotaPage"
+          [pageSize]="quotaPageSize"
+          [pageSizeOptions]="quotaPageSizeOptions"
+          [loading]="isLoading"
+          [showEmpty]="false"
+          (pageChange)="quotaPageChanged($event)"
+          (pageSizeChange)="quotaPageSizeChanged($event)">
+        </app-pagination>
       </section>
     </ng-container>
   </div>

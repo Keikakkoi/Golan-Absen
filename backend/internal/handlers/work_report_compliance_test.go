@@ -25,3 +25,23 @@ func TestWorkReportStatusMapIsScopedToEmployeeAndDate(t *testing.T) {
 		t.Fatal("automatic missing-report markers must not count as submitted reports")
 	}
 }
+
+func TestIsWorkReportLocked(t *testing.T) {
+	tests := []struct {
+		status string
+		locked bool
+	}{
+		{status: "Sesuai", locked: true},
+		{status: " sesuai ", locked: true},
+		{status: "Tidak membuat laporan kerja", locked: true},
+		{status: "tidak membuat laporan kerja", locked: true},
+		{status: "Tidak Sesuai", locked: false},
+		{status: "Menunggu", locked: false},
+		{status: "", locked: false},
+	}
+	for _, test := range tests {
+		if got := isWorkReportLocked(test.status); got != test.locked {
+			t.Errorf("isWorkReportLocked(%q) = %v, want %v", test.status, got, test.locked)
+		}
+	}
+}

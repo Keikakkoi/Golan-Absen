@@ -193,17 +193,33 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 0 16px;
+  padding: 0 0 22px;
+}
+
+.employee-table-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.employee-table-heading h3 {
+  margin: 0;
+  color: #1769aa;
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .employee-table-count { color: #6b8299; font-size: .82rem; }
 .employee-export { position: relative; z-index: 5; }
 .employee-export-trigger {
-  display: inline-flex; align-items: center; gap: 9px; min-height: 38px; padding: 0 13px;
-  border: 1px solid #cbddec; border-radius: 8px; background: #f8fbff; color: #254b68;
-  cursor: pointer; font: inherit; font-size: .82rem; font-weight: 600; transition: .2s ease;
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+  min-height: 40px; gap: 5px; padding: 7px 14px;
+  border: 1px solid #6b7280; border-radius: 7px; background: #6b7280; color: #fff;
+  cursor: pointer; font: inherit; font-size: .82rem; font-weight: 600; line-height: 1.2;
+  white-space: nowrap; transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease;
 }
-.employee-export-trigger:hover, .employee-export-trigger[aria-expanded="true"] { border-color: #79b9e5; background: #edf7ff; color: #1769aa; }
+.employee-export-trigger:hover, .employee-export-trigger[aria-expanded="true"] { border-color: #4b5563; background: #4b5563; color: #fff; }
 .employee-export-chevron { margin-left: 4px; font-size: .68rem; }
 .employee-export-menu {
   position: absolute; top: calc(100% + 6px); right: 0; width: 205px; padding: 6px 0;
@@ -609,7 +625,7 @@
 
 @media (max-width: 640px) {
   .employee-table-toolbar { align-items: stretch; flex-direction: column; }
-  .employee-export-trigger { width: 100%; justify-content: center; }
+  .employee-export > .btn-secondary { width: 100%; justify-content: center; }
   .employee-export-menu { right: 0; left: 0; width: auto; }
   .employee-page-header {
     align-items: stretch !important;

@@ -45,6 +45,13 @@
   vertical-align: -2px;
 }
 
+/* The page title follows the same header pattern as Laporan Kerja Harian;
+   the card below is reserved for filters and report data. */
+.team-report-card .team-filter-layout {
+  display: block;
+  margin-bottom: 22px;
+}
+
 .note-input {
   width: 100%;
   min-width: 0;
@@ -161,6 +168,19 @@
   max-width: 100%;
 }
 
+.team-reports-toolbar > .report-filter-action {
+  /* Match the refresh action so both controls have a consistent footprint. */
+  width: 111px !important;
+  min-width: 111px;
+  height: 34px;
+  min-height: 34px;
+  padding: 7px 11px;
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 600;
+  box-sizing: border-box;
+}
+
 .report-refresh-action {
   min-height: 34px;
   padding: 7px 11px;
@@ -247,15 +267,44 @@
   height: 8px;
 }
 
+// The warning label already contains its own warning icon; do not add a dot.
+.team-reports-table .status-pill.status-warning::before {
+  display: none !important;
+}
+
+.team-reports-table .status-pill.status-submitted::before {
+  display: inline-block !important;
+}
+
 .team-reports-table .status-pill.status-success,
+.team-reports-table .status-pill.status-warning,
+.team-reports-table .status-pill.status-danger,
+.team-reports-table .status-pill.status-pending {
+  border: 1px solid transparent !important;
+}
+
+.team-reports-table .status-pill.status-success {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #bbf7d0 !important;
+}
+
 .team-reports-table .status-pill.status-warning {
-  background: #dbeafe !important;
-  color: #1d4ed8 !important;
+  background: #fef3c7 !important;
+  color: #b7791f !important;
+  border-color: #fde68a !important;
 }
 
 .team-reports-table .status-pill.status-danger {
   background: #fee2e2 !important;
-  color: #dc2626 !important;
+  color: #b42318 !important;
+  border-color: #fecaca !important;
+}
+
+.team-reports-table .status-pill.status-pending {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
 }
 
 .team-reports-col-date { width: 125px; }
@@ -310,6 +359,13 @@
   .team-reports-toolbar > .report-filter-action,
   .team-reports-toolbar > .export-dropdown > button {
     width: 100% !important;
+  }
+
+  .team-reports-toolbar > .report-filter-action {
+    height: auto;
+    min-height: 40px;
+    width: 100% !important;
+    min-width: 0;
   }
 
   .team-reports-table-wrapper {

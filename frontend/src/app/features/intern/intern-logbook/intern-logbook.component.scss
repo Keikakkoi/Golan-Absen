@@ -1,7 +1,17 @@
 .form-card,.table-card{margin-bottom:24px}.form-card{scroll-margin-top:16px}.field-group{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;color:var(--text-dark);font-weight:600}.field-group .golan-input{font-weight:400}.field-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.toolbar{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}.toolbar .golan-input{min-width:120px}.muted{color:var(--text-dark-lo)}@media(max-width:700px){.field-row{grid-template-columns:1fr}.panel-heading{align-items:stretch;flex-direction:column}.toolbar{align-items:stretch}}
 .form-card .btn-outline-primary { min-height: 34px; padding: 7px 11px; font-family: var(--font-body); font-size: .82rem; font-weight: 600; }
+.table-card .report-toolbar > .report-filter-action {
+  /* Keep the history filter consistent with the other filter bars. */
+  width: 111px;
+  min-width: 111px;
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+}
 .screenshot-preview-grid { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .75rem; }
 .screenshot-preview-grid img, .report-thumb img { width: 72px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
+.existing-screenshot { position: relative; display: inline-flex; }
+.existing-screenshot-remove { position: absolute; z-index: 1; top: -8px; right: -8px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #fff; color: #b42318; box-shadow: 0 1px 5px #0003; cursor: pointer; }
 .report-thumb { display: inline-flex; margin: 0; }
 .logbook-screenshot-list {
   display: flex;
@@ -50,11 +60,18 @@
    must be defined here instead of relying on another feature's stylesheet. */
 .intern-logbook-table .status-pill,
 .modal-card .status-pill {
-  // Draft and Approved use the pill color as their status indicator; do not
-  // render the generic dot inherited from the global status-pill style.
-  &.status-success::before,
-  &.status-pending::before {
-    display: none;
+  gap: 0;
+  // Keep the status dot visible for every logbook state. The global warning
+  // style hides its generic dot because warning text usually contains an icon,
+  // but Submitted is a plain status label here.
+  &::before {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+    margin-right: 8px;
   }
 
   &.status-success {
@@ -163,20 +180,19 @@
 
 .intern-logbook-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   align-items: center;
   justify-content: flex-start;
-  width: 100%;
+  width: max-content;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 2px 16px 2px 0;
-  overflow: hidden;
+  padding: 0;
 }
 
 .intern-logbook-actions button {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -190,11 +206,11 @@
 }
 
 @media (min-width: 769px) {
-  /* Do not let the action column absorb unused table width. */
+  /* Keep the action column close to the width of its button group. */
   .intern-logbook-table th:last-child,
   .intern-logbook-table td:last-child {
-    width: 300px !important;
-    max-width: 300px;
+    width: 160px !important;
+    max-width: 160px;
   }
 }
 
@@ -276,10 +292,11 @@
   }
 
   .intern-logbook-actions {
+    flex-wrap: wrap;
     gap: 8px;
     justify-content: flex-start;
     width: fit-content;
-    padding-right: 8px;
+    max-width: 100%;
   }
 
   .intern-logbook-actions button {

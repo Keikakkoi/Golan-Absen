@@ -61,6 +61,13 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   }
 
   rejectionReason(request: any): string { return request?.RejectionReason || request?.rejection_reason || '-'; }
+  adminNote(request: any): string { return request?.admin_notes || request?.AdminNotes || '-'; }
+  managerNote(request: any): string { return request?.manager_notes || request?.ManagerNotes || '-'; }
+  note(request: any): string {
+    const admin = this.adminNote(request);
+    const manager = this.managerNote(request);
+    return [admin !== '-' ? `Catatan Admin: ${admin}` : '', manager !== '-' ? `Catatan Manajer: ${manager}` : ''].filter(Boolean).join(' | ') || '-';
+  }
   approverLabel(request: any): string {
     const approver = request?.AssignedApprover || request?.assigned_approver;
     return approver?.Nama || (request?.AssignedApproverRole === 'HRD' ? 'HRD' : request?.Status === 'pending_manager_approval' ? 'Manajer utama' : '-');

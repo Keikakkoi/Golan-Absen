@@ -99,8 +99,17 @@
             </tr>
             <tr *ngIf="expandedEmployeeId === summary.employee_id" class="detail-row">
               <td colspan="6">
-                <div class="detail-list">
-                  <div *ngFor="let detail of summary.details"><span>{{ detail.tanggal | date:'dd MMM yyyy' }}</span><span>{{ detail.keterangan }}</span></div>
+                <div class="detail-panel">
+                  <div class="detail-panel-header">
+                    <span>Riwayat Alpha</span>
+                    <span class="detail-count">{{ summary.details?.length || 0 }} hari</span>
+                  </div>
+                  <div class="detail-list" [attr.aria-label]="'Riwayat Alpha ' + summary.nama">
+                    <div class="detail-item" *ngFor="let detail of summary.details">
+                      <span class="detail-date">{{ detail.tanggal | date:'dd MMM yyyy' }}</span>
+                      <span class="detail-description">{{ detail.keterangan }}</span>
+                    </div>
+                  </div>
                 </div>
               </td>
             </tr>

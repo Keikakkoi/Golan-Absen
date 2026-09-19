@@ -81,6 +81,13 @@ export class PaginationComponent {
   @Output() pageChange = new EventEmitter<number>();
   @Output() pageSizeChange = new EventEmitter<number>();
 
+  // Pagination is an isolated control. Prevent a click from reaching a
+  // clickable dashboard card/menu that happens to contain this component.
+  @HostListener('click', ['$event']) stopClickPropagation(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   get totalPages(): number { return Math.max(1, Math.ceil(this.totalItems / this.pageSize)); }
   get startItem(): number { return this.totalItems ? ((this.currentPage - 1) * this.pageSize) + 1 : 0; }
   get endItem(): number { return Math.min(this.currentPage * this.pageSize, this.totalItems); }

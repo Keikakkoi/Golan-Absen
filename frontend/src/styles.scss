@@ -1823,14 +1823,6 @@ body.dark-theme .main-content [style*='color: black'] {
   color: #e2e8f0 !important;
 }
 
-.compliance-warning {
-  border-left: 4px solid var(--warning);
-  background: color-mix(in srgb, var(--warning) 8%, var(--bg));
-  color: var(--text-dark);
-  margin-bottom: 1rem;
-}
-.compliance-warning p { color: var(--text-dark-lo); margin: .4rem 0 .75rem; }
-
 /* Shared application controls. Several newer role pages use the
    `golan-input` class directly; keep those controls on the same visual
    system as the older `.form-control` fields. */
@@ -3567,6 +3559,20 @@ body.dark-theme .team-reports-toolbar select option:checked {
 .filter-native-option:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+/* The employee form uses the same custom option popup as the filter menus,
+   with roomier rows to match the reference dropdown style. */
+.employee-form-menu .filter-native-option {
+  min-height: 42px;
+  padding: 9px 16px;
+  font-size: 11px !important;
+  line-height: 1.35;
+}
+
+.employee-form-menu {
+  padding: 6px 0;
+  border-radius: 10px;
 }
 
 body.dark-theme .filter-native-menu {

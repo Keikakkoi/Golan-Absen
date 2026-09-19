@@ -23,6 +23,7 @@ func SetupManagerRoutes(api fiber.Router) {
 	manager.Get("/team/statistics", GetManagerTeamStatistics)
 	manager.Get("/leaves", GetManagerLeaveRequests)
 	manager.Put("/leaves/:id/approve", ApproveManagerLeaveRequest)
+	manager.Put("/leaves/:id/note", SaveManagerLeaveNote)
 	manager.Put("/team/logbooks/:id/review", ReviewManagerLogbook)
 }
 
@@ -42,7 +43,7 @@ func managerTeamEmployees(managerID uint) ([]models.Employee, error) {
 	}
 	if manager.Role == models.RoleHRD {
 		var employees []models.Employee
-		err := config.DB.Preload("User").Preload("Division").Preload("Position").Find(&employees).Error
+		err := config.DB.Preload("User").Preload("User.Manager").Preload("Division").Preload("Position").Find(&employees).Error
 		return employees, err
 	}
 	condition := "users.manager_id = ?"
@@ -52,7 +53,7 @@ func managerTeamEmployees(managerID uint) ([]models.Employee, error) {
 		args = append(args, manager.TeamID, managerID)
 	}
 	var employees []models.Employee
-	err := config.DB.Preload("User").Preload("Division").Preload("Position").Joins("JOIN users ON users.id = employees.user_id").Where("("+condition+")", args...).Find(&employees).Error
+	err := config.DB.Preload("User").Preload("User.Manager").Preload("Division").Preload("Position").Joins("JOIN users ON users.id = employees.user_id").Where("("+condition+")", args...).Find(&employees).Error
 	log.Printf("manager routing: manager_id=%d team_members_found=%d err=%v", managerID, len(employees), err)
 	return employees, err
 }
@@ -79,17 +80,14 @@ func GetManagerDashboard(c *fiber.Ctx) error {
 	for _, item := range team {
 		ids = append(ids, item.ID)
 	}
-	today := attendanceBusinessDate(attendanceNow()).Format("2006-01-02")
 	var present, pending, belumAbsen int64
 	if len(ids) > 0 {
-		config.DB.Model(&models.AttendanceRecord{}).Where("employee_id IN ? AND tanggal = ? AND status IN ?", ids, today, []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat}).Count(&present)
+		todayDate := attendanceBusinessDate(attendanceNow())
+		statsInput := loadAttendanceStatisticsInput(todayDate, todayDate, team)
+		todayStats := attendanceDaySummary(team, todayDate, attendanceNow(), statsInput)
+		present = todayStats.Hadir + todayStats.Terlambat
 		config.DB.Model(&models.LeaveRequest{}).Where("employee_id IN ? AND status = ?", ids, models.LeaveStatusPending).Count(&pending)
-		var onLeave int64
-		config.DB.Model(&models.LeaveRequest{}).Where("employee_id IN ? AND ? BETWEEN tanggal_mulai AND tanggal_selesai AND status = ?", ids, today, models.LeaveStatusApproved).Count(&onLeave)
-		belumAbsen = int64(len(team)) - (present + onLeave)
-		if belumAbsen < 0 {
-			belumAbsen = 0
-		}
+		belumAbsen = todayStats.BelumAbsen
 	}
 	weekly := managerWeeklyAttendance(ids)
 	// The manager dashboard warning is personal. Team attendance and report
@@ -108,7 +106,7 @@ func managerWeeklyAttendance(ids []uint) []fiber.Map {
 		date := attendanceBusinessDate(attendanceNow()).AddDate(0, 0, -offset).Format("2006-01-02")
 		var hadir int64
 		if len(ids) > 0 {
-			config.DB.Model(&models.AttendanceRecord{}).Where("employee_id IN ? AND tanggal = ? AND status IN ?", ids, date, []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat}).Count(&hadir)
+			config.DB.Model(&models.AttendanceRecord{}).Where("employee_id IN ? AND tanggal = ? AND status IN ?", ids, date, []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat}).Distinct("employee_id").Count(&hadir)
 		}
 		result = append(result, fiber.Map{"tanggal": date, "hadir": hadir})
 	}
@@ -132,23 +130,39 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 		start = attendanceBusinessDate(attendanceNow()).Format("2006-01-02")
 		end = start
 	}
-	if start == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Dari tanggal wajib diisi"})
+	var startDate, endDate time.Time
+	var startErr, endErr error
+	if start != "" {
+		startDate, startErr = time.ParseInLocation("2006-01-02", start, jakartaLocation)
 	}
-	if end == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Sampai tanggal wajib diisi"})
+	if end != "" {
+		endDate, endErr = time.ParseInLocation("2006-01-02", end, jakartaLocation)
 	}
-	startDate, startErr := time.ParseInLocation("2006-01-02", start, jakartaLocation)
-	endDate, endErr := time.ParseInLocation("2006-01-02", end, jakartaLocation)
 	if startErr != nil || endErr != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format tanggal harus YYYY-MM-DD"})
 	}
-	if endDate.Before(startDate) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Sampai tanggal tidak boleh lebih kecil dari Dari tanggal"})
-	}
+	// A one-sided range remains useful for the generated Alpha rows: an open
+	// start reaches the earliest team record, while an open end reaches today.
 	ids := make([]uint, 0, len(team))
 	for _, item := range team {
 		ids = append(ids, item.ID)
+	}
+	if start == "" {
+		startDate = endDate
+		if len(ids) > 0 {
+			var first models.AttendanceRecord
+			if config.DB.Where("employee_id IN ?", ids).Order("tanggal asc").First(&first).Error == nil {
+				startDate = first.Tanggal
+			}
+		}
+		start = startDate.Format("2006-01-02")
+	}
+	if end == "" {
+		endDate = attendanceBusinessDate(attendanceNow())
+		end = endDate.Format("2006-01-02")
+	}
+	if endDate.Before(startDate) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Sampai tanggal tidak boleh lebih kecil dari Dari tanggal"})
 	}
 	var records []models.AttendanceRecord
 	if len(ids) > 0 {
@@ -165,7 +179,7 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
 		dateString := date.Format("2006-01-02")
 		for _, employee := range team {
-			status := "Tidak hadir"
+			status := string(models.StatusAlpha)
 			masuk := ""
 			pulang := ""
 			record, hasRecord := byEmployee[recordKey(employee.ID, date)]
@@ -184,7 +198,11 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 			if search := strings.TrimSpace(c.Query("search")); search != "" && !strings.Contains(strings.ToLower(employee.User.Nama), strings.ToLower(search)) && !strings.Contains(strings.ToLower(employee.NIK), strings.ToLower(search)) {
 				continue
 			}
-			if selectedStatus := c.Query("status"); selectedStatus != "" && status != selectedStatus {
+			selectedStatus := c.Query("status")
+			if selectedStatus == "Tidak hadir" || strings.EqualFold(selectedStatus, "alfa") {
+				selectedStatus = string(models.StatusAlpha)
+			}
+			if selectedStatus != "" && status != selectedStatus {
 				continue
 			}
 			checkoutMissing := false
@@ -193,6 +211,27 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 			}
 			rows = append(rows, fiber.Map{"employee_id": employee.ID, "user_id": employee.UserID, "nama": employee.User.Nama, "tanggal": dateString, "status": status, "jam_masuk": masuk, "jam_pulang": pulang, "checkout_missing": checkoutMissing})
 		}
+	}
+	if hasPaginationQuery(c) {
+		p := readPagination(c)
+		total := len(rows)
+		totalPages := 0
+		if total > 0 {
+			totalPages = (total + p.Limit - 1) / p.Limit
+			if p.Page > totalPages {
+				p.Page = totalPages
+				p.Offset = (p.Page - 1) * p.Limit
+			}
+		}
+		startIndex := p.Offset
+		if startIndex > total {
+			startIndex = total
+		}
+		endIndex := startIndex + p.Limit
+		if endIndex > total {
+			endIndex = total
+		}
+		return c.JSON(fiber.Map{"data": rows[startIndex:endIndex], "total": total, "page": p.Page, "limit": p.Limit, "per_page": p.Limit, "total_pages": totalPages})
 	}
 	return c.JSON(rows)
 }
@@ -288,41 +327,56 @@ func GetManagerTeamReports(c *fiber.Ctx) error {
 }
 
 func GetManagerTeamStatistics(c *fiber.Ctx) error {
+	c.Set(fiber.HeaderCacheControl, "no-store, no-cache, must-revalidate, proxy-revalidate")
+	c.Set("Pragma", "no-cache")
+	c.Set("Expires", "0")
 	managerID := c.Locals("user_id").(uint)
 	team, err := managerTeamEmployees(managerID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to load team"})
 	}
-	end := c.Query("end_date")
-	if end == "" {
-		end = attendanceBusinessDate(attendanceNow()).Format("2006-01-02")
+	now := attendanceNow()
+	startDate, endDate, rangeErr := parseStatisticsDateRange(c.Query("start_date"), c.Query("end_date"), now)
+	if rangeErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": rangeErr.Error()})
 	}
-	start := c.Query("start_date")
-	if start == "" {
-		start = attendanceBusinessDate(attendanceNow()).AddDate(0, 0, -6).Format("2006-01-02")
-	}
+	start, end := startDate.Format("2006-01-02"), endDate.Format("2006-01-02")
+	in := loadAttendanceStatisticsInput(startDate, endDate, team)
 	type row struct {
-		Name      string
-		Hadir     int64
-		Terlambat int64
-		Total     int64
+		Name                string `json:"Name"`
+		ManagerID           *uint  `json:"manager_id"`
+		ManagerName         string `json:"manager_name"`
+		Hadir               int64  `json:"Hadir"`
+		Terlambat           int64  `json:"Terlambat"`
+		IzinCuti            int64  `json:"IzinCuti"`
+		Alpha               int64  `json:"Alpha"`
+		BelumAbsen          int64  `json:"BelumAbsen"`
+		TotalHariKerja      int64  `json:"TotalHariKerja"`
+		TotalHariWajib      int64  `json:"TotalHariWajib"`
+		PersentaseKehadiran int64  `json:"PersentaseKehadiran"`
+		Total               int64  `json:"Total"`
 	}
 	rows := []row{}
 	for _, employee := range team {
-		var hadir, terlambat, total int64
-		config.DB.Model(&models.AttendanceRecord{}).Where("employee_id = ? AND tanggal BETWEEN ? AND ? AND status IN ?", employee.ID, start, end, []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat}).Count(&total)
-		config.DB.Model(&models.AttendanceRecord{}).Where("employee_id = ? AND tanggal BETWEEN ? AND ? AND status = ?", employee.ID, start, end, models.StatusHadir).Count(&hadir)
-		config.DB.Model(&models.AttendanceRecord{}).Where("employee_id = ? AND tanggal BETWEEN ? AND ? AND status = ?", employee.ID, start, end, models.StatusTerlambat).Count(&terlambat)
-		rows = append(rows, row{Name: employee.User.Nama, Hadir: hadir, Terlambat: terlambat, Total: total})
+		stats := calculateAttendanceStatistics(employee, startDate, endDate, now, in)
+		managerName := "Belum Ada Manajer"
+		var managerID *uint
+		if employee.User != nil && employee.User.ManagerID != nil {
+			managerID = employee.User.ManagerID
+			if employee.User.Manager != nil && strings.TrimSpace(employee.User.Manager.Nama) != "" {
+				managerName = employee.User.Manager.Nama
+			}
+		}
+		rows = append(rows, row{Name: employee.User.Nama, ManagerID: managerID, ManagerName: managerName, Hadir: stats.Hadir, Terlambat: stats.Terlambat, IzinCuti: stats.IzinCuti, Alpha: stats.Alpha, BelumAbsen: stats.BelumAbsen, TotalHariKerja: stats.TotalHariKerja, TotalHariWajib: stats.TotalHariKerja, PersentaseKehadiran: attendancePercentage(stats), Total: stats.TotalHariKerja})
 	}
 	if c.Query("format") == "csv" {
 		c.Set("Content-Type", "text/csv")
 		c.Set("Content-Disposition", "attachment; filename=statistik-kehadiran-tim.csv")
 		var output string
 		writer := csv.NewWriter(&stringWriter{value: &output})
-		_ = writer.Write([]string{"Nama", "Hadir", "Terlambat", "Total"})
+		_ = writer.Write([]string{"Manajer", "Anggota", "Hadir", "Terlambat", "Izin/Cuti", "Alpha", "Belum Absen", "Total Hari Kerja", "Persentase Kehadiran"})
 		for _, item := range rows {
-			_ = writer.Write([]string{item.Name, strconv.FormatInt(item.Hadir, 10), strconv.FormatInt(item.Terlambat, 10), strconv.FormatInt(item.Total, 10)})
+			_ = writer.Write([]string{item.ManagerName, item.Name, strconv.FormatInt(item.Hadir, 10), strconv.FormatInt(item.Terlambat, 10), strconv.FormatInt(item.IzinCuti, 10), strconv.FormatInt(item.Alpha, 10), strconv.FormatInt(item.BelumAbsen, 10), strconv.FormatInt(item.TotalHariKerja, 10), strconv.FormatInt(item.PersentaseKehadiran, 10)})
 		}
 		writer.Flush()
 		return c.SendString(output)
@@ -355,6 +409,43 @@ func ApproveManagerLeaveRequest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Only managers or HRD/Admin can approve team leave requests"})
 	}
 	return ApproveRejectLeaveRequest(c)
+}
+
+func SaveManagerLeaveNote(c *fiber.Ctx) error {
+	if c.Locals("role").(models.Role) != models.RoleManajer {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Hanya manajer yang dapat menambahkan catatan"})
+	}
+	var input struct {
+		Catatan string `json:"catatan"`
+		Notes   string `json:"notes"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
+	}
+	note, noteErr := normalizeLeaveNote(input.Catatan, input.Notes)
+	if noteErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": noteErr.Error()})
+	}
+	var request models.LeaveRequest
+	if err := config.DB.Preload("Employee.User").First(&request, c.Params("id")).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Leave request not found"})
+	}
+	if request.EmployeeID == nil || request.Employee.User == nil || request.Employee.User.Role == models.RoleManajer {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Pengajuan tidak valid untuk catatan manajer"})
+	}
+	ids, _ := managerTeamIDs(c.Locals("user_id").(uint))
+	if request.AssignedApproverID == nil && !containsUint(ids, *request.EmployeeID) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Leave request is outside your team"})
+	}
+	// Keep the manager-owned field isolated. The legacy shared `catatan` field
+	// must never be changed here because it can contain an admin note.
+	updates := map[string]any{"manager_notes": note}
+	if err := config.DB.Model(&request).Updates(updates).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan catatan manajer"})
+	}
+	request.ManagerNotes = note
+	WsHub.Broadcast <- fiber.Map{"event": "leave_note_updated"}
+	return c.JSON(request)
 }
 
 func ReviewManagerLogbook(c *fiber.Ctx) error {

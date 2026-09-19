@@ -27,11 +27,18 @@ export class AdminManagementComponent implements OnInit {
   scheduleEndDate: string = '';
 
   schedules: any[] = [];
+  schedulePage = 1;
+  schedulePageSize = 25;
+  readonly schedulePageSizeOptions = [10, 25, 50, 100];
+  regularSchedules: any[] = [];
   readonly shiftOptions = ['Reguler', 'Shift Pagi', 'Shift Siang', 'Shift Malam'];
   shiftAssignment: any = { employee_id: '', shift: 'Reguler' };
   scheduleForm: any = this.emptySchedule();
   editingScheduleId: number | null = null;
   isGlobalSchedule = true;
+  activeTimePicker: 'start' | 'end' | null = null;
+  readonly timeHours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
+  readonly timeMinutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
   readonly workDays = [
     { id: '1', label: 'Sen' },
     { id: '2', label: 'Sel' },
@@ -56,6 +63,9 @@ export class AdminManagementComponent implements OnInit {
 
   employees: any[] = [];
   quotas: any[] = [];
+  quotaPage = 1;
+  quotaPageSize = 25;
+  readonly quotaPageSizeOptions = [10, 25, 50, 100];
   quotaForm: any = { employee_id: '', tahun: new Date().getFullYear(), jenis_cuti: 'Cuti', sisa_kuota: 12 };
 
   private readonly api = 'http://localhost:8080/api/v1';
@@ -96,7 +106,29 @@ export class AdminManagementComponent implements OnInit {
     if (this.scheduleStartDate) params = params.set('start_date', this.scheduleStartDate);
     if (this.scheduleEndDate) params = params.set('end_date', this.scheduleEndDate);
 
-    this.http.get<any[]>(`${this.api}/admin/schedules`, { headers: this.headers(), params: params }).subscribe({ next: data => { this.schedules = data || []; this.isLoading = false; }, error: err => this.fail(err) });
+    this.loadRegularSchedule();
+    this.http.get<any[]>(`${this.api}/admin/schedules`, { headers: this.headers(), params: params }).subscribe({ next: data => { this.schedules = data || []; this.schedulePage = 1; this.isLoading = false; }, error: err => this.fail(err) });
+  }
+
+  get displayedSchedules(): any[] {
+    const start = (this.schedulePage - 1) * this.schedulePageSize;
+    return (this.schedules || []).slice(start, start + this.schedulePageSize);
+  }
+
+  schedulePageChanged(page: number): void {
+    this.schedulePage = page;
+  }
+
+  schedulePageSizeChanged(size: number): void {
+    this.schedulePageSize = size;
+    this.schedulePage = 1;
+  }
+
+  private loadRegularSchedule(): void {
+    this.http.get<any[]>(`${this.api}/admin/settings/regular-schedule`, { headers: this.headers() }).subscribe({
+      next: data => { this.regularSchedules = (data || []).map(row => ({ ...row, start_time: this.clock(row.start_time), end_time: this.clock(row.end_time) })); },
+      error: err => { console.error('[Shift] gagal memuat konfigurasi Reguler', err); this.regularSchedules = []; }
+    });
   }
 
   editSchedule(schedule: any): void {
@@ -105,7 +137,31 @@ export class AdminManagementComponent implements OnInit {
     this.scheduleForm = { ...schedule, EmployeeID: schedule.EmployeeID || '', EmployeeIDs: schedule.EmployeeID ? [Number(schedule.EmployeeID)] : [], Tanggal: schedule.Tanggal ? schedule.Tanggal.substring(0, 10) : '', JamMulai: (schedule.JamMulai || '').substring(0, 5), JamSelesai: (schedule.JamSelesai || '').substring(0, 5), HariKerja: this.parseWorkDays(schedule.HariKerja ?? schedule.hari_kerja) };
   }
 
-  resetSchedule(): void { this.editingScheduleId = null; this.isGlobalSchedule = true; this.scheduleForm = this.emptySchedule(); }
+  resetSchedule(): void { this.editingScheduleId = null; this.isGlobalSchedule = true; this.activeTimePicker = null; this.scheduleForm = this.emptySchedule(); }
+
+  toggleTimePicker(picker: 'start' | 'end'): void {
+    this.activeTimePicker = this.activeTimePicker === picker ? null : picker;
+  }
+
+  timeValue(picker: 'start' | 'end'): string {
+    const configured = picker === 'start' ? this.scheduleForm.JamMulai : this.scheduleForm.JamSelesai;
+    if (configured) return this.clock(configured);
+    const reference = picker === 'start' ? this.regularHours.start : this.regularHours.end;
+    return reference || '--:--';
+  }
+
+  timePart(picker: 'start' | 'end', part: 'hour' | 'minute'): string {
+    const value = this.timeValue(picker).split(':');
+    return value[part === 'hour' ? 0 : 1] || (part === 'hour' ? '00' : '00');
+  }
+
+  selectTimePart(picker: 'start' | 'end', part: 'hour' | 'minute', value: string): void {
+    const hour = part === 'hour' ? value : this.timePart(picker, 'hour');
+    const minute = part === 'minute' ? value : this.timePart(picker, 'minute');
+    const time = `${hour}:${minute}`;
+    if (picker === 'start') this.scheduleForm.JamMulai = time;
+    else this.scheduleForm.JamSelesai = time;
+  }
 
   isEmployeeSelected(employeeId: number | undefined): boolean {
     return !this.isGlobalSchedule && !!employeeId && (this.scheduleForm.EmployeeIDs || []).includes(Number(employeeId));
@@ -127,29 +183,32 @@ export class AdminManagementComponent implements OnInit {
     this.scheduleForm.EmployeeID = this.scheduleForm.EmployeeIDs[0] || '';
   }
 
-  get regularHours(): { start: string, end: string } {
-    if (!this.schedules || this.schedules.length === 0) {
-      return { start: '09:00', end: '17:00' };
+  get regularHours(): { start: string, end: string, status: string } {
+    const row = this.regularSchedules.find(item => Number(item.day_of_week) === this.activeWeekday);
+    if (!row || !row.is_working_day || !row.start_time || !row.end_time) {
+      return { start: '', end: '', status: row ? 'Libur / tidak ada jam kerja' : 'Konfigurasi tidak ditemukan' };
     }
-    const regulerShift = this.schedules.find(s => !s.EmployeeID && s.NamaShift?.toLowerCase().includes('reguler'));
-    
-    if (regulerShift) {
-      return {
-        start: (regulerShift.JamMulai || '09:00').substring(0, 5),
-        end: (regulerShift.JamSelesai || '17:00').substring(0, 5)
-      };
-    }
-    
-    const globalShift = this.schedules.find(s => !s.EmployeeID);
-    if (globalShift) {
-      return {
-        start: (globalShift.JamMulai || '09:00').substring(0, 5),
-        end: (globalShift.JamSelesai || '17:00').substring(0, 5)
-      };
-    }
-
-    return { start: '09:00', end: '17:00' };
+    return { start: row.start_time, end: row.end_time, status: '' };
   }
+
+  get activeWeekday(): number {
+    const value = this.scheduleStartDate || new Date().toISOString().substring(0, 10);
+    const date = new Date(`${value}T00:00:00`);
+    return date.getDay() || 7;
+  }
+
+  scheduleTime(schedule: any, field: 'start' | 'end'): string {
+    const isRegular = String(schedule?.NamaShift || '').trim().toLowerCase().startsWith('reguler');
+    if (isRegular) return field === 'start' ? this.regularHours.start : this.regularHours.end;
+    return this.clock(field === 'start' ? schedule?.JamMulai : schedule?.JamSelesai);
+  }
+
+  scheduleStatus(schedule: any): string {
+    if (!String(schedule?.NamaShift || '').trim().toLowerCase().startsWith('reguler')) return '';
+    return this.regularHours.status;
+  }
+
+  private clock(value: any): string { return String(value || '').substring(0, 5); }
 
   async saveSchedule(): Promise<void> {
     if (!this.scheduleForm.HariKerja?.length) { this.alert.error('Hari kerja belum dipilih', 'Pilih minimal satu hari kerja.'); return; }
@@ -167,14 +226,21 @@ export class AdminManagementComponent implements OnInit {
     const empId = Number(this.scheduleForm.EmployeeID);
     const isGlobal = !empId || empId === 0;
     const selectedEmployeeIds = isGlobal ? [] : [empId];
+    const startTime = this.scheduleForm.JamMulai || this.regularHours.start;
+    const endTime = this.scheduleForm.JamSelesai || this.regularHours.end;
+    if (!startTime || !endTime) {
+      this.isSaving = false;
+      this.alert.error('Jam kerja belum tersedia', 'Pilih jam mulai dan jam selesai atau lengkapi konfigurasi hari aktif di Pengaturan Umum.');
+      return;
+    }
     
     const body = { 
       ...this.scheduleForm, 
       EmployeeID: isGlobal ? null : empId, 
       EmployeeIDs: selectedEmployeeIds, 
       Tanggal: formattedDate, 
-      JamMulai: this.scheduleForm.JamMulai.length === 5 ? `${this.scheduleForm.JamMulai}:00` : this.scheduleForm.JamMulai, 
-      JamSelesai: this.scheduleForm.JamSelesai.length === 5 ? `${this.scheduleForm.JamSelesai}:00` : this.scheduleForm.JamSelesai, 
+      JamMulai: startTime.length === 5 ? `${startTime}:00` : startTime,
+      JamSelesai: endTime.length === 5 ? `${endTime}:00` : endTime,
       ToleransiTerlambatMenit: Number(this.scheduleForm.ToleransiTerlambatMenit) 
       ,HariKerja: this.scheduleForm.HariKerja.map((day: string) => Number(day))
     };
@@ -301,8 +367,22 @@ export class AdminManagementComponent implements OnInit {
     return new Set((this.quotas || []).map(q => q.JenisCuti)).size;
   }
 
+  get displayedQuotas(): any[] {
+    const start = (this.quotaPage - 1) * this.quotaPageSize;
+    return (this.quotas || []).slice(start, start + this.quotaPageSize);
+  }
+
   loadQuotaRows(): void {
-    this.http.get<any[]>(`${this.api}/admin/leave-quotas?tahun=${this.quotaForm.tahun}`, { headers: this.headers() }).subscribe({ next: data => { this.quotas = data || []; this.isLoading = false; }, error: err => this.failQuota(err) });
+    this.http.get<any[]>(`${this.api}/admin/leave-quotas?tahun=${this.quotaForm.tahun}`, { headers: this.headers() }).subscribe({ next: data => { this.quotas = data || []; this.quotaPage = 1; this.isLoading = false; }, error: err => this.failQuota(err) });
+  }
+
+  quotaPageChanged(page: number): void {
+    this.quotaPage = page;
+  }
+
+  quotaPageSizeChanged(size: number): void {
+    this.quotaPageSize = size;
+    this.quotaPage = 1;
   }
 
   private failQuota(err: any): void { this.isLoading = false; this.errorMessage = 'Gagal memuat data kuota: ' + (err?.error?.error || 'Unknown error'); }
@@ -347,6 +427,6 @@ export class AdminManagementComponent implements OnInit {
     if (Array.isArray(value)) return value.map(v => String(v));
     try { const parsed = JSON.parse(value || '[1,2,3,4,5,6]'); return Array.isArray(parsed) && parsed.length ? parsed.map((v: any) => String(v)) : ['1','2','3','4','5','6']; } catch { return ['1','2','3','4','5','6']; }
   }
-  private emptySchedule(): any { return { EmployeeID: '', EmployeeIDs: [], Tanggal: new Date().toISOString().substring(0, 10), NamaShift: 'Reguler', JamMulai: '09:00', JamSelesai: '17:00', ToleransiTerlambatMenit: 10, HariKerja: ['1','2','3','4','5','6'] }; }
+  private emptySchedule(): any { return { EmployeeID: '', EmployeeIDs: [], Tanggal: new Date().toISOString().substring(0, 10), NamaShift: 'Reguler', JamMulai: '', JamSelesai: '', ToleransiTerlambatMenit: 10, HariKerja: ['1','2','3','4','5','6'] }; }
   private fail(err: any): void { this.isLoading = false; this.errorMessage = err?.error?.error || 'Gagal memuat data.'; }
 }

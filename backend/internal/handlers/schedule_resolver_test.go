@@ -14,6 +14,14 @@ func TestRegularScheduleResolverUsesJakartaWeekdayAndDailyHours(t *testing.T) {
 	}
 }
 
+func TestRegularScheduleResolverUsesSaturdayHours(t *testing.T) {
+	date := time.Date(2026, 9, 19, 9, 0, 0, 0, jakartaLocation) // Saturday
+	got := resolveRegularForTest(models.RegularWorkSchedule{DayOfWeek: 6, IsWorkingDay: true, StartTime: "07:00", EndTime: "12:00"}, date)
+	if got.StartTime != "07:00" || got.EndTime != "12:00" || !got.IsWorkingDay {
+		t.Fatalf("Saturday must use its own configured hours: %#v", got)
+	}
+}
+
 func TestRegularScheduleResolverMarksInactiveDay(t *testing.T) {
 	date := time.Date(2026, 8, 30, 12, 0, 0, 0, jakartaLocation) // Sunday
 	got := resolveRegularForTest(models.RegularWorkSchedule{DayOfWeek: 7, IsWorkingDay: false}, date)
@@ -28,5 +36,18 @@ func TestCustomScheduleSelectionBeatsGlobalSchedule(t *testing.T) {
 	got, ok := selectEffectiveCustomSchedule([]models.WorkSchedule{{NamaShift: "Shift Pagi", JamMulai: "08:00", JamSelesai: "16:00"}, {EmployeeID: &id, NamaShift: "Shift Malam", JamMulai: "22:00", JamSelesai: "06:00"}}, id, date)
 	if !ok || got.NamaShift != "Shift Malam" {
 		t.Fatalf("employee-specific schedule must win: %#v", got)
+	}
+}
+
+func TestExpandProfileSchedulesCreatesOneRowPerWorkday(t *testing.T) {
+	schedules := expandProfileSchedules([]models.WorkSchedule{{NamaShift: "Shift Malam", HariKerja: "[1,2,3,4,5,6]", JamMulai: "18:23", JamSelesai: "23:00"}})
+	if len(schedules) != 6 {
+		t.Fatalf("expected six profile rows, got %d", len(schedules))
+	}
+	for index, schedule := range schedules {
+		wantDay := index + 1
+		if len(schedule.WorkDays()) != 1 || schedule.WorkDays()[0] != wantDay || schedule.JamMulai != "18:23" || schedule.JamSelesai != "23:00" {
+			t.Fatalf("unexpected expanded row %d: %#v", index, schedule)
+		}
 	}
 }

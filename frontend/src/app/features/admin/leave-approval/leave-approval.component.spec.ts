@@ -39,4 +39,36 @@ describe('LeaveApprovalComponent', () => {
     expect(component.statusLabel('hrd_rejected')).toBe('Ditolak');
     expect(component.statusLabel('Cancelled')).toBe('Dibatalkan');
   });
+
+  it('only enables admin notes while approval is pending and keeps manager notes separate', () => {
+    const { component } = createComponent();
+    expect(component.canAddAdminNote({ Status: 'pending_hrd_approval' })).toBeTrue();
+    expect(component.canAddAdminNote({ Status: 'pending_manager_approval' })).toBeFalse();
+    expect(component.canAddAdminNote({ Status: 'hrd_approved' })).toBeFalse();
+    expect(component.managerNote({ ManagerNotes: 'Catatan manager', AdminNotes: 'Catatan admin' })).toBe('Catatan manager');
+    expect(component.adminNote({ ManagerNotes: 'Catatan manager', AdminNotes: 'Catatan admin' })).toBe('Catatan admin');
+    expect(component.adminNote({ ManagerNotes: 'Catatan manager', Catatan: 'Catatan manager' })).toBe('-');
+  });
+
+  it('sends the admin note with an approval decision', async () => {
+    const http = {
+      get: jasmine.createSpy('get').and.returnValue(of([])),
+      put: jasmine.createSpy('put').and.returnValue(of({}))
+    } as any;
+    const alert = {
+      confirm: jasmine.createSpy('confirm').and.resolveTo(true),
+      success: jasmine.createSpy('success'),
+      error: jasmine.createSpy('error')
+    } as any;
+    const component = new LeaveApprovalComponent(http, { getToken: () => 'token' } as any, alert);
+    component.adminNotes[12] = 'Keputusan Admin';
+
+    await component.updateStatus(12, 'Approved');
+
+    expect(http.put).toHaveBeenCalledWith(
+      'http://localhost:8080/api/v1/admin/leave/12/approve',
+      jasmine.objectContaining({ status: 'Approved', catatan: 'Keputusan Admin', notes: 'Keputusan Admin' }),
+      jasmine.anything()
+    );
+  });
 });

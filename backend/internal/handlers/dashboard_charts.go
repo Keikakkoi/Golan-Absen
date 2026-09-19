@@ -17,11 +17,12 @@ func SetupDashboardChartRoutes(api fiber.Router) {
 }
 
 type chartPoint struct {
-	Date      string `json:"date"`
-	Hadir     int64  `json:"hadir"`
-	Terlambat int64  `json:"terlambat"`
-	Izin      int64  `json:"izin"`
-	Alfa      int64  `json:"alfa"`
+	Date       string `json:"date"`
+	Hadir      int64  `json:"hadir"`
+	Terlambat  int64  `json:"terlambat"`
+	Izin       int64  `json:"izin"`
+	Alfa       int64  `json:"alfa"`
+	BelumAbsen int64  `json:"belum_absen"`
 }
 
 type chartValue struct {
@@ -36,35 +37,21 @@ func GetDashboardCharts(c *fiber.Ctx) error {
 	}
 	role := c.Locals("role").(models.Role)
 	userID := c.Locals("user_id").(uint)
-	ids, _, err := chartScope(role, userID)
+	ids, employees, err := chartScope(role, userID)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to resolve dashboard scope"})
 	}
 
+	statsInput := loadAttendanceStatisticsInput(start, end, employees)
 	trend := make([]chartPoint, 0, int(end.Sub(start).Hours()/24)+1)
 	for day := start; !day.After(end); day = day.AddDate(0, 0, 1) {
-		p := chartPoint{Date: day.Format("2006-01-02")}
-		var rows []models.AttendanceRecord
-		if len(ids) > 0 {
-			config.DB.Where("employee_id IN ? AND tanggal = ?", ids, day).Find(&rows)
-		}
-		for _, row := range rows {
-			switch row.Status {
-			case models.StatusHadir:
-				p.Hadir++
-			case models.StatusTerlambat:
-				p.Terlambat++
-			case models.StatusIzin, models.StatusCuti:
-				p.Izin++
-			case models.StatusAlpha:
-				p.Alfa++
-			}
-		}
+		summary := attendanceDaySummary(employees, day, attendanceNow(), statsInput)
+		p := chartPoint{Date: day.Format("2006-01-02"), Hadir: summary.Hadir, Terlambat: summary.Terlambat, Izin: summary.IzinCuti, Alfa: summary.Alpha, BelumAbsen: summary.BelumAbsen}
 		trend = append(trend, p)
 	}
 
 	today := attendanceBusinessDate(attendanceNow())
-	todayStatus := chartStatus(ids, today)
+	todayStatus := chartStatusForEmployees(employees, today, statsInput)
 	result := fiber.Map{
 		"start_date": start.Format("2006-01-02"), "end_date": end.Format("2006-01-02"),
 		"attendance_trend": trend, "today_status": todayStatus,
@@ -145,7 +132,7 @@ func chartScope(role models.Role, userID uint) ([]uint, []models.Employee, error
 }
 
 func chartStatus(ids []uint, date time.Time) []chartValue {
-	values := []chartValue{{Label: "Hadir", Value: 0}, {Label: "Terlambat", Value: 0}, {Label: "Izin/Cuti", Value: 0}, {Label: "Alfa", Value: 0}, {Label: "Belum Absen", Value: 0}}
+	values := []chartValue{{Label: "Hadir", Value: 0}, {Label: "Terlambat", Value: 0}, {Label: "Izin/Cuti", Value: 0}, {Label: "Alpha", Value: 0}, {Label: "Belum Absen", Value: 0}}
 	var rows []models.AttendanceRecord
 	if len(ids) > 0 {
 		config.DB.Where("employee_id IN ? AND tanggal = ?", ids, date).Find(&rows)
@@ -182,8 +169,13 @@ func chartStatus(ids []uint, date time.Time) []chartValue {
 	return values
 }
 
+func chartStatusForEmployees(employees []models.Employee, date time.Time, in attendanceStatisticsInput) []chartValue {
+	summary := attendanceDaySummary(employees, date, attendanceNow(), in)
+	return []chartValue{{Label: "Hadir", Value: summary.Hadir}, {Label: "Terlambat", Value: summary.Terlambat}, {Label: "Izin/Cuti", Value: summary.IzinCuti}, {Label: "Alpha", Value: summary.Alpha}, {Label: "Belum Absen", Value: summary.BelumAbsen}}
+}
+
 func chartStatusFromTrend(trend []chartPoint) []chartValue {
-	values := []chartValue{{Label: "Hadir", Value: 0}, {Label: "Terlambat", Value: 0}, {Label: "Izin/Cuti", Value: 0}, {Label: "Alfa", Value: 0}}
+	values := []chartValue{{Label: "Hadir", Value: 0}, {Label: "Terlambat", Value: 0}, {Label: "Izin/Cuti", Value: 0}, {Label: "Alpha", Value: 0}}
 	for _, point := range trend {
 		values[0].Value += point.Hadir
 		values[1].Value += point.Terlambat

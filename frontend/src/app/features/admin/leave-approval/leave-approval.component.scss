@@ -54,6 +54,7 @@
   text-align: center;
   white-space: nowrap;
 }
+
 .leave-table td {
   min-height: 56px;
   text-align: center;
@@ -64,21 +65,28 @@
 .leave-col-type { width: 90px; }
 .leave-col-date { width: 130px; }
 .leave-col-reason { width: 190px; }
+.leave-col-note { width: 240px; }
 .leave-col-attachment { width: 160px; }
 .leave-col-status { width: 260px; min-width: 260px; }
 .leave-col-actions { width: 160px; min-width: 160px; }
 
+/* There are now two independent note columns. Keep both readable and keep
+   the status/action columns outside their content even on narrow screens. */
+.leave-table .leave-col-note { width: 220px; min-width: 220px; }
+.leave-table .leave-col-status { width: 220px; min-width: 220px; }
+.leave-table .leave-col-actions { width: 150px; min-width: 150px; }
+
 /* Keep the last approval columns aligned with their centered headers. */
-.leave-table th:nth-child(7),
-.leave-table td:nth-child(7),
-.leave-table th:nth-child(8),
-.leave-table td:nth-child(8),
-.leave-table th:nth-child(9),
-.leave-table td:nth-child(9),
-.leave-table th:nth-child(10),
-.leave-table td:nth-child(10) {
+.leave-table th:nth-child(n+7),
+.leave-table td:nth-child(n+7) {
   text-align: center !important;
   vertical-align: middle !important;
+}
+
+/* Kolom alasan penolakan dibuat rata kiri agar teks lebih mudah dibaca. */
+.leave-table th:nth-child(7),
+.leave-table td:nth-child(7) {
+  text-align: left !important;
 }
 
 .leave-employee-cell { font-weight: 500; }
@@ -95,6 +103,16 @@
 }
 .leave-date-cell { white-space: nowrap; }
 .leave-reason-cell { min-width: 0; }
+.leave-note-cell { min-width: 240px; text-align: left !important; }
+.note-source { margin-bottom: 0.35rem; font-size: 0.78rem; line-height: 1.35; text-align: left; overflow-wrap: anywhere; word-break: break-word; }
+.leave-table td.leave-note-cell { text-align: left !important; }
+.note-editor { display: flex; gap: 0.35rem; align-items: flex-start; }
+.note-editor textarea { width: 100%; min-width: 0; resize: vertical; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.35rem; font: inherit; font-size: 0.78rem; }
+.admin-note-input { width: 100%; min-width: 0; resize: vertical; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.35rem; font: inherit; font-size: 0.78rem; }
+.note-editor label { display: block; margin-bottom: 0.35rem; font-weight: 700; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.detail-note-editor { align-items: stretch; }
+.detail-note-editor textarea { flex: 1; }
 .leave-attachment-cell,
 .leave-status-cell,
 .leave-actions-cell { vertical-align: middle !important; }
@@ -163,6 +181,7 @@
   width: max-content;
   min-width: 100%;
 }
+
 
 .leave-actions-cell .table-actions {
   width: 100%;

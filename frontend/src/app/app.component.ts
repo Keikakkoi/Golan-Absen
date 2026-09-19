@@ -134,7 +134,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private isFilterSelect(select: HTMLSelectElement): boolean {
     return select.classList.contains('filter-input') || !!select.closest(
-      '.filter-grid, .report-toolbar, .toolbar, .leave-toolbar, .team-attendance-toolbar, .team-reports-toolbar, .calendar-toolbar, .reporting-month-toolbar, .work-report-admin-page, .backup-page, .select-control'
+      '.filter-grid, .report-toolbar, .toolbar, .leave-toolbar, .team-attendance-toolbar, .team-reports-toolbar, .calendar-toolbar, .reporting-month-toolbar, .work-report-admin-page, .backup-page, .select-control, .employee-form-select'
     );
   }
 
@@ -143,7 +143,9 @@ export class AppComponent implements OnInit, OnDestroy {
     this.activeSelect = select;
 
     const menu = this.document.createElement('div');
-    menu.className = 'filter-native-menu';
+    menu.className = select.classList.contains('employee-form-select')
+      ? 'filter-native-menu employee-form-menu'
+      : 'filter-native-menu';
     menu.setAttribute('role', 'listbox');
     menu.setAttribute('aria-label', select.getAttribute('aria-label') || 'Pilihan filter');
 
@@ -176,12 +178,17 @@ export class AppComponent implements OnInit, OnDestroy {
     const bounds = select.getBoundingClientRect();
     const viewportHeight = this.document.defaultView?.innerHeight || 0;
     const availableBelow = Math.max(120, viewportHeight - bounds.bottom - 8);
-    const menuHeight = Math.min(360, Math.round(availableBelow), menu.scrollHeight);
+    const isEmployeeFormMenu = menu.classList.contains('employee-form-menu');
+    const menuHeight = Math.min(
+      360,
+      Math.round(availableBelow),
+      isEmployeeFormMenu ? menu.scrollHeight : Math.max(120, menu.scrollHeight)
+    );
 
     menu.style.left = `${Math.round(bounds.left)}px`;
     menu.style.width = `${Math.round(bounds.width)}px`;
-    menu.style.height = `${Math.max(120, menuHeight)}px`;
-    menu.style.maxHeight = `${Math.max(120, menuHeight)}px`;
+    menu.style.height = `${isEmployeeFormMenu ? menuHeight : Math.max(120, menuHeight)}px`;
+    menu.style.maxHeight = `${isEmployeeFormMenu ? menuHeight : Math.max(120, menuHeight)}px`;
     menu.style.top = `${Math.round(bounds.bottom + 4)}px`;
   }
 

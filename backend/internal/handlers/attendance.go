@@ -421,6 +421,7 @@ func GetAttendanceHistory(c *fiber.Ctx) error {
 	if err := config.DB.Where("employee_id = ? AND tanggal <= ?", employee.ID, currentDate.Format("2006-01-02")).Order("tanggal desc").Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch records"})
 	}
+	records = deduplicateAttendanceRecords(records)
 	for index := range records {
 		// Older approvals could overwrite a real punched record with Izin or
 		// Cuti. A record with JamMasuk is attendance evidence and must remain

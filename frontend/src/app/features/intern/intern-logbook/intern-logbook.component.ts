@@ -22,7 +22,9 @@ export class InternLogbookComponent implements OnInit {
   selectedLogbookDetail: any = null;
   deadlineInfo: any = null; deadlineError = '';
   form = { tanggal: new Date().toISOString().slice(0, 10), tugas: '', deskripsi_kegiatan: '', kendala: '', status: 'draft' };
-  selectedScreenshots: File[] = []; screenshotPreviews: string[] = [];
+  selectedScreenshots: File[] = [];
+  existingScreenshots: any[] = [];
+  removedScreenshotIds: number[] = [];
   constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService, private alert: AlertService) {}
   ngOnInit(): void { this.load(); this.loadDeadline(); }
   loadDeadline(): void { this.deadlineInfo = null; this.deadlineError = ''; if (!this.form.tanggal) return; this.http.get<any>('http://localhost:8080/api/v1/work-reports/deadline', { params: new HttpParams().set('date', this.form.tanggal), headers: this.headers() }).subscribe({ next: data => this.deadlineInfo = data, error: e => this.deadlineError = e.error?.error || 'Informasi batas waktu tidak tersedia.' }); }
@@ -56,11 +58,11 @@ export class InternLogbookComponent implements OnInit {
   @HostListener('document:click') closeStatusFilter(): void { this.statusFilterOpen = false; this.statusFilterDropUp = false; }
   save(targetStatus?: string): void {
     if (this.dateAlreadyLogged) {
-      this.error = 'Logbook untuk tanggal tersebut sudah dibuat. Silakan gunakan tombol Edit jika statusnya masih Draft.';
+      this.showSaveError('Logbook untuk tanggal tersebut sudah dibuat. Jika statusnya masih Draft, silakan gunakan tombol Edit pada riwayat logbook.');
       return;
     }
     if (!this.form.tanggal || !this.form.deskripsi_kegiatan.trim()) {
-      this.error = 'Tanggal dan kegiatan wajib diisi.';
+      this.showSaveError('Tanggal dan deskripsi kegiatan wajib diisi.');
       return;
     }
     if (targetStatus === 'submitted') {
@@ -99,6 +101,7 @@ export class InternLogbookComponent implements OnInit {
     Object.entries(this.form).forEach(([key, value]) => fd.append(key, value));
     fd.append('status_logbook', this.form.status);
     this.selectedScreenshots.forEach(file => fd.append('screenshots', file, file.name));
+    if (this.removedScreenshotIds.length) fd.append('delete_attachment_ids', JSON.stringify(this.removedScreenshotIds));
     const request = this.editingId ? this.http.put(`http://localhost:8080/api/v1/internship/logbooks/${this.editingId}`, fd, { headers: this.headers() }) : this.http.post('http://localhost:8080/api/v1/internship/logbooks', fd, { headers: this.headers() });
     request.subscribe({
       next: () => {
@@ -108,36 +111,43 @@ export class InternLogbookComponent implements OnInit {
         this.load();
       },
       error: e => {
-        this.error = e.error?.error || 'Gagal menyimpan logbook';
+        this.showSaveError(this.getErrorReason(e, 'Gagal menyimpan logbook.'));
         this.saving = false;
       }
     });
   }
-  onScreenshotsSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const selected = Array.from(input.files || []);
-    const selectedKeys = new Set(selected.map(file => this.fileKey(file)));
-    const files = [
-      ...this.selectedScreenshots.filter(file => !selectedKeys.has(this.fileKey(file))),
-      ...selected
-    ];
-    if (files.length > 3 || files.some(file => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
-      this.error = 'Maksimal 3 screenshot JPG/PNG/WEBP, masing-masing 5MB.';
-      input.value = '';
-      return;
-    }
+  private showSaveError(reason: string): void {
     this.error = '';
-    this.screenshotPreviews.forEach(url => URL.revokeObjectURL(url));
-    this.selectedScreenshots = files;
-    this.screenshotPreviews = files.map(file => URL.createObjectURL(file));
-    input.value = '';
+    void Swal.fire({
+      icon: 'error',
+      title: this.editingId ? 'Gagal mengedit logbook' : 'Gagal menambahkan logbook',
+      text: reason,
+      confirmButtonText: 'Tutup',
+      confirmButtonColor: '#2F80ED'
+    });
   }
-  onScreenshotFilesChange(files: File[]): void { this.selectedScreenshots = files; this.screenshotPreviews = files.map(file => URL.createObjectURL(file)); }
-  private fileKey(file: File): string { return `${file.name}:${file.size}:${file.lastModified}`; }
+  private getErrorReason(error: any, fallback: string): string {
+    return typeof error?.error?.error === 'string'
+      ? error.error.error
+      : typeof error?.error?.message === 'string'
+        ? error.error.message
+        : typeof error?.message === 'string' && error.message !== 'Unknown Error'
+          ? error.message
+          : fallback;
+  }
+  onScreenshotFilesChange(files: File[]): void { this.selectedScreenshots = files; }
+  removeExistingScreenshot(index: number): void {
+    const screenshot = this.existingScreenshots[index];
+    const id = Number(screenshot?.id || screenshot?.ID);
+    if (id) this.removedScreenshotIds = [...this.removedScreenshotIds, id];
+    this.existingScreenshots = this.existingScreenshots.filter((_, i) => i !== index);
+  }
   edit(item: any): void {
     if (!this.canEdit(item)) return;
 
     this.editingId = item.id || item.ID;
+    this.existingScreenshots = [...(item.attachments || item.Attachments || [])];
+    this.removedScreenshotIds = [];
     this.form = {
       tanggal: String(item.tanggal || item.Tanggal || '').slice(0, 10),
       tugas: item.tugas || item.Tugas || '',
@@ -156,7 +166,7 @@ export class InternLogbookComponent implements OnInit {
       this.editLogbookForm?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
     }, 0);
   }
-  cancelEdit(): void { if (this.editScrollTimer) { clearTimeout(this.editScrollTimer); this.editScrollTimer = null; } this.editingId = null; this.form = { tanggal: new Date().toISOString().slice(0, 10), tugas: '', deskripsi_kegiatan: '', kendala: '', status: 'draft' }; this.screenshotPreviews.forEach(url => URL.revokeObjectURL(url)); this.selectedScreenshots = []; this.screenshotPreviews = []; this.loadDeadline(); }
+  cancelEdit(): void { if (this.editScrollTimer) { clearTimeout(this.editScrollTimer); this.editScrollTimer = null; } this.editingId = null; this.form = { tanggal: new Date().toISOString().slice(0, 10), tugas: '', deskripsi_kegiatan: '', kendala: '', status: 'draft' }; this.selectedScreenshots = []; this.existingScreenshots = []; this.removedScreenshotIds = []; this.loadDeadline(); }
   viewDetail(item: any): void { this.selectedLogbookDetail = item; }
   closeDetail(): void { this.selectedLogbookDetail = null; }
   async deleteLogbook(item: any): Promise<void> {

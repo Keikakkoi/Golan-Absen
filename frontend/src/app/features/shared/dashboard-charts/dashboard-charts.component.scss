@@ -74,7 +74,8 @@
 .legend-list span { color:var(--chart-text-secondary); }.legend-list strong { color:var(--chart-text); margin-left:5px; }.legend-list .zero { opacity:.65; }
 .bars { display:grid; gap:12px; margin-top:18px; }
 .bar-item { display:grid; grid-template-columns:minmax(90px,1fr) 2fr 30px; gap:8px; align-items:center; font-size:.78rem; }
-.bar-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--chart-text-secondary); }
+.bar-label { display:flex; align-items:center; gap:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--chart-text-secondary); }
+.bar-status-dot { width:8px; height:8px; flex:0 0 8px; margin-right:8px; border-radius:50%; }
 .bar-track { height:12px; background:var(--chart-track); border:1px solid var(--chart-border); border-radius:999px; overflow:hidden; }
 .bar-track span { display:block; height:100%; border-radius:inherit; }
 .bar-item strong { text-align:right; color:var(--chart-text); }

@@ -1,4 +1,68 @@
 .toolbar{display:flex;align-items:end;gap:12px;margin-bottom:24px}.toolbar label{display:flex;flex-direction:column;gap:6px}.member-row{margin:18px 0}.bar-line{display:flex;height:14px;background:var(--mint-1);border-radius:99px;overflow:hidden;margin:8px 0}.present{background:var(--green)}.late{background:#f59e0b}.member-row small{color:var(--text-dark-lo)}
+.manager-controls{display:flex;justify-content:flex-end;gap:8px;margin:0 0 16px}.manager-groups{display:grid;gap:12px;min-width:0}.manager-group{position:relative;width:100%;max-width:100%;border:1px solid var(--mint-2);border-radius:12px;overflow:hidden;background:var(--mint-0);box-sizing:border-box}.manager-group-header{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-width:0;padding:16px 76px 16px 16px;box-sizing:border-box}.manager-group-summary{display:flex;flex:1 1 auto;flex-direction:column;gap:5px;min-width:0;overflow-wrap:anywhere}.manager-group-summary strong{font-size:1rem}.manager-group-summary small{color:var(--text-dark-lo);font-weight:500;line-height:1.4}.manager-toggle-button{position:absolute;top:50%;right:16px;z-index:1;transform:translateY(-50%);display:grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid var(--mint-2);border-radius:50%;background:var(--mint-0);color:var(--text-dark);cursor:pointer;box-sizing:border-box;list-style:none}.manager-toggle-button::-webkit-details-marker{display:none}.manager-toggle-button:hover,.manager-toggle-button:focus-visible{background:var(--mint-1);outline:2px solid var(--green);outline-offset:-2px}.manager-group[open] .manager-toggle-button i{transform:rotate(180deg)}.manager-members{padding:0 16px 8px;box-sizing:border-box}.manager-members .member-row{padding:12px 0;margin:0;border-top:1px solid var(--mint-2)}.member-heading{display:flex;justify-content:space-between;gap:12px;min-width:0}.member-heading strong{min-width:0;overflow-wrap:anywhere}.member-heading span{font-weight:700;color:var(--green);flex:0 0 auto}
+
+.team-statistics-toolbar > .report-filter-action {
+  /* Use the same compact desktop size as the other team-report filters. */
+  width: 111px;
+  min-width: 111px;
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+}
+
+.manager-group-header { position: relative; }
+
+/* Keep long member lists inside the manager card while its header stays
+   visible with the summary and toggle button. */
+.manager-members {
+  max-height: 460px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--mint-2) transparent;
+  scrollbar-width: thin;
+}
+.manager-members::-webkit-scrollbar { width: 8px; }
+.manager-members::-webkit-scrollbar-track { background: transparent; }
+.manager-members::-webkit-scrollbar-thumb {
+  background: var(--mint-2);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+.manager-members::-webkit-scrollbar-thumb:hover { background: var(--green); background-clip: padding-box; }
+
+.manager-controls .btn-secondary {
+  min-height: 42px;
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--green);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: none;
+}
+
+.manager-controls .btn-secondary:hover,
+.manager-controls .btn-secondary:focus-visible {
+  background: var(--green-deep);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(47, 128, 237, 0.25);
+}
+
+.manager-controls .btn-secondary:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.manager-controls .btn-secondary:active {
+  transform: translateY(0);
+}
+
 
 @media (max-width: 768px) {
   .team-statistics-card {
@@ -50,4 +114,10 @@
   .team-statistics-toolbar > .export-dropdown > button {
     width: 100%;
   }
+
+  .manager-group-header { padding-right: 68px; }
+  .manager-members { max-height: 400px; }
+
+  .manager-controls{flex-direction:column}.manager-controls button{width:100%}.manager-group-header{padding:14px 68px 14px 14px}.manager-group-summary small{font-size:.78rem}.manager-members{padding:0 14px 6px}
 }
+.status-summary,.status-chip{display:inline-flex;align-items:center;gap:7px}.status-summary>span,.status-chip{display:inline-flex;align-items:center;gap:8px}.status-dot{display:inline-block;width:8px;height:8px;flex:0 0 8px;border-radius:50%;vertical-align:middle}.status-present{background:#16A34A}.status-late{background:#f59e0b}.status-leave{background:#8b5cf6}.status-alpha{background:#dc2626}.status-pending{background:#64748b}.status-neutral{background:#94a3b8}.manager-members .status-summary{display:flex;flex-wrap:wrap;gap:6px 10px;line-height:1.5}.manager-members .status-summary>span{white-space:nowrap}.bar-line .present{background:#16A34A}.bar-line .leave{background:#8b5cf6}.bar-line .alpha{background:#dc2626}.bar-line .pending{background:#64748b}

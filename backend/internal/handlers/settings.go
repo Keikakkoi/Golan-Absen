@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -190,14 +191,18 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var input struct {
-		MinimumMasaKerjaCutiBulan        int `json:"minimum_masa_kerja_cuti_bulan"`
-		BatasLaporanSetelahCheckoutMenit int `json:"batas_laporan_setelah_checkout_menit"`
+		MinimumMasaKerjaCutiBulan        int  `json:"minimum_masa_kerja_cuti_bulan"`
+		DefaultCutiQuotaHari             *int `json:"default_cuti_quota_hari"`
+		BatasLaporanSetelahCheckoutMenit int  `json:"batas_laporan_setelah_checkout_menit"`
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
 	}
 	if input.MinimumMasaKerjaCutiBulan < 0 || input.MinimumMasaKerjaCutiBulan > 120 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Minimum masa kerja harus antara 0 dan 120 bulan"})
+	}
+	if input.DefaultCutiQuotaHari != nil && (*input.DefaultCutiQuotaHari < 0 || *input.DefaultCutiQuotaHari > 366) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Default kuota cuti harus antara 0 dan 366 hari"})
 	}
 	if input.BatasLaporanSetelahCheckoutMenit < 0 || input.BatasLaporanSetelahCheckoutMenit > 24*60 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Toleransi laporan harus antara 0 dan 1.440 menit"})
@@ -207,6 +212,9 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 		setting = models.GeneralSetting{}
 	}
 	setting.MinimumMasaKerjaCutiBulan = input.MinimumMasaKerjaCutiBulan
+	if input.DefaultCutiQuotaHari != nil {
+		setting.DefaultCutiQuotaHari = *input.DefaultCutiQuotaHari
+	}
 	setting.BatasLaporanSetelahCheckoutMenit = input.BatasLaporanSetelahCheckoutMenit
 	setting.BatasLaporanSetelahCheckoutJam = input.BatasLaporanSetelahCheckoutMenit / 60
 	if err := config.DB.Save(&setting).Error; err != nil {
@@ -241,6 +249,32 @@ func GetSchedules(c *fiber.Ctx) error {
 	if err := query.Order("tanggal desc").Order("id desc").Find(&schedules).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch schedules"})
 	}
+	// Reguler is generated from regular_work_schedules below. Hide legacy
+	// persisted Reguler rows from this list to avoid showing duplicate shifts;
+	// the stored rows remain untouched for backward compatibility.
+	nonRegularSchedules := make([]models.WorkSchedule, 0, len(schedules))
+	for _, schedule := range schedules {
+		if !isRegularShiftName(schedule.NamaShift) {
+			nonRegularSchedules = append(nonRegularSchedules, schedule)
+		}
+	}
+	schedules = nonRegularSchedules
+	// Reguler is stored in the weekly settings table, not work_schedules.
+	// Expose the active day's read-only row so the list has one source of truth.
+	regularDate := time.Now().In(jakartaLocation)
+	if startDate != "" {
+		if parsed, err := time.ParseInLocation("2006-01-02", startDate, jakartaLocation); err == nil {
+			regularDate = parsed
+		}
+	}
+	day := weekdayJakarta(regularDate)
+	var regular models.RegularWorkSchedule
+	if err := config.DB.Where("day_of_week = ?", day).First(&regular).Error; err != nil {
+		log.Printf("regular schedule not found for %s (%s): %v", regularDate.Format("2006-01-02"), regularDayNames[day], err)
+		regular = models.RegularWorkSchedule{DayOfWeek: day, DayName: regularDayNames[day]}
+	}
+	regularRow := scheduleFromRegular(regular)
+	schedules = append([]models.WorkSchedule{regularRow}, schedules...)
 	return c.JSON(schedules)
 }
 

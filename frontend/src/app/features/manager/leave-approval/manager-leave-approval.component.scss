@@ -1,4 +1,29 @@
-.toolbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px}.toolbar label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:var(--text-dark)}.note-input{min-width:130px}.btn-small{border:1px solid transparent;border-radius:8px;padding:6px 11px;cursor:pointer;margin:2px;font-weight:700;font-size:14px;line-height:1.2;white-space:nowrap;transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease}.leave-approval-actions .btn-small.approve{background:#e1f3e6;color:#159447;border-color:#9bd8ae}.leave-approval-actions .btn-small.reject{background:#fbe3e5;color:#e62f3d;border-color:#f3a9af}.leave-approval-actions .btn-small:hover{box-shadow:0 2px 5px rgba(31,52,73,.12)}.leave-approval-actions .btn-small.approve:hover{background:#d2ecd9}.leave-approval-actions .btn-small.reject:hover{background:#f8d5d9}.action-icon{font-size:18px;font-weight:800;line-height:0;vertical-align:-1px;margin-right:4px}.status-pill{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;border-radius:999px;background:var(--mint-1);padding:5px 11px;font-size:12px;font-weight:700}.muted{color:var(--text-dark-lo)}
+.toolbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px}.toolbar label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:var(--text-dark)}
+
+/* Keep the search and status controls balanced on the same row. The select
+   is a direct toolbar child while the search input is inside its label, so
+   both controls need an explicit shared flex basis. */
+.toolbar > label,
+.toolbar > select.golan-input {
+  flex:1 1 0;
+  min-width:0;
+}
+
+.toolbar > label .golan-input,
+.toolbar > select.golan-input {
+  width:100%;
+}
+
+.toolbar > .btn-primary {
+  flex:0 0 auto;
+  width:111px;
+  min-width:111px;
+  height:34px;
+  min-height:34px;
+  box-sizing:border-box;
+}
+
+.btn-small{border:1px solid transparent;border-radius:8px;padding:6px 11px;cursor:pointer;margin:2px;font-weight:700;font-size:14px;line-height:1.2;white-space:nowrap;transition:background-color .15s ease,border-color .15s ease,box-shadow .15s ease}.leave-approval-actions .btn-small.approve{background:#dbeafe;color:#2563eb;border-color:#bfdbfe}.leave-approval-actions .btn-small.reject{background:#fff1f2;color:#dc2626;border-color:#fda4af}.leave-approval-actions .btn-small:hover{box-shadow:0 2px 5px rgba(31,52,73,.12)}.leave-approval-actions .btn-small.approve:hover{background:#cfe3ff}.leave-approval-actions .btn-small.reject:hover{background:#ffe4e6}.action-icon{width:22px;height:22px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.status-pill{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;border-radius:999px;background:var(--mint-1);padding:5px 11px;font-size:12px;font-weight:700}.muted{color:var(--text-dark-lo)}
 
 /* Keep this table readable on narrow screens; the wrapper is the only scroll area. */
 .leave-approval-table-wrapper {
@@ -13,7 +38,7 @@
 .leave-approval-table {
   table-layout: fixed;
   width: 100%;
-  min-width: 1280px;
+  min-width: 1460px;
 }
 
 .leave-approval-table th,
@@ -39,15 +64,13 @@
 .leave-approval-table .leave-col-reason { width: 220px; }
 .leave-approval-table .leave-col-rejection { width: 220px; }
 .leave-approval-table .leave-col-note { width: 175px; }
+.leave-approval-table .leave-col-admin-note { width: 185px; min-width: 185px; }
 .leave-approval-table .leave-col-action {
   width: 200px;
   min-width: 200px;
 }
 
-.leave-approval-table .leave-col-note .note-input {
-  width: 100%;
-  box-sizing: border-box;
-}
+.leave-approval-table .leave-col-note { text-align: left; }
 
 .leave-approval-actions {
   display: flex;
@@ -87,16 +110,30 @@
   line-height: 1;
 }
 
+/* Center the approval columns and their contents. */
+.leave-approval-table th.leave-col-note,
+.leave-approval-table th.leave-col-action,
+.leave-approval-table td.leave-col-action {
+  text-align: center;
+}
+.leave-approval-table .leave-col-note .note-display { display: block; text-align: left; overflow-wrap: anywhere; word-break: break-word; }
+.leave-approval-actions { justify-content: center; }
+
 @media (max-width: 600px) {
   .toolbar{align-items:stretch;flex-direction:column}
+
+  .toolbar > .btn-primary {
+    width:100%;
+    min-width:0;
+  }
 
   .leave-approval-table-wrapper {
     scrollbar-width: auto;
   }
 
   .leave-approval-table {
-    min-width: 1280px !important;
-    width: 1280px !important;
+    min-width: 1460px !important;
+    width: 1460px !important;
   }
 
   .leave-approval-table th,
@@ -118,6 +155,7 @@
   .leave-approval-table .leave-col-reason { width: 220px !important; }
   .leave-approval-table .leave-col-rejection { width: 220px !important; }
   .leave-approval-table .leave-col-note { width: 175px !important; }
+  .leave-approval-table .leave-col-admin-note { width: 185px !important; min-width: 185px !important; }
   .leave-approval-table .leave-col-action { width: 200px !important; min-width: 200px !important; }
 
   .leave-approval-table .note-input {
@@ -143,3 +181,5 @@
     padding: 0;
   }
 }
+
+.btn-note-save{display:block;margin:6px auto 0;border:1px solid #bfdbfe;border-radius:6px;padding:4px 9px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700;cursor:pointer}.saved-note{display:block;margin-top:6px;color:var(--text-dark-lo);font-size:12px}

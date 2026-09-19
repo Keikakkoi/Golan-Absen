@@ -22,6 +22,15 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   darkModeEnabled = false;
   isDarkMode = false;
   get isAdmin(): boolean { return this.userRole === 'HRD'; }
+  get roleLabel(): string {
+    switch (this.userRole) {
+      case 'Karyawan': return 'Karyawan';
+      case 'MAGANG': return 'Magang';
+      case 'MANAJER': return 'Manajer';
+      case 'HRD': return 'HRD / Admin';
+      default: return this.userRole || 'Memuat...';
+    }
+  }
   notifications: AppNotification[] = [];
   showNotifications = false;
   isMenuLoading = true;

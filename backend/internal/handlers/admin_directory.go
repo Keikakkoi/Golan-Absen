@@ -150,7 +150,9 @@ func GetLeaveQuotas(c *fiber.Ctx) error {
 		}
 	}
 	var quotas []models.LeaveQuota
-	query := config.DB.Preload("Employee.User").Where("tahun = ?", year).Order("employee_id asc")
+	// Quotas without an employee are historical/orphaned rows from the old
+	// deletion behavior and must not appear in the active quota directory.
+	query := config.DB.Preload("Employee.User").Where("tahun = ? AND employee_id IS NOT NULL", year).Order("employee_id asc")
 	if err := query.Find(&quotas).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch leave quotas"})
 	}

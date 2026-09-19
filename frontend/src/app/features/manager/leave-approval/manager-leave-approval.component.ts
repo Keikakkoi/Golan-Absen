@@ -36,6 +36,9 @@ export class ManagerLeaveApprovalComponent implements OnInit {
     this.http.get<any[]>('http://localhost:8080/api/v1/manager/leaves', { params, headers: this.headers() }).subscribe({
       next: data => {
         this.requests = Array.isArray(data) ? data : [];
+        this.requests.forEach(request => {
+          this.notes[request.ID] = request.manager_notes || request.ManagerNotes || '';
+        });
         this.ensureValidPage();
         this.isLoading = false;
       },
@@ -79,7 +82,7 @@ export class ManagerLeaveApprovalComponent implements OnInit {
       if (reason === null) return;
       rejectionReason = reason;
     } else if (!await this.alert.confirm('Konfirmasi pengajuan', 'Apakah Anda yakin ingin menyetujui pengajuan ini?', 'Ya, setujui')) return;
-    this.http.put(`http://localhost:8080/api/v1/manager/leaves/${id}/approve`, { status: nextStatus, notes: this.notes[id] || '', rejection_reason: rejectionReason }, { headers: this.headers() }).subscribe({
+    this.http.put(`http://localhost:8080/api/v1/manager/leaves/${id}/approve`, { status: nextStatus, catatan: this.notes[id] || '', notes: this.notes[id] || '', rejection_reason: rejectionReason }, { headers: this.headers() }).subscribe({
       next: () => this.load(false),
       error: e => this.error = e.error?.error || 'Gagal memproses pengajuan'
     });
@@ -94,10 +97,27 @@ export class ManagerLeaveApprovalComponent implements OnInit {
     return ({pending_manager_approval: 'Menunggu Persetujuan Manajer', manager_approved: 'Disetujui Manajer', manager_rejected: 'Ditolak Manajer', pending_hrd_approval: 'Menunggu Persetujuan HRD', hrd_approved: 'Disetujui HRD', hrd_rejected: 'Ditolak HRD', Pending: 'Menunggu Persetujuan Manajer', Approved: 'Disetujui', Rejected: 'Ditolak'} as any)[status] || status || '-';
   }
 
+  saveNote(id: number): void {
+    this.http.put(`http://localhost:8080/api/v1/manager/leaves/${id}/note`, { catatan: this.notes[id] || '' }, { headers: this.headers() }).subscribe({
+      next: () => this.load(false),
+      error: e => this.error = e.error?.error || 'Gagal menyimpan catatan'
+    });
+  }
+
   employeeName(request: any): string { return request?.Employee?.User?.Nama || request?.Employee?.User?.nama || '-'; }
   leaveType(request: any): string { return request?.JenisIzin || request?.jenis_izin || '-'; }
   reason(request: any): string { return request?.Alasan || request?.alasan || '-'; }
   rejectionReason(request: any): string { return request?.RejectionReason || request?.rejection_reason || '-'; }
+  adminNote(request: any): string { return request?.admin_notes || request?.AdminNotes || '-'; }
+  note(request: any): string { return request?.manager_notes || request?.ManagerNotes || '-'; }
+  displayAdminNote(request: any): string {
+    const note = request?.admin_notes || request?.AdminNotes;
+    return String(note || '').trim() ? `Catatan Admin: ${String(note).trim()}` : '-';
+  }
+  displayManagerNote(request: any): string {
+    const note = request?.manager_notes || request?.ManagerNotes;
+    return String(note || '').trim() ? `Catatan Manajer: ${String(note).trim()}` : '-';
+  }
 
   private ensureValidPage(): void {
     if (this.currentPage > this.totalPages()) this.currentPage = this.totalPages();

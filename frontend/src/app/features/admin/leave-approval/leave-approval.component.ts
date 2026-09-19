@@ -6,6 +6,7 @@ import { HttpContext } from '@angular/common/http';
 import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
+import { ReportExportService } from '../../../core/services/report-export.service';
 import { RouterLink } from '@angular/router';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
@@ -24,8 +25,11 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   isLoading = true;
   errorMessage = '';
   selectedRequest: any = null;
+  adminNotes: Record<number, string> = {};
+  processingRequests: Record<number, boolean> = {};
   selectedType = '';
   selectedStatus = '';
+  isExportOpen = false;
   private refreshTimer?: ReturnType<typeof setInterval>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private socket?: WebSocket;
@@ -36,7 +40,8 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private alert: AlertService
+    private alert: AlertService,
+    private reportExport: ReportExportService
   ) {}
 
   ngOnInit(): void {
@@ -61,7 +66,7 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     this.socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.event === 'leave_request_created' || message.event === 'leave_status_updated') this.loadLeaveRequests(true);
+        if (message.event === 'leave_request_created' || message.event === 'leave_status_updated' || message.event === 'leave_note_updated') this.loadLeaveRequests(true);
       } catch { /* Ignore malformed broadcast messages. */ }
     };
     this.socket.onclose = () => {
@@ -92,6 +97,10 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
           if (request?.ID != null && !unique.has(request.ID)) unique.set(request.ID, request);
         });
         this.leaveRequests = Array.from(unique.values());
+        this.leaveRequests.forEach(request => {
+          const note = this.adminNote(request) === '-' ? '' : this.adminNote(request);
+          this.adminNotes[request.ID] = note;
+        });
         this.ensureValidPage();
         this.isLoading = false;
       },
@@ -130,6 +139,7 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   }
 
   async updateStatus(id: number, status: string): Promise<void> {
+    if (this.processingRequests[id]) return;
     let rejectionReason = '';
     if (status === 'Rejected') {
       const reason = await this.alert.textarea('Alasan Penolakan', 'Tuliskan alasan penolakan pengajuan ini.', 'Lanjutkan Penolakan', 'Alasan Penolakan');
@@ -137,16 +147,59 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
       rejectionReason = reason;
     } else if (!await this.alert.confirm('Konfirmasi pengajuan', `Apakah Anda yakin ingin melakukan ${status} pengajuan ini?`, 'Ya, proses')) return;
 
+    this.processingRequests[id] = true;
     const headers = this.getHeaders();
-    this.http.put<any>(`${this.baseUrl}/${id}/approve`, { status, rejection_reason: rejectionReason }, { headers }).subscribe({
+    this.http.put<any>(`${this.baseUrl}/${id}/approve`, {
+      status,
+      catatan: this.adminNotes[id] || '',
+      notes: this.adminNotes[id] || '',
+      rejection_reason: rejectionReason
+    }, { headers }).subscribe({
       next: (res) => {
         this.alert.success(`Pengajuan berhasil di-${status.toLowerCase()}`);
         this.loadLeaveRequests(false); // Reload while preserving the active page when possible
       },
       error: (err) => {
+        delete this.processingRequests[id];
         this.alert.error('Gagal memperbarui status', err.error?.error || 'Unknown error');
+      },
+      complete: () => {
+        delete this.processingRequests[id];
       }
     });
+  }
+
+  canAddAdminNote(request: any): boolean {
+    return request?.Status === 'pending_hrd_approval';
+  }
+
+  isProcessing(id: number): boolean { return !!this.processingRequests[id]; }
+
+  managerNote(request: any): string { return request?.ManagerNotes || request?.manager_notes || '-'; }
+  adminNote(request: any): string {
+    const adminNote = request?.AdminNotes || request?.admin_notes;
+    const managerNote = request?.ManagerNotes || request?.manager_notes;
+    // An explicit admin_notes value is authoritative, even when its text is
+    // identical to the manager's note. Comparing the text would hide a real
+    // admin note merely because both reviewers wrote the same sentence.
+    if (adminNote) return adminNote;
+    const legacyNote = request?.Notes || request?.notes || request?.catatan || request?.Catatan;
+    // Older records used one shared field. Do not show the same manager note
+    // a second time as an admin note.
+    return legacyNote && legacyNote !== managerNote ? legacyNote : '-';
+  }
+  displayAdminNote(request: any): string {
+    const note = this.adminNote(request);
+    return note === '-' ? '-' : `Catatan Admin: ${note}`;
+  }
+  displayManagerNote(request: any): string {
+    const note = this.managerNote(request);
+    return note === '-' ? '-' : `Catatan Manajer: ${note}`;
+  }
+
+  rejectionSource(request: any): string {
+    const status = request?.Status || '';
+    return status === 'manager_rejected' ? 'Ditolak Manajer' : status === 'hrd_rejected' ? 'Ditolak Admin' : '';
   }
 
   isManagerRequest(request: any): boolean { return request?.Employee?.User?.Role === 'MANAJER' || request?.Employee?.User?.role === 'MANAJER'; }
@@ -160,7 +213,7 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
       pending_manager_approval: 'Menunggu Persetujuan Manajer',
       manager_approved: 'Disetujui Manajer',
       manager_rejected: 'Ditolak',
-      pending_hrd_approval: 'Menunggu Persetujuan HRD',
+      pending_hrd_approval: 'Menunggu Persetujuan Admin',
       hrd_approved: 'Disetujui',
       hrd_rejected: 'Ditolak',
       Pending: 'Menunggu Persetujuan Manajer',
@@ -172,6 +225,21 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
 
   openDetail(request: any): void { this.selectedRequest = request; }
   closeDetail(): void { this.selectedRequest = null; }
+
+  toggleExportDropdown(): void { this.isExportOpen = !this.isExportOpen; }
+  private exportHeaders = ['Nama Karyawan', 'NIK', 'Approver', 'Jenis', 'Tanggal Mulai', 'Tanggal Selesai', 'Alasan', 'Catatan Admin', 'Catatan Manajer', 'Status'];
+  private exportRows(): unknown[][] {
+    return this.leaveRequests.map(req => [
+      req.Employee?.User?.Nama || 'Nama Tidak Tersedia', req.Employee?.NIK || '-', this.approverLabel(req), req.JenisIzin || '-',
+      req.TanggalMulai || '-', req.TanggalSelesai || '-', req.Alasan || '-', this.adminNote(req), this.managerNote(req), this.statusLabel(req.Status)
+    ]);
+  }
+  exportCSV(): void { this.isExportOpen = false; this.reportExport.downloadCsv('laporan-approval-izin-cuti.csv', this.exportHeaders, this.exportRows()); }
+  exportExcel(): void { this.isExportOpen = false; this.reportExport.downloadExcel('laporan-approval-izin-cuti.xls', this.exportHeaders, this.exportRows()); }
+  exportJSON(): void { this.isExportOpen = false; this.reportExport.downloadJson('laporan-approval-izin-cuti.json', this.leaveRequests); }
+  exportPDF(): void { this.isExportOpen = false; void this.reportExport.downloadPdf('laporan-approval-izin-cuti.pdf', 'Laporan Approval Izin & Cuti', this.exportDate(), this.exportHeaders, this.exportRows()); }
+  printReport(): void { this.isExportOpen = false; this.reportExport.printReport('Laporan Approval Izin & Cuti', this.exportDate(), this.exportHeaders, this.exportRows()); }
+  private exportDate(): string { return new Intl.DateTimeFormat('id-ID', { dateStyle: 'long', timeZone: 'Asia/Jakarta' }).format(new Date()); }
 
   getDurationDays(start: string | Date, end: string | Date): number {
     if (!start || !end) return 0;

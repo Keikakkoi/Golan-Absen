@@ -41,15 +41,33 @@
         <div *ngIf="isLoadingSchedule" class="loading-state">Memuat...</div>
 
         <form *ngIf="!isLoadingSchedule" (ngSubmit)="saveRegularSchedule()">
+          <div class="regular-schedule-scroll">
           <div class="regular-schedule-table">
             <div class="regular-schedule-row regular-schedule-head"><span>Hari</span><span>Hari kerja</span><span>Jam masuk</span><span>Jam pulang</span><span>Toleransi (menit)</span></div>
             <div class="regular-schedule-row" *ngFor="let row of regularSchedules; let i = index">
               <strong>{{ row.day_name || regularDayNames[i] }}</strong>
               <input type="checkbox" [(ngModel)]="row.is_working_day" [name]="'working_' + row.day_of_week" [attr.aria-label]="'Hari kerja ' + row.day_name">
-              <input type="time" class="golan-input" [(ngModel)]="row.start_time" [name]="'start_' + row.day_of_week" [disabled]="!row.is_working_day">
-              <input type="time" class="golan-input" [(ngModel)]="row.end_time" [name]="'end_' + row.day_of_week" [disabled]="!row.is_working_day">
+              <div class="settings-time-picker" [class.is-open]="openTimePicker === 'schedule-start-' + i">
+                <button type="button" class="golan-input settings-time-trigger" [disabled]="!row.is_working_day" [attr.aria-expanded]="openTimePicker === 'schedule-start-' + i" aria-haspopup="listbox" (click)="$event.stopPropagation(); toggleTimePicker('schedule-start-' + i, row.start_time)">
+                  <span [class.is-placeholder]="timeValue(row.start_time) === '--:--'">{{ timeValue(row.start_time) }}</span><span class="settings-time-icon" aria-hidden="true">◷</span>
+                </button>
+                <div class="settings-time-menu" *ngIf="openTimePicker === 'schedule-start-' + i" role="listbox" aria-label="Pilih jam masuk" (click)="$event.stopPropagation()">
+                  <div class="settings-time-column"><span class="settings-time-column-label">Jam</span><button type="button" *ngFor="let hour of timeHours" [class.is-selected]="timePart('schedule-start-' + i, row.start_time, 'hour') === hour" (click)="selectTimePart('schedule-start-' + i, 'hour', hour, row, 'start_time')">{{ hour }}</button></div>
+                  <div class="settings-time-column"><span class="settings-time-column-label">Menit</span><button type="button" *ngFor="let minute of timeMinutes" [class.is-selected]="timePart('schedule-start-' + i, row.start_time, 'minute') === minute" (click)="selectTimePart('schedule-start-' + i, 'minute', minute, row, 'start_time')">{{ minute }}</button></div>
+                </div>
+              </div>
+              <div class="settings-time-picker" [class.is-open]="openTimePicker === 'schedule-end-' + i">
+                <button type="button" class="golan-input settings-time-trigger" [disabled]="!row.is_working_day" [attr.aria-expanded]="openTimePicker === 'schedule-end-' + i" aria-haspopup="listbox" (click)="$event.stopPropagation(); toggleTimePicker('schedule-end-' + i, row.end_time)">
+                  <span [class.is-placeholder]="timeValue(row.end_time) === '--:--'">{{ timeValue(row.end_time) }}</span><span class="settings-time-icon" aria-hidden="true">◷</span>
+                </button>
+                <div class="settings-time-menu" *ngIf="openTimePicker === 'schedule-end-' + i" role="listbox" aria-label="Pilih jam pulang" (click)="$event.stopPropagation()">
+                  <div class="settings-time-column"><span class="settings-time-column-label">Jam</span><button type="button" *ngFor="let hour of timeHours" [class.is-selected]="timePart('schedule-end-' + i, row.end_time, 'hour') === hour" (click)="selectTimePart('schedule-end-' + i, 'hour', hour, row, 'end_time')">{{ hour }}</button></div>
+                  <div class="settings-time-column"><span class="settings-time-column-label">Menit</span><button type="button" *ngFor="let minute of timeMinutes" [class.is-selected]="timePart('schedule-end-' + i, row.end_time, 'minute') === minute" (click)="selectTimePart('schedule-end-' + i, 'minute', minute, row, 'end_time')">{{ minute }}</button></div>
+                </div>
+              </div>
               <input type="number" min="0" class="golan-input" [(ngModel)]="row.late_tolerance_minutes" [name]="'tolerance_' + row.day_of_week" [disabled]="!row.is_working_day">
             </div>
+          </div>
           </div>
           <div class="form-actions"><button type="submit" class="btn-primary" [disabled]="isSavingSchedule">{{ isSavingSchedule ? 'Menyimpan...' : 'Simpan Jadwal Reguler' }}</button></div>
         </form>
@@ -60,6 +78,7 @@
         <div *ngIf="isLoadingGeneral" class="loading-state">Memuat...</div>
         <form *ngIf="!isLoadingGeneral" (ngSubmit)="saveGeneral()">
           <div class="form-group"><label>Minimum masa kerja untuk Cuti (bulan)</label><input type="number" min="0" max="120" class="golan-input" [(ngModel)]="general.MinimumMasaKerjaCutiBulan" name="MinimumMasaKerjaCutiBulan" required></div>
+          <div class="form-group"><label>Default kuota Cuti (hari)</label><input type="number" min="0" max="366" class="golan-input" [(ngModel)]="general.DefaultCutiQuotaHari" name="DefaultCutiQuotaHari" required><p class="input-hint">Dipakai saat karyawan baru dibuat dan belum memiliki kuota pada tahun berjalan.</p></div>
           <div class="form-group"><label>Toleransi keterlambatan laporan (menit)</label><input type="number" min="0" max="1440" step="1" class="golan-input" [(ngModel)]="general.BatasLaporanSetelahCheckoutMenit" name="BatasLaporanSetelahCheckoutMenit" required><p class="input-hint">Berlaku untuk semua shift. Contoh: 60 menit berarti shift yang selesai 17:00 memiliki batas laporan 18:00 WIB; shift malam 06:00 menjadi 07:00 WIB di hari berikutnya.</p></div>
           <div class="form-actions"><button type="submit" class="btn-primary" [disabled]="isSavingGeneral">{{ isSavingGeneral ? 'Menyimpan...' : 'Simpan Aturan' }}</button></div>
         </form>
@@ -190,23 +209,11 @@
           <div class="form-group" style="display: flex; gap: 1rem;">
             <div style="flex: 1;">
               <label>Jam Mulai Layanan</label>
-              <input
-                type="time"
-                [(ngModel)]="jamMulaiLayanan"
-                name="jamMulaiLayanan"
-                required
-                class="golan-input"
-              />
+              <div class="settings-time-picker" [class.is-open]="openTimePicker === 'service-start'"><button type="button" class="golan-input settings-time-trigger" [attr.aria-expanded]="openTimePicker === 'service-start'" aria-haspopup="listbox" (click)="$event.stopPropagation(); toggleTimePicker('service-start', jamMulaiLayanan)"><span>{{ timeValue(jamMulaiLayanan) }}</span><span class="settings-time-icon" aria-hidden="true">◷</span></button><div class="settings-time-menu" *ngIf="openTimePicker === 'service-start'" role="listbox" aria-label="Pilih jam mulai layanan" (click)="$event.stopPropagation()"><div class="settings-time-column"><span class="settings-time-column-label">Jam</span><button type="button" *ngFor="let hour of timeHours" [class.is-selected]="timePart('service-start', jamMulaiLayanan, 'hour') === hour" (click)="selectServiceTimePart('service-start', 'hour', hour, 'jamMulaiLayanan')">{{ hour }}</button></div><div class="settings-time-column"><span class="settings-time-column-label">Menit</span><button type="button" *ngFor="let minute of timeMinutes" [class.is-selected]="timePart('service-start', jamMulaiLayanan, 'minute') === minute" (click)="selectServiceTimePart('service-start', 'minute', minute, 'jamMulaiLayanan')">{{ minute }}</button></div></div></div>
             </div>
             <div style="flex: 1;">
               <label>Jam Selesai Layanan</label>
-              <input
-                type="time"
-                [(ngModel)]="jamSelesaiLayanan"
-                name="jamSelesaiLayanan"
-                required
-                class="golan-input"
-              />
+              <div class="settings-time-picker" [class.is-open]="openTimePicker === 'service-end'"><button type="button" class="golan-input settings-time-trigger" [attr.aria-expanded]="openTimePicker === 'service-end'" aria-haspopup="listbox" (click)="$event.stopPropagation(); toggleTimePicker('service-end', jamSelesaiLayanan)"><span>{{ timeValue(jamSelesaiLayanan) }}</span><span class="settings-time-icon" aria-hidden="true">◷</span></button><div class="settings-time-menu" *ngIf="openTimePicker === 'service-end'" role="listbox" aria-label="Pilih jam selesai layanan" (click)="$event.stopPropagation()"><div class="settings-time-column"><span class="settings-time-column-label">Jam</span><button type="button" *ngFor="let hour of timeHours" [class.is-selected]="timePart('service-end', jamSelesaiLayanan, 'hour') === hour" (click)="selectServiceTimePart('service-end', 'hour', hour, 'jamSelesaiLayanan')">{{ hour }}</button></div><div class="settings-time-column"><span class="settings-time-column-label">Menit</span><button type="button" *ngFor="let minute of timeMinutes" [class.is-selected]="timePart('service-end', jamSelesaiLayanan, 'minute') === minute" (click)="selectServiceTimePart('service-end', 'minute', minute, 'jamSelesaiLayanan')">{{ minute }}</button></div></div></div>
             </div>
           </div>
 

@@ -20,6 +20,19 @@ func TestIsEligibleForCutiUsesCalendarMonths(t *testing.T) {
 	}
 }
 
+func TestGeneralSettingUsesConfiguredQuotaDefault(t *testing.T) {
+	setting := getGeneralSettingFrom(nil)
+	if setting.DefaultCutiQuotaHari != defaultCutiQuotaHari {
+		t.Fatalf("default cuti quota = %d, want %d", setting.DefaultCutiQuotaHari, defaultCutiQuotaHari)
+	}
+}
+
+func TestEnsureDefaultCutiQuotaWithoutDatabaseIsSafe(t *testing.T) {
+	if err := ensureDefaultCutiQuota(nil, 42, 2026, 15); err != nil {
+		t.Fatalf("ensureDefaultCutiQuota(nil) returned error: %v", err)
+	}
+}
+
 func TestIsEligibleForCutiAtExactCutoff(t *testing.T) {
 	joined := time.Date(2026, 2, 20, 0, 0, 0, 0, jakartaLocation)
 	employee := models.Employee{TanggalBergabung: joined}
