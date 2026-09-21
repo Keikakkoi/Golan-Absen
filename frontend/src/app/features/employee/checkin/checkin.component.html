@@ -14,7 +14,7 @@
           <h2 *ngIf="!hasLeaveToday && hasCheckedOut">Absensi Selesai</h2>
           <p class="subtitle text-dark-lo">Silakan verifikasi lokasi dan bukti foto Anda untuk memulai absensi.</p>
         </div>
-        <app-notification-bell></app-notification-bell>
+        <app-notification-bell class="checkin-page-notification-bell"></app-notification-bell>
       </div>
 
       <!-- MAIN FOCUS: Large Circular Punch Button (15.4 PRD) -->
@@ -85,6 +85,7 @@
             <span class="status-pill" [class.status-hadir]="isGpsActive && isLocationValid" [class.status-alpha]="!isGpsActive || !isLocationValid">
               {{ statusText }}
             </span>
+            <span class="location-distance" *ngIf="locationDistanceText">{{ locationDistanceText }}</span>
             <small class="location-accuracy" *ngIf="isGpsActive && currentAccuracy > 0">
               Akurasi ±{{ currentAccuracy | number:'1.0-0' }} m
             </small>

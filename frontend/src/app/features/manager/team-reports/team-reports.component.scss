@@ -168,6 +168,48 @@
   max-width: 100%;
 }
 
+.team-reports-toolbar .export-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+/* Keep the export icons aligned with the dark-mode reference colors. */
+.team-reports-toolbar .export-icon-csv,
+.team-reports-toolbar .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+.team-reports-toolbar .export-icon-excel {
+  color: #28a745 !important;
+}
+
+.team-reports-toolbar .export-icon-json {
+  color: #ffc107 !important;
+}
+
+.team-reports-toolbar .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+:host-context(body.dark-theme) .team-reports-toolbar .export-icon-csv,
+:host-context(body.dark-theme) .team-reports-toolbar .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+:host-context(body.dark-theme) .team-reports-toolbar .export-icon-excel {
+  color: #28a745 !important;
+}
+
+:host-context(body.dark-theme) .team-reports-toolbar .export-icon-json {
+  color: #ffc107 !important;
+}
+
+:host-context(body.dark-theme) .team-reports-toolbar .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
 .team-reports-toolbar > .report-filter-action {
   /* Match the refresh action so both controls have a consistent footprint. */
   width: 111px !important;

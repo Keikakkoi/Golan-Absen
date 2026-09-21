@@ -4,6 +4,18 @@
 .admin-alpha-report-page .report-table-container { min-width: 0; box-sizing: border-box; }
 .admin-alpha-report-page .report-table-container { width: 100%; max-width: 100%; overflow-x: auto !important; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-inline: contain; }
 .admin-alpha-report-page .golan-table { display: table; width: 100% !important; min-width: 700px !important; max-width: none !important; }
+.admin-alpha-export-dropdown .export-icon { flex: 0 0 16px; width: 16px; margin-right: 0.5rem; text-align: center; }
+.admin-alpha-export-dropdown .export-icon-csv,
+.admin-alpha-export-dropdown .export-icon-print { color: #17a2b8 !important; }
+.admin-alpha-export-dropdown .export-icon-excel { color: #28a745 !important; }
+.admin-alpha-export-dropdown .export-icon-json { color: #ffc107 !important; }
+.admin-alpha-export-dropdown .export-icon-pdf { color: #dc3545 !important; }
+:host-context(body.dark-theme) .admin-alpha-export-dropdown .export-icon-csv,
+:host-context(body.dark-theme) .admin-alpha-export-dropdown .export-icon-print { color: #17a2b8 !important; }
+:host-context(body.dark-theme) .admin-alpha-export-dropdown .export-icon-excel { color: #28a745 !important; }
+:host-context(body.dark-theme) .admin-alpha-export-dropdown .export-icon-json { color: #ffc107 !important; }
+:host-context(body.dark-theme) .admin-alpha-export-dropdown .export-icon-pdf { color: #dc3545 !important; }
+:host-context(body.dark-theme) .admin-alpha-export-dropdown .dropdown-item-print { border-top-color: #475569 !important; }
 .summary-strip div { padding: .8rem 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; }
 .summary-strip span, .summary-strip strong { display: block; }
 .summary-strip span { color: #64748b; font-size: .8rem; }

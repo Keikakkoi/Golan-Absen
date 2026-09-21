@@ -272,3 +272,38 @@
   font-size: .82rem;
   font-weight: 600;
 }
+
+/* Keep every piece of modal copy readable in dark mode.  These modals sit
+   outside .main-content, so the page-wide dark-mode typography rules do not
+   consistently reach their headings and form text. */
+:host-context(body.dark-theme) .modal-overlay .modal-content {
+  color: #fff;
+
+  h3,
+  label,
+  p,
+  small,
+  span,
+  legend {
+    color: #fff !important;
+  }
+
+  input:not([type='checkbox']):not([type='radio']),
+  textarea,
+  select,
+  .form-control {
+    color: #fff !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #fff !important;
+    opacity: 1;
+  }
+
+  .modal-actions button,
+  .modal-actions .btn-outline-primary,
+  .modal-actions .btn-primary {
+    color: #fff !important;
+  }
+}

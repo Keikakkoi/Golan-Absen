@@ -12,6 +12,77 @@
   font-weight: 600;
 }
 
+/* Keep this menu inside the viewport on narrow screens. */
+.work-report-export-dropdown .dropdown-menu-custom {
+  max-width: calc(100vw - 20px);
+  box-sizing: border-box;
+}
+
+.work-report-export-dropdown .dropdown-menu-custom .dropdown-item {
+  white-space: nowrap;
+}
+
+.work-report-export-dropdown .export-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+/* Match the dark-mode export reference and prevent shared icon rules from
+   flattening the semantic colors. */
+.work-report-export-dropdown .export-icon-csv,
+.work-report-export-dropdown .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+.work-report-export-dropdown .export-icon-excel {
+  color: #28a745 !important;
+}
+
+.work-report-export-dropdown .export-icon-json {
+  color: #ffc107 !important;
+}
+
+.work-report-export-dropdown .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+.work-report-export-dropdown .dropdown-item-print {
+  border-top: 1px solid #eee;
+}
+
+:host-context(body.dark-theme) .work-report-export-dropdown .export-icon-csv,
+:host-context(body.dark-theme) .work-report-export-dropdown .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+:host-context(body.dark-theme) .work-report-export-dropdown .export-icon-excel {
+  color: #28a745 !important;
+}
+
+:host-context(body.dark-theme) .work-report-export-dropdown .export-icon-json {
+  color: #ffc107 !important;
+}
+
+:host-context(body.dark-theme) .work-report-export-dropdown .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+:host-context(body.dark-theme) .work-report-export-dropdown .dropdown-item-print {
+  border-top-color: #475569 !important;
+}
+
+@media (max-width: 640px) {
+  .work-report-export-dropdown .dropdown-menu-custom {
+    left: 0;
+    right: auto;
+    width: max-content;
+    min-width: min(220px, calc(100vw - 20px));
+    max-width: calc(100vw - 20px);
+  }
+}
+
 .reporting-month-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .reporting-month-toolbar label { display: flex; align-items: center; gap: .5rem; font-size: .85rem; }
 .reporting-month-toolbar select { color: inherit; background: var(--mint-0); border: 1px solid var(--border-color); border-radius: 6px; padding: .35rem .5rem; min-width: 150px; }

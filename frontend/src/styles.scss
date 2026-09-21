@@ -1202,7 +1202,7 @@ body.dark-theme .btn-view-detail:hover { background: var(--mint-1); border-color
     max-width: 100% !important;
     min-width: 0 !important;
     box-sizing: border-box !important;
-    padding: 88px 16px 24px !important;
+    padding: 88px 16px calc(40px + env(safe-area-inset-bottom)) !important;
     overflow-x: hidden !important;
   }
 
@@ -2711,7 +2711,8 @@ body.dark-theme .help-page {
   }
 
   &.today {
-    border-color: var(--green, #10b981);
+    border: 2px solid var(--calendar-today, #2563eb);
+    box-shadow: 0 0 0 2px var(--calendar-today-ring, rgba(37, 99, 235, 0.2));
     font-weight: 700;
   }
 
@@ -2758,13 +2759,27 @@ body.dark-theme .help-page {
   .legend-dot,
   .legend-today {
     display: inline-block;
-    width: 7px;
-    height: 7px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
   }
 
   .legend-dot { background: var(--stamp, #f59e0b); }
-  .legend-today { border: 1px solid var(--green, #10b981); }
+  .legend-today {
+    border: 2px solid var(--calendar-today, #2563eb);
+    background: var(--calendar-today-soft, #dbeafe);
+  }
+}
+
+/* Keep the today marker legible against the raised dark calendar cells. */
+body.dark-theme .calendar-day.today {
+  border-color: var(--calendar-today, #60a5fa) !important;
+  box-shadow: 0 0 0 2px var(--calendar-today-ring, rgba(96, 165, 250, 0.28));
+}
+
+body.dark-theme .calendar-legend .legend-today {
+  border-color: var(--calendar-today, #60a5fa);
+  background: var(--calendar-today-soft, rgba(96, 165, 250, 0.22));
 }
 
 .event-heading-icon {
@@ -3620,11 +3635,23 @@ body.dark-theme .filter-native-menu {
   gap: 8px;
 }
 
-.filter-date-header strong {
+.filter-date-header strong,
+.filter-date-title {
   flex: 1;
   color: #183b56;
   font-size: 16px;
   text-transform: capitalize;
+}
+
+.filter-date-title {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
 }
 
 .filter-date-action {
@@ -3658,12 +3685,24 @@ body.dark-theme .filter-native-menu {
 .filter-date-day:disabled { cursor: default; color: #b6c1cb; opacity: .7; }
 .filter-date-day.outside { visibility: hidden; }
 
+.filter-date-selector { padding: 8px 0 4px; border-top: 1px solid #e5eef7; border-bottom: 1px solid #e5eef7; }
+.filter-date-month-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.filter-date-month, .filter-date-year { border: 0; border-radius: 6px; background: transparent; color: #183b56; cursor: pointer; font: inherit; font-size: 12px; }
+.filter-date-month { min-height: 28px; padding: 3px 2px; text-transform: capitalize; }
+.filter-date-month:hover, .filter-date-month.selected { background: #e8f2fc; color: #1269e3; font-weight: 700; }
+.filter-date-year-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; color: #60758b; font-size: 12px; font-weight: 700; }
+.filter-date-year { width: 92px; padding: 5px 6px; border: 1px solid #d8e8f8; background: #fff; }
+
 body.dark-theme .filter-date-menu { border-color: #475569; background: #172033; box-shadow: 0 8px 24px rgba(2, 8, 23, .42); color: #e2e8f0; }
-body.dark-theme .filter-date-header strong, body.dark-theme .filter-date-day { color: #e2e8f0; }
+body.dark-theme .filter-date-header strong, body.dark-theme .filter-date-title, body.dark-theme .filter-date-day { color: #e2e8f0; }
 body.dark-theme .filter-date-weekdays { color: #94a3b8; }
 body.dark-theme .filter-date-action { color: #8ed0ff; }
 body.dark-theme .filter-date-action:hover, body.dark-theme .filter-date-day:hover:not(:disabled), body.dark-theme .filter-date-day.selected { background: #294866; color: #8ed0ff; }
 body.dark-theme .filter-date-day:disabled { color: #64748b; }
+body.dark-theme .filter-date-selector { border-color: #475569; }
+body.dark-theme .filter-date-month, body.dark-theme .filter-date-year { color: #e2e8f0; }
+body.dark-theme .filter-date-month:hover, body.dark-theme .filter-date-month.selected { background: #294866; color: #8ed0ff; }
+body.dark-theme .filter-date-year { border-color: #475569; background: #172033; }
 
 /* ================================================================
    COMPACT DESKTOP DENSITY

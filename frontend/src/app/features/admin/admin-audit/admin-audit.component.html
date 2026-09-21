@@ -63,22 +63,22 @@
       <p *ngIf="errorMessage" class="error-state">{{ errorMessage }}</p>
       <div *ngIf="isLoading" class="loading-state">Memuat...</div>
 
-      <div class="table-container" *ngIf="!isLoading" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-      <table class="golan-table" style="min-width: 800px;">
+      <div class="audit-table-container" *ngIf="!isLoading">
+      <table class="golan-table audit-table">
         <thead>
           <tr>
-            <th>Waktu</th>
-            <th>Aktor (User)</th>
-            <th>Aksi</th>
-            <th>Tabel / ID</th>
-            <th>Detail Perubahan</th>
+            <th class="audit-time-column">Waktu</th>
+            <th class="audit-actor-column">Aktor (User)</th>
+            <th class="audit-action-column">Aksi</th>
+            <th class="audit-entity-column">Tabel / ID</th>
+            <th class="audit-detail-column">Detail Perubahan</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let log of logs">
-            <td>{{ log.CreatedAt | date:'dd MMM yyyy HH:mm:ss' }}</td>
-            <td>{{ log.User?.Nama || '-' }}<small>{{ log.User?.Email }} · {{ log.User?.Role }}</small></td>
-            <td>
+            <td class="audit-time-cell">{{ log.CreatedAt | date:'dd MMM yyyy HH:mm:ss' }}</td>
+            <td class="audit-actor-cell"><strong>{{ log.User?.Nama || '-' }}</strong><small>{{ log.User?.Email || '-' }} · {{ log.User?.Role || '-' }}</small></td>
+            <td class="audit-action-cell">
               <span class="status-badge" 
                     [ngClass]="{'status-hadir': log.Action === 'CREATE', 
                                 'status-terlambat': log.Action === 'UPDATE', 
@@ -86,8 +86,8 @@
                 {{ log.Action }}
               </span>
             </td>
-            <td>{{ log.TableName }} #{{ log.RecordID }}</td>
-            <td>{{ log.ChangesDetail }}</td>
+            <td class="audit-entity-cell">{{ log.TableName }} #{{ log.RecordID }}</td>
+            <td class="audit-detail-cell">{{ log.ChangesDetail }}</td>
           </tr>
           <tr *ngIf="logs.length === 0">
             <td colspan="5" style="text-align: center;">Belum ada riwayat audit log.</td>

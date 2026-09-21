@@ -390,10 +390,10 @@ body.dark-theme .file-name {
 
 .modal-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   background: rgba(23, 43, 58, 0.38);
   backdrop-filter: blur(4px);
   display: flex;
@@ -428,8 +428,13 @@ body.dark-theme .file-name {
 }
 
 .leave-detail-modal {
-  max-width: 520px;
-  width: 100%;
+  width: min(520px, 100%);
+  max-width: 100%;
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   color: #173450;
 }
 
@@ -577,14 +582,14 @@ body.dark-theme .leave-detail-modal .status-detail-neutral {
 
 @media (max-width: 640px) {
   .modal-backdrop {
-    align-items: flex-start;
     padding: 12px;
     overflow-y: auto;
   }
 
   .leave-detail-modal {
-    margin: auto 0;
+    width: 100%;
     max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     padding: 20px;
   }
 

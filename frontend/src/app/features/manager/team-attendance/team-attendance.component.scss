@@ -90,10 +90,28 @@
 }
 
 .team-attendance-toolbar .export-icon-csv,
-.team-attendance-toolbar .export-icon-print { color: #17a2b8; }
-.team-attendance-toolbar .export-icon-excel { color: #28a745; }
-.team-attendance-toolbar .export-icon-json { color: #ffc107; }
-.team-attendance-toolbar .export-icon-pdf { color: #dc3545; }
+.team-attendance-toolbar .export-icon-print { color: #17a2b8 !important; }
+.team-attendance-toolbar .export-icon-excel { color: #28a745 !important; }
+.team-attendance-toolbar .export-icon-json { color: #ffc107 !important; }
+.team-attendance-toolbar .export-icon-pdf { color: #dc3545 !important; }
+
+/* Keep the semantic icon colors visible over the shared dark-theme icon rule. */
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-csv,
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-excel {
+  color: #28a745 !important;
+}
+
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-json {
+  color: #ffc107 !important;
+}
+
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-pdf {
+  color: #dc3545 !important;
+}
 
 body.dark-theme .team-attendance-toolbar .dropdown-menu-custom {
   background: var(--surface, #172033);

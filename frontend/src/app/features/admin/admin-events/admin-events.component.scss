@@ -90,7 +90,11 @@
 
   &:hover:not(:disabled) { border-color: var(--green); background: var(--mint-0); }
   &.empty { visibility: hidden; }
-  &.today { border-color: var(--green); font-weight: 700; }
+  &.today {
+    border: 2px solid var(--calendar-today, #2563eb);
+    box-shadow: 0 0 0 2px var(--calendar-today-ring, rgba(37, 99, 235, 0.2));
+    font-weight: 700;
+  }
   &.selected { background: var(--green-deep); color: white; }
   &.holiday:not(.selected) { background: #ffeded; border-color: #ffcccc; color: #c60000; }
   i { position: absolute; left: 50%; bottom: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--stamp); transform: translateX(-50%); }

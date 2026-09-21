@@ -350,6 +350,70 @@
   .empty-state { color: var(--text-dark-lo); padding: 1rem; background: var(--mint-0); border-radius: 8px; }
 }
 
+/* Long WFH addresses need their own table sizing. On narrow screens the
+   wrapper scrolls horizontally instead of clipping text or the card. */
+.home-location-status .golan-table,
+.home-location-history .golan-table {
+  table-layout: fixed;
+  white-space: normal !important;
+
+  th,
+  td {
+    box-sizing: border-box;
+    vertical-align: top;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    white-space: normal !important;
+  }
+
+  th { padding: 10px 12px; line-height: 1.15; }
+  td { padding: 11px 12px; }
+
+  td small {
+    display: inline-block;
+    margin-top: 3px;
+    font-size: 0.82em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+}
+
+.home-location-status .golan-table {
+  min-width: 817px !important;
+
+  th:nth-child(1), td:nth-child(1) { width: 112px; }
+  th:nth-child(2), td:nth-child(2) { width: 310px; }
+  th:nth-child(3), td:nth-child(3) { width: 125px; }
+  th:nth-child(4), td:nth-child(4) { width: 150px; }
+  th:nth-child(5), td:nth-child(5) { width: 120px; }
+}
+
+.home-location-history .golan-table {
+  min-width: 765px !important;
+
+  th:nth-child(1), td:nth-child(1) { width: 145px; }
+  th:nth-child(2), td:nth-child(2) { width: 325px; }
+  th:nth-child(3), td:nth-child(3) { width: 125px; }
+  th:nth-child(4), td:nth-child(4) { width: 170px; }
+}
+
+.home-location-status .golan-table-responsive,
+.home-location-history .golan-table-responsive {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 640px) {
+  .home-location-status .golan-table th,
+  .home-location-status .golan-table td,
+  .home-location-history .golan-table th,
+  .home-location-history .golan-table td { font-size: 0.82rem; }
+}
+
 /* Keep the WFH request form compact and predictable on narrow screens. */
 @media (max-width: 640px) {
   .geofence-section {

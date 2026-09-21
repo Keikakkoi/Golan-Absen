@@ -7,6 +7,74 @@
   box-sizing: border-box;
 }
 
+/* The export button sits close to the left side of the card on mobile. Keep
+   its menu anchored to the button instead of right-aligning it past the card
+   and viewport edge. */
+.admin-report-export-dropdown .dropdown-menu-custom {
+  max-width: calc(100vw - 20px);
+  box-sizing: border-box;
+}
+
+.admin-report-export-dropdown .dropdown-menu-custom .dropdown-item {
+  white-space: nowrap;
+}
+
+.admin-report-export-dropdown .export-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+/* Match the export icon colors used by the dark-mode reference. */
+.admin-report-export-dropdown .export-icon-csv,
+.admin-report-export-dropdown .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+.admin-report-export-dropdown .export-icon-excel {
+  color: #28a745 !important;
+}
+
+.admin-report-export-dropdown .export-icon-json {
+  color: #ffc107 !important;
+}
+
+.admin-report-export-dropdown .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+:host-context(body.dark-theme) .admin-report-export-dropdown .export-icon-csv,
+:host-context(body.dark-theme) .admin-report-export-dropdown .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+:host-context(body.dark-theme) .admin-report-export-dropdown .export-icon-excel {
+  color: #28a745 !important;
+}
+
+:host-context(body.dark-theme) .admin-report-export-dropdown .export-icon-json {
+  color: #ffc107 !important;
+}
+
+:host-context(body.dark-theme) .admin-report-export-dropdown .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+:host-context(body.dark-theme) .admin-report-export-dropdown .dropdown-item-print {
+  border-top-color: #475569 !important;
+}
+
+@media (max-width: 640px) {
+  .admin-report-export-dropdown .dropdown-menu-custom {
+    left: 0;
+    right: auto;
+    width: max-content;
+    min-width: min(220px, calc(100vw - 20px));
+    max-width: calc(100vw - 20px);
+  }
+}
+
 /* The report page contains a deliberately dense filter on desktop. Keep the
    grid tracks shrinkable so the filter never establishes a wider layout than
    its card, even though the template has legacy inline grid declarations. */

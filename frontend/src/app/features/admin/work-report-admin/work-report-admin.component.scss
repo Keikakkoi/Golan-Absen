@@ -421,3 +421,48 @@
 .report-thumb { display: inline-block; margin: 2px; }
 .report-thumb img { width: 72px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); }
 .table-scroll-hint { margin: .6rem 0 0; color: var(--text-dark-lo); font-size: .82rem; }
+.work-report-admin-page .export-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+/* Match the export-icon colors used throughout the dark-mode report menus. */
+.work-report-admin-page .export-icon-csv,
+.work-report-admin-page .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+.work-report-admin-page .export-icon-excel {
+  color: #28a745 !important;
+}
+
+.work-report-admin-page .export-icon-json {
+  color: #ffc107 !important;
+}
+
+.work-report-admin-page .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+:host-context(body.dark-theme) .work-report-admin-page .export-icon-csv,
+:host-context(body.dark-theme) .work-report-admin-page .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+:host-context(body.dark-theme) .work-report-admin-page .export-icon-excel {
+  color: #28a745 !important;
+}
+
+:host-context(body.dark-theme) .work-report-admin-page .export-icon-json {
+  color: #ffc107 !important;
+}
+
+:host-context(body.dark-theme) .work-report-admin-page .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+:host-context(body.dark-theme) .work-report-admin-page .dropdown-item-print {
+  border-top-color: #475569 !important;
+}

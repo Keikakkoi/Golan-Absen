@@ -1747,6 +1747,48 @@
   box-sizing: border-box;
 }
 
+.logbook-verification-panel .export-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+/* Keep the Logbook Magang export icons aligned with the dark-mode reference. */
+.logbook-verification-panel .export-icon-csv,
+.logbook-verification-panel .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+.logbook-verification-panel .export-icon-excel {
+  color: #28a745 !important;
+}
+
+.logbook-verification-panel .export-icon-json {
+  color: #ffc107 !important;
+}
+
+.logbook-verification-panel .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+body.dark-theme .logbook-verification-panel .export-icon-csv,
+body.dark-theme .logbook-verification-panel .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+body.dark-theme .logbook-verification-panel .export-icon-excel {
+  color: #28a745 !important;
+}
+
+body.dark-theme .logbook-verification-panel .export-icon-json {
+  color: #ffc107 !important;
+}
+
+body.dark-theme .logbook-verification-panel .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
 .certificate-filter-panel .report-toolbar > .report-filter-action {
   /* Match the standard filter button size used across the team pages. */
   width: 111px;
@@ -1754,6 +1796,48 @@
   height: 34px;
   min-height: 34px;
   box-sizing: border-box;
+}
+
+.certificate-filter-panel .export-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+/* Keep the Sertifikat Magang export icons visible in dark mode. */
+.certificate-filter-panel .export-icon-csv,
+.certificate-filter-panel .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+.certificate-filter-panel .export-icon-excel {
+  color: #28a745 !important;
+}
+
+.certificate-filter-panel .export-icon-json {
+  color: #ffc107 !important;
+}
+
+.certificate-filter-panel .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+body.dark-theme .certificate-filter-panel .export-icon-csv,
+body.dark-theme .certificate-filter-panel .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+body.dark-theme .certificate-filter-panel .export-icon-excel {
+  color: #28a745 !important;
+}
+
+body.dark-theme .certificate-filter-panel .export-icon-json {
+  color: #ffc107 !important;
+}
+
+body.dark-theme .certificate-filter-panel .export-icon-pdf {
+  color: #dc3545 !important;
 }
 
 @media (max-width: 768px) {

@@ -332,6 +332,8 @@
   box-sizing: border-box;
   padding: 16px;
   z-index: 1000;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-content {
@@ -377,6 +379,7 @@
 .form-group {
   margin-bottom: 1rem;
   flex: 1;
+  min-width: 0;
 }
 .form-group label {
   display: block;
@@ -395,6 +398,7 @@
 .form-group-row {
   display: flex;
   gap: 1rem;
+  min-width: 0;
 }
 
 .modal-footer {
@@ -662,7 +666,33 @@
   .employee-modal {
     width: 100%;
     max-width: 100%;
-    max-height: calc(100vh - 32px);
+    /* Let the overlay scroll the full form. Keeping overflow visible here is
+       important for the native iOS date picker, which is clipped by an
+       overflow-scrolling modal ancestor. */
+    max-height: none;
+    overflow: visible;
+    margin: 8px 0;
+  }
+
+  .employee-form-modal-overlay {
+    align-items: flex-start;
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .employee-form-modal .modal-body,
+  .employee-form-modal form {
+    overflow: visible;
+  }
+
+  .employee-form-modal .form-group-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .employee-form-modal input[type='date'] {
+    min-width: 0;
+    width: 100%;
+    -webkit-appearance: auto;
   }
 
   .detail-modal {

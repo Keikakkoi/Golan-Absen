@@ -79,6 +79,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   distanceToOffice = 0;
   isGpsActive = false;
   statusText = 'Menghubungkan GPS...';
+  locationDistanceText = '';
   
   employeeProfile: any = null;
   
@@ -577,6 +578,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private checkRadius(): void {
+    this.locationDistanceText = '';
+
     if (!this.isGpsActive || (this.currentLat === 0 && this.currentLng === 0)) {
       this.isLocationValid = false;
       this.statusText = 'GPS Tidak Aktif · Silakan aktifkan GPS perangkat Anda';
@@ -610,8 +613,9 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
           this.locationError = '';
         }
         this.statusText = this.isLocationValid
-          ? `Lokasi terverifikasi · radius ${homeDistance} meter dari rumah`
-          : `Lokasi di luar radius · radius ${homeDistance} meter dari rumah`;
+          ? 'Lokasi terverifikasi'
+          : 'Lokasi di luar radius';
+        this.locationDistanceText = `${this.isLocationValid ? 'Radius' : 'Jarak'} ${this.formatDistance(homeDistance)} meter dari rumah`;
       } else {
         this.isLocationValid = false;
         this.locationError = 'Memuat profil karyawan...';
@@ -625,17 +629,19 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
           this.locationError = '';
         }
       this.statusText = this.isLocationValid
-        ? `Lokasi terverifikasi · radius ${this.distanceToOffice} meter dari kantor`
-        : `Lokasi di luar radius · radius ${this.distanceToOffice} meter dari kantor`;
+        ? 'Lokasi terverifikasi'
+        : 'Lokasi di luar radius';
+      this.locationDistanceText = `${this.isLocationValid ? 'Radius' : 'Jarak'} ${this.formatDistance(this.distanceToOffice)} meter dari kantor`;
     } else {
       this.isLocationValid = true;
       this.locationError = '';
       this.statusText = 'Lokasi tidak memerlukan validasi radius untuk tipe kerja ini';
     }
 
-    if (this.isGpsActive && this.currentAccuracy > 0 && this.isLocationValid) {
-      this.statusText += ` · akurasi ±${Math.round(this.currentAccuracy)} m`;
-    }
+  }
+
+  private formatDistance(distance: number): string {
+    return Math.round(distance).toLocaleString('id-ID');
   }
 
   private startCamera(): void {

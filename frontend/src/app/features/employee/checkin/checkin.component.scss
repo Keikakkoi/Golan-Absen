@@ -23,6 +23,15 @@
   }
 }
 
+// The shared sidebar already provides the notification bell in the mobile
+// topbar. Keep this page-level bell for desktop, but avoid rendering a second
+// bell below the page heading on small screens.
+@media (max-width: 900px) {
+  .checkin-page-notification-bell {
+    display: none;
+  }
+}
+
 .punch-focus-section {
   display: flex;
   flex-direction: column;
@@ -99,7 +108,30 @@
 
 .status-indicator-pill {
     display: flex;
-    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    min-width: 0;
+    width: 100%;
+
+    .status-pill,
+    .location-distance,
+    .location-accuracy {
+      min-width: 0;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .location-distance {
+      color: var(--muted-color, #64748b);
+      font-size: 0.82rem;
+
+      &::before {
+        content: '·';
+        margin-right: 8px;
+      }
+    }
   }
 }
 
@@ -349,9 +381,72 @@
   }
 }
 
+/* Keep the work-type dropdown consistent with the shared dark-mode dropdown
+   palette instead of leaving its legacy light surface visible. */
+:host-context(body.dark-theme) .form-group-compact .form-control-compact {
+  border-color: var(--mint-2);
+  background-color: var(--mint-1);
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .form-group-compact .form-control-compact:hover,
+:host-context(body.dark-theme) .form-group-compact .form-control-compact:focus {
+  border-color: var(--green);
+  background-color: var(--mint-1);
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .form-group-compact .event-type-menu {
+  border-color: var(--mint-2);
+  background: var(--mint-0);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
+}
+
+:host-context(body.dark-theme) .form-group-compact .event-type-option {
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .form-group-compact .event-type-option:hover,
+:host-context(body.dark-theme) .form-group-compact .event-type-option:focus-visible,
+:host-context(body.dark-theme) .form-group-compact .event-type-option.is-selected {
+  background: var(--mint-1);
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .form-group-compact .event-type-option.is-selected:hover,
+:host-context(body.dark-theme) .form-group-compact .event-type-option.is-selected:focus-visible {
+  background: var(--green);
+  color: var(--blue-dark);
+}
+
 .location-accuracy {
-  display: block;
-  margin-top: 0.35rem;
+  display: inline-block;
   color: var(--muted-color, #64748b);
   font-size: 0.78rem;
+
+  &::before {
+    content: '·';
+    margin-right: 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .map-card {
+    min-width: 0;
+
+    .status-indicator-pill {
+      align-items: flex-start;
+      gap: 4px 8px;
+
+      .status-pill,
+      .location-distance {
+        flex: 1 1 auto;
+      }
+
+      .location-accuracy {
+        flex: 0 0 100%;
+        margin-top: 2px;
+      }
+    }
+  }
 }

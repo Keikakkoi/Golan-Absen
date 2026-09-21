@@ -44,19 +44,19 @@
             </button>
             <div class="dropdown-menu-custom" *ngIf="openExportMenu === 'logbooks'">
               <button type="button" class="dropdown-item" (click)="exportLogbooks()">
-                <i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV
+                <i class="fas fa-file-csv export-icon export-icon-csv" aria-hidden="true"></i> Format CSV
               </button>
               <button type="button" class="dropdown-item" (click)="exportLogbooksExcel()">
-                <i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)
+                <i class="fas fa-file-excel export-icon export-icon-excel" aria-hidden="true"></i> Format Excel (XLS)
               </button>
               <button type="button" class="dropdown-item" (click)="exportLogbooksJSON()">
-                <i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON
+                <i class="fas fa-file-code export-icon export-icon-json" aria-hidden="true"></i> Format JSON
               </button>
               <button type="button" class="dropdown-item" (click)="exportLogbooksPDF()">
-                <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF
+                <i class="fas fa-file-pdf export-icon export-icon-pdf" aria-hidden="true"></i> Format PDF
               </button>
-              <button type="button" class="dropdown-item" (click)="printLogbooks()" style="border-top: 1px solid #eee;">
-                <i class="fas fa-print" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Cetak Laporan
+              <button type="button" class="dropdown-item dropdown-item-print" (click)="printLogbooks()">
+                <i class="fas fa-print export-icon export-icon-print" aria-hidden="true"></i> Cetak Laporan
               </button>
             </div>
           </div>
@@ -172,19 +172,19 @@
             </button>
             <div class="dropdown-menu-custom" *ngIf="openExportMenu === 'certificates'">
               <button type="button" class="dropdown-item" (click)="exportCertificates()">
-                <i class="fas fa-file-csv" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Format CSV
+                <i class="fas fa-file-csv export-icon export-icon-csv" aria-hidden="true"></i> Format CSV
               </button>
               <button type="button" class="dropdown-item" (click)="exportCertificatesExcel()">
-                <i class="fas fa-file-excel" style="color: #28a745; margin-right: 0.5rem; width: 16px;"></i> Format Excel (XLS)
+                <i class="fas fa-file-excel export-icon export-icon-excel" aria-hidden="true"></i> Format Excel (XLS)
               </button>
               <button type="button" class="dropdown-item" (click)="exportCertificatesJSON()">
-                <i class="fas fa-file-code" style="color: #ffc107; margin-right: 0.5rem; width: 16px;"></i> Format JSON
+                <i class="fas fa-file-code export-icon export-icon-json" aria-hidden="true"></i> Format JSON
               </button>
               <button type="button" class="dropdown-item" (click)="exportCertificatesPDF()">
-                <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 0.5rem; width: 16px;"></i> Format PDF
+                <i class="fas fa-file-pdf export-icon export-icon-pdf" aria-hidden="true"></i> Format PDF
               </button>
-              <button type="button" class="dropdown-item" (click)="printCertificates()" style="border-top: 1px solid #eee;">
-                <i class="fas fa-print" style="color: #17a2b8; margin-right: 0.5rem; width: 16px;"></i> Cetak Laporan
+              <button type="button" class="dropdown-item dropdown-item-print" (click)="printCertificates()">
+                <i class="fas fa-print export-icon export-icon-print" aria-hidden="true"></i> Cetak Laporan
               </button>
             </div>
           </div>

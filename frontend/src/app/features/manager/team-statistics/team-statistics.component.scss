@@ -10,6 +10,48 @@
   box-sizing: border-box;
 }
 
+.team-statistics-toolbar .export-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-right: 0.5rem;
+  text-align: center;
+}
+
+/* Keep export icon colors visible against the dark dropdown surface. */
+.team-statistics-toolbar .export-icon-csv,
+.team-statistics-toolbar .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+.team-statistics-toolbar .export-icon-excel {
+  color: #28a745 !important;
+}
+
+.team-statistics-toolbar .export-icon-json {
+  color: #ffc107 !important;
+}
+
+.team-statistics-toolbar .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
+:host-context(body.dark-theme) .team-statistics-toolbar .export-icon-csv,
+:host-context(body.dark-theme) .team-statistics-toolbar .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+:host-context(body.dark-theme) .team-statistics-toolbar .export-icon-excel {
+  color: #28a745 !important;
+}
+
+:host-context(body.dark-theme) .team-statistics-toolbar .export-icon-json {
+  color: #ffc107 !important;
+}
+
+:host-context(body.dark-theme) .team-statistics-toolbar .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
 .manager-group-header { position: relative; }
 
 /* Keep long member lists inside the manager card while its header stays
