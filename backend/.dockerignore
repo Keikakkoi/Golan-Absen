@@ -1,0 +1,7 @@
+.git
+tmp_build
+*_test.go
+*.err
+*.txt
+*.png
+*.js

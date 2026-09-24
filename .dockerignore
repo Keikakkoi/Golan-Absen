@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+docs
+frontend/node_modules
+frontend/dist
+frontend/.angular
+backend/tmp_build
+backend/*.exe
+backend/*.test
+backend/*.out
+*.log
