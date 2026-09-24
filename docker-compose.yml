@@ -72,10 +72,29 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      seeder:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       minio:
         condition: service_started
+
+  seeder:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: "no"
+    command: ["/app/seeder"]
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DB_HOST: db
+      DB_USER: ${DB_USER:?DB_USER must be set}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      DB_NAME: ${DB_NAME:?DB_NAME must be set}
+      DB_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
     build:

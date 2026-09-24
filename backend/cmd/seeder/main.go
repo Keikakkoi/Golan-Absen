@@ -7,6 +7,7 @@ import (
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/models"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -44,20 +45,40 @@ func main() {
 		log.Println("Seeded work schedule")
 	}
 
-	// Seed Admin User
+	// Seed the administrator independently of the total user count. This keeps
+	// the bootstrap idempotent when the database already contains employees.
 	var userCount int64
 	db.Model(&models.User{}).Count(&userCount)
-	if userCount == 0 {
-		hash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-		adminUser := models.User{
+	var adminUser models.User
+	adminErr := db.Where("LOWER(email) = ?", "admin@golan.com").First(&adminUser).Error
+	if adminErr == gorm.ErrRecordNotFound {
+		hash, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("failed to hash bootstrap admin password: %v", err)
+		}
+		adminUser = models.User{
 			Nama:         "Super Admin",
 			Email:        "admin@golan.com",
 			PasswordHash: string(hash),
-			Role:         models.RoleHRD,
+			Role:         models.RoleHRD, // HRD is the application's admin role.
+			Status:       "aktif",
 		}
-		db.Create(&adminUser)
+		if err := db.Create(&adminUser).Error; err != nil {
+			log.Fatalf("failed to create bootstrap admin: %v", err)
+		}
+		log.Println("Seeded bootstrap admin user")
+	} else if adminErr != nil {
+		log.Fatalf("failed to check bootstrap admin: %v", adminErr)
+	} else {
+		log.Println("Bootstrap admin already exists; leaving its password unchanged")
+	}
 
-		hashKaryawan, _ := bcrypt.GenerateFromPassword([]byte("karyawan123"), bcrypt.DefaultCost)
+	// Seed the demo employee data only on a genuinely empty users table.
+	if userCount == 0 {
+		hashKaryawan, err := bcrypt.GenerateFromPassword([]byte("karyawan123"), bcrypt.DefaultCost)
+		if err != nil {
+			log.Fatalf("failed to hash demo employee password: %v", err)
+		}
 		karyawanUser := models.User{
 			Nama:         "Karyawan Dummy",
 			Email:        "karyawan@golan.com",
