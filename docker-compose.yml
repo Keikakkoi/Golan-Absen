@@ -50,7 +50,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
       DB_NAME: ${DB_NAME:?DB_NAME must be set}
       DB_PORT: 5432
-      REDIS_HOST: redis
+      REDIS_HOST: redis:6379
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       MINIO_ENDPOINT: minio:9000
