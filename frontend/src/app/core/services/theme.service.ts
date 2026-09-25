@@ -24,13 +24,9 @@ export class ThemeService {
   readonly darkMode$ = this.darkModeSubject.asObservable();
 
   constructor() {
-    // Public pages (especially login) always use the normal light palette.
-    // Restore a saved dark theme only when an authenticated session exists.
-    if (localStorage.getItem('token')) {
-      this.applyStoredTheme();
-    } else {
-      this.clearActiveTheme();
-    }
+    // The initial class is restored by the tiny pre-bootstrap initializer in
+    // index.html. Do not apply a theme here: at this point Angular may not
+    // have resolved the authenticated user or the current route yet.
   }
 
   getPreferences(): EmployeePreferences {
@@ -43,7 +39,10 @@ export class ThemeService {
     localStorage.setItem('user_id', String(userId));
     const preferences = this.readPreferences();
     this.darkModeEnabledSubject.next(preferences.darkMode);
-    this.setActiveTheme(preferences.darkMode && this.readTheme() !== 'light');
+    // AuthService restores the account after this service is constructed on a
+    // hard refresh. Apply the account-scoped theme immediately once the
+    // namespace is known, instead of waiting for a later route event.
+    this.applyStoredTheme();
   }
 
   savePreferences(preferences: EmployeePreferences): void {
@@ -81,7 +80,14 @@ export class ThemeService {
     // was constructed, or when another settings screen just saved a value.
     const preferences = this.readPreferences();
     this.darkModeEnabledSubject.next(preferences.darkMode);
-    this.setActiveTheme(preferences.darkMode && this.readTheme() === 'dark');
+    const savedTheme = this.readTheme();
+    // The theme key is the active palette selected from the sidebar. The
+    // preference is also a valid fallback for accounts that enabled dark mode
+    // before the separate theme key was introduced.
+    const shouldUseDarkTheme = savedTheme === 'dark' || (
+      !this.hasStoredTheme() && preferences.darkMode
+    );
+    this.setActiveTheme(shouldUseDarkTheme);
   }
 
   clearActiveTheme(persistLight = false): void {
@@ -119,6 +125,11 @@ export class ThemeService {
   private readTheme(): string {
     const key = this.scopedKey('theme');
     return key ? (localStorage.getItem(key) || 'light') : 'light';
+  }
+
+  private hasStoredTheme(): boolean {
+    const key = this.scopedKey('theme');
+    return !!key && localStorage.getItem(key) !== null;
   }
 
   private scopedKey(name: string): string | null {

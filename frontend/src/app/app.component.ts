@@ -105,7 +105,13 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private syncThemeWithRoute(url: string): void {
-    const path = url.split('?')[0].split('#')[0].replace(/^\/+/, '');
+    // During initial navigation Router can briefly still report `/` while the
+    // browser already opened an authenticated deep link. Use the browser URL
+    // for that transient state so the pre-bootstrap dark class is not cleared.
+    const effectiveUrl = url === '/' && this.document.location.pathname !== '/'
+      ? this.document.location.pathname
+      : url;
+    const path = effectiveUrl.split('?')[0].split('#')[0].replace(/^\/+/, '');
     const publicRoutes = new Set(['', 'home', 'login', 'forgot-password', 'verify-password-otp', 'reset-password', '403', 'forbidden', 'maintenance']);
     const authRoutes = new Set(['login', 'forgot-password', 'verify-password-otp', 'reset-password']);
     this.pageLoading.setLayout(authRoutes.has(path) ? 'auth' : publicRoutes.has(path) ? 'public' : 'app');
@@ -114,9 +120,10 @@ export class AppComponent implements OnInit, OnDestroy {
       this.themeService.clearActiveTheme();
       return;
     }
-    // The active theme is already owned by ThemeService. Re-applying the
-    // persisted value on every route change could overwrite a just-completed
-    // toggle while navigation and account state are settling.
+    // Restore after the route is known. This also covers a hard refresh where
+    // AuthService has just reconstructed the user context from localStorage or
+    // the token after ThemeService was instantiated.
+    this.themeService.applyStoredTheme();
   }
 
   private syncFontAwesome(required: boolean): void {

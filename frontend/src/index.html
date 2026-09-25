@@ -22,6 +22,42 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
 </head>
 <body class="mat-typography">
+  <!-- Run synchronously after body creation so the dark class exists before
+       Angular renders the first authenticated view. Public routes remain light. -->
+  <script>
+    (function () {
+      try {
+        var publicRoutes = ['', 'home', 'login', 'forgot-password', 'verify-password-otp', 'reset-password', '403', 'forbidden', 'maintenance'];
+        var path = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
+        if (publicRoutes.indexOf(path) !== -1) return;
+
+        var token = localStorage.getItem('token');
+        if (!token) return;
+
+        var userId = localStorage.getItem('user_id');
+        if (!userId) {
+          var tokenParts = token.split('.');
+          if (tokenParts.length > 1) {
+            var encodedPayload = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/');
+            var payload = JSON.parse(atob(encodedPayload));
+            if (payload && payload.user_id !== undefined && payload.user_id !== null) {
+              userId = String(payload.user_id);
+              localStorage.setItem('user_id', userId);
+            }
+          }
+        }
+        if (!userId) return;
+
+        var preferences = JSON.parse(localStorage.getItem('golan:employee_preferences:user:' + userId) || 'null');
+        var savedTheme = localStorage.getItem('golan:theme:user:' + userId);
+        if (preferences && preferences.darkMode === true && savedTheme === 'dark') {
+          document.body.classList.add('dark-theme');
+        }
+      } catch (_) {
+        // A malformed optional theme value must never prevent app bootstrap.
+      }
+    }());
+  </script>
   <app-root></app-root>
 </body>
 </html>
