@@ -135,6 +135,7 @@ func GetMyHomeLocationRequests(c *fiber.Ctx) error {
 	}
 	result := make([]requestView, 0, len(rows))
 	for _, row := range rows {
+		row.AttachmentURL = storage.RewriteObjectURL(row.AttachmentURL)
 		name := ""
 		if row.Reviewer != nil {
 			name = row.Reviewer.Nama
@@ -212,7 +213,7 @@ func CreateHomeLocationRequest(c *fiber.Ctx) error {
 		if _, uploadErr := storage.Client.PutObject(context.Background(), storage.BucketName, key, src, file.Size, miniogo.PutObjectOptions{ContentType: file.Header.Get("Content-Type")}); uploadErr != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Gagal mengunggah lampiran"})
 		}
-		row.AttachmentName, row.AttachmentURL = file.Filename, fmt.Sprintf("http://%s/%s/%s", config.LoadConfig().MinIOEndpoint, storage.BucketName, key)
+		row.AttachmentName, row.AttachmentURL = file.Filename, storage.ObjectURL(key)
 	}
 	if err := config.DB.Create(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal menyimpan pengajuan"})
@@ -261,6 +262,7 @@ func GetHomeLocationRequests(c *fiber.Ctx) error {
 	}
 	data := make([]homeLocationRequestView, 0, len(rows))
 	for _, row := range rows {
+		row.AttachmentURL = storage.RewriteObjectURL(row.AttachmentURL)
 		view := homeLocationRequestView{HomeLocationChangeRequest: row}
 		view.Employee.NIK = row.Employee.NIK
 		if row.Employee.User != nil {

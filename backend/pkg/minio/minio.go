@@ -3,6 +3,7 @@ package minio
 import (
 	"context"
 	"log"
+	"strings"
 
 	"absensi-golan-backend/config"
 	"github.com/minio/minio-go/v7"
@@ -11,6 +12,7 @@ import (
 
 var Client *minio.Client
 var BucketName string
+var PublicURL string
 
 func SetupMinIO(cfg *config.Config) {
 	var err error
@@ -23,6 +25,8 @@ func SetupMinIO(cfg *config.Config) {
 	}
 
 	BucketName = cfg.MinIOBucketName
+	PublicURL = strings.TrimRight(cfg.MinIOPublicURL, "/")
+	currentEndpoint = cfg.MinIOEndpoint
 	ctx := context.Background()
 	err = Client.MakeBucket(ctx, BucketName, minio.MakeBucketOptions{Region: "us-east-1"})
 	if err != nil {
@@ -36,11 +40,38 @@ func SetupMinIO(cfg *config.Config) {
 	} else {
 		log.Printf("Successfully created MinIO bucket %s\n", BucketName)
 	}
-	
+
 	// Make bucket public (read-only) for serving images directly
 	policy := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":["*"]},"Action":["s3:GetObject"],"Resource":["arn:aws:s3:::` + BucketName + `/*"]}]}`
 	err = Client.SetBucketPolicy(ctx, BucketName, policy)
 	if err != nil {
 		log.Printf("Warning: Failed to set public policy on bucket: %v", err)
 	}
+}
+
+// ObjectURL returns a browser-facing URL when MINIO_PUBLIC_URL is configured.
+// It falls back to the internal endpoint for local development.
+func ObjectURL(key string) string {
+	base := PublicURL
+	if base == "" {
+		base = "http://" + currentEndpoint
+	}
+	return strings.TrimRight(base, "/") + "/" + BucketName + "/" + strings.TrimLeft(key, "/")
+}
+
+var currentEndpoint string
+
+// RewriteObjectURL makes URLs stored before MINIO_PUBLIC_URL was configured
+// usable by browsers without requiring a database rewrite.
+func RewriteObjectURL(raw string) string {
+	if raw == "" || PublicURL == "" || currentEndpoint == "" {
+		return raw
+	}
+	for _, scheme := range []string{"http://", "https://"} {
+		prefix := scheme + currentEndpoint
+		if strings.HasPrefix(raw, prefix) {
+			return PublicURL + strings.TrimPrefix(raw, prefix)
+		}
+	}
+	return raw
 }

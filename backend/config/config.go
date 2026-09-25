@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -24,6 +25,7 @@ type Config struct {
 	MinIORootPassword     string
 	MinIOUseSSL           bool
 	MinIOBucketName       string
+	MinIOPublicURL        string
 	SMTPHost              string
 	SMTPPort              string
 	SMTPUser              string
@@ -60,6 +62,7 @@ func LoadConfig() *Config {
 		MinIORootPassword: getEnv("MINIO_ROOT_PASSWORD", "admin123"),
 		MinIOUseSSL:       getEnvAsBool("MINIO_USE_SSL", false),
 		MinIOBucketName:   getEnv("MINIO_BUCKET_NAME", "golan-attendance"),
+		MinIOPublicURL:    strings.TrimRight(getEnv("MINIO_PUBLIC_URL", ""), "/"),
 		SMTPHost:          getEnv("SMTP_HOST", ""),
 		SMTPPort:          getEnv("SMTP_PORT", "587"),
 		SMTPUser:          getEnv("SMTP_USER", ""),
