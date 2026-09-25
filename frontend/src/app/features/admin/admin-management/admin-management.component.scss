@@ -717,6 +717,8 @@
 .home-request-detail-modal .modal-footer { display: flex; justify-content: flex-end; gap: 8px; }
 .home-request-detail-modal .modal-footer {
   align-items: center;
+  box-sizing: border-box;
+  width: 100%;
   padding: 16px 24px;
   border-top: 1px solid var(--border, #e2e8f0);
   background: var(--surface, #ffffff);
@@ -727,6 +729,8 @@
 }
 .home-request-detail-modal .modal-footer .btn-outline-primary,
 .home-request-detail-modal .modal-footer .btn-primary {
+  box-sizing: border-box;
+  flex: 0 1 auto;
   min-width: 88px;
   min-height: 36px;
   padding: 8px 14px;
@@ -755,6 +759,7 @@
   .home-request-detail-modal .modal-footer {
     padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
     flex-wrap: wrap;
+    min-width: 0;
   }
 }
 
