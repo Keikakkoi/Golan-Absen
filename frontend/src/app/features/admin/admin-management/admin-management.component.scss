@@ -842,10 +842,11 @@ textarea.golan-input {
 }
 
 .home-form-actions .btn-primary,
-.home-form-actions .btn-secondary {
+.home-form-actions .btn-outline-primary {
   flex: 1;
   min-height: 42px;
   border-radius: 10px;
+  box-sizing: border-box;
   font-size: .86rem;
   justify-content: center;
 }
