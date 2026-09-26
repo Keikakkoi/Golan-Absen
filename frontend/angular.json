@@ -33,7 +33,6 @@
             ],
             "styles": [
               "src/styles.scss",
-              "node_modules/@angular/cdk/overlay-prebuilt.css",
               "node_modules/leaflet/dist/leaflet.css",
               "node_modules/sweetalert2/dist/sweetalert2.min.css"
             ],
@@ -127,8 +126,7 @@
               }
             ],
             "styles": [
-              "src/styles.scss",
-              "node_modules/@angular/cdk/overlay-prebuilt.css"
+              "src/styles.scss"
             ],
             "scripts": []
           }

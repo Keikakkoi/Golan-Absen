@@ -48,33 +48,24 @@
 
 .team-attendance-toolbar .export-dropdown {
   position: relative;
+  /* Stay above the shared pagination component (which has z-index: 50). */
+  z-index: 100;
 }
 
-.team-attendance-export-menu {
-  /* CDK renders this menu outside the card/table stacking and overflow
-     contexts, so it cannot be clipped by the table viewport. */
-  position: static !important;
-  top: auto !important;
-  right: auto !important;
-  width: min(320px, calc(100vw - 16px));
-  max-width: calc(100vw - 16px);
-  min-width: min(220px, calc(100vw - 16px));
-  max-height: calc(100vh - 16px);
-  overflow-y: auto;
-  box-sizing: border-box;
-  z-index: 1100;
+.team-attendance-toolbar .dropdown-menu-custom {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  min-width: 220px;
   padding: 8px 0;
   background: #fff;
   border: 1px solid var(--mint-1, #cfe3f0);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
 }
 
-.team-attendance-export-menu .dropdown-item {
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.team-attendance-toolbar .dropdown-menu-custom .dropdown-item {
   display: flex !important;
   align-items: center;
   min-height: 40px;
@@ -83,55 +74,55 @@
   white-space: nowrap;
 }
 
-.team-attendance-export-menu .dropdown-item:hover {
+.team-attendance-toolbar .dropdown-menu-custom .dropdown-item:hover {
   background-color: var(--mint-0, #edf7fb);
 }
 
-.team-attendance-export-menu .dropdown-item-print {
+.team-attendance-toolbar .dropdown-item-print {
   border-top: 1px solid #eee;
 }
 
-.team-attendance-export-menu .export-icon {
+.team-attendance-toolbar .export-icon {
   flex: 0 0 16px;
   width: 16px;
   margin-right: 0.5rem;
   text-align: center;
 }
 
-.team-attendance-export-menu .export-icon-csv,
-.team-attendance-export-menu .export-icon-print { color: #17a2b8 !important; }
-.team-attendance-export-menu .export-icon-excel { color: #28a745 !important; }
-.team-attendance-export-menu .export-icon-json { color: #ffc107 !important; }
-.team-attendance-export-menu .export-icon-pdf { color: #dc3545 !important; }
+.team-attendance-toolbar .export-icon-csv,
+.team-attendance-toolbar .export-icon-print { color: #17a2b8 !important; }
+.team-attendance-toolbar .export-icon-excel { color: #28a745 !important; }
+.team-attendance-toolbar .export-icon-json { color: #ffc107 !important; }
+.team-attendance-toolbar .export-icon-pdf { color: #dc3545 !important; }
 
 /* Keep the semantic icon colors visible over the shared dark-theme icon rule. */
-body.dark-theme .team-attendance-export-menu .export-icon-csv,
-body.dark-theme .team-attendance-export-menu .export-icon-print {
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-csv,
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-print {
   color: #17a2b8 !important;
 }
 
-body.dark-theme .team-attendance-export-menu .export-icon-excel {
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-excel {
   color: #28a745 !important;
 }
 
-body.dark-theme .team-attendance-export-menu .export-icon-json {
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-json {
   color: #ffc107 !important;
 }
 
-body.dark-theme .team-attendance-export-menu .export-icon-pdf {
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .export-icon-pdf {
   color: #dc3545 !important;
 }
 
-body.dark-theme .team-attendance-export-menu {
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom {
   background: var(--surface, #172033);
   border-color: var(--mint-2, #6b8ca3);
 }
 
-body.dark-theme .team-attendance-export-menu .dropdown-item {
+body.dark-theme .team-attendance-toolbar .dropdown-menu-custom .dropdown-item {
   color: var(--text-dark, #e2e8f0);
 }
 
-body.dark-theme .team-attendance-export-menu .dropdown-item-print {
+body.dark-theme .team-attendance-toolbar .dropdown-item-print {
   border-top-color: var(--border-color, #334155);
 }
 
