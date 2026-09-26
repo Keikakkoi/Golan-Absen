@@ -3440,6 +3440,58 @@ body.dark-theme app-pagination .pagination-summary select option {
   color: #f8fafc !important;
 }
 
+/* Approval leave export icons are semantic icons, not part of the dropdown
+   item's inherited text color. Keep their colors when generic dark-mode
+   dropdown and hover rules style the parent button. */
+.main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-csv,
+.main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-print {
+  color: #17a2b8;
+}
+
+.main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-excel {
+  color: #28a745;
+}
+
+.main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-json {
+  color: #ffc107;
+}
+
+.main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-pdf {
+  color: #dc3545;
+}
+
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-csv,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-print,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:hover .export-icon-csv,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:hover .export-icon-print,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:focus-visible .export-icon-csv,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:focus-visible .export-icon-print,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:active .export-icon-csv,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:active .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-excel,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:hover .export-icon-excel,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:focus-visible .export-icon-excel,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:active .export-icon-excel {
+  color: #28a745 !important;
+}
+
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-json,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:hover .export-icon-json,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:focus-visible .export-icon-json,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:active .export-icon-json {
+  color: #ffc107 !important;
+}
+
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item .export-icon-pdf,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:hover .export-icon-pdf,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:focus-visible .export-icon-pdf,
+body.dark-theme .main-content.leave-approval-page .dropdown-menu-custom .dropdown-item:active .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
 /* Organization tabs are navigation, not neutral action buttons. Keep them
    transparent in dark mode and use the accent only for the active marker. */
 body.dark-theme .main-content .admin-theme .tabs .tab-btn,
