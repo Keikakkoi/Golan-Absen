@@ -891,10 +891,19 @@ textarea.golan-input {
 }
 
 :host-context(body.dark-theme) .home-request-scroll-hint {
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-bottom-color: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: #cbd5e1 !important;
+}
+
+:host-context(body.dark-theme) .home-request-table-wrap {
   background: transparent !important;
   background-color: transparent !important;
-  border-bottom-color: transparent !important;
-  color: #cbd5e1 !important;
 }
 
 :host-context(body.dark-theme) .home-location-table,
