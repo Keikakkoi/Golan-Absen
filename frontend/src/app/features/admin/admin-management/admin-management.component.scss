@@ -851,6 +851,235 @@ textarea.golan-input {
   justify-content: center;
 }
 
+/* Home-location dark theme
+   Keep the light palette above unchanged and normalize every surface owned by
+   this page when the application switches to dark mode. Some of these rules
+   intentionally use !important because the shared table/card compatibility
+   rules are also theme overrides and several legacy controls have hard-coded
+   light colors in this component. */
+:host-context(body.dark-theme) .home-tabs button,
+:host-context(body.dark-theme) .home-location-card,
+:host-context(body.dark-theme) .home-request-card,
+:host-context(body.dark-theme) .home-location-table-wrap,
+:host-context(body.dark-theme) .home-request-table-wrap,
+:host-context(body.dark-theme) .home-request-detail-modal,
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer,
+:host-context(body.dark-theme) .modal-content.golan-card {
+  background: var(--surface) !important;
+  background-color: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-tabs button {
+  color: var(--text-dark-lo) !important;
+}
+
+:host-context(body.dark-theme) .home-tabs button:hover,
+:host-context(body.dark-theme) .home-tabs button:focus-visible {
+  background: var(--surface-muted) !important;
+  background-color: var(--surface-muted) !important;
+  border-color: var(--green) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-tabs button.active {
+  background: var(--mint-1) !important;
+  background-color: var(--mint-1) !important;
+  border-color: var(--green) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-request-scroll-hint {
+  background: var(--surface-muted) !important;
+  background-color: var(--surface-muted) !important;
+  border-bottom-color: var(--border-strong) !important;
+  color: var(--text-dark-lo) !important;
+}
+
+:host-context(body.dark-theme) .home-location-table,
+:host-context(body.dark-theme) .home-request-table,
+:host-context(body.dark-theme) .home-location-table tbody,
+:host-context(body.dark-theme) .home-request-table tbody,
+:host-context(body.dark-theme) .home-location-table tbody tr,
+:host-context(body.dark-theme) .home-request-table tbody tr {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-location-table thead,
+:host-context(body.dark-theme) .home-location-table thead tr,
+:host-context(body.dark-theme) .home-request-table thead,
+:host-context(body.dark-theme) .home-request-table thead tr,
+:host-context(body.dark-theme) .home-location-table th,
+:host-context(body.dark-theme) .home-request-table th {
+  background: var(--surface-muted) !important;
+  background-color: var(--surface-muted) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-location-table td,
+:host-context(body.dark-theme) .home-request-table td {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-location-table tbody tr:hover,
+:host-context(body.dark-theme) .home-request-table tbody tr:hover {
+  background: var(--surface-raised) !important;
+  background-color: var(--surface-raised) !important;
+}
+
+:host-context(body.dark-theme) .home-location-table .code,
+:host-context(body.dark-theme) .home-request-table .code,
+:host-context(body.dark-theme) .home-request-table td small,
+:host-context(body.dark-theme) .home-tabs + .golan-card small {
+  color: var(--text-dark-lo) !important;
+}
+
+:host-context(body.dark-theme) .home-location-table a,
+:host-context(body.dark-theme) .home-request-table a,
+:host-context(body.dark-theme) .home-location-detail-card a,
+:host-context(body.dark-theme) .home-detail-attachment a {
+  color: var(--green-deep) !important;
+}
+
+:host-context(body.dark-theme) .home-location-table a:hover,
+:host-context(body.dark-theme) .home-request-table a:hover,
+:host-context(body.dark-theme) .home-location-detail-card a:hover,
+:host-context(body.dark-theme) .home-detail-attachment a:hover {
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-field,
+:host-context(body.dark-theme) .modal-content label {
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-field small,
+:host-context(body.dark-theme) .form-help {
+  color: var(--text-dark-lo) !important;
+}
+
+:host-context(body.dark-theme) .home-field .golan-input,
+:host-context(body.dark-theme) .modal-content .golan-input {
+  background: var(--blue-dark) !important;
+  background-color: var(--blue-dark) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-field .golan-input:focus,
+:host-context(body.dark-theme) .modal-content .golan-input:focus {
+  background: var(--surface-muted) !important;
+  background-color: var(--surface-muted) !important;
+  border-color: var(--green) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 24%, transparent) !important;
+}
+
+:host-context(body.dark-theme) .home-field .golan-input::placeholder,
+:host-context(body.dark-theme) .modal-content .golan-input::placeholder {
+  color: var(--text-dark-lo) !important;
+  opacity: 1;
+}
+
+:host-context(body.dark-theme) .modal-overlay {
+  background: rgba(2, 6, 23, .78) !important;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .modal-header,
+:host-context(body.dark-theme) .home-request-detail-modal .modal-body,
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer {
+  background: var(--surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .btn-close {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--text-dark-lo) !important;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .btn-close:hover,
+:host-context(body.dark-theme) .home-request-detail-modal .btn-close:focus-visible {
+  background: var(--surface-muted) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-detail-identity {
+  background: var(--surface-muted) !important;
+  background-color: var(--surface-muted) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-detail-identity span:not(.home-detail-status),
+:host-context(body.dark-theme) .home-detail-grid span,
+:host-context(body.dark-theme) .home-location-detail-card > span,
+:host-context(body.dark-theme) .home-empty-detail,
+:host-context(body.dark-theme) .request-id {
+  color: var(--text-dark-lo) !important;
+}
+
+:host-context(body.dark-theme) .home-detail-status {
+  background: color-mix(in srgb, var(--green) 20%, var(--surface)) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-detail-grid > div,
+:host-context(body.dark-theme) .home-location-detail-card,
+:host-context(body.dark-theme) .home-detail-section {
+  background: var(--surface-raised) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-location-detail-card.new {
+  border-color: var(--green) !important;
+}
+
+:host-context(body.dark-theme) .home-detail-attachment img {
+  border-color: var(--border-strong) !important;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .btn-outline-primary,
+:host-context(body.dark-theme) .home-form-actions .btn-outline-primary {
+  background: var(--surface-muted) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .btn-outline-primary:hover,
+:host-context(body.dark-theme) .home-form-actions .btn-outline-primary:hover {
+  background: var(--mint-1) !important;
+  border-color: var(--green) !important;
+  color: var(--text-dark) !important;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .btn-primary,
+:host-context(body.dark-theme) .home-form-actions .btn-primary {
+  background: var(--green) !important;
+  border-color: var(--green) !important;
+  color: #ffffff !important;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .btn-secondary,
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .btn-reject {
+  background: var(--absent) !important;
+  border-color: var(--absent) !important;
+  color: #ffffff !important;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .btn-secondary:hover,
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .btn-reject:hover {
+  filter: brightness(1.12);
+}
+
 /* Leave quota page */
 .quota-intro {
   display: flex;
