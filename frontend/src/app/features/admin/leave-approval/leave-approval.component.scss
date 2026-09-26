@@ -8,6 +8,11 @@
   box-sizing: border-box;
 }
 
+.leave-card {
+  /* Keep the shared pagination menu visible outside the card boundary. */
+  overflow: visible;
+}
+
 .leave-table-container {
   width: 100%;
   max-width: 100%;

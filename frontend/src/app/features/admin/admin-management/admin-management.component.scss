@@ -161,7 +161,9 @@
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  overflow: hidden;
+  /* Let the pagination page-size menu escape below the card. The table
+     itself already owns its horizontal scroll container. */
+  overflow: visible;
 }
 
 .schedule-card-heading {
@@ -565,7 +567,7 @@
 }
 
 @media (max-width: 768px) {
-  .schedule-list-card { overflow: hidden; }
+  .schedule-list-card { overflow: visible; }
 
   .schedule-filters {
     grid-template-columns: minmax(0, 1fr);
@@ -1466,7 +1468,12 @@ textarea.golan-input {
 .home-tabs{display:flex;gap:8px;margin:0 0 18px}.home-tabs button{border:1px solid var(--border-strong);background:var(--surface);color:var(--text-dark-lo);padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer}.home-tabs button.active{background:var(--mint-0);color:var(--text-dark);border-color:var(--mint-2)}.home-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:5px;border-radius:10px;background:#dc2626;color:#fff;font-size:.7rem}.home-tabs + .golan-card small{display:block;color:var(--text-dark-lo);margin-top:4px}
 
 /* Home location table: keep readable column tracks on narrow screens. */
-.home-location-card { min-width: 0; }
+.home-location-card {
+  min-width: 0;
+  /* The table wrapper below handles horizontal scrolling; the card must not
+     clip the pagination page-size menu. */
+  overflow: visible;
+}
 .main-content .home-location-table-wrap {
   width: 100%;
   max-width: 100%;
@@ -1504,7 +1511,7 @@ textarea.golan-input {
 }
 
 @media (max-width: 768px) {
-  .home-location-card { overflow: hidden; }
+  .home-location-card { overflow: visible; }
   .main-content .home-location-table-wrap {
     width: 100% !important;
     max-width: 100% !important;
