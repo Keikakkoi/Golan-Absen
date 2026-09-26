@@ -1856,7 +1856,9 @@ body.dark-theme .certificate-filter-panel .export-icon-pdf {
 .team-filter-panel .attendance-export-dropdown,
 .team-filter-panel .report-export-dropdown {
   position: relative;
-  z-index: 2;
+  /* The shared pagination host uses z-index: 50. Keep the complete
+     dropdown stacking context above it so the menu remains clickable. */
+  z-index: 100;
 }
 
 .team-filter-panel .attendance-export-dropdown .dropdown-menu-custom,
