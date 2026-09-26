@@ -63,3 +63,86 @@
 @media (prefers-reduced-motion: reduce) {
   .public-header,.hero-copy > *,.hero-visual { opacity:1; transform:none; animation:none; }
 }
+
+/* Desktop landing-page scale.
+   The supplied desktop reference was captured at 125% browser zoom. Keep the
+   application itself at 100% and reproduce that visual scale only on the
+   public home route. The layout is intentionally full-width at this size so
+   the hero keeps the same edge spacing as the reference viewport. */
+@media (min-width: 901px) {
+  .public-header,
+  .public-page > main,
+  .public-footer {
+    max-width: none;
+    padding-left: 42.5px;
+    padding-right: 42.5px;
+  }
+
+  .public-header {
+    height: 102.5px;
+    gap: 30px;
+  }
+
+  .brand { gap: 12.5px; font-size: 11.8px; }
+  .brand-mark { width: 42.5px; height: 42.5px; border-radius: 14px; }
+  .brand-mark img { width: 42.5px; height: 42.5px; border-radius: 10px; }
+  nav { gap: 34px; }
+  nav a { font-size: 10.2px; }
+
+  .button {
+    min-height: 52.5px;
+    padding-left: 22.5px;
+    padding-right: 22.5px;
+    border-radius: 11px;
+    font-size: 10px;
+  }
+
+  .hero {
+    min-height: 656px;
+    grid-template-columns: minmax(0, 1fr) minmax(525px, .86fr);
+    gap: 80px;
+    padding-top: 62.5px;
+    padding-bottom: 95px;
+  }
+
+  .hero-copy { position: relative; top: -23px; padding-bottom: 15px; }
+  .live-label { gap: 10px; margin-bottom: 30px; padding: 9px 14px; font-size: 10px; }
+  .status-dot { width: 9px; height: 9px; box-shadow: 0 0 0 5px #38b88a18; }
+  .eyebrow { margin-bottom: 16px; font-size: 8.7px; }
+  h1 { max-width: 850px; margin-bottom: 25px; font-size: clamp(52px, 5.6vw, 70.5px); }
+  .hero-lead { max-width: 525px; margin-bottom: 34px; font-size: 12.6px; }
+  .hero-actions { gap: 29px; }
+  .text-link { font-size: 10px; }
+  .hero-note { gap: 12.5px; margin-top: 39px; font-size: 9px; }
+  .note-avatars i { width: 24px; height: 24px; margin-right: -6px; border-width: 2.5px; }
+
+  .hero-visual { top: -7px; left: 22px; min-height: 500px; }
+  .hero-card { width: min(100%, 487.5px); padding: 31px; border-radius: 29px; }
+  .card-top { gap: 10px; font-size: 9px; }
+  .card-heading { margin-top: 42.5px; margin-bottom: 34px; }
+  .card-heading strong { font-size: 20.8px; }
+  .card-heading span { margin-top: 6px; font-size: 9px; }
+  .progress-label { margin-bottom: 10px; font-size: 9px; }
+  .progress-track { height: 10px; }
+  .mini-grid { gap: 15px; margin-top: 32.5px; }
+  .mini-grid div { column-gap: 11px; padding: 16px; border-radius: 15px; }
+  .mini-icon { width: 30px; height: 30px; border-radius: 10px; font-size: 9.5px; }
+  .mini-grid strong { font-size: 13.8px; }
+  .mini-grid small { font-size: 7.8px; }
+
+  .floating-card { gap: 12.5px; padding: 15px 17.5px; border-radius: 16px; }
+  .floating-card strong { font-size: 8.5px; }
+  .floating-card small { margin-top: 5px; font-size: 7.4px; }
+  .hero-visual .floating-check { top: -19px; }
+  .floating-sync { right: -11px; bottom: 67.5px; }
+  .check-icon,
+  .sync-icon { width: 34px; height: 34px; border-radius: 11px; font-size: 9.5px; }
+  .visual-orbit.orbit-one { width: 531px; height: 531px; }
+  .visual-orbit.orbit-two { width: 375px; height: 375px; }
+  .spark { font-size: 1.375rem; }
+  .spark-one { top: 20px; right: 62.5px; }
+  .spark-two { bottom: 27.5px; left: 60px; font-size: 10px; }
+
+  .page-glow-one { top: -337.5px; right: -212.5px; width: 712.5px; height: 712.5px; }
+  .page-glow-two { bottom: 225px; left: -375px; width: 625px; height: 625px; }
+}
