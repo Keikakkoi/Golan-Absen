@@ -3,19 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
 import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
-@Component({ selector: 'app-team-attendance', standalone: true, imports: [CommonModule, FormsModule, OverlayModule, SharedSidebarComponent, PaginationComponent], templateUrl: './team-attendance.component.html', styleUrls: ['./team-attendance.component.scss'] })
+@Component({ selector: 'app-team-attendance', standalone: true, imports: [CommonModule, FormsModule, SharedSidebarComponent, PaginationComponent], templateUrl: './team-attendance.component.html', styleUrls: ['./team-attendance.component.scss'] })
 export class TeamAttendanceComponent implements OnInit {
   startDate = new Date().toISOString().slice(0, 10); endDate = this.startDate; search = ''; status = ''; rows: any[] = []; private serverPaginated = false; private requestSequence = 0;
   error = ''; isExportOpen = false; page = 1; pageSize = 25; pageSizeOptions = [10, 25, 50, 100]; totalItems = 0; isLoading = false;
-  readonly exportDropdownPositions: ConnectedPosition[] = [
-    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 5 },
-    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -5 }
-  ];
   constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService, private route: ActivatedRoute, private router: Router) {}
   ngOnInit(): void {
     const query = this.route.snapshot.queryParamMap;
