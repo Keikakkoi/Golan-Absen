@@ -1432,17 +1432,6 @@ body.dark-theme .btn-view-detail:hover { background: var(--mint-1); border-color
   padding: 8px 0;
 }
 
-/* Team attendance export menus must sit above pagination and any page-level
-   stacking context. The menu is rendered by CDK outside the feature card, so
-   this layer is intentionally defined globally. */
-.cdk-overlay-container {
-  z-index: 4000 !important;
-}
-
-.cdk-overlay-pane.team-attendance-export-overlay-pane {
-  z-index: 4001 !important;
-}
-
 .dropdown-menu-custom .dropdown-item {
   padding: 10px 16px;
   border: none;
