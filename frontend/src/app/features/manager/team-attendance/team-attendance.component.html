@@ -14,15 +14,17 @@
           <label>Status<select class="golan-input" [(ngModel)]="status"><option value="">Semua status</option><option>Hadir</option><option>Terlambat</option><option value="Tidak hadir">Alpha</option></select></label>
           <button type="button" class="btn-primary report-filter-action" (click)="load()">Filter</button>
           <div class="export-dropdown">
-            <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()"><i class="fas fa-file-export" aria-hidden="true"></i> Unduh / Cetak <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
-            <div class="dropdown-menu-custom" *ngIf="isExportOpen">
-              <button type="button" class="dropdown-item" (click)="exportCSV()"><i class="fas fa-file-csv export-icon export-icon-csv" aria-hidden="true"></i> Format CSV</button>
-              <button type="button" class="dropdown-item" (click)="exportExcel()"><i class="fas fa-file-excel export-icon export-icon-excel" aria-hidden="true"></i> Format Excel (XLS)</button>
-              <button type="button" class="dropdown-item" (click)="exportJSON()"><i class="fas fa-file-code export-icon export-icon-json" aria-hidden="true"></i> Format JSON</button>
-              <button type="button" class="dropdown-item" (click)="exportPDF()"><i class="fas fa-file-pdf export-icon export-icon-pdf" aria-hidden="true"></i> Format PDF</button>
-              <button type="button" class="dropdown-item dropdown-item-print" (click)="printReport()"><i class="fas fa-print export-icon export-icon-print" aria-hidden="true"></i> Cetak Laporan</button>
-            </div>
+            <button type="button" class="btn btn-secondary" cdkOverlayOrigin #exportTrigger="cdkOverlayOrigin" (click)="toggleExportDropdown()" [attr.aria-expanded]="isExportOpen"><i class="fas fa-file-export" aria-hidden="true"></i> Unduh / Cetak <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
           </div>
+          <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="exportTrigger" [cdkConnectedOverlayOpen]="isExportOpen" [cdkConnectedOverlayPositions]="exportDropdownPositions" [cdkConnectedOverlayPush]="true" [cdkConnectedOverlayFlexibleDimensions]="false" [cdkConnectedOverlayViewportMargin]="8" [cdkConnectedOverlayHasBackdrop]="true" cdkConnectedOverlayBackdropClass="cdk-overlay-transparent-backdrop" (backdropClick)="closeExportDropdown()">
+            <div class="dropdown-menu-custom team-attendance-export-menu" role="menu">
+              <button type="button" class="dropdown-item" role="menuitem" (click)="exportCSV()"><i class="fas fa-file-csv export-icon export-icon-csv" aria-hidden="true"></i> Format CSV</button>
+              <button type="button" class="dropdown-item" role="menuitem" (click)="exportExcel()"><i class="fas fa-file-excel export-icon export-icon-excel" aria-hidden="true"></i> Format Excel (XLS)</button>
+              <button type="button" class="dropdown-item" role="menuitem" (click)="exportJSON()"><i class="fas fa-file-code export-icon export-icon-json" aria-hidden="true"></i> Format JSON</button>
+              <button type="button" class="dropdown-item" role="menuitem" (click)="exportPDF()"><i class="fas fa-file-pdf export-icon export-icon-pdf" aria-hidden="true"></i> Format PDF</button>
+              <button type="button" class="dropdown-item dropdown-item-print" role="menuitem" (click)="printReport()"><i class="fas fa-print export-icon export-icon-print" aria-hidden="true"></i> Cetak Laporan</button>
+            </div>
+          </ng-template>
         </div>
       </div>
       <p class="alert alert-danger" *ngIf="error" role="alert">{{ error }}</p>
