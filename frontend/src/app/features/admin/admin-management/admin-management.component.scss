@@ -891,10 +891,10 @@ textarea.golan-input {
 }
 
 :host-context(body.dark-theme) .home-request-scroll-hint {
-  background: var(--surface-muted) !important;
-  background-color: var(--surface-muted) !important;
-  border-bottom-color: var(--border-strong) !important;
-  color: var(--text-dark-lo) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border-bottom-color: transparent !important;
+  color: #cbd5e1 !important;
 }
 
 :host-context(body.dark-theme) .home-location-table,
