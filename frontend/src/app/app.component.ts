@@ -360,10 +360,30 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private positionDateMenu(input: HTMLInputElement, menu: HTMLDivElement): void {
     const bounds = input.getBoundingClientRect();
+    const viewport = this.document.defaultView;
+    const viewportWidth = viewport?.innerWidth || this.document.documentElement.clientWidth;
+    const viewportHeight = viewport?.innerHeight || this.document.documentElement.clientHeight;
+    const viewportPadding = 8;
+    const availableWidth = Math.max(0, viewportWidth - (viewportPadding * 2));
+
+    // The picker is rendered in document.body and uses fixed positioning, so
+    // its original 320px width can extend past a narrow modal/viewport. Set
+    // the width before measuring the height, then clamp both coordinates to
+    // the visible viewport.
+    menu.style.width = `${Math.min(menu.offsetWidth, availableWidth)}px`;
     const height = menu.offsetHeight;
-    const opensUp = bounds.bottom + height > (this.document.defaultView?.innerHeight || 0) && bounds.top > height;
-    menu.style.left = `${Math.round(bounds.left)}px`;
-    menu.style.top = `${Math.round(opensUp ? bounds.top - height - 4 : bounds.bottom + 4)}px`;
+    const opensUp = bounds.bottom + height > viewportHeight - viewportPadding
+      && bounds.top - height - 4 >= viewportPadding;
+    const preferredTop = opensUp ? bounds.top - height - 4 : bounds.bottom + 4;
+    const maxTop = Math.max(viewportPadding, viewportHeight - height - viewportPadding);
+    const left = Math.min(
+      Math.max(bounds.left, viewportPadding),
+      Math.max(viewportPadding, viewportWidth - menu.offsetWidth - viewportPadding)
+    );
+    const top = Math.min(Math.max(preferredTop, viewportPadding), maxTop);
+
+    menu.style.left = `${Math.round(left)}px`;
+    menu.style.top = `${Math.round(top)}px`;
   }
 
   private closeDateMenu(): void { this.dateMenu?.remove(); this.dateMenu = null; this.activeDateInput = null; this.dateSelectorOpen = false; }

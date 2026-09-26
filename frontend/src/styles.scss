@@ -3618,7 +3618,8 @@ body.dark-theme .filter-native-menu {
 .filter-date-menu {
   position: fixed;
   z-index: 2001;
-  width: 320px;
+  width: min(320px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
   box-sizing: border-box;
   padding: 12px;
   border: 1px solid #d8e8f8;
