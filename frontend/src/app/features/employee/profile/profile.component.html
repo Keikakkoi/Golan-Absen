@@ -38,9 +38,6 @@
         <div *ngIf="!isLoading && profileData">
           <div *ngIf="successMessage" class="alert alert-success" style="color: #2F80ED; margin-bottom: 1rem; padding: 12px; background: #E8F2FF; border-radius: 6px;">{{ successMessage }}</div>
           <div *ngIf="errorMessage" class="alert alert-danger" style="color: red; margin-bottom: 1rem; padding: 12px; background: #fdf2f2; border-radius: 6px;">{{ errorMessage }}</div>
-          <div *ngIf="errorMessage" class="profile-retry-row">
-            <button type="button" class="btn-secondary" (click)="retryProfile()">Coba lagi</button>
-          </div>
 
           <!-- TAB 1: Profil Saya (Metadata, Division, Position, Address, Home Geofence Map) -->
           <div *ngIf="activeTab === 'profile'" class="tab-content-panel">
