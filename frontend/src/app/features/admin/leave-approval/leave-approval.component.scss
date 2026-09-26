@@ -140,6 +140,51 @@
   align-items: end;
 }
 
+/* Keep export icons independent from the dropdown button text color. The
+   global dark-theme dropdown rules intentionally recolor the item itself. */
+.leave-approval-page .dropdown-menu-custom .export-icon {
+  width: 16px;
+  margin-right: 0.5rem;
+  flex: 0 0 16px;
+  text-align: center;
+}
+
+.leave-approval-page .dropdown-menu-custom .export-icon-csv,
+.leave-approval-page .dropdown-menu-custom .export-icon-print {
+  color: #17a2b8;
+}
+
+.leave-approval-page .dropdown-menu-custom .export-icon-excel {
+  color: #28a745;
+}
+
+.leave-approval-page .dropdown-menu-custom .export-icon-json {
+  color: #ffc107;
+}
+
+.leave-approval-page .dropdown-menu-custom .export-icon-pdf {
+  color: #dc3545;
+}
+
+/* The generic dark-mode hover rule targets every dropdown item. Keep each
+   file type's semantic color at higher priority in dark mode and on hover. */
+:host-context(body.dark-theme) .leave-approval-page .dropdown-menu-custom .export-icon-csv,
+:host-context(body.dark-theme) .leave-approval-page .dropdown-menu-custom .export-icon-print {
+  color: #17a2b8 !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .dropdown-menu-custom .export-icon-excel {
+  color: #28a745 !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .dropdown-menu-custom .export-icon-json {
+  color: #ffc107 !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .dropdown-menu-custom .export-icon-pdf {
+  color: #dc3545 !important;
+}
+
 @media (min-width: 769px) {
   .leave-table-container { scrollbar-width: thin; }
   .leave-table {
