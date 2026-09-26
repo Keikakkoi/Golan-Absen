@@ -57,7 +57,6 @@ export class TeamAttendanceComponent implements OnInit {
     return 'status-pending';
   }
   toggleExportDropdown(): void { this.isExportOpen = !this.isExportOpen; }
-  closeExportDropdown(): void { this.isExportOpen = false; }
   exportCSV(): void { this.isExportOpen = false; this.reportExport.downloadCsv('absensi-tim.csv', ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
   exportExcel(): void { this.isExportOpen = false; this.reportExport.downloadExcel('absensi-tim.xls', ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
   exportJSON(): void { this.isExportOpen = false; this.reportExport.downloadJson('absensi-tim.json', this.rows); }
