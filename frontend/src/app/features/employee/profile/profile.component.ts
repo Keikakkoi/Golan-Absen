@@ -57,6 +57,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   isSubmitting = false;
   isUploadingPhoto = false;
+  showEmailPassword = false;
+  showOldPassword = false;
+  showNewPassword = false;
+  showConfirmPassword = false;
   selectedPhoto: File | null = null;
   photoPreviewFile: File | null = null;
   profilePhotoPreviewUrl = '';
@@ -514,6 +518,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.updateForm.old_password = '';
         this.updateForm.password = '';
         this.updateForm.confirm_password = '';
+        this.showOldPassword = false;
+        this.showNewPassword = false;
+        this.showConfirmPassword = false;
         this.alert.success('Password berhasil diubah');
       },
       error: (err) => {
@@ -634,6 +641,22 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.alert.error('Gagal mengganti email', this.errorMessage);
       }
     });
+  }
+
+  toggleEmailPasswordVisibility(): void {
+    this.showEmailPassword = !this.showEmailPassword;
+  }
+
+  toggleOldPasswordVisibility(): void {
+    this.showOldPassword = !this.showOldPassword;
+  }
+
+  toggleNewPasswordVisibility(): void {
+    this.showNewPassword = !this.showNewPassword;
+  }
+
+  toggleConfirmPasswordVisibility(): void {
+    this.showConfirmPassword = !this.showConfirmPassword;
   }
 
   async savePreferences(): Promise<void> {
