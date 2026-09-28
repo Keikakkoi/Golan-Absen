@@ -39,6 +39,7 @@ export class EmployeeListComponent implements OnInit {
   isModalOpen = false;
   isEditMode = false;
   isSaving = false;
+  showPassword = false;
   selectedImportFile: File | null = null;
   selectedPhotoFile: File | null = null;
   photoError = '';
@@ -421,11 +422,13 @@ export class EmployeeListComponent implements OnInit {
   openAddModal(): void {
     this.isEditMode = false;
     this.resetForm();
+    this.showPassword = false;
     this.isModalOpen = true;
   }
 
   openEditModal(emp: any): void {
     this.isEditMode = true;
+    this.showPassword = false;
     this.formData = {
       id: emp.ID,
       employee_code: emp.Employee?.employee_code || '',
@@ -481,6 +484,11 @@ export class EmployeeListComponent implements OnInit {
 
   closeModal(): void {
     this.isModalOpen = false;
+    this.showPassword = false;
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
   }
 
   async saveEmployee(): Promise<void> {
@@ -604,6 +612,7 @@ export class EmployeeListComponent implements OnInit {
     this.selectedPhotoFile = null;
     this.photoError = '';
     this.isPhotoValidationPending = false;
+    this.showPassword = false;
     this.formData = {
       id: null,
       employee_code: '',
