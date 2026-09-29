@@ -735,9 +735,17 @@
     gap: 0;
   }
 
+  /* The internship dates are direct children of the row, so the generic
+     mobile form-group margin does not separate them. Keep a clear gap and a
+     comfortable native date-input target on touch devices. */
+  .employee-form-modal .internship-period-row {
+    gap: 12px;
+  }
+
   .employee-form-modal input[type='date'] {
     min-width: 0;
     width: 100%;
+    min-height: 42px;
     -webkit-appearance: auto;
   }
 

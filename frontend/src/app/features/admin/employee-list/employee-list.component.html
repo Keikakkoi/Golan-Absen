@@ -400,7 +400,7 @@
         </div>
         <div class="form-group" *ngIf="formData.role === 'MAGANG'">
           <label>Periode Magang</label>
-          <div class="form-group-row"><input type="date" [(ngModel)]="formData.internship_start_date" name="internship_start_date" class="form-control" /><input type="date" [(ngModel)]="formData.internship_end_date" name="internship_end_date" class="form-control" /></div>
+          <div class="form-group-row internship-period-row"><input type="date" [(ngModel)]="formData.internship_start_date" name="internship_start_date" class="form-control" aria-label="Tanggal mulai magang" /><input type="date" [(ngModel)]="formData.internship_end_date" name="internship_end_date" class="form-control" aria-label="Tanggal selesai magang" /></div>
         </div>
 
         <div class="form-group">
