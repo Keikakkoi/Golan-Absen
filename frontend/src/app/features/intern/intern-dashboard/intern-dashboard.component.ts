@@ -8,7 +8,6 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
-import { NotificationBellComponent } from '../../shared/notification-bell/notification-bell.component';
 import { EMPTY, Subject, Subscription, filter, take, switchMap, takeUntil, timer, catchError } from 'rxjs';
 
 interface CompanyEvent {
@@ -39,7 +38,7 @@ interface CalendarDay {
 @Component({
   selector: 'app-intern-dashboard',
   standalone: true,
-  imports: [CommonModule, DatePipe, RouterLink, SharedSidebarComponent, DashboardChartsComponent, NotificationBellComponent],
+  imports: [CommonModule, DatePipe, RouterLink, SharedSidebarComponent, DashboardChartsComponent],
   templateUrl: './intern-dashboard.component.html',
   styleUrls: ['./intern-dashboard.component.scss']
 })
