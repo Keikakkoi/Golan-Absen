@@ -447,6 +447,38 @@
   min-width: 0;
 }
 
+.internship-date-field {
+  min-width: 0;
+}
+
+.internship-date-control {
+  position: relative;
+}
+
+.internship-date-input-empty {
+  color: transparent;
+}
+
+.internship-date-input-empty::-webkit-datetime-edit {
+  color: transparent;
+}
+
+.internship-date-placeholder {
+  position: absolute;
+  top: 0;
+  right: 42px;
+  bottom: 0;
+  left: 9px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: #64748b;
+  font-size: inherit;
+  line-height: 1;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .modal-footer {
   margin-top: 1.5rem;
   display: flex;
@@ -740,6 +772,10 @@
      comfortable native date-input target on touch devices. */
   .employee-form-modal .internship-period-row {
     gap: 12px;
+  }
+
+  .employee-form-modal .internship-period-row .internship-date-field {
+    margin-bottom: 0;
   }
 
   .employee-form-modal input[type='date'] {

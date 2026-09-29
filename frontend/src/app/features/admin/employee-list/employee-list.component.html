@@ -400,7 +400,22 @@
         </div>
         <div class="form-group" *ngIf="formData.role === 'MAGANG'">
           <label>Periode Magang</label>
-          <div class="form-group-row internship-period-row"><input type="date" [(ngModel)]="formData.internship_start_date" name="internship_start_date" class="form-control" aria-label="Tanggal mulai magang" /><input type="date" [(ngModel)]="formData.internship_end_date" name="internship_end_date" class="form-control" aria-label="Tanggal selesai magang" /></div>
+          <div class="form-group-row internship-period-row">
+            <div class="form-group internship-date-field">
+              <label for="internship-start-date">Tanggal mulai</label>
+              <div class="internship-date-control">
+                <input id="internship-start-date" type="date" [(ngModel)]="formData.internship_start_date" name="internship_start_date" class="form-control internship-date-input" [class.internship-date-input-empty]="!formData.internship_start_date" aria-label="Tanggal mulai magang" />
+                <span *ngIf="!formData.internship_start_date" class="internship-date-placeholder" aria-hidden="true">dd/mm/tttt</span>
+              </div>
+            </div>
+            <div class="form-group internship-date-field">
+              <label for="internship-end-date">Tanggal selesai</label>
+              <div class="internship-date-control">
+                <input id="internship-end-date" type="date" [(ngModel)]="formData.internship_end_date" name="internship_end_date" class="form-control internship-date-input" [class.internship-date-input-empty]="!formData.internship_end_date" aria-label="Tanggal selesai magang" />
+                <span *ngIf="!formData.internship_end_date" class="internship-date-placeholder" aria-hidden="true">dd/mm/tttt</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
