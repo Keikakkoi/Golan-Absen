@@ -112,6 +112,7 @@ export class AppComponent implements OnInit, OnDestroy {
       ? this.document.location.pathname
       : url;
     const path = effectiveUrl.split('?')[0].split('#')[0].replace(/^\/+/, '');
+    this.syncRoleClass();
     const publicRoutes = new Set(['', 'home', 'login', 'forgot-password', 'verify-password-otp', 'reset-password', '403', 'forbidden', 'maintenance']);
     const authRoutes = new Set(['login', 'forgot-password', 'verify-password-otp', 'reset-password']);
     this.pageLoading.setLayout(authRoutes.has(path) ? 'auth' : publicRoutes.has(path) ? 'public' : 'app');
@@ -124,6 +125,14 @@ export class AppComponent implements OnInit, OnDestroy {
     // AuthService has just reconstructed the user context from localStorage or
     // the token after ThemeService was instantiated.
     this.themeService.applyStoredTheme();
+  }
+
+  private syncRoleClass(): void {
+    const role = String(this.authService.getRole() || '').toUpperCase();
+    this.document.body.classList.toggle('role-magang', role === 'MAGANG');
+    this.document.body.classList.toggle('role-karyawan', role === 'KARYAWAN');
+    this.document.body.classList.toggle('role-manajer', role === 'MANAJER');
+    this.document.body.classList.toggle('role-hrd', role === 'HRD');
   }
 
   private syncFontAwesome(required: boolean): void {

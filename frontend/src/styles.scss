@@ -4049,3 +4049,235 @@ body.dark-theme .filter-date-year { border-color: #475569; background: #172033; 
   .quick-actions-grid .action-card h3 { font-size: 0.95rem !important; }
   .quick-actions-grid .action-card p { font-size: 0.7rem !important; }
 }
+
+/* Large desktop dashboard presentation.
+   The compact desktop rules above are useful for ordinary laptop widths, but
+   leave the HRD dashboard visually too small on QHD/4K monitors. Scale the
+   dashboard shell so the sidebar, cards, charts, and controls grow together.
+   The mobile dashboard remains unchanged. */
+@media (min-width: 1440px) {
+  .admin-theme {
+    --dashboard-screen-scale: 1.7;
+    --dashboard-chart-height: 560px;
+    zoom: var(--dashboard-screen-scale);
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .admin-theme .admin-dashboard-page app-dashboard-charts {
+    min-height: var(--dashboard-chart-height) !important;
+  }
+
+  .admin-theme .admin-dashboard-page app-dashboard-charts .dashboard-charts {
+    min-height: var(--dashboard-chart-height);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .admin-theme .admin-dashboard-page app-dashboard-charts .chart-grid {
+    flex: 1;
+    grid-auto-rows: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 2400px) {
+  .admin-theme {
+    --dashboard-screen-scale: 2.1;
+    --dashboard-chart-height: 620px;
+  }
+}
+
+@media (min-width: 3200px) {
+  .admin-theme {
+    --dashboard-screen-scale: 2.3;
+    --dashboard-chart-height: 680px;
+  }
+}
+
+/* Large desktop lazy-loading skeleton for authenticated app roles. */
+@media (min-width: 1440px) {
+  body.role-hrd .page-skeleton-overlay.app-layout,
+  body.role-manajer .page-skeleton-overlay.app-layout,
+  body.role-karyawan .page-skeleton-overlay.app-layout,
+  body.role-magang .page-skeleton-overlay.app-layout {
+    --admin-loading-scale: 1.7;
+    zoom: var(--admin-loading-scale);
+    width: 100%;
+    min-height: 100vh;
+  }
+}
+
+@media (min-width: 2400px) {
+  body.role-hrd .page-skeleton-overlay.app-layout,
+  body.role-manajer .page-skeleton-overlay.app-layout,
+  body.role-karyawan .page-skeleton-overlay.app-layout,
+  body.role-magang .page-skeleton-overlay.app-layout {
+    --admin-loading-scale: 2.1;
+  }
+}
+
+@media (min-width: 3200px) {
+  body.role-hrd .page-skeleton-overlay.app-layout,
+  body.role-manajer .page-skeleton-overlay.app-layout,
+  body.role-karyawan .page-skeleton-overlay.app-layout,
+  body.role-magang .page-skeleton-overlay.app-layout {
+    --admin-loading-scale: 2.3;
+  }
+}
+
+/* Large desktop manager dashboard and manager-area pages. */
+@media (min-width: 1440px) {
+  body.role-manajer app-manager-dashboard .dashboard-container,
+  body.role-manajer app-team-attendance .dashboard-container,
+  body.role-manajer app-team-reports .dashboard-container,
+  body.role-manajer app-team-statistics .dashboard-container,
+  body.role-manajer app-manager-leave-approval .dashboard-container,
+  body.role-manajer app-checkin .dashboard-container,
+  body.role-manajer app-history .dashboard-container,
+  body.role-manajer app-leave-request .dashboard-container,
+  body.role-manajer app-work-report .dashboard-container,
+  body.role-manajer app-statistics .dashboard-container,
+  body.role-manajer app-notifications .dashboard-container,
+  body.role-manajer app-profile .dashboard-container {
+    --manager-dashboard-scale: 1.7;
+    zoom: var(--manager-dashboard-scale);
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+}
+
+@media (min-width: 2400px) {
+  body.role-manajer app-manager-dashboard .dashboard-container,
+  body.role-manajer app-team-attendance .dashboard-container,
+  body.role-manajer app-team-reports .dashboard-container,
+  body.role-manajer app-team-statistics .dashboard-container,
+  body.role-manajer app-manager-leave-approval .dashboard-container,
+  body.role-manajer app-checkin .dashboard-container,
+  body.role-manajer app-history .dashboard-container,
+  body.role-manajer app-leave-request .dashboard-container,
+  body.role-manajer app-work-report .dashboard-container,
+  body.role-manajer app-statistics .dashboard-container,
+  body.role-manajer app-notifications .dashboard-container,
+  body.role-manajer app-profile .dashboard-container {
+    --manager-dashboard-scale: 2.1;
+  }
+}
+
+@media (min-width: 3200px) {
+  body.role-manajer app-manager-dashboard .dashboard-container,
+  body.role-manajer app-team-attendance .dashboard-container,
+  body.role-manajer app-team-reports .dashboard-container,
+  body.role-manajer app-team-statistics .dashboard-container,
+  body.role-manajer app-manager-leave-approval .dashboard-container,
+  body.role-manajer app-checkin .dashboard-container,
+  body.role-manajer app-history .dashboard-container,
+  body.role-manajer app-leave-request .dashboard-container,
+  body.role-manajer app-work-report .dashboard-container,
+  body.role-manajer app-statistics .dashboard-container,
+  body.role-manajer app-notifications .dashboard-container,
+  body.role-manajer app-profile .dashboard-container {
+    --manager-dashboard-scale: 2.3;
+  }
+}
+
+/* Large desktop employee dashboard and employee-area pages. */
+@media (min-width: 1440px) {
+  body.role-karyawan app-dashboard .dashboard-container,
+  body.role-karyawan app-checkin .dashboard-container,
+  body.role-karyawan app-history .dashboard-container,
+  body.role-karyawan app-leave-request .dashboard-container,
+  body.role-karyawan app-work-report .dashboard-container,
+  body.role-karyawan app-statistics .dashboard-container,
+  body.role-karyawan app-notifications .dashboard-container,
+  body.role-karyawan app-profile .dashboard-container,
+  body.role-karyawan app-manager .dashboard-container {
+    --employee-dashboard-scale: 1.7;
+    zoom: var(--employee-dashboard-scale);
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+}
+
+@media (min-width: 2400px) {
+  body.role-karyawan app-dashboard .dashboard-container,
+  body.role-karyawan app-checkin .dashboard-container,
+  body.role-karyawan app-history .dashboard-container,
+  body.role-karyawan app-leave-request .dashboard-container,
+  body.role-karyawan app-work-report .dashboard-container,
+  body.role-karyawan app-statistics .dashboard-container,
+  body.role-karyawan app-notifications .dashboard-container,
+  body.role-karyawan app-profile .dashboard-container,
+  body.role-karyawan app-manager .dashboard-container {
+    --employee-dashboard-scale: 2.1;
+  }
+}
+
+@media (min-width: 3200px) {
+  body.role-karyawan app-dashboard .dashboard-container,
+  body.role-karyawan app-checkin .dashboard-container,
+  body.role-karyawan app-history .dashboard-container,
+  body.role-karyawan app-leave-request .dashboard-container,
+  body.role-karyawan app-work-report .dashboard-container,
+  body.role-karyawan app-statistics .dashboard-container,
+  body.role-karyawan app-notifications .dashboard-container,
+  body.role-karyawan app-profile .dashboard-container,
+  body.role-karyawan app-manager .dashboard-container {
+    --employee-dashboard-scale: 2.3;
+  }
+}
+
+/* Large desktop intern dashboard presentation. */
+@media (min-width: 1440px) {
+  body.role-magang app-intern-dashboard .dashboard-container,
+  body.role-magang app-intern-logbook .dashboard-container,
+  body.role-magang app-intern-statistics .dashboard-container,
+  body.role-magang app-intern-mentor .dashboard-container,
+  body.role-magang app-intern-certificate .dashboard-container,
+  body.role-magang app-checkin .dashboard-container,
+  body.role-magang app-history .dashboard-container,
+  body.role-magang app-leave-request .dashboard-container,
+  body.role-magang app-statistics .dashboard-container,
+  body.role-magang app-notifications .dashboard-container,
+  body.role-magang app-profile .dashboard-container {
+    --intern-dashboard-scale: 1.7;
+    zoom: var(--intern-dashboard-scale);
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+}
+
+@media (min-width: 2400px) {
+  body.role-magang app-intern-dashboard .dashboard-container,
+  body.role-magang app-intern-logbook .dashboard-container,
+  body.role-magang app-intern-statistics .dashboard-container,
+  body.role-magang app-intern-mentor .dashboard-container,
+  body.role-magang app-intern-certificate .dashboard-container,
+  body.role-magang app-checkin .dashboard-container,
+  body.role-magang app-history .dashboard-container,
+  body.role-magang app-leave-request .dashboard-container,
+  body.role-magang app-statistics .dashboard-container,
+  body.role-magang app-notifications .dashboard-container,
+  body.role-magang app-profile .dashboard-container {
+    --intern-dashboard-scale: 2.1;
+  }
+}
+
+@media (min-width: 3200px) {
+  body.role-magang app-intern-dashboard .dashboard-container,
+  body.role-magang app-intern-logbook .dashboard-container,
+  body.role-magang app-intern-statistics .dashboard-container,
+  body.role-magang app-intern-mentor .dashboard-container,
+  body.role-magang app-intern-certificate .dashboard-container,
+  body.role-magang app-checkin .dashboard-container,
+  body.role-magang app-history .dashboard-container,
+  body.role-magang app-leave-request .dashboard-container,
+  body.role-magang app-statistics .dashboard-container,
+  body.role-magang app-notifications .dashboard-container,
+  body.role-magang app-profile .dashboard-container {
+    --intern-dashboard-scale: 2.3;
+  }
+}

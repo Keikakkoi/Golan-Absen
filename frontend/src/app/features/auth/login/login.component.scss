@@ -902,3 +902,34 @@
     gap: 18px;
   }
 }
+
+/* Large desktop presentation.
+   The application desktop density is intentionally compact, but that makes
+   the login card and brand panel too small on high-resolution monitors. Scale
+   the complete login layout while leaving the mobile layout untouched. */
+@media (min-width: 1440px) {
+  .split-layout {
+    --login-screen-scale: 1.7;
+  }
+
+  .brand-panel .brand-content {
+    animation: none;
+    transform: scale(var(--login-screen-scale));
+  }
+
+  .form-panel .login-card {
+    transform: translateY(-12px) scale(var(--login-screen-scale));
+  }
+}
+
+@media (min-width: 2400px) {
+  .split-layout {
+    --login-screen-scale: 2.1;
+  }
+}
+
+@media (min-width: 3200px) {
+  .split-layout {
+    --login-screen-scale: 2.3;
+  }
+}

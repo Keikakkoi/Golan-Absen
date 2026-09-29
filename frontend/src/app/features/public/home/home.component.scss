@@ -149,3 +149,29 @@
   .page-glow-one { top: -337.5px; right: -212.5px; width: 712.5px; height: 712.5px; }
   .page-glow-two { bottom: 225px; left: -375px; width: 625px; height: 625px; }
 }
+
+/* Large desktop presentation.
+   The landing page has no fixed content width on desktop, so on high-density
+   monitors its text and controls otherwise remain visually too small. Scale
+   the complete public page while keeping its visual edges inside the viewport.
+   These breakpoints cover WUXGA/QHD, WQXGA/3K, and 4K/ultrawide displays. */
+@media (min-width: 1440px) {
+  .public-page {
+    --large-screen-scale: 1.7;
+    zoom: var(--large-screen-scale);
+    width: 100%;
+    min-height: 100vh;
+  }
+}
+
+@media (min-width: 2400px) {
+  .public-page {
+    --large-screen-scale: 2.1;
+  }
+}
+
+@media (min-width: 3200px) {
+  .public-page {
+    --large-screen-scale: 2.3;
+  }
+}
