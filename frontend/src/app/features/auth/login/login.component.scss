@@ -933,3 +933,10 @@
     --login-screen-scale: 2.3;
   }
 }
+
+/* Focused 4K UHD 16:9 scale. */
+@media (min-width: 3200px) and (min-aspect-ratio: 16/9) and (max-aspect-ratio: 17/9) {
+  .split-layout {
+    --login-screen-scale: 2.6;
+  }
+}

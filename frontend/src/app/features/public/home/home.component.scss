@@ -175,3 +175,11 @@
     --large-screen-scale: 2.3;
   }
 }
+
+/* Focused 4K UHD 16:9 scale. Other large-monitor aspect ratios keep their
+   existing scale until the 4K focus is explicitly finished. */
+@media (min-width: 3200px) and (min-aspect-ratio: 16/9) and (max-aspect-ratio: 17/9) {
+  .public-page {
+    --large-screen-scale: 2.6;
+  }
+}
