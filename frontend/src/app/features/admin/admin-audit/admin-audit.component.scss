@@ -153,6 +153,14 @@
 
 .audit-action-cell { white-space: nowrap; }
 .audit-action-cell .status-badge { display: inline-flex; align-items: center; white-space: nowrap; }
+.audit-action-cell .status-badge.status-login {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+.audit-action-cell .status-badge.status-logout {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
 .audit-detail-cell { max-width: 255px; overflow: hidden; text-overflow: ellipsis; }
 .pagination { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.5rem; color: var(--text-dark-lo); font-size: 0.9rem; }
 .error-state { color: #b91c1c; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca; }

@@ -80,7 +80,9 @@
             <td class="audit-actor-cell"><strong>{{ log.User?.Nama || '-' }}</strong><small>{{ log.User?.Email || '-' }} · {{ log.User?.Role || '-' }}</small></td>
             <td class="audit-action-cell">
               <span class="status-badge" 
-                    [ngClass]="{'status-hadir': log.Action === 'CREATE', 
+                    [ngClass]="{'status-login': log.Action === 'LOGIN',
+                                'status-logout': log.Action === 'LOGOUT',
+                                'status-hadir': log.Action === 'CREATE',
                                 'status-terlambat': log.Action === 'UPDATE', 
                                 'status-izin': log.Action === 'DELETE'}">
                 {{ log.Action }}
