@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({
   selector: 'app-admin-audit',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent],
+  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent],
   templateUrl: './admin-audit.component.html',
   styleUrls: ['./admin-audit.component.scss']
 })
@@ -18,7 +19,8 @@ export class AdminAuditComponent implements OnInit {
   errorMessage = '';
   total = 0;
   page = 1;
-  readonly pageSize = 25;
+  pageSize = 25;
+  readonly pageSizeOptions = [10, 25, 50, 100];
   isExportOpen = false;
   filters = { q: '', action: 'Semua', table_name: 'Semua', start_date: '', end_date: '' };
   readonly actions = ['Semua', 'LOGIN', 'LOGOUT', 'CREATE', 'UPDATE', 'DELETE'];
@@ -49,7 +51,8 @@ export class AdminAuditComponent implements OnInit {
     this.http.get<any>(this.baseUrl, { headers, params }).subscribe({
       next: (data) => {
         this.logs = data?.data || [];
-        this.total = data?.total || 0;
+        this.total = Number(data?.total) || 0;
+        this.page = this.total > 0 ? Math.min(this.page, this.totalPages()) : 1;
         this.isLoading = false;
       },
       error: (err) => {
@@ -68,12 +71,17 @@ export class AdminAuditComponent implements OnInit {
     return Math.max(1, Math.ceil(this.total / this.pageSize));
   }
 
-  changePage(delta: number): void {
-    const next = this.page + delta;
-    if (next >= 1 && next <= this.totalPages()) {
-      this.page = next;
-      this.loadLogs();
-    }
+  pageChanged(page: number): void {
+    if (page === this.page || page < 1 || page > this.totalPages()) return;
+    this.page = page;
+    this.loadLogs();
+  }
+
+  pageSizeChanged(pageSize: number): void {
+    if (!this.pageSizeOptions.includes(pageSize) || pageSize === this.pageSize) return;
+    this.pageSize = pageSize;
+    this.page = 1;
+    this.loadLogs();
   }
 
   toggleExportDropdown(): void {

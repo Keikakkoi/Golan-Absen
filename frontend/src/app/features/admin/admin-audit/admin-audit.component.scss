@@ -162,7 +162,6 @@
   color: #dc2626;
 }
 .audit-detail-cell { max-width: 255px; overflow: hidden; text-overflow: ellipsis; }
-.pagination { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.5rem; color: var(--text-dark-lo); font-size: 0.9rem; }
 .error-state { color: #b91c1c; background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #fecaca; }
 
 @media (max-width: 768px) { 
@@ -172,7 +171,6 @@
     .form-control { min-width: 100%; width: 100%; }
     .search-input { flex-grow: 0; }
   }
-  .pagination { flex-direction: column; align-items: stretch; text-align: center; }
   .audit-table-container { border-radius: 8px; }
   .audit-table { min-width: 980px; }
   .audit-table th, .audit-table td { padding: .8rem .9rem; }
