@@ -1,3 +1,14 @@
+/* Keep the general-settings page at the actual height of its forms and
+   panels instead of extending the shell to the full 4K viewport. */
+.admin-theme.admin-settings-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.admin-theme.admin-settings-shell > .main-content.settings-page {
+  min-height: 0 !important;
+}
+
 .admin-theme {
   display: flex;
   min-height: 100vh;
@@ -68,6 +79,13 @@
 
       @media (max-width: 980px) {
         grid-template-columns: 1fr;
+      }
+
+      // At tablet width the two cards leave the schedule table too narrow.
+      // Stack them so every schedule field remains usable without relying on
+      // a clipped horizontal strip.
+      @media (min-width: 901px) and (max-width: 1100px) {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 
@@ -289,9 +307,30 @@
 .regular-schedule-table { display: grid; gap: 8px; min-width: 560px; }
 .regular-schedule-row { display: grid; grid-template-columns: 100px 90px repeat(2, minmax(105px, 1fr)) 130px; gap: 10px; align-items: center; min-width: 560px; }
 .regular-schedule-head { color: var(--text-dark-lo); font-size: .78rem; font-weight: 700; }
+.schedule-day-checkbox { width: 24px; height: 24px; margin: 0; accent-color: var(--green); }
+
+/* Tablet density: the native working-day checkbox should match the compact
+   controls beside it instead of dominating the schedule row. */
+@media (min-width: 901px) and (max-width: 1600px) {
+  .regular-schedule-row {
+    grid-template-columns: 92px 64px repeat(2, minmax(105px, 1fr)) 118px;
+    gap: 8px;
+  }
+
+  .schedule-day-checkbox {
+    width: 18px;
+    height: 18px;
+    justify-self: start;
+  }
+}
+
+.service-hours-group { display: flex; gap: 1rem; }
+.service-time-field { flex: 1 1 0; min-width: 0; }
+.service-time-field > label { display: block; }
 
 .settings-time-picker { position: relative; min-width: 0; z-index: 20; }
 .settings-time-picker.is-open { z-index: 50; }
+.settings-time-picker.is-drop-up .settings-time-menu { top: auto; bottom: calc(100% + 7px); }
 .settings-time-trigger {
   display: flex;
   align-items: center;
@@ -357,4 +396,9 @@
 
 @media (max-width: 600px) {
   .settings-time-menu { width: 100%; max-height: 220px; }
+  .service-hours-group { flex-direction: column; gap: 0; }
+}
+
+@media (min-width: 601px) and (max-width: 1100px) {
+  .service-time-field-end .settings-time-menu { right: 0; left: auto; }
 }

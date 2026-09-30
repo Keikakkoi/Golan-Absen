@@ -1,3 +1,12 @@
+.admin-theme.admin-audit-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.admin-theme.admin-audit-shell > .main-content.audit-log-page {
+  min-height: 0 !important;
+}
+
 .filter-bar { 
   display: flex; 
   gap: 12px; 

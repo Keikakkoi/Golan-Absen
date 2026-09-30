@@ -1,3 +1,12 @@
+.dashboard-container.manager-leave-approval-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.manager-leave-approval-shell > .main-content.manager-leave-approval-page {
+  min-height: 0 !important;
+}
+
 .toolbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px}.toolbar label{display:flex;flex-direction:column;gap:6px;font-weight:600;color:var(--text-dark)}
 
 /* Keep the search and status controls balanced on the same row. The select
@@ -72,6 +81,27 @@
 
 .leave-approval-table .leave-col-note { text-align: left; }
 
+.manager-note-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.35rem;
+  background: #fff;
+  color: #1f2937;
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.manager-note-input:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgba(147, 197, 253, .25);
+}
+
 .leave-approval-actions {
   display: flex;
   align-items: center;
@@ -110,6 +140,51 @@
   height: 22px;
   font-size: 22px;
   line-height: 1;
+}
+
+/* Match the compact blue/red icon buttons from the dark-mode reference. The
+   shared dark-theme disabled rule otherwise turns an approval button into a
+   low-contrast grey control while a request is being processed. */
+:host-context(body.dark-theme) .leave-approval-actions .btn-small.approve,
+:host-context(body.dark-theme) .leave-approval-actions .btn-small.approve:disabled {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  border-color: #60a5fa !important;
+  border-radius: 7px;
+  background: #60a5fa !important;
+  color: #eaf2ff !important;
+  opacity: 1;
+}
+
+:host-context(body.dark-theme) .leave-approval-actions .btn-small.reject,
+:host-context(body.dark-theme) .leave-approval-actions .btn-small.reject:disabled {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  border-color: #f87171 !important;
+  border-radius: 7px;
+  background: #f87171 !important;
+  color: #fff1f2 !important;
+  opacity: 1;
+}
+
+:host-context(body.dark-theme) .leave-approval-actions .btn-small.approve:hover:not(:disabled) {
+  border-color: #93c5fd !important;
+  background: #3b82f6 !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-actions .btn-small.reject:hover:not(:disabled) {
+  border-color: #fca5a5 !important;
+  background: #ef4444 !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-actions .btn-small .action-icon {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.8;
 }
 
 /* Center the approval columns and their contents. */
@@ -184,4 +259,4 @@
   }
 }
 
-.btn-note-save{display:block;margin:6px auto 0;border:1px solid #bfdbfe;border-radius:6px;padding:4px 9px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700;cursor:pointer}.saved-note{display:block;margin-top:6px;color:var(--text-dark-lo);font-size:12px}
+.saved-note{display:block;margin-top:6px;color:var(--text-dark-lo);font-size:12px}

@@ -1,3 +1,12 @@
+.dashboard-container.intern-certificate-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.intern-certificate-shell > .main-content.intern-certificate-page {
+  min-height: 0 !important;
+}
+
 .certificate-documents{max-width:700px;display:grid;gap:14px}
 .certificate-documents-intro{padding:0 4px 2px}.muted{color:var(--text-dark-lo)}
 .intern-document-card{padding:0 18px}

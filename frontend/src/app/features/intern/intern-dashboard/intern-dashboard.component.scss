@@ -7,6 +7,27 @@
   overflow: hidden;
 }
 
+:host {
+  position: static;
+  inset: auto;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.dashboard-container.intern-dashboard-shell {
+  height: auto !important;
+  min-height: 0 !important;
+  align-items: flex-start;
+  overflow: visible !important;
+}
+
+.dashboard-container.intern-dashboard-shell > .main-content.intern-dashboard-page {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
 .dashboard-container {
   height: 100%;
   min-height: 100%;

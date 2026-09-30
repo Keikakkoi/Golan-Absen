@@ -1,5 +1,14 @@
 @import '../dashboard/dashboard.component.scss';
 
+.dashboard-container.personal-statistics-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.personal-statistics-shell > .main-content.personal-statistics-page {
+  min-height: 0 !important;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));

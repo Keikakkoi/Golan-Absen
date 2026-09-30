@@ -1,3 +1,12 @@
+.dashboard-container.work-report-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.work-report-shell > .main-content.work-report-page {
+  min-height: 0 !important;
+}
+
 .compliance-grid {
   display: flex;
   flex-wrap: wrap;

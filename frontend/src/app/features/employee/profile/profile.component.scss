@@ -1,5 +1,14 @@
 @import '../dashboard/dashboard.component.scss';
 
+.dashboard-container.profile-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.profile-shell > .main-content.profile-page {
+  min-height: 0 !important;
+}
+
 /* Profile contains several long tab panels and forms. On mobile it must use
    the document's natural height instead of the fixed dashboard viewport. */
 @media (max-width: 900px) {
@@ -75,6 +84,30 @@
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+}
+
+/* Tablet landscape has less usable width after the fixed sidebar. Keep the
+   tabs readable and avoid forcing the detail cards beyond the content area. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .profile-tabs {
+    gap: 4px;
+
+    .tab-btn {
+      padding-inline: 10px;
+      font-size: .875rem;
+    }
+  }
+
+  .profile-photo-section,
+  .detail-grid {
+    min-width: 0;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 980px) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

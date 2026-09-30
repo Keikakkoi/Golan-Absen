@@ -9,7 +9,7 @@ import { ReportExportService } from '../../../core/services/report-export.servic
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 @Component({ selector: 'app-team-attendance', standalone: true, imports: [CommonModule, FormsModule, SharedSidebarComponent, PaginationComponent], templateUrl: './team-attendance.component.html', styleUrls: ['./team-attendance.component.scss'] })
 export class TeamAttendanceComponent implements OnInit {
-  startDate = new Date().toISOString().slice(0, 10); endDate = this.startDate; search = ''; status = ''; rows: any[] = []; private serverPaginated = false; private requestSequence = 0;
+  startDate = this.todayBusinessDate(); endDate = this.startDate; search = ''; status = ''; rows: any[] = []; private serverPaginated = false; private requestSequence = 0;
   error = ''; isExportOpen = false; page = 1; pageSize = 25; pageSizeOptions = [10, 25, 50, 100]; totalItems = 0; isLoading = false;
   constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService, private route: ActivatedRoute, private router: Router) {}
   ngOnInit(): void {
@@ -25,7 +25,7 @@ export class TeamAttendanceComponent implements OnInit {
   }
   load(page = 1, updateUrl = true): void {
     this.error = this.validateDateRange();
-    if (this.error) { this.rows = []; this.totalItems = 0; return; }
+    if (this.error) { this.rows = []; this.totalItems = 0; this.isLoading = false; return; }
     this.isLoading = true; this.page = page;
     if (updateUrl) void this.router.navigate([], { relativeTo: this.route, queryParams: this.attendanceQueryParams(), replaceUrl: true });
     const requestId = ++this.requestSequence;
@@ -65,6 +65,7 @@ export class TeamAttendanceComponent implements OnInit {
     return '';
   }
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }
+  private todayBusinessDate(): string { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date()); }
   private attendanceQueryParams(): Record<string, string | number> {
     const params: Record<string, string | number> = { page: this.page, limit: this.pageSize };
     if (this.startDate) params['start_date'] = this.startDate;

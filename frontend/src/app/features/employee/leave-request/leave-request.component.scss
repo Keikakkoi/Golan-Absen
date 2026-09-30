@@ -1,5 +1,14 @@
 @import '../dashboard/dashboard.component.scss';
 
+.dashboard-container.leave-request-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.leave-request-shell > .main-content.leave-request-page {
+  min-height: 0 !important;
+}
+
 /* This page has a long form. Release the fixed dashboard shell on mobile so
    the document can grow and the browser can scroll through the full form. */
 @media (max-width: 900px) {

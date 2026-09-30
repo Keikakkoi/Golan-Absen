@@ -122,6 +122,24 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
     return currentPath === '/admin/notifications' || currentPath === '/admin/settings/notifications';
   }
 
+  isAdminGeneralSettingsActive(): boolean {
+    return this.router.url.split(/[?#]/, 1)[0] === '/admin/settings';
+  }
+
+  isAdminDashboardActive(): boolean {
+    return this.router.url.split(/[?#]/, 1)[0] === '/admin/dashboard';
+  }
+
+  isAdminReportsActive(): boolean {
+    const currentPath = this.router.url.split(/[?#]/, 1)[0];
+    return currentPath === '/admin/reports'
+      || /^\/admin\/reports\/(daily|weekly|monthly)$/.test(currentPath);
+  }
+
+  isEmployeeProfileActive(): boolean {
+    return this.router.url.split(/[?#]/, 1)[0] === '/employee/profile';
+  }
+
   toggleTheme(): void {
     // Admin navbar changes are also the Profile preference. For regular
     // users, navbar only changes the active palette and keeps the switcher

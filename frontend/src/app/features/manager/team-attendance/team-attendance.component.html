@@ -1,6 +1,6 @@
-<div class="dashboard-container">
+<div class="dashboard-container team-attendance-shell">
   <app-shared-sidebar></app-shared-sidebar>
-  <main class="main-content">
+  <main class="main-content team-attendance-page">
     <div class="header">
       <h2>Absensi Tim</h2>
       <p>Status kehadiran anggota tim berdasarkan rentang tanggal.</p>
@@ -12,7 +12,7 @@
           <label>Dari tanggal<input type="date" lang="id" class="golan-input" [(ngModel)]="startDate" [max]="endDate || null" aria-label="Dari tanggal"></label>
           <label>Sampai tanggal<input type="date" lang="id" class="golan-input" [(ngModel)]="endDate" [min]="startDate || null" aria-label="Sampai tanggal"></label>
           <label>Status<select class="golan-input" [(ngModel)]="status"><option value="">Semua status</option><option>Hadir</option><option>Terlambat</option><option value="Tidak hadir">Alpha</option></select></label>
-          <button type="button" class="btn-primary report-filter-action" (click)="load()">Filter</button>
+          <button type="button" class="btn-primary report-filter-action" (click)="load()" [disabled]="isLoading">{{ isLoading ? 'Memuat...' : 'Filter' }}</button>
           <div class="export-dropdown">
             <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()"><i class="fas fa-file-export" aria-hidden="true"></i> Unduh / Cetak <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
             <div class="dropdown-menu-custom" *ngIf="isExportOpen">

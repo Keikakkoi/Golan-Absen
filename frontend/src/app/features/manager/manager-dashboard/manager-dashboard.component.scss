@@ -4,6 +4,15 @@
   min-height: 100%;
 }
 
+.dashboard-container.manager-dashboard-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.manager-dashboard-shell > .main-content.manager-dashboard-page {
+  min-height: 0 !important;
+}
+
 .dashboard-container {
   min-height: 100vh;
   height: auto;

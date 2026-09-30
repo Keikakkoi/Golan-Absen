@@ -127,19 +127,13 @@ export class ManagerLeaveApprovalComponent implements OnInit, OnDestroy {
   }
 
   canDecide(request: any): boolean { return request?.Status === 'pending_manager_approval' || request?.Status === 'Pending'; }
+  canAddManagerNote(request: any): boolean { return this.canDecide(request); }
   approverLabel(request: any): string {
     const approver = request?.AssignedApprover || request?.assigned_approver;
     return approver?.Nama || (request?.AssignedApproverRole === 'HRD' ? 'HRD' : 'Manajer utama');
   }
   statusLabel(status: string): string {
     return ({pending_manager_approval: 'Menunggu Persetujuan Manajer', manager_approved: 'Disetujui Manajer', manager_rejected: 'Ditolak Manajer', pending_hrd_approval: 'Menunggu Persetujuan HRD', hrd_approved: 'Disetujui HRD', hrd_rejected: 'Ditolak HRD', Pending: 'Menunggu Persetujuan Manajer', Approved: 'Disetujui', Rejected: 'Ditolak'} as any)[status] || status || '-';
-  }
-
-  saveNote(id: number): void {
-    this.http.put(`http://localhost:8080/api/v1/manager/leaves/${id}/note`, { catatan: this.notes[id] || '' }, { headers: this.headers() }).subscribe({
-      next: () => { this.alert.success('Catatan berhasil disimpan'); this.load(false, true); },
-      error: e => this.error = e.error?.error || 'Gagal menyimpan catatan'
-    });
   }
 
   isProcessing(id: number): boolean { return !!this.processingRequests[id]; }

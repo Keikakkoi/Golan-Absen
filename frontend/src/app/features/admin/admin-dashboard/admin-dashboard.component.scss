@@ -122,6 +122,17 @@
   }
 }
 
+/* The dashboard content can be shorter than a 4K viewport. Do not keep the
+   white admin shell stretched to the full viewport in that case. */
+.admin-theme.admin-dashboard-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.admin-theme.admin-dashboard-shell > .main-content.admin-dashboard-page {
+  min-height: 0 !important;
+}
+
 .admin-dashboard-page,
 .admin-dashboard-page .header,
 .admin-dashboard-page .welcome-text,
@@ -251,5 +262,27 @@
 @media (min-width: 901px) and (max-width: 1200px) {
   .admin-theme .stats-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Keep the HRD dashboard balanced when the sidebar leaves a tablet-sized
+   content area. */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .admin-dashboard-page .header {
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .admin-dashboard-page .notification-wrapper {
+    flex: 0 0 auto;
+  }
+
+  .admin-dashboard-page .quick-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-dashboard-page app-dashboard-charts {
+    min-width: 0;
+    overflow: hidden;
   }
 }

@@ -58,6 +58,7 @@ export class AdminSettingsComponent implements OnInit {
   readonly timeHours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
   readonly timeMinutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'));
   openTimePicker: string | null = null;
+  timePickerOpenUp = false;
   private timeDraft: Record<string, { hour: string; minute: string }> = {};
 
   // Holidays
@@ -280,12 +281,39 @@ export class AdminSettingsComponent implements OnInit {
   toggleTimePicker(key: string, value: string): void {
     if (this.openTimePicker === key) {
       this.openTimePicker = null;
+      this.timePickerOpenUp = false;
       return;
     }
     this.timeDraft[key] = /^\d{2}:\d{2}$/.test(value || '')
       ? { hour: value.substring(0, 2), minute: value.substring(3, 5) }
       : { hour: '', minute: '' };
     this.openTimePicker = key;
+    this.timePickerOpenUp = false;
+    this.updateTimePickerPlacement();
+  }
+
+  private updateTimePickerPlacement(): void {
+    if (!this.openTimePicker) return;
+
+    // The menu is created by *ngIf after the click has been processed. Measure
+    // it on the next frame so responsive menu heights are included.
+    requestAnimationFrame(() => {
+      if (!this.openTimePicker) return;
+
+      const picker = document.querySelector('.settings-time-picker.is-open') as HTMLElement | null;
+      const trigger = picker?.querySelector('.settings-time-trigger') as HTMLElement | null;
+      const menu = picker?.querySelector('.settings-time-menu') as HTMLElement | null;
+      if (!trigger || !menu) return;
+
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuHeight = menu.getBoundingClientRect().height;
+      const gap = 7;
+      const spaceAbove = triggerRect.top;
+      const spaceBelow = window.innerHeight - triggerRect.bottom;
+
+      this.timePickerOpenUp =
+        spaceBelow < menuHeight + gap && spaceAbove >= menuHeight + gap;
+    });
   }
 
   selectTimePart(key: string, part: 'hour' | 'minute', value: string, target: any, field: string): void {
@@ -295,6 +323,7 @@ export class AdminSettingsComponent implements OnInit {
     if (draft.hour && draft.minute) {
       target[field] = `${draft.hour}:${draft.minute}`;
       this.openTimePicker = null;
+      this.timePickerOpenUp = false;
     }
   }
 
@@ -316,12 +345,21 @@ export class AdminSettingsComponent implements OnInit {
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
-    if (!target.closest('.settings-time-picker')) this.openTimePicker = null;
+    if (!target.closest('.settings-time-picker')) {
+      this.openTimePicker = null;
+      this.timePickerOpenUp = false;
+    }
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
     this.openTimePicker = null;
+    this.timePickerOpenUp = false;
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateTimePickerPlacement();
   }
 
   // --- HOLIDAYS ---

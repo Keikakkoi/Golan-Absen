@@ -185,9 +185,6 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 			record, hasRecord := byEmployee[recordKey(employee.ID, date)]
 			if hasRecord {
 				status = string(record.Status)
-				if status == string(models.StatusTerlambat) {
-					status = string(models.StatusHadir)
-				}
 				if record.JamMasuk != nil {
 					masuk = record.JamMasuk.Format("15:04")
 				}

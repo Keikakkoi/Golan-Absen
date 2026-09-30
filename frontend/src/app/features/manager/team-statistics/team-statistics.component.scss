@@ -1,3 +1,12 @@
+.dashboard-container.team-statistics-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.team-statistics-shell > .main-content.team-statistics-page {
+  min-height: 0 !important;
+}
+
 .toolbar{display:flex;align-items:end;gap:12px;margin-bottom:24px}.toolbar label{display:flex;flex-direction:column;gap:6px}.member-row{margin:18px 0}.bar-line{display:flex;height:14px;background:var(--mint-1);border-radius:99px;overflow:hidden;margin:8px 0}.present{background:var(--green)}.late{background:#f59e0b}.member-row small{color:var(--text-dark-lo)}
 .manager-controls{display:flex;justify-content:flex-end;gap:8px;margin:0 0 16px}.manager-groups{display:grid;gap:12px;min-width:0}.manager-group{position:relative;width:100%;max-width:100%;border:1px solid var(--mint-2);border-radius:12px;overflow:hidden;background:var(--mint-0);box-sizing:border-box}.manager-group-header{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-width:0;padding:16px 76px 16px 16px;box-sizing:border-box}.manager-group-summary{display:flex;flex:1 1 auto;flex-direction:column;gap:5px;min-width:0;overflow-wrap:anywhere}.manager-group-summary strong{font-size:1rem}.manager-group-summary small{color:var(--text-dark-lo);font-weight:500;line-height:1.4}.manager-toggle-button{position:absolute;top:50%;right:16px;z-index:1;transform:translateY(-50%);display:grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid var(--mint-2);border-radius:50%;background:var(--mint-0);color:var(--text-dark);cursor:pointer;box-sizing:border-box;list-style:none}.manager-toggle-button::-webkit-details-marker{display:none}.manager-toggle-button:hover,.manager-toggle-button:focus-visible{background:var(--mint-1);outline:2px solid var(--green);outline-offset:-2px}.manager-group[open] .manager-toggle-button i{transform:rotate(180deg)}.manager-members{padding:0 16px 8px;box-sizing:border-box}.manager-members .member-row{padding:12px 0;margin:0;border-top:1px solid var(--mint-2)}.member-heading{display:flex;justify-content:space-between;gap:12px;min-width:0}.member-heading strong{min-width:0;overflow-wrap:anywhere}.member-heading span{font-weight:700;color:var(--green);flex:0 0 auto}
 

@@ -1,6 +1,6 @@
-<div class="dashboard-container">
+<div class="dashboard-container manager-leave-approval-shell">
   <app-shared-sidebar></app-shared-sidebar>
-  <main class="main-content">
+  <main class="main-content manager-leave-approval-page">
     <div class="header">
       <h2>Persetujuan Izin Tim</h2>
       <p>Manajer memproses pengajuan karyawan dan magang dalam tanggung jawabnya.</p>
@@ -29,7 +29,13 @@
               <td class="leave-col-rejection">{{ rejectionReason(request) }}</td>
               <td class="leave-col-note leave-col-admin-note"><span class="note-display" [title]="displayAdminNote(request)">{{ displayAdminNote(request) }}</span></td>
               <td class="leave-col-note">
-                <span class="note-display" [title]="displayManagerNote(request)">{{ displayManagerNote(request) }}</span>
+                <ng-container *ngIf="canAddManagerNote(request); else savedManagerNote">
+                  <label class="sr-only" [for]="'manager-note-' + request.ID">Catatan Manajer</label>
+                  <textarea class="manager-note-input" [id]="'manager-note-' + request.ID" [(ngModel)]="notes[request.ID]" rows="3" placeholder="Tulis catatan atau alasan keputusan Manajer..." [disabled]="isProcessing(request.ID)"></textarea>
+                </ng-container>
+                <ng-template #savedManagerNote>
+                  <span class="note-display" [title]="displayManagerNote(request)">{{ displayManagerNote(request) }}</span>
+                </ng-template>
               </td>
               <td class="leave-col-action">
                 <div class="leave-approval-actions">

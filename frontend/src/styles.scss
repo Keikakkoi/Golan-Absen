@@ -4807,3 +4807,83 @@ body.dark-theme .filter-date-year { border-color: #475569; background: #172033; 
     font-size: .875rem;
   }
 }
+
+/* Desktop sidebar scrolling baseline.
+   Keep the navigation inside the viewport on Full HD, QHD, 4K, and ultrawide
+   screens. The sidebar owns its vertical scroll so the page content and the
+   navigation never compete for the same scrollbar. */
+@media (min-width: 901px) {
+  app-shared-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    display: block;
+    width: 238px;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    z-index: 100;
+  }
+
+  app-shared-sidebar .sidebar {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+    box-sizing: border-box;
+    overflow-x: hidden !important;
+    overflow-y: scroll !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 24px !important;
+  }
+
+  app-shared-sidebar .sidebar-nav {
+    min-height: 0;
+    padding-bottom: 8px;
+  }
+}
+
+/* The large-screen dashboard wrappers use CSS zoom. Counterbalance that
+   zoom on the fixed sidebar height so Full HD and larger viewports still get
+   a real viewport-sized scroll area instead of a clipped 100vh panel. */
+@media (min-width: 1440px) {
+  .admin-theme app-shared-sidebar,
+  body.role-manajer app-manager-dashboard app-shared-sidebar,
+  body.role-manajer app-team-attendance app-shared-sidebar,
+  body.role-manajer app-team-reports app-shared-sidebar,
+  body.role-manajer app-team-statistics app-shared-sidebar,
+  body.role-manajer app-manager-leave-approval app-shared-sidebar,
+  body.role-manajer app-checkin app-shared-sidebar,
+  body.role-manajer app-history app-shared-sidebar,
+  body.role-manajer app-leave-request app-shared-sidebar,
+  body.role-manajer app-work-report app-shared-sidebar,
+  body.role-manajer app-statistics app-shared-sidebar,
+  body.role-manajer app-notifications app-shared-sidebar,
+  body.role-manajer app-profile app-shared-sidebar,
+  body.role-karyawan app-dashboard app-shared-sidebar,
+  body.role-karyawan app-checkin app-shared-sidebar,
+  body.role-karyawan app-history app-shared-sidebar,
+  body.role-karyawan app-leave-request app-shared-sidebar,
+  body.role-karyawan app-work-report app-shared-sidebar,
+  body.role-karyawan app-statistics app-shared-sidebar,
+  body.role-karyawan app-notifications app-shared-sidebar,
+  body.role-karyawan app-profile app-shared-sidebar,
+  body.role-karyawan app-manager app-shared-sidebar,
+  body.role-magang app-intern-dashboard app-shared-sidebar,
+  body.role-magang app-intern-logbook app-shared-sidebar,
+  body.role-magang app-intern-statistics app-shared-sidebar,
+  body.role-magang app-intern-mentor app-shared-sidebar,
+  body.role-magang app-intern-certificate app-shared-sidebar,
+  body.role-magang app-checkin app-shared-sidebar,
+  body.role-magang app-history app-shared-sidebar,
+  body.role-magang app-leave-request app-shared-sidebar,
+  body.role-magang app-statistics app-shared-sidebar,
+  body.role-magang app-notifications app-shared-sidebar,
+  body.role-magang app-profile app-shared-sidebar {
+    height: calc(100dvh / var(--dashboard-screen-scale, var(--manager-dashboard-scale, var(--employee-dashboard-scale, var(--intern-dashboard-scale, 1))))) !important;
+    max-height: calc(100dvh / var(--dashboard-screen-scale, var(--manager-dashboard-scale, var(--employee-dashboard-scale, var(--intern-dashboard-scale, 1))))) !important;
+  }
+}

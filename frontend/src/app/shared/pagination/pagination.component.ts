@@ -78,6 +78,7 @@ export class PaginationComponent {
   @Input() showEmpty = true;
   pageSizeOpen = false;
   pageSizeDropUp = false;
+  private pageSizeTrigger: HTMLElement | null = null;
   @Output() pageChange = new EventEmitter<number>();
   @Output() pageSizeChange = new EventEmitter<number>();
 
@@ -102,19 +103,38 @@ export class PaginationComponent {
   togglePageSize(event: MouseEvent): void {
     event.stopPropagation();
     if (this.loading) return;
+    this.pageSizeTrigger = event.currentTarget as HTMLElement;
     this.pageSizeOpen = !this.pageSizeOpen;
-    if (this.pageSizeOpen) this.updatePageSizeDirection(event.currentTarget as HTMLElement);
+    if (this.pageSizeOpen) {
+      this.pageSizeDropUp = false;
+      this.updatePageSizeDirection(this.pageSizeTrigger);
+    } else {
+      this.pageSizeDropUp = false;
+    }
   }
   selectPageSize(size: number, event: MouseEvent): void { event.stopPropagation(); this.pageSizeOpen = false; this.pageSizeDropUp = false; this.pageSizeChange.emit(Number(size)); }
-  @HostListener('document:click') closePageSize(): void { this.pageSizeOpen = false; this.pageSizeDropUp = false; }
+  @HostListener('document:click') closePageSize(): void { this.pageSizeOpen = false; this.pageSizeDropUp = false; this.pageSizeTrigger = null; }
   @HostListener('window:resize') onWindowResize(): void { if (this.pageSizeOpen) this.updatePageSizeDirection(); }
 
   private updatePageSizeDirection(trigger?: HTMLElement): void {
-    const element = trigger || document.querySelector('.page-size-trigger') as HTMLElement | null;
+    const element = trigger || this.pageSizeTrigger || document.querySelector('.page-size-trigger') as HTMLElement | null;
     if (!element) return;
-    const rect = element.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    this.pageSizeDropUp = spaceBelow < 155 && spaceAbove > spaceBelow;
+
+    // The menu is rendered by *ngIf after the click. Measure it on the next
+    // frame so the actual option count and responsive layout are included.
+    requestAnimationFrame(() => {
+      if (!this.pageSizeOpen) return;
+
+      const dropdown = element.closest('.page-size-dropdown') as HTMLElement | null;
+      const menu = dropdown?.querySelector('.page-size-menu') as HTMLElement | null;
+      const menuHeight = menu?.getBoundingClientRect().height || 155;
+      const gap = 1;
+      const rect = element.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      this.pageSizeDropUp =
+        spaceBelow < menuHeight + gap && spaceAbove >= menuHeight + gap;
+    });
   }
 }

@@ -1,5 +1,16 @@
 @import '../employee-list/employee-list.component.scss';
 
+/* The report table should define the page height. Prevent the shared 4K
+   viewport minimum from leaving a large white area below the pagination. */
+.admin-theme.admin-report-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.admin-theme.admin-report-shell > .main-content.admin-report-page {
+  min-height: 0 !important;
+}
+
 .admin-report-page,
 .admin-report-page > .golan-card,
 .admin-report-page .report-table-container {

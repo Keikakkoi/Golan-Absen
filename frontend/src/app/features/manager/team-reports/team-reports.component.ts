@@ -34,6 +34,7 @@ export class TeamReportsComponent implements OnInit {
   notes: { [id: number]: string } = {};
   private reviewingIds = new Set<number>();
   private confirmingIds = new Set<number>();
+  private requestSequence = 0;
 
   constructor(
     private http: HttpClient,
@@ -49,6 +50,13 @@ export class TeamReportsComponent implements OnInit {
   load(isRefresh = false): void {
     if (isRefresh && (this.isRefreshing || this.isLoading)) return;
 
+    if (this.start && this.end && this.start > this.end) {
+      this.error = 'Rentang tanggal tidak valid: Dari Tanggal harus sama dengan atau sebelum Sampai Tanggal.';
+      this.isLoading = false;
+      this.isRefreshing = false;
+      return;
+    }
+
     this.isLoading = !isRefresh;
     this.isRefreshing = isRefresh;
     this.error = '';
@@ -61,8 +69,10 @@ export class TeamReportsComponent implements OnInit {
     // Prevent an intermediary/browser cache from returning the old report list.
     params = params.set('_refresh', Date.now().toString());
 
+    const requestId = ++this.requestSequence;
     this.http.get<any>('http://localhost:8080/api/v1/manager/team/reports', { params, headers: this.headers() }).subscribe({
       next: response => {
+        if (requestId !== this.requestSequence) return;
         const paginated = !Array.isArray(response) && Array.isArray(response?.data);
         if (paginated) {
           this.reports = (response.data || []).slice(0, this.pageSize);
@@ -94,6 +104,7 @@ export class TeamReportsComponent implements OnInit {
         this.isRefreshing = false;
       },
       error: e => {
+        if (requestId !== this.requestSequence) return;
         this.error = isRefresh
           ? 'Gagal memperbarui data laporan: ' + (e.error?.error || 'Periksa koneksi lalu coba lagi.')
           : 'Gagal memuat laporan tim: ' + (e.error?.error || 'Unknown error');

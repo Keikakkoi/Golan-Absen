@@ -1,5 +1,14 @@
 @import '../dashboard/dashboard.component.scss';
 
+.dashboard-container.attendance-history-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.attendance-history-shell > .main-content.attendance-history-page {
+  min-height: 0 !important;
+}
+
 /* The dashboard stylesheet is shared with the fixed desktop shell. History
    contains variable-height table/calendar content, so it must be allowed to
    grow with the document on small screens. */

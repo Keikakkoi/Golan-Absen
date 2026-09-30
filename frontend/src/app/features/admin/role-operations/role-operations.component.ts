@@ -27,6 +27,9 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   logbookPageSizeOptions = [10, 25, 50, 100];
   logbookPageSize = 25;
   logbookCurrentPage = 1;
+  certificatePageSizeOptions = [10, 25, 50, 100];
+  certificatePageSize = 25;
+  certificateCurrentPage = 1;
   attendancePage = 1; attendancePageSize = 25; attendancePageSizeOptions = [10, 25, 50, 100]; attendanceTotalItems = 0; attendanceLoading = false;
   reportsPage = 1; reportsPageSize = 25; reportsPageSizeOptions = [10, 25, 50, 100]; reportsTotalItems = 0; reportsLoading = false;
   private attendanceServerPaginated = false; private reportsServerPaginated = false;
@@ -45,7 +48,7 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   leaveLoading = false;
   private leaveServerPaginated = false;
   notes: Record<number, string> = {};
-  startDate = new Date().toISOString().slice(0, 10);
+  startDate = this.todayBusinessDate();
   endDate = this.startDate;
   start = '';
   end = '';
@@ -53,7 +56,8 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   internSearch = '';
   selectedInternId = '';
   certificateStatus = '';
-  teamSearch = '';
+  attendanceSearch = '';
+  reportSearch = '';
   attendanceStatus = '';
   selectedCertInternId = '';
   selectedCertificateFiles: Record<number, File | null> = {};
@@ -70,8 +74,8 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   private statisticsRequestSequence = 0;
   private statisticsRequestInFlight = false;
   private dashboardRequestInFlight = false;
-  private attendanceRequestInFlight = false;
-  private reportsRequestInFlight = false;
+  private attendanceRequestSequence = 0;
+  private reportsRequestSequence = 0;
   private leaveRequestInFlight = false;
   private destroyed = false;
 
@@ -125,11 +129,18 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     const headers = this.headers();
     this.http.get<any>(`${this.api}/admin/internship/dashboard`, { headers }).subscribe({ next: data => this.internshipStats = data, error: e => this.fail(e) });
     this.loadLogbooks();
+    this.certificateCurrentPage = 1;
     let certificateParams = new HttpParams();
     if (this.certificateStatus) certificateParams = certificateParams.set('status', this.certificateStatus);
     if (this.internSearch) certificateParams = certificateParams.set('search', this.internSearch);
     if (this.selectedCertInternId) certificateParams = certificateParams.set('user_id', this.selectedCertInternId);
-    this.http.get<any[]>(`${this.api}/admin/internship/certificates`, { params: certificateParams, headers }).subscribe({ next: data => this.certificates = data || [], error: e => this.fail(e) });
+    this.http.get<any[]>(`${this.api}/admin/internship/certificates`, { params: certificateParams, headers }).subscribe({
+      next: data => {
+        this.certificates = data || [];
+        this.ensureValidCertificatePage();
+      },
+      error: e => this.fail(e)
+    });
   }
 
   loadLogbooks(): void {
@@ -250,6 +261,46 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   }
 
   private keepLogbookPaginationVisible(): void {}
+
+  onCertificatePageSizeChange(): void {
+    this.certificateCurrentPage = 1;
+    this.ensureValidCertificatePage();
+  }
+
+  goToCertificatePage(page: number | string): void {
+    if (typeof page !== 'number') return;
+    this.changeCertificatePage(page);
+  }
+
+  certificateTotalPages(): number {
+    return Math.max(1, Math.ceil(this.certificates.length / this.certificatePageSize));
+  }
+
+  get certificatePaginationStartIndex(): number {
+    return this.certificates.length === 0 ? 0 : (this.certificateCurrentPage - 1) * this.certificatePageSize;
+  }
+
+  get certificatePaginationEndIndex(): number {
+    return Math.min(this.certificatePaginationStartIndex + this.certificatePageSize, this.certificates.length);
+  }
+
+  get displayedCertificates(): any[] {
+    return this.certificates.slice(this.certificatePaginationStartIndex, this.certificatePaginationEndIndex);
+  }
+
+  private ensureValidCertificatePage(): void {
+    if (this.certificateCurrentPage > this.certificateTotalPages()) {
+      this.certificateCurrentPage = this.certificateTotalPages();
+    }
+  }
+
+  private changeCertificatePage(page: number): void {
+    const target = Math.min(Math.max(page, 1), this.certificateTotalPages());
+    if (target === this.certificateCurrentPage) return;
+
+    this.blurActiveControl();
+    this.certificateCurrentPage = target;
+  }
 
   downloadCertificate(userId: number): void {
     const cert = this.certificates.find(c => c.user_id === userId);
@@ -536,28 +587,85 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     });
   }
 
+  applyAttendanceFilters(): void {
+    const validationError = this.validateDateRange(this.startDate, this.endDate);
+    if (validationError) { this.errorMessage = validationError; return; }
+    this.attendancePage = 1;
+    this.loadAttendance(1);
+  }
+
+  applyReportFilters(): void {
+    const validationError = this.validateDateRange(this.start, this.end);
+    if (validationError) { this.errorMessage = validationError; return; }
+    this.reportsPage = 1;
+    this.loadReports(1);
+  }
+
   loadAttendance(page?: number, keepAttendanceVisible = false, background = false): void {
-    if (this.attendanceRequestInFlight) return;
-    if (this.startDate && this.endDate && this.endDate < this.startDate) { this.errorMessage = 'Sampai tanggal tidak boleh lebih kecil dari Dari tanggal.'; return; }
+    const validationError = this.validateDateRange(this.startDate, this.endDate);
+    if (validationError) { this.errorMessage = validationError; this.attendanceLoading = false; return; }
     this.errorMessage = '';
     const requestedPage = page ?? this.attendancePage;
-    this.attendancePage = requestedPage; this.attendanceLoading = !background; let params = new HttpParams().set('page', requestedPage).set('limit', this.attendancePageSize); if (this.startDate) params = params.set('start_date', this.startDate); if (this.endDate) params = params.set('end_date', this.endDate); if (this.teamSearch) params = params.set('search', this.teamSearch); if (this.attendanceStatus) params = params.set('status', this.attendanceStatus);
-    const context = new HttpContext().set(SKIP_PAGE_LOADING, background); this.attendanceRequestInFlight = true;
-    this.http.get<any>(`${this.api}/manager/team/attendance`, { params, headers: this.headers(), context }).pipe(finalize(() => this.attendanceRequestInFlight = false)).subscribe({ next: response => { this.attendanceServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.attendanceRows = this.attendanceServerPaginated ? response.data : (response || []); this.attendanceTotalItems = this.attendanceServerPaginated ? Number(response.total || this.attendanceRows.length) : this.attendanceRows.length; this.attendancePage = Number(response?.page || requestedPage); if (!background) this.attendanceLoading = false; setTimeout(() => { this.syncAttendanceStatusStyles(); if (keepAttendanceVisible) this.keepAttendancePanelVisible(); }); }, error: e => { if (!background) this.attendanceLoading = false; this.fail(e); } });
+    this.attendancePage = requestedPage;
+    this.attendanceLoading = !background;
+    let params = new HttpParams().set('page', requestedPage).set('limit', this.attendancePageSize);
+    if (this.startDate) params = params.set('start_date', this.startDate);
+    if (this.endDate) params = params.set('end_date', this.endDate);
+    if (this.attendanceSearch) params = params.set('search', this.attendanceSearch);
+    if (this.attendanceStatus) params = params.set('status', this.attendanceStatus);
+    const requestId = ++this.attendanceRequestSequence;
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any>(`${this.api}/manager/team/attendance`, { params, headers: this.headers(), context }).pipe(finalize(() => {
+      if (requestId === this.attendanceRequestSequence) this.attendanceLoading = false;
+    })).subscribe({ next: response => {
+      if (requestId !== this.attendanceRequestSequence) return;
+      this.attendanceServerPaginated = !Array.isArray(response) && Array.isArray(response?.data);
+      this.attendanceRows = this.attendanceServerPaginated ? response.data : (response || []);
+      this.attendanceTotalItems = this.attendanceServerPaginated ? Number(response.total || this.attendanceRows.length) : this.attendanceRows.length;
+      this.attendancePage = Number(response?.page || requestedPage);
+      setTimeout(() => { this.syncAttendanceStatusStyles(); if (keepAttendanceVisible) this.keepAttendancePanelVisible(); });
+    }, error: e => {
+      if (requestId !== this.attendanceRequestSequence) return;
+      this.fail(e);
+    } });
   }
 
   loadReports(page?: number, background = false): void {
-    if (this.reportsRequestInFlight) return;
+    const validationError = this.validateDateRange(this.start, this.end);
+    if (validationError) { this.errorMessage = validationError; this.reportsLoading = false; return; }
     const requestedPage = page ?? this.reportsPage;
-    this.reportsPage = requestedPage; this.reportsLoading = !background; let params = new HttpParams().set('page', requestedPage).set('limit', this.reportsPageSize); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end);
-    if (this.teamSearch) params = params.set('search', this.teamSearch);
-    const context = new HttpContext().set(SKIP_PAGE_LOADING, background); this.reportsRequestInFlight = true;
-    this.http.get<any>(`${this.api}/manager/team/reports`, { params, headers: this.headers(), context }).pipe(finalize(() => this.reportsRequestInFlight = false)).subscribe({ next: response => { this.reportsServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.teamReports = this.reportsServerPaginated ? response.data : (response || []); this.reportsTotalItems = this.reportsServerPaginated ? Number(response.total || this.teamReports.length) : this.teamReports.length; this.reportsPage = Number(response?.page || requestedPage); if (!background) this.reportsLoading = false; }, error: e => { if (!background) this.reportsLoading = false; this.fail(e); } });
+    this.reportsPage = requestedPage;
+    this.reportsLoading = !background;
+    let params = new HttpParams().set('page', requestedPage).set('limit', this.reportsPageSize);
+    if (this.start) params = params.set('start_date', this.start);
+    if (this.end) params = params.set('end_date', this.end);
+    if (this.reportSearch) params = params.set('search', this.reportSearch);
+    const requestId = ++this.reportsRequestSequence;
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any>(`${this.api}/manager/team/reports`, { params, headers: this.headers(), context }).pipe(finalize(() => {
+      if (requestId === this.reportsRequestSequence) this.reportsLoading = false;
+    })).subscribe({ next: response => {
+      if (requestId !== this.reportsRequestSequence) return;
+      this.reportsServerPaginated = !Array.isArray(response) && Array.isArray(response?.data);
+      this.teamReports = this.reportsServerPaginated ? response.data : (response || []);
+      this.reportsTotalItems = this.reportsServerPaginated ? Number(response.total || this.teamReports.length) : this.teamReports.length;
+      this.reportsPage = Number(response?.page || requestedPage);
+    }, error: e => {
+      if (requestId !== this.reportsRequestSequence) return;
+      this.fail(e);
+    } });
   }
 
   get displayedAttendanceRows(): any[] { return this.attendanceServerPaginated ? this.attendanceRows : this.attendanceRows.slice((this.attendancePage - 1) * this.attendancePageSize, this.attendancePage * this.attendancePageSize); }
   attendanceStatusLabel(status: string): string { const normalized = String(status || '').trim().toLowerCase(); return normalized === 'tidak hadir' || normalized === 'alpha' || normalized === 'alfa' ? 'Alpha' : status; }
-  attendanceStatusClass(status: string): string { const normalized = String(status || '').trim().toLowerCase(); return normalized === 'izin' ? 'status-izin' : ''; }
+  attendanceStatusClass(status: string): string {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (normalized === 'hadir') return 'status-hadir';
+    if (normalized === 'izin') return 'status-izin';
+    if (normalized === 'terlambat') return 'status-terlambat';
+    if (normalized === 'alpha' || normalized === 'alfa' || normalized === 'tidak hadir') return 'status-alpha';
+    return 'status-pending';
+  }
   private syncAttendanceStatusStyles(): void {
     const panel = Array.from(document.querySelectorAll<HTMLElement>('.role-operations-page section.team-filter-panel')).find(item => item.querySelector('h3')?.textContent?.trim() === 'Absensi Tim');
     if (!panel) return;
@@ -566,7 +674,7 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
       const data = this.displayedAttendanceRows[index];
       if (!pill || !data || data.checkout_missing) return;
       const normalized = String(data.status || '').trim().toLowerCase();
-      pill.classList.remove('status-hadir', 'status-alpha', 'status-tidak-hadir', 'status-terlambat', 'status-pending');
+       pill.classList.remove('status-hadir', 'status-izin', 'status-alpha', 'status-tidak-hadir', 'status-terlambat', 'status-pending');
       pill.classList.add(normalized === 'hadir' ? 'status-hadir' : normalized === 'izin' ? 'status-izin' : normalized === 'terlambat' ? 'status-terlambat' : normalized === 'alpha' || normalized === 'alfa' || normalized === 'tidak hadir' ? 'status-alpha' : 'status-pending');
     });
   }
@@ -580,6 +688,16 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   }
   reportsPageChanged(page: number): void { this.loadReports(page); }
   reportsPageSizeChanged(size: number): void { this.reportsPageSize = size; this.loadReports(1); }
+
+  private todayBusinessDate(): string {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+  }
+
+  private validateDateRange(start: string, end: string): string {
+    return start && end && start > end
+      ? 'Sampai tanggal tidak boleh lebih kecil dari Dari tanggal.'
+      : '';
+  }
 
   loadStatistics(background = false): void {
     if (this.statisticsRequestInFlight) return; const sequence = ++this.statisticsRequestSequence; this.statisticsRequestInFlight = true;

@@ -4,6 +4,15 @@
   min-height: 100%;
 }
 
+.dashboard-container.employee-dashboard-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.dashboard-container.employee-dashboard-shell > .main-content.employee-dashboard-page {
+  min-height: 0 !important;
+}
+
 .dashboard-container {
   display: flex;
   min-height: 100vh;

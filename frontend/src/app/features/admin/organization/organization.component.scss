@@ -1,3 +1,14 @@
+/* Keep this page as high as its organization, position, or project table.
+   The shared 4K viewport minimum otherwise leaves a white area below it. */
+.admin-theme.organization-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.admin-theme.organization-shell > .main-content.organization-page {
+  min-height: 0 !important;
+}
+
 .admin-theme {
   display: flex;
   min-height: 100vh;

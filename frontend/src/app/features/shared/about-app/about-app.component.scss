@@ -1,3 +1,12 @@
+.admin-theme.about-app-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.admin-theme.about-app-shell > .main-content.about-app-page {
+  min-height: 0 !important;
+}
+
 .admin-theme {
   display: flex;
   min-height: 100vh;

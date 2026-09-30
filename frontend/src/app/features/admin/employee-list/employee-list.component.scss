@@ -1,6 +1,17 @@
 @import '../../employee/dashboard/dashboard.component.scss';
 @import '../../employee/history/history.component.scss';
 
+/* The employee table is shorter than a 4K viewport. Keep this page wrapper
+   at the content height instead of leaving a viewport-sized white tail. */
+.admin-theme.employee-list-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.admin-theme.employee-list-shell > .main-content.employee-list-page {
+  min-height: 0 !important;
+}
+
 .employee-list-page,
 .employee-card,
 .employee-table-container,

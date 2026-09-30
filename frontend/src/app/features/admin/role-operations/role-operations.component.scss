@@ -2002,6 +2002,67 @@ body.dark-theme .team-filter-panel .report-export-dropdown .dropdown-item-print 
   border-color: #e2e8f0 !important;
 }
 
+/* Tablet: stack the panel heading before the controls and let controls occupy
+   their own two-column grid. This keeps the complete toolbar inside the card
+   at the iPad-sized 768-1100px range. */
+.role-operations-page .team-filter-panel,
+.role-operations-page .team-filter-panel .panel-heading,
+.role-operations-page .team-filter-panel .report-toolbar {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.role-operations-page .team-filter-panel .golan-table-responsive {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+}
+
+@media (max-width: 1100px) {
+  .role-operations-page .team-filter-panel .panel-heading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .role-operations-page .team-filter-panel .report-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .role-operations-page .team-filter-panel .report-toolbar > .golan-input,
+  .role-operations-page .team-filter-panel .report-toolbar > .date-filter-label,
+  .role-operations-page .team-filter-panel .report-toolbar > .date-filter-label .golan-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .role-operations-page .team-filter-panel .report-toolbar > .report-filter-action,
+  .role-operations-page .team-filter-panel .report-toolbar > .export-dropdown {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .role-operations-page .team-filter-panel .report-toolbar > .export-dropdown > button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .role-operations-page .team-filter-panel .report-toolbar > .export-dropdown .dropdown-menu-custom {
+    max-width: min(260px, calc(100vw - 32px));
+  }
+}
+
+@media (max-width: 520px) {
+  .role-operations-page .team-filter-panel .report-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Logbook Magang badges use the same visual language as Laporan Tim. */
 .role-operations-page .role-operations-logbook-table .logbook-status,
 .role-operations-page .role-operations-logbook-table .status-pill.status-warning,

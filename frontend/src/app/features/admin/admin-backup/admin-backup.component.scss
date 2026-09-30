@@ -1,3 +1,14 @@
+/* Keep the backup page at the height of its history and tips content instead
+   of extending the admin shell to the full 4K viewport. */
+.admin-theme.admin-backup-shell {
+  min-height: 0 !important;
+  align-items: flex-start;
+}
+
+.admin-theme.admin-backup-shell > .main-content.backup-page {
+  min-height: 0 !important;
+}
+
 .backup-page { max-width: 1440px; }
 .restore-controls{display:flex;gap:10px;align-items:end}.restore-controls label{flex:1;font-size:.75rem;color:var(--text-dark-lo);font-weight:700}.restore-controls select{display:block;width:100%;margin-top:6px;border:1px solid var(--border-strong);border-radius:7px;padding:10px;background:var(--surface);color:var(--text-dark)}.restore-controls .secondary-action{flex:2}.restore-message{font-size:.75rem;color:var(--text-dark-lo);margin:10px 0 0}
 .restore-result{margin-top:14px;border:1px solid var(--border-color);border-radius:10px;padding:12px;background:var(--surface)}
