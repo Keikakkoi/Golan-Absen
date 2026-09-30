@@ -182,9 +182,11 @@
         <span>Status</span>
         <strong>
           <span class="status-pill status-detail-badge status-detail-neutral" [ngClass]="{
-            'status-detail-approved': selectedLeave.Status === 'Approved' || selectedLeave.Status === 'manager_approved' || selectedLeave.Status === 'hrd_approved',
+            'status-detail-approved': selectedLeave.Status === 'Approved' || selectedLeave.Status === 'hrd_approved',
+            'status-detail-manager-approved': selectedLeave.Status === 'manager_approved',
             'status-detail-pending': selectedLeave.Status === 'Pending' || selectedLeave.Status === 'pending_manager_approval' || selectedLeave.Status === 'pending_hrd_approval',
-            'status-detail-rejected': selectedLeave.Status === 'Rejected' || selectedLeave.Status === 'manager_rejected' || selectedLeave.Status === 'hrd_rejected'
+            'status-detail-rejected': selectedLeave.Status === 'Rejected' || selectedLeave.Status === 'manager_rejected' || selectedLeave.Status === 'hrd_rejected',
+            'status-detail-cancelled': selectedLeave.Status === 'Cancelled'
           }">
             {{ statusLabel(selectedLeave.Status) }}
           </span>
