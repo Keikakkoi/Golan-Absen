@@ -157,6 +157,11 @@
 }
 
 .schedule-form-card { border-top: 3px solid #4c9dde; }
+.schedule-form-card.has-open-time-picker {
+  /* Keep the time menu above the shared pagination component while open. */
+  position: relative;
+  z-index: 60;
+}
 .schedule-list-card {
   width: 100%;
   min-width: 0;

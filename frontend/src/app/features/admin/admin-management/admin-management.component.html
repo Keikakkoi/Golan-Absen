@@ -56,7 +56,7 @@
       </section>
 
       <div class="schedule-layout">
-        <section class="golan-card schedule-form-card">
+        <section class="golan-card schedule-form-card" [class.has-open-time-picker]="!!activeTimePicker">
           <div class="schedule-card-heading">
             <div>
               <p class="eyebrow">{{ editingScheduleId ? 'PERBARUI DATA' : 'JADWAL BARU' }}</p>
