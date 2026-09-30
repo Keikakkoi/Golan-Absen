@@ -318,6 +318,20 @@
 }
 .btn-secondary:hover { background-color: #4b5563; }
 
+.btn-secondary.btn-cancel-reference {
+  background-color: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  color: #2563eb;
+  padding: 8px 13px;
+}
+
+.btn-secondary.btn-cancel-reference:hover {
+  background-color: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;

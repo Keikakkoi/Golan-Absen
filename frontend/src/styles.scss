@@ -481,6 +481,29 @@ h1, h2, h3, h4, h5, h6 {
   color: #334155;
 }
 
+/* Outline cancel action used by the admin create/edit modals. */
+.btn-cancel-reference {
+  min-height: 34px;
+  padding: 8px 13px;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.btn-cancel-reference:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.btn-cancel-reference:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
 .btn-sm:disabled,
 .btn-info:disabled,
 .btn-edit:disabled,

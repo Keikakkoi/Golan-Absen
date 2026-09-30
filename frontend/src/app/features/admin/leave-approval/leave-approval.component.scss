@@ -771,6 +771,18 @@
   }
 }
 
+.btn-modal-secondary.btn-cancel-reference {
+  background: #ffffff;
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+
+.btn-modal-secondary.btn-cancel-reference:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
 /* Dark mode overrides for the leave detail modal. The modal has legacy light
    surfaces that otherwise make the reason text disappear against the card. */
 :host-context(body.dark-theme) .leave-detail-modal {

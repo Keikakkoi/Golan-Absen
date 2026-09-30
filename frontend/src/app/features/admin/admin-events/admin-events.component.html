@@ -266,7 +266,7 @@
         <span class="toggle-copy"><strong>Tampilkan event pada dashboard karyawan, magang, dan manajer</strong><small>Event aktif dapat dilihat oleh seluruh karyawan dan role terkait.</small></span>
       </label>
       <div *ngIf="errorMessage && showModal" class="alert alert-danger modal-error">{{ errorMessage }}</div>
-      <div class="modal-actions"><button type="button" class="btn-secondary" (click)="closeModal()">Batal</button><button type="submit" class="btn-primary" [disabled]="isSaving">{{ isSaving ? 'Menyimpan...' : 'Simpan Event' }}</button></div>
+      <div class="modal-actions"><button type="button" class="btn-secondary btn-cancel-reference" (click)="closeModal()">Batal</button><button type="submit" class="btn-primary" [disabled]="isSaving">{{ isSaving ? 'Menyimpan...' : 'Simpan Event' }}</button></div>
     </form>
   </div>
 </div>

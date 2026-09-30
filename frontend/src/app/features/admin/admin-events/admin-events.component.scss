@@ -395,6 +395,19 @@
 .modal-error { margin-top: 16px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin: 28px -32px -30px; padding: 18px 32px 30px; border-top: 1px solid var(--mint-1); background: #fbfdff; }
 .modal-actions .btn-primary, .modal-actions .btn-secondary { min-height: 44px; padding: 10px 20px; }
+.modal-actions .btn-cancel-reference {
+  min-height: 34px;
+  padding: 8px 13px;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2563eb;
+}
+.modal-actions .btn-cancel-reference:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
 
 @media (max-width: 900px) {
   .page-header { align-items: flex-start; flex-direction: column; }
