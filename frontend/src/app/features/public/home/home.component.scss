@@ -184,9 +184,21 @@
 /* Tablet landscape baseline: keep the hero composition stable from the
    default 1024x768 tablet through the wider tablet presets. */
 @media (min-width: 901px) and (max-width: 1600px) {
+  .public-page {
+    --large-screen-scale: 1;
+    zoom: 1 !important;
+    width: 100%;
+    min-height: 100vh;
+  }
+
   .public-page .hero {
-    grid-template-columns: minmax(0, 1fr) minmax(400px, .86fr);
-    gap: 48px;
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
+    gap: 36px;
+  }
+
+  .public-page h1 {
+    max-width: 640px;
+    font-size: clamp(46px, 5vw, 64px);
   }
 
   .public-page .hero-visual {
