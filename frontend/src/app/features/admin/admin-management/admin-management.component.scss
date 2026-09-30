@@ -1216,7 +1216,8 @@ textarea.golan-input {
 }
 
 .quota-number-input .golan-input {
-  padding-right: 47px;
+  /* Match the year input so the native number spinner stays aligned. */
+  padding-right: 12px;
 }
 
 .quota-number-input span {
