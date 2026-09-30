@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { ThemeService } from '../../../core/services/theme.service';
@@ -42,7 +42,8 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   constructor(
     private authService: AuthService,
     private themeService: ThemeService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -114,6 +115,11 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   get notificationsLink(): string {
     if (this.userRole === 'Karyawan' || this.userRole === 'MAGANG' || this.userRole === 'MANAJER') return '/employee/notifications';
     return '/admin/notifications';
+  }
+
+  isAdminNotificationsActive(): boolean {
+    const currentPath = this.router.url.split(/[?#]/, 1)[0];
+    return currentPath === '/admin/notifications' || currentPath === '/admin/settings/notifications';
   }
 
   toggleTheme(): void {
