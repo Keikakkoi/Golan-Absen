@@ -150,9 +150,10 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private isFilterSelect(select: HTMLSelectElement): boolean {
-    return select.classList.contains('filter-input') || !!select.closest(
-      '.filter-grid, .report-toolbar, .toolbar, .leave-toolbar, .team-attendance-toolbar, .team-reports-toolbar, .calendar-toolbar, .reporting-month-toolbar, .work-report-admin-page, .backup-page, .select-control, .employee-form-select'
-    );
+    // Use one custom, scaled option menu for every native select in the app.
+    // This keeps dropdowns in admin forms, filters, tables, modals, and all
+    // user roles consistent with the responsive desktop density.
+    return select instanceof HTMLSelectElement;
   }
 
   private openFilterMenu(select: HTMLSelectElement): void {
@@ -194,19 +195,40 @@ export class AppComponent implements OnInit, OnDestroy {
   private positionFilterMenu(select: HTMLSelectElement, menu: HTMLDivElement): void {
     const bounds = select.getBoundingClientRect();
     const viewportHeight = this.document.defaultView?.innerHeight || 0;
+    const menuScale = this.getDesktopUiScale();
     const availableBelow = Math.max(120, viewportHeight - bounds.bottom - 8);
     const isEmployeeFormMenu = menu.classList.contains('employee-form-menu');
+    const computedSelectStyle = this.document.defaultView?.getComputedStyle(select);
+    const selectFontSize = computedSelectStyle?.fontSize || '13px';
     const menuHeight = Math.min(
-      360,
-      Math.round(availableBelow),
-      isEmployeeFormMenu ? menu.scrollHeight : Math.max(120, menu.scrollHeight)
+      360 / menuScale,
+      Math.round(availableBelow / menuScale),
+      isEmployeeFormMenu ? menu.scrollHeight : Math.max(120 / menuScale, menu.scrollHeight)
     );
 
+    // The menu is attached to <body>, outside the zoomed dashboard wrapper.
+    // Scale its layout box inversely, then scale it visually so it matches the
+    // select control at Full HD, QHD, 4K, and the other supported viewports.
+    menu.style.setProperty('--filter-menu-scale', String(menuScale));
+    menu.style.setProperty('--filter-menu-font-size', selectFontSize);
     menu.style.left = `${Math.round(bounds.left)}px`;
-    menu.style.width = `${Math.round(bounds.width)}px`;
-    menu.style.height = `${isEmployeeFormMenu ? menuHeight : Math.max(120, menuHeight)}px`;
-    menu.style.maxHeight = `${isEmployeeFormMenu ? menuHeight : Math.max(120, menuHeight)}px`;
+    menu.style.width = `${Math.round(bounds.width / menuScale)}px`;
+    menu.style.minWidth = `${Math.round(bounds.width / menuScale)}px`;
+    const renderedMenuHeight = isEmployeeFormMenu ? menuHeight : Math.max(120 / menuScale, menuHeight);
+    menu.style.height = `${renderedMenuHeight}px`;
+    menu.style.maxHeight = `${renderedMenuHeight}px`;
     menu.style.top = `${Math.round(bounds.bottom + 4)}px`;
+  }
+
+  private getDesktopUiScale(): number {
+    const viewportWidth = this.document.defaultView?.innerWidth || 0;
+    if (viewportWidth >= 3700) return 3;
+    if (viewportWidth >= 3300) return 2.6875;
+    if (viewportWidth >= 3120) return 2.5;
+    if (viewportWidth >= 2760) return 2.25;
+    if (viewportWidth >= 2400) return 2;
+    if (viewportWidth >= 1440) return 1.5;
+    return 1;
   }
 
   private closeFilterMenu(): void {
@@ -238,6 +260,7 @@ export class AppComponent implements OnInit, OnDestroy {
     menu.className = 'filter-date-menu';
     menu.setAttribute('role', 'dialog');
     menu.setAttribute('aria-label', 'Pilih tanggal');
+    menu.style.setProperty('--filter-date-scale', String(this.getDesktopUiScale()));
 
     const header = this.document.createElement('div');
     header.className = 'filter-date-header';
@@ -373,21 +396,23 @@ export class AppComponent implements OnInit, OnDestroy {
     const viewportWidth = viewport?.innerWidth || this.document.documentElement.clientWidth;
     const viewportHeight = viewport?.innerHeight || this.document.documentElement.clientHeight;
     const viewportPadding = 8;
+    const menuScale = this.getDesktopUiScale();
     const availableWidth = Math.max(0, viewportWidth - (viewportPadding * 2));
 
     // The picker is rendered in document.body and uses fixed positioning, so
-    // its original 320px width can extend past a narrow modal/viewport. Set
-    // the width before measuring the height, then clamp both coordinates to
-    // the visible viewport.
-    menu.style.width = `${Math.min(menu.offsetWidth, availableWidth)}px`;
-    const height = menu.offsetHeight;
-    const opensUp = bounds.bottom + height > viewportHeight - viewportPadding
-      && bounds.top - height - 4 >= viewportPadding;
-    const preferredTop = opensUp ? bounds.top - height - 4 : bounds.bottom + 4;
-    const maxTop = Math.max(viewportPadding, viewportHeight - height - viewportPadding);
+    // its original 320px width can extend past a narrow modal/viewport. The
+    // menu is visually scaled outside the zoomed page shell, so measure its
+    // unscaled layout box and clamp using the rendered dimensions.
+    menu.style.width = `${Math.min(320, Math.floor(availableWidth / menuScale))}px`;
+    const renderedWidth = menu.offsetWidth * menuScale;
+    const renderedHeight = menu.offsetHeight * menuScale;
+    const opensUp = bounds.bottom + renderedHeight > viewportHeight - viewportPadding
+      && bounds.top - renderedHeight - 4 >= viewportPadding;
+    const preferredTop = opensUp ? bounds.top - renderedHeight - 4 : bounds.bottom + 4;
+    const maxTop = Math.max(viewportPadding, viewportHeight - renderedHeight - viewportPadding);
     const left = Math.min(
       Math.max(bounds.left, viewportPadding),
-      Math.max(viewportPadding, viewportWidth - menu.offsetWidth - viewportPadding)
+      Math.max(viewportPadding, viewportWidth - renderedWidth - viewportPadding)
     );
     const top = Math.min(Math.max(preferredTop, viewportPadding), maxTop);
 

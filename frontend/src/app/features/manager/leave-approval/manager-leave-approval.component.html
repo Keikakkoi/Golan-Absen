@@ -15,7 +15,7 @@
           <option value="manager_approved">Disetujui Manajer</option>
           <option value="manager_rejected">Ditolak Manajer</option>
         </select>
-        <button class="btn-primary" (click)="load()" [disabled]="isLoading">Filter</button>
+        <button type="button" class="btn-primary" (click)="load()" [disabled]="isLoading">Filter</button>
       </div>
       <div class="golan-table-responsive leave-approval-table-wrapper">
         <table class="golan-table leave-approval-table">
@@ -34,10 +34,19 @@
               <td class="leave-col-action">
                 <div class="leave-approval-actions">
                   <ng-container *ngIf="canDecide(request); else processed">
-                    <button class="btn-small approve" [disabled]="isLoading" (click)="decide(request.ID, 'Approved')" aria-label="Setujui pengajuan" title="Setujui pengajuan"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="m8 12.2 2.7 2.7 5.5-5.8"></path></svg></button>
-                    <button class="btn-small reject" [disabled]="isLoading" (click)="decide(request.ID, 'Rejected')" aria-label="Tolak pengajuan" title="Tolak pengajuan"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="m8.5 8.5 7 7m0-7-7 7"></path></svg></button>
+                    <button type="button" class="btn-small approve" [disabled]="isProcessing(request.ID)" (click)="decide(request.ID, 'Approved')" aria-label="Setujui pengajuan" title="Setujui pengajuan"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="m8 12.2 2.7 2.7 5.5-5.8"></path></svg></button>
+                    <button type="button" class="btn-small reject" [disabled]="isProcessing(request.ID)" (click)="decide(request.ID, 'Rejected')" aria-label="Tolak pengajuan" title="Tolak pengajuan"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="m8.5 8.5 7 7m0-7-7 7"></path></svg></button>
                   </ng-container>
-                  <ng-template #processed><span class="status-pill">{{ statusLabel(request.Status) }}</span></ng-template>
+                  <ng-template #processed>
+                    <span class="status-pill"
+                      [class.status-pending-manager]="request.Status === 'Pending' || request.Status === 'pending_manager_approval' || request.Status === 'pending_hrd_approval'"
+                      [class.status-approved-hrd]="request.Status === 'manager_approved' || request.Status === 'hrd_approved'"
+                      [class.status-approved]="request.Status === 'Approved'"
+                      [class.status-rejected]="request.Status === 'Rejected' || request.Status === 'manager_rejected' || request.Status === 'hrd_rejected'"
+                      [class.status-cancelled]="request.Status === 'Cancelled'">
+                      {{ statusLabel(request.Status) }}
+                    </span>
+                  </ng-template>
                 </div>
               </td>
             </tr>

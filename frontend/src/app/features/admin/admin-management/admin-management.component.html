@@ -283,7 +283,7 @@
         </app-pagination>
       </div>
       <div class="modal-overlay" *ngIf="selectedHome">
-        <div class="modal-content golan-card" style="max-width: 420px; padding: 24px;">
+        <div class="modal-content golan-card home-location-edit-modal" style="max-width: 420px; padding: 24px;">
           <h3 style="margin-top: 0; margin-bottom: 22px; font-size: 1.3rem; color: #1769aa; line-height: 1.4;">Geofence Rumah — {{ selectedHome.User?.Nama }}</h3>
           
           <form class="home-form" (ngSubmit)="saveHome()">

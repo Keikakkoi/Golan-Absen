@@ -16,8 +16,9 @@ export interface AppNotification {
 export class NotificationService {
   private readonly baseUrl = 'http://localhost:8080/api/v1/notifications';
   private realtimeSocket?: WebSocket;
-  private realtimeCallbacks = new Set<() => void>();
+  private realtimeCallbacks = new Set<(eventName: string) => void>();
   private notificationsRequest$?: Observable<AppNotification[]>;
+  private realtimeReconnectTimer?: ReturnType<typeof setTimeout>;
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
@@ -48,7 +49,7 @@ export class NotificationService {
   }
 
   /** Refreshes an open app as soon as the backend creates a user notification. */
-  connectRealtime(onNotification: () => void): () => void {
+  connectRealtime(onNotification: (eventName: string) => void): () => void {
     this.realtimeCallbacks.add(onNotification);
     if (!this.realtimeSocket || this.realtimeSocket.readyState === WebSocket.CLOSED) this.openRealtimeSocket();
     // A CLOSING socket is intentionally left alone. Its close handler will
@@ -59,6 +60,8 @@ export class NotificationService {
       disconnected = true;
       this.realtimeCallbacks.delete(onNotification);
       if (!this.realtimeCallbacks.size) {
+        if (this.realtimeReconnectTimer) clearTimeout(this.realtimeReconnectTimer);
+        this.realtimeReconnectTimer = undefined;
         this.realtimeSocket?.close();
         this.realtimeSocket = undefined;
       }
@@ -72,13 +75,18 @@ export class NotificationService {
     socket.onmessage = (event) => {
       try {
         const eventName = JSON.parse(event.data)?.event;
-        if (['notification_created', 'new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'new_leave', 'leave_request_created', 'leave_status_updated'].includes(eventName)) this.realtimeCallbacks.forEach(callback => callback());
+        if (['notification_created', 'new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'new_leave', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.realtimeCallbacks.forEach(callback => callback(eventName));
       } catch { /* Ignore malformed broadcast messages. */ }
     };
     socket.onclose = () => {
       if (this.realtimeSocket !== socket) return;
       this.realtimeSocket = undefined;
-      if (this.realtimeCallbacks.size) this.openRealtimeSocket();
+      if (this.realtimeCallbacks.size) {
+        this.realtimeReconnectTimer = setTimeout(() => {
+          this.realtimeReconnectTimer = undefined;
+          if (this.realtimeCallbacks.size) this.openRealtimeSocket();
+        }, 3_000);
+      }
     };
   }
 

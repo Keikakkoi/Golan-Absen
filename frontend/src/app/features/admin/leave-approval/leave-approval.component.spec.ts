@@ -1,4 +1,4 @@
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { LeaveApprovalComponent } from './leave-approval.component';
 
 describe('LeaveApprovalComponent', () => {
@@ -6,7 +6,9 @@ describe('LeaveApprovalComponent', () => {
     const http = { get: jasmine.createSpy('get').and.returnValue(of(response)) } as any;
     const auth = { getToken: () => 'token' } as any;
     const alert = {} as any;
-    return { component: new LeaveApprovalComponent(http, auth, alert), http };
+    const reportExport = {} as any;
+    const notification = {} as any;
+    return { component: new LeaveApprovalComponent(http, auth, alert, reportExport, notification), http };
   }
 
   it('shows employee and intern requests, including requests waiting for a manager', () => {
@@ -60,7 +62,7 @@ describe('LeaveApprovalComponent', () => {
       success: jasmine.createSpy('success'),
       error: jasmine.createSpy('error')
     } as any;
-    const component = new LeaveApprovalComponent(http, { getToken: () => 'token' } as any, alert);
+    const component = new LeaveApprovalComponent(http, { getToken: () => 'token' } as any, alert, {} as any, {} as any);
     component.adminNotes[12] = 'Keputusan Admin';
 
     await component.updateStatus(12, 'Approved');
@@ -70,5 +72,35 @@ describe('LeaveApprovalComponent', () => {
       jasmine.objectContaining({ status: 'Approved', catatan: 'Keputusan Admin', notes: 'Keputusan Admin' }),
       jasmine.anything()
     );
+  });
+
+  it('coalesces a background refresh while a request is still active', () => {
+    const response$ = new Subject<any[]>();
+    const http = { get: jasmine.createSpy('get').and.returnValue(response$) } as any;
+    const component = new LeaveApprovalComponent(http, { getToken: () => 'token' } as any, {} as any, {} as any, {} as any);
+    component.currentPage = 3;
+    component.isLoading = false;
+
+    component.loadLeaveRequests(false, true);
+    component.loadLeaveRequests(false, true);
+
+    expect(http.get).toHaveBeenCalledTimes(1);
+    expect(component.currentPage).toBe(3);
+    expect(component.isLoading).toBeFalse();
+
+    response$.next([{ ID: 1, Status: 'pending_hrd_approval' }]);
+    response$.complete();
+    expect(component.leaveRequests).toHaveSize(1);
+  });
+
+  it('cleans timers and realtime subscription when destroyed', () => {
+    const disconnect = jasmine.createSpy('disconnect');
+    const notification = { connectRealtime: jasmine.createSpy('connectRealtime').and.returnValue(disconnect) } as any;
+    const component = new LeaveApprovalComponent({ get: jasmine.createSpy('get').and.returnValue(of([])) } as any, { getToken: () => 'token' } as any, {} as any, {} as any, notification);
+
+    component.ngOnInit();
+    component.ngOnDestroy();
+
+    expect(disconnect).toHaveBeenCalled();
   });
 });

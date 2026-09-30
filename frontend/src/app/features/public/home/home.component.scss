@@ -147,17 +147,14 @@
   .spark-two { bottom: 27.5px; left: 60px; font-size: 10px; }
 
   .page-glow-one { top: -337.5px; right: -212.5px; width: 712.5px; height: 712.5px; }
-  .page-glow-two { bottom: 225px; left: -375px; width: 625px; height: 625px; }
+.page-glow-two { bottom: 225px; left: -375px; width: 625px; height: 625px; }
 }
 
-/* Large desktop presentation.
-   The landing page has no fixed content width on desktop, so on high-density
-   monitors its text and controls otherwise remain visually too small. Scale
-   the complete public page while keeping its visual edges inside the viewport.
-   These breakpoints cover WUXGA/QHD, WQXGA/3K, and 4K/ultrawide displays. */
+/* 1920x1080 is the visual baseline. Larger monitors keep the same density
+   by scaling in proportion to the viewport width instead of becoming tiny. */
 @media (min-width: 1440px) {
   .public-page {
-    --large-screen-scale: 1.7;
+    --large-screen-scale: 1.5;
     zoom: var(--large-screen-scale);
     width: 100%;
     min-height: 100vh;
@@ -165,21 +162,21 @@
 }
 
 @media (min-width: 2400px) {
-  .public-page {
-    --large-screen-scale: 2.1;
-  }
+  .public-page { --large-screen-scale: 2; }
 }
 
-@media (min-width: 3200px) {
-  .public-page {
-    --large-screen-scale: 2.3;
-  }
+@media (min-width: 2760px) {
+  .public-page { --large-screen-scale: 2.25; }
 }
 
-/* Focused 4K UHD 16:9 scale. Other large-monitor aspect ratios keep their
-   existing scale until the 4K focus is explicitly finished. */
-@media (min-width: 3200px) and (min-aspect-ratio: 16/9) and (max-aspect-ratio: 17/9) {
-  .public-page {
-    --large-screen-scale: 2.6;
-  }
+@media (min-width: 3120px) {
+  .public-page { --large-screen-scale: 2.5; }
+}
+
+@media (min-width: 3300px) {
+  .public-page { --large-screen-scale: 2.6875; }
+}
+
+@media (min-width: 3700px) {
+  .public-page { --large-screen-scale: 3; }
 }

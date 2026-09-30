@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { AlertService } from '../../../core/services/alert.service';
 
 @Component({
   selector: 'app-team-reports',
@@ -32,11 +33,13 @@ export class TeamReportsComponent implements OnInit {
   isExportOpen = false;
   notes: { [id: number]: string } = {};
   private reviewingIds = new Set<number>();
+  private confirmingIds = new Set<number>();
 
   constructor(
     private http: HttpClient,
     private auth: AuthService,
-    private reportExport: ReportExportService
+    private reportExport: ReportExportService,
+    private alert: AlertService
   ) {}
 
   ngOnInit(): void {
@@ -145,8 +148,8 @@ export class TeamReportsComponent implements OnInit {
     this.load();
   }
 
-  reviewLogbook(id: number, status: 'approved' | 'rejected'): void {
-    if (!id || this.reviewingIds.has(id)) return;
+  async reviewLogbook(id: number, status: 'approved' | 'rejected'): Promise<void> {
+    if (!id || this.reviewingIds.has(id) || this.confirmingIds.has(id)) return;
     const found = this.findReport(id);
     if (found && this.logbookStatus(found) !== 'submitted') {
       this.error = 'Review hanya dapat dilakukan pada laporan berstatus Submitted.';
@@ -155,6 +158,25 @@ export class TeamReportsComponent implements OnInit {
     this.error = '';
     this.success = '';
     const noteText = this.notes[id] || '';
+    this.confirmingIds.add(id);
+
+    const actionLabel = status === 'approved' ? 'menyetujui' : 'menolak';
+    let confirmed = false;
+    try {
+      confirmed = await this.alert.confirm(
+        `${status === 'approved' ? 'Setujui' : 'Tolak'} logbook?`,
+        `Apakah Anda yakin ingin ${actionLabel} logbook ini?`,
+        status === 'approved' ? 'Ya, setujui' : 'Ya, tolak'
+      );
+    } catch {
+      this.error = 'Gagal menampilkan konfirmasi review logbook.';
+    } finally {
+      this.confirmingIds.delete(id);
+    }
+    if (!confirmed) {
+      return;
+    }
+
     this.reviewingIds.add(id);
 
     this.http.put(`http://localhost:8080/api/v1/manager/team/logbooks/${id}/review`, { status, notes: noteText }, { headers: this.headers() }).subscribe({
@@ -168,11 +190,16 @@ export class TeamReportsComponent implements OnInit {
         }
         this.success = latestStatus === 'approved' ? 'Logbook berhasil disetujui (Approved)' : 'Logbook berhasil ditolak (Rejected)';
         this.reviewingIds.delete(id);
+        void this.alert.success(
+          latestStatus === 'approved' ? 'Logbook berhasil disetujui' : 'Logbook berhasil ditolak',
+          'Status logbook sudah diperbarui.'
+        );
         setTimeout(() => this.success = '', 4000);
       },
       error: e => {
         this.reviewingIds.delete(id);
         this.error = 'Gagal memperbarui review logbook: ' + (e.error?.error || 'Unknown error');
+        void this.alert.error('Review logbook gagal', this.error);
       }
     });
   }

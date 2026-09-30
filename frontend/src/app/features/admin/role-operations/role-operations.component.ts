@@ -1,7 +1,9 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams, HttpContext } from '@angular/common/http';
+import { finalize } from 'rxjs';
+import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
@@ -64,10 +66,14 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   selectedLogbookDetail: any = null;
   private readonly api = 'http://localhost:8080/api/v1';
   private disconnectRealtime?: () => void;
-  private refreshTimer?: ReturnType<typeof setInterval>;
   private statisticsRefreshHandle?: ReturnType<typeof setTimeout>;
   private statisticsRequestSequence = 0;
   private statisticsRequestInFlight = false;
+  private dashboardRequestInFlight = false;
+  private attendanceRequestInFlight = false;
+  private reportsRequestInFlight = false;
+  private leaveRequestInFlight = false;
+  private destroyed = false;
 
   constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService, private notificationService: NotificationService) {}
 
@@ -105,9 +111,9 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     this.http.delete(`${this.api}/admin/internship/logbooks/${id}`, { headers: this.headers() }).subscribe({ next: () => this.loadLogbooks(), error: e => this.fail(e) });
   }
 
-  ngOnInit(): void { this.loadInternship(); this.disconnectRealtime = this.notificationService.connectRealtime(() => this.scheduleRealtimeTeamRefresh()); this.refreshTimer = setInterval(() => { if (this.activeSection === 'team') this.loadTeam(); }, 30_000); }
-  ngOnDestroy(): void { if (this.refreshTimer) clearInterval(this.refreshTimer); if (this.statisticsRefreshHandle) clearTimeout(this.statisticsRefreshHandle); this.disconnectRealtime?.(); }
-  private scheduleRealtimeTeamRefresh(): void { if (this.activeSection !== 'team' || this.statisticsRefreshHandle) return; this.statisticsRefreshHandle = setTimeout(() => { this.statisticsRefreshHandle = undefined; this.loadTeam(); }, 250); }
+  ngOnInit(): void { this.loadInternship(); this.disconnectRealtime = this.notificationService.connectRealtime(eventName => { if (['new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.scheduleRealtimeTeamRefresh(); }); }
+  ngOnDestroy(): void { this.destroyed = true; if (this.statisticsRefreshHandle) clearTimeout(this.statisticsRefreshHandle); this.disconnectRealtime?.(); }
+  private scheduleRealtimeTeamRefresh(): void { if (this.destroyed || this.activeSection !== 'team' || this.statisticsRefreshHandle) return; this.statisticsRefreshHandle = setTimeout(() => { this.statisticsRefreshHandle = undefined; if (!this.destroyed && this.activeSection === 'team') this.loadTeam(true); }, 250); }
 
   selectSection(section: 'internship' | 'team'): void {
     this.activeSection = section;
@@ -448,18 +454,26 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     return `${this.startDate || 'Awal'} - ${this.endDate || 'Sekarang'}`;
   }
 
-  loadTeam(): void {
+  loadTeam(background = false): void {
     const headers = this.headers();
-    this.http.get<any>(`${this.api}/manager/dashboard`, { headers }).subscribe({ next: data => this.teamStats = data, error: e => this.fail(e) });
-    this.loadAttendance(); this.loadReports(); this.loadStatistics();
-    this.loadLeaveRequests();
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    if (!this.dashboardRequestInFlight) {
+      this.dashboardRequestInFlight = true;
+      this.http.get<any>(`${this.api}/manager/dashboard`, { headers, context }).pipe(finalize(() => this.dashboardRequestInFlight = false)).subscribe({ next: data => this.teamStats = data, error: e => this.fail(e) });
+    }
+    this.loadAttendance(undefined, false, background); this.loadReports(undefined, background); this.loadStatistics(background);
+    this.loadLeaveRequests(undefined, background);
   }
 
-  loadLeaveRequests(page = 1): void {
-    this.leavePage = page;
-    this.leaveLoading = true;
-    const params = new HttpParams().set('page', page).set('limit', this.leavePageSize);
-    this.http.get<any>(`${this.api}/manager/leaves`, { params, headers: this.headers() }).subscribe({
+  loadLeaveRequests(page?: number, background = false): void {
+    if (this.leaveRequestInFlight) return;
+    const requestedPage = page ?? this.leavePage;
+    this.leavePage = requestedPage;
+    this.leaveLoading = !background;
+    const params = new HttpParams().set('page', requestedPage).set('limit', this.leavePageSize);
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.leaveRequestInFlight = true;
+    this.http.get<any>(`${this.api}/manager/leaves`, { params, headers: this.headers(), context }).pipe(finalize(() => this.leaveRequestInFlight = false)).subscribe({
       next: response => {
         this.leaveServerPaginated = !Array.isArray(response) && Array.isArray(response?.data);
         const requests = this.leaveServerPaginated ? response.data : (response || []);
@@ -474,20 +488,14 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
           // The operational overview uses one compact Catatan column. Admin
           // approval notes are the authoritative value there; retain manager
           // and legacy fields as fallbacks for older requests.
-          this.notes[request.ID] = request.admin_notes
-            || request.AdminNotes
-            || request.Notes
-            || request.notes
-            || request.manager_notes
-            || request.ManagerNotes
-            || '';
+          if (!Object.prototype.hasOwnProperty.call(this.notes, request.ID)) this.notes[request.ID] = request.admin_notes || request.AdminNotes || request.Notes || request.notes || request.manager_notes || request.ManagerNotes || '';
         });
         this.leaveTotalItems = this.leaveServerPaginated ? Number(response.total || this.leaveRequests.length) : this.leaveRequests.length;
-        this.leavePage = Number(response?.page || page);
-        this.leaveLoading = false;
+        this.leavePage = Number(response?.page || requestedPage);
+        if (!background) this.leaveLoading = false;
         setTimeout(() => this.syncLeaveStatusStyles());
       },
-      error: e => { this.leaveLoading = false; this.fail(e); }
+      error: e => { if (!background) this.leaveLoading = false; this.fail(e); }
     });
   }
 
@@ -528,17 +536,23 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadAttendance(page = 1, keepAttendanceVisible = false): void {
+  loadAttendance(page?: number, keepAttendanceVisible = false, background = false): void {
+    if (this.attendanceRequestInFlight) return;
     if (this.startDate && this.endDate && this.endDate < this.startDate) { this.errorMessage = 'Sampai tanggal tidak boleh lebih kecil dari Dari tanggal.'; return; }
     this.errorMessage = '';
-    this.attendancePage = page; this.attendanceLoading = true; let params = new HttpParams().set('page', page).set('limit', this.attendancePageSize); if (this.startDate) params = params.set('start_date', this.startDate); if (this.endDate) params = params.set('end_date', this.endDate); if (this.teamSearch) params = params.set('search', this.teamSearch); if (this.attendanceStatus) params = params.set('status', this.attendanceStatus);
-    this.http.get<any>(`${this.api}/manager/team/attendance`, { params, headers: this.headers() }).subscribe({ next: response => { this.attendanceServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.attendanceRows = this.attendanceServerPaginated ? response.data : (response || []); this.attendanceTotalItems = this.attendanceServerPaginated ? Number(response.total || this.attendanceRows.length) : this.attendanceRows.length; this.attendancePage = Number(response?.page || 1); this.attendanceLoading = false; setTimeout(() => { this.syncAttendanceStatusStyles(); if (keepAttendanceVisible) this.keepAttendancePanelVisible(); }); }, error: e => { this.attendanceLoading = false; this.fail(e); } });
+    const requestedPage = page ?? this.attendancePage;
+    this.attendancePage = requestedPage; this.attendanceLoading = !background; let params = new HttpParams().set('page', requestedPage).set('limit', this.attendancePageSize); if (this.startDate) params = params.set('start_date', this.startDate); if (this.endDate) params = params.set('end_date', this.endDate); if (this.teamSearch) params = params.set('search', this.teamSearch); if (this.attendanceStatus) params = params.set('status', this.attendanceStatus);
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background); this.attendanceRequestInFlight = true;
+    this.http.get<any>(`${this.api}/manager/team/attendance`, { params, headers: this.headers(), context }).pipe(finalize(() => this.attendanceRequestInFlight = false)).subscribe({ next: response => { this.attendanceServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.attendanceRows = this.attendanceServerPaginated ? response.data : (response || []); this.attendanceTotalItems = this.attendanceServerPaginated ? Number(response.total || this.attendanceRows.length) : this.attendanceRows.length; this.attendancePage = Number(response?.page || requestedPage); if (!background) this.attendanceLoading = false; setTimeout(() => { this.syncAttendanceStatusStyles(); if (keepAttendanceVisible) this.keepAttendancePanelVisible(); }); }, error: e => { if (!background) this.attendanceLoading = false; this.fail(e); } });
   }
 
-  loadReports(page = 1): void {
-    this.reportsPage = page; this.reportsLoading = true; let params = new HttpParams().set('page', page).set('limit', this.reportsPageSize); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end);
+  loadReports(page?: number, background = false): void {
+    if (this.reportsRequestInFlight) return;
+    const requestedPage = page ?? this.reportsPage;
+    this.reportsPage = requestedPage; this.reportsLoading = !background; let params = new HttpParams().set('page', requestedPage).set('limit', this.reportsPageSize); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end);
     if (this.teamSearch) params = params.set('search', this.teamSearch);
-    this.http.get<any>(`${this.api}/manager/team/reports`, { params, headers: this.headers() }).subscribe({ next: response => { this.reportsServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.teamReports = this.reportsServerPaginated ? response.data : (response || []); this.reportsTotalItems = this.reportsServerPaginated ? Number(response.total || this.teamReports.length) : this.teamReports.length; this.reportsPage = Number(response?.page || 1); this.reportsLoading = false; }, error: e => { this.reportsLoading = false; this.fail(e); } });
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background); this.reportsRequestInFlight = true;
+    this.http.get<any>(`${this.api}/manager/team/reports`, { params, headers: this.headers(), context }).pipe(finalize(() => this.reportsRequestInFlight = false)).subscribe({ next: response => { this.reportsServerPaginated = !Array.isArray(response) && Array.isArray(response?.data); this.teamReports = this.reportsServerPaginated ? response.data : (response || []); this.reportsTotalItems = this.reportsServerPaginated ? Number(response.total || this.teamReports.length) : this.teamReports.length; this.reportsPage = Number(response?.page || requestedPage); if (!background) this.reportsLoading = false; }, error: e => { if (!background) this.reportsLoading = false; this.fail(e); } });
   }
 
   get displayedAttendanceRows(): any[] { return this.attendanceServerPaginated ? this.attendanceRows : this.attendanceRows.slice((this.attendancePage - 1) * this.attendancePageSize, this.attendancePage * this.attendancePageSize); }
@@ -567,10 +581,11 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   reportsPageChanged(page: number): void { this.loadReports(page); }
   reportsPageSizeChanged(size: number): void { this.reportsPageSize = size; this.loadReports(1); }
 
-  loadStatistics(): void {
+  loadStatistics(background = false): void {
     if (this.statisticsRequestInFlight) return; const sequence = ++this.statisticsRequestSequence; this.statisticsRequestInFlight = true;
     let params = new HttpParams(); if (this.start) params = params.set('start_date', this.start); if (this.end) params = params.set('end_date', this.end);
-    this.http.get<any>(`${this.api}/manager/team/statistics`, { params, headers: this.headers() }).subscribe({ next: data => { if (sequence === this.statisticsRequestSequence) { this.teamStatistics = data; this.statisticsManagerGroups = this.buildStatisticsManagerGroups(data?.members || []); this.expandedStatisticsManagers = {}; } this.statisticsRequestInFlight = false; }, error: e => { this.statisticsRequestInFlight = false; if (sequence === this.statisticsRequestSequence) this.fail(e); } });
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.http.get<any>(`${this.api}/manager/team/statistics`, { params, headers: this.headers(), context }).pipe(finalize(() => this.statisticsRequestInFlight = false)).subscribe({ next: data => { if (sequence === this.statisticsRequestSequence) { const previousGroups = new Map(this.statisticsManagerGroups.map(group => [group.key, { expanded: group.expanded, visibleLimit: group.visibleLimit }])); this.teamStatistics = data; this.statisticsManagerGroups = this.buildStatisticsManagerGroups(data?.members || []); if (background) { for (const group of this.statisticsManagerGroups) { const previous = previousGroups.get(group.key); if (previous) { group.expanded = previous.expanded; group.visibleLimit = Math.min(previous.visibleLimit, group.members.length); this.refreshVisibleStatisticsMembers(group); } } } else { this.expandedStatisticsManagers = {}; } } }, error: e => { if (sequence === this.statisticsRequestSequence) this.fail(e); } });
   }
 
   exportTeamStatistics(): void {
@@ -588,7 +603,7 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
       const result = await Swal.fire({ title: 'Setujui pengajuan?', icon: 'question', showCancelButton: true, confirmButtonText: 'Setujui', cancelButtonText: 'Batal' });
       if (!result.isConfirmed) return;
     }
-    this.http.put(`${this.api}/manager/leaves/${id}/approve`, { status, notes: this.notes[id] || '', catatan: this.notes[id] || '', rejection_reason }, { headers: this.headers() }).subscribe({ next: () => this.loadTeam(), error: e => this.fail(e) });
+    this.http.put(`${this.api}/manager/leaves/${id}/approve`, { status, notes: this.notes[id] || '', catatan: this.notes[id] || '', rejection_reason }, { headers: this.headers() }).subscribe({ next: () => this.loadTeam(true), error: e => this.fail(e) });
   }
 
   managerNote(request: any): string { return request?.manager_notes || request?.ManagerNotes || '-'; }

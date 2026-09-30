@@ -1,14 +1,17 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams, HttpContext } from '@angular/common/http';
+import { finalize } from 'rxjs';
+import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { AlertService } from '../../../core/services/alert.service';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({ selector: 'app-manager-leave-approval', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent], templateUrl: './manager-leave-approval.component.html', styleUrls: ['./manager-leave-approval.component.scss'] })
-export class ManagerLeaveApprovalComponent implements OnInit {
+export class ManagerLeaveApprovalComponent implements OnInit, OnDestroy {
   @ViewChild('paginationBar') paginationBar?: ElementRef<HTMLElement>;
 
   requests: any[] = [];
@@ -20,31 +23,63 @@ export class ManagerLeaveApprovalComponent implements OnInit {
   pageSizeOptions = [10, 25, 50, 100];
   pageSize = 25;
   currentPage = 1;
+  processingRequests: Record<number, boolean> = {};
+  private refreshTimer?: ReturnType<typeof setInterval>;
+  private realtimeRefreshTimer?: ReturnType<typeof setTimeout>;
+  private disconnectRealtime?: () => void;
+  private requestInFlight = false;
+  private refreshPending = false;
+  private destroyed = false;
 
-  constructor(private http: HttpClient, private auth: AuthService, private alert: AlertService) {}
+  constructor(private http: HttpClient, private auth: AuthService, private alert: AlertService, private notificationService: NotificationService) {}
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+    this.refreshTimer = setInterval(() => this.load(false, true), 30_000);
+    this.disconnectRealtime = this.notificationService.connectRealtime(eventName => {
+      if (['leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.scheduleRealtimeRefresh();
+    });
+  }
 
-  load(resetPage = true): void {
-    this.isLoading = true;
+  ngOnDestroy(): void {
+    this.destroyed = true;
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+    if (this.realtimeRefreshTimer) clearTimeout(this.realtimeRefreshTimer);
+    this.disconnectRealtime?.();
+  }
+
+  load(resetPage = true, background = false): void {
+    if (this.destroyed) return;
+    if (this.requestInFlight) {
+      if (background) this.refreshPending = true;
+      return;
+    }
+    if (!background) this.isLoading = true;
     this.error = '';
     if (resetPage) this.currentPage = 1;
 
     let params = new HttpParams();
     if (this.search.trim()) params = params.set('search', this.search.trim());
     if (this.status) params = params.set('status', this.status);
-    this.http.get<any[]>('http://localhost:8080/api/v1/manager/leaves', { params, headers: this.headers() }).subscribe({
+    const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
+    this.requestInFlight = true;
+    this.http.get<any[]>('http://localhost:8080/api/v1/manager/leaves', { params, headers: this.headers(), context }).pipe(finalize(() => {
+      this.requestInFlight = false;
+      if (this.refreshPending && !this.destroyed) {
+        this.refreshPending = false;
+        this.scheduleRealtimeRefresh();
+      }
+    })).subscribe({
       next: data => {
         this.requests = Array.isArray(data) ? data : [];
         this.requests.forEach(request => {
-          this.notes[request.ID] = request.manager_notes || request.ManagerNotes || '';
+          if (!Object.prototype.hasOwnProperty.call(this.notes, request.ID)) this.notes[request.ID] = request.manager_notes || request.ManagerNotes || '';
         });
         this.ensureValidPage();
-        this.isLoading = false;
+        if (!background) this.isLoading = false;
       },
       error: e => {
-        this.requests = [];
-        this.isLoading = false;
+        if (!background) this.isLoading = false;
         this.error = 'Gagal memuat pengajuan tim: ' + (e.error?.error || 'Unknown error');
       }
     });
@@ -82,9 +117,12 @@ export class ManagerLeaveApprovalComponent implements OnInit {
       if (reason === null) return;
       rejectionReason = reason;
     } else if (!await this.alert.confirm('Konfirmasi pengajuan', 'Apakah Anda yakin ingin menyetujui pengajuan ini?', 'Ya, setujui')) return;
+    if (this.processingRequests[id]) return;
+    this.processingRequests[id] = true;
     this.http.put(`http://localhost:8080/api/v1/manager/leaves/${id}/approve`, { status: nextStatus, catatan: this.notes[id] || '', notes: this.notes[id] || '', rejection_reason: rejectionReason }, { headers: this.headers() }).subscribe({
-      next: () => this.load(false),
-      error: e => this.error = e.error?.error || 'Gagal memproses pengajuan'
+      next: () => { this.alert.success(`Pengajuan berhasil di-${nextStatus === 'Approved' ? 'setujui' : 'tolak'}`); this.load(false, true); },
+      complete: () => delete this.processingRequests[id],
+      error: e => { delete this.processingRequests[id]; this.error = e.error?.error || 'Gagal memproses pengajuan'; }
     });
   }
 
@@ -99,9 +137,20 @@ export class ManagerLeaveApprovalComponent implements OnInit {
 
   saveNote(id: number): void {
     this.http.put(`http://localhost:8080/api/v1/manager/leaves/${id}/note`, { catatan: this.notes[id] || '' }, { headers: this.headers() }).subscribe({
-      next: () => this.load(false),
+      next: () => { this.alert.success('Catatan berhasil disimpan'); this.load(false, true); },
       error: e => this.error = e.error?.error || 'Gagal menyimpan catatan'
     });
+  }
+
+  isProcessing(id: number): boolean { return !!this.processingRequests[id]; }
+
+  private scheduleRealtimeRefresh(): void {
+    if (this.destroyed) return;
+    if (this.realtimeRefreshTimer) clearTimeout(this.realtimeRefreshTimer);
+    this.realtimeRefreshTimer = setTimeout(() => {
+      this.realtimeRefreshTimer = undefined;
+      this.load(false, true);
+    }, 200);
   }
 
   employeeName(request: any): string { return request?.Employee?.User?.Nama || request?.Employee?.User?.nama || '-'; }

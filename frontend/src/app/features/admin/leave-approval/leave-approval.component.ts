@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { HttpContext } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
@@ -10,6 +11,7 @@ import { ReportExportService } from '../../../core/services/report-export.servic
 import { RouterLink } from '@angular/router';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-leave-approval',
@@ -31,8 +33,10 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
   selectedStatus = '';
   isExportOpen = false;
   private refreshTimer?: ReturnType<typeof setInterval>;
-  private reconnectTimer?: ReturnType<typeof setTimeout>;
-  private socket?: WebSocket;
+  private realtimeRefreshTimer?: ReturnType<typeof setTimeout>;
+  private disconnectRealtime?: () => void;
+  private requestInFlight = false;
+  private refreshPending = false;
   private destroyed = false;
 
   private baseUrl = 'http://localhost:8080/api/v1/admin/leave';
@@ -41,54 +45,49 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private authService: AuthService,
     private alert: AlertService,
-    private reportExport: ReportExportService
+    private reportExport: ReportExportService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
     this.loadLeaveRequests();
-    this.refreshTimer = setInterval(() => this.loadLeaveRequests(true), 30_000);
-    this.connectLiveUpdates();
+    this.refreshTimer = setInterval(() => this.loadLeaveRequests(false, true), 30_000);
+    this.disconnectRealtime = this.notificationService.connectRealtime(eventName => {
+      if (['leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.scheduleRealtimeRefresh();
+    });
   }
 
   ngOnDestroy(): void {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.destroyed = true;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = undefined;
-    this.socket?.close();
-    this.socket = undefined;
-  }
-
-  private connectLiveUpdates(): void {
-    if (this.destroyed) return;
-    this.reconnectTimer = undefined;
-    this.socket = new WebSocket('ws://localhost:8080/ws/dashboard');
-    this.socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.event === 'leave_request_created' || message.event === 'leave_status_updated' || message.event === 'leave_note_updated') this.loadLeaveRequests(true);
-      } catch { /* Ignore malformed broadcast messages. */ }
-    };
-    this.socket.onclose = () => {
-      if (!this.destroyed) {
-        this.reconnectTimer = setTimeout(() => {
-          this.reconnectTimer = undefined;
-          if (!this.destroyed) this.connectLiveUpdates();
-        }, 3_000);
-      }
-    };
+    if (this.realtimeRefreshTimer) clearTimeout(this.realtimeRefreshTimer);
+    this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
   }
 
   loadLeaveRequests(resetPage = true, background = false): void {
+    if (this.destroyed) return;
+    if (this.requestInFlight) {
+      if (background) this.refreshPending = true;
+      return;
+    }
     if (resetPage) this.currentPage = 1;
-    this.isLoading = true;
+    if (!background) this.isLoading = true;
+    this.errorMessage = '';
+    this.requestInFlight = true;
     const headers = this.getHeaders();
     const requestParams: Record<string, string> = {};
     if (this.selectedType) requestParams['jenis_izin'] = this.selectedType;
     if (this.selectedStatus) requestParams['status'] = this.selectedStatus;
     const params = Object.keys(requestParams).length ? { params: requestParams, headers } : { headers };
     const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
-    this.http.get<any[]>(this.baseUrl, { ...params, context }).subscribe({
+    this.http.get<any[]>(this.baseUrl, { ...params, context }).pipe(finalize(() => {
+      this.requestInFlight = false;
+      if (this.refreshPending && !this.destroyed) {
+        this.refreshPending = false;
+        this.scheduleRealtimeRefresh();
+      }
+    })).subscribe({
       next: (data) => {
         // The API returns one row per leave_requests.id. Keep the UI stable
         // even if an older proxy/cache accidentally repeats a row.
@@ -99,14 +98,15 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
         this.leaveRequests = Array.from(unique.values());
         this.leaveRequests.forEach(request => {
           const note = this.adminNote(request) === '-' ? '' : this.adminNote(request);
-          this.adminNotes[request.ID] = note;
+          if (!Object.prototype.hasOwnProperty.call(this.adminNotes, request.ID)) this.adminNotes[request.ID] = note;
         });
+        if (this.selectedRequest) this.selectedRequest = this.leaveRequests.find(request => request.ID === this.selectedRequest.ID) || this.selectedRequest;
         this.ensureValidPage();
-        this.isLoading = false;
+        if (!background) this.isLoading = false;
       },
       error: (err) => {
         this.errorMessage = err.error?.error || 'Gagal memuat data pengajuan';
-        this.isLoading = false;
+        if (!background) this.isLoading = false;
       }
     });
   }
@@ -157,7 +157,7 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
     }, { headers }).subscribe({
       next: (res) => {
         this.alert.success(`Pengajuan berhasil di-${status.toLowerCase()}`);
-        this.loadLeaveRequests(false); // Reload while preserving the active page when possible
+        this.loadLeaveRequests(false, true); // Background refresh while preserving the active page.
       },
       error: (err) => {
         delete this.processingRequests[id];
@@ -167,6 +167,15 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
         delete this.processingRequests[id];
       }
     });
+  }
+
+  private scheduleRealtimeRefresh(): void {
+    if (this.destroyed) return;
+    if (this.realtimeRefreshTimer) clearTimeout(this.realtimeRefreshTimer);
+    this.realtimeRefreshTimer = setTimeout(() => {
+      this.realtimeRefreshTimer = undefined;
+      this.loadLeaveRequests(false, true);
+    }, 200);
   }
 
   canAddAdminNote(request: any): boolean {

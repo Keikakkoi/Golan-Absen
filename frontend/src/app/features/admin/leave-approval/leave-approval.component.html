@@ -114,7 +114,7 @@
                 <div class="table-actions">
                   <button class="icon-button view" type="button" aria-label="Lihat detail pengajuan" title="Lihat detail pengajuan" (click)="openDetail(req)"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
                   <div *ngIf="canDecide(req)" class="action-group">
-                    <button class="icon-button approve" type="button" aria-label="Setujui pengajuan" title="Setujui pengajuan" [disabled]="isProcessing(req.ID)" (click)="updateStatus(req.ID, 'Approved')">
+                  <button type="button" class="icon-button approve" aria-label="Setujui pengajuan" title="Setujui pengajuan" [disabled]="isProcessing(req.ID)" (click)="updateStatus(req.ID, 'Approved')">
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
                     </button>
                     <button class="icon-button reject" type="button" aria-label="Tolak pengajuan" title="Tolak pengajuan" [disabled]="isProcessing(req.ID)" (click)="updateStatus(req.ID, 'Rejected')">
