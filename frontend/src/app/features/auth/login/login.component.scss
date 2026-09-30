@@ -939,3 +939,35 @@
 @media (min-width: 3700px) {
   .split-layout { --login-screen-scale: 3; }
 }
+
+/* Tablet landscape baseline: all tablet presets keep the same 50/50 split,
+   brand composition, and login-card dimensions. The wide-desktop scale is
+   intentionally disabled here so 1440px tablets do not become oversized. */
+@media (min-width: 901px) and (max-width: 1600px) {
+  .split-layout {
+    --login-screen-scale: 1;
+  }
+
+  .brand-panel,
+  .form-panel {
+    flex: 0 0 50%;
+    width: 50%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 24px !important;
+  }
+
+  .brand-panel .brand-content {
+    width: 100%;
+    max-width: 440px;
+    transform: none !important;
+  }
+
+  .form-panel .login-card {
+    box-sizing: border-box;
+    width: min(100%, 400px);
+    max-width: 400px;
+    padding: 28px 24px;
+    transform: translateY(-12px) !important;
+  }
+}

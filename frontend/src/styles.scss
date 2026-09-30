@@ -4575,3 +4575,235 @@ body.dark-theme .filter-date-year { border-color: #475569; background: #172033; 
   .admin-theme .modal-overlay > .home-request-detail-modal { --home-request-popup-scale: .916667; --home-request-visual-scale: 2.75; }
   .admin-theme .modal-overlay > .leave-detail-modal { --leave-detail-popup-scale: .666667; --leave-detail-visual-scale: 2; }
 }
+
+/* ========================================================================
+   TABLET BASELINE — 1024 x 768
+   Keep the tablet layout independent from the compact desktop density and
+   the large-monitor zoom rules above. This layer is intentionally limited to
+   901–1100px so mobile and desktop behavior remain unchanged.
+   ======================================================================== */
+@media (min-width: 901px) and (max-width: 1600px) {
+  html {
+    font-size: 16px !important;
+  }
+
+  body {
+    font-size: 1rem;
+  }
+
+  /* No dashboard zoom is needed at the 1024px tablet baseline. */
+  .admin-theme,
+  body.role-manajer app-history .dashboard-container,
+  body.role-manajer app-manager-dashboard .dashboard-container,
+  body.role-manajer app-team-attendance .dashboard-container,
+  body.role-manajer app-team-reports .dashboard-container,
+  body.role-manajer app-team-statistics .dashboard-container,
+  body.role-manajer app-manager-leave-approval .dashboard-container,
+  body.role-manajer app-checkin .dashboard-container,
+  body.role-manajer app-leave-request .dashboard-container,
+  body.role-manajer app-work-report .dashboard-container,
+  body.role-manajer app-statistics .dashboard-container,
+  body.role-manajer app-notifications .dashboard-container,
+  body.role-manajer app-profile .dashboard-container,
+  body.role-karyawan app-dashboard .dashboard-container,
+  body.role-karyawan app-checkin .dashboard-container,
+  body.role-karyawan app-history .dashboard-container,
+  body.role-karyawan app-leave-request .dashboard-container,
+  body.role-karyawan app-work-report .dashboard-container,
+  body.role-karyawan app-statistics .dashboard-container,
+  body.role-karyawan app-notifications .dashboard-container,
+  body.role-karyawan app-profile .dashboard-container,
+  body.role-karyawan app-manager .dashboard-container,
+  body.role-magang app-intern-dashboard .dashboard-container,
+  body.role-magang app-intern-logbook .dashboard-container,
+  body.role-magang app-intern-statistics .dashboard-container,
+  body.role-magang app-intern-mentor .dashboard-container,
+  body.role-magang app-intern-certificate .dashboard-container,
+  body.role-magang app-checkin .dashboard-container,
+  body.role-magang app-history .dashboard-container,
+  body.role-magang app-leave-request .dashboard-container,
+  body.role-magang app-statistics .dashboard-container,
+  body.role-magang app-notifications .dashboard-container,
+  body.role-magang app-profile .dashboard-container {
+    zoom: 1 !important;
+  }
+
+  .dashboard-container > .main-content,
+  .admin-theme > .main-content,
+  .main-content {
+    margin-left: 238px !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    padding: 24px 20px !important;
+  }
+
+  .main-content .header h1,
+  .main-content .header h2,
+  .main-content .header h3,
+  .main-content h1,
+  .main-content h2,
+  .main-content h3 {
+    font-size: 1.75rem !important;
+    line-height: 1.2;
+  }
+
+  .main-content p,
+  .main-content label {
+    font-size: .875rem;
+  }
+
+  .main-content .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+  }
+
+  .admin-dashboard-page .stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .main-content .golan-card,
+  .main-content .stat-card,
+  .main-content .action-card {
+    min-width: 0;
+    padding: 16px !important;
+    border-radius: 12px !important;
+  }
+
+  .main-content .golan-table th,
+  .main-content .golan-table td {
+    padding: 9px 10px !important;
+    font-size: .8rem !important;
+  }
+
+  .main-content .form-group .form-control,
+  .main-content .golan-input,
+  .main-content input,
+  .main-content textarea,
+  .main-content select {
+    min-height: 40px;
+    font-size: .875rem;
+  }
+
+  .main-content .btn-primary,
+  .main-content .btn-secondary,
+  .main-content .btn-sm,
+  .main-content .btn-outline-primary {
+    min-height: 36px;
+    padding: 8px 13px;
+    font-size: .8125rem;
+  }
+
+  .main-content .icon-button {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  /* Landing page remains a two-column tablet layout, with comfortable edge
+     spacing matching the 1024x768 reference viewport. */
+  .public-page {
+    zoom: 1 !important;
+  }
+
+  .public-header,
+  .public-page > main,
+  .public-footer {
+    padding-left: 42px;
+    padding-right: 42px;
+  }
+
+  /* Login and recovery pages use the same readable tablet density. */
+  app-login .split-layout {
+    zoom: 1 !important;
+  }
+
+  app-login .brand-panel,
+  app-login .form-panel {
+    padding: 24px !important;
+  }
+
+  app-login .login-card {
+    max-width: 400px;
+    padding: 28px 24px;
+  }
+
+  app-forgot-password .auth-container,
+  app-verify-password-otp .auth-container,
+  app-reset-password .auth-container {
+    min-height: 100dvh;
+    padding: 24px 16px;
+    overflow-y: auto;
+  }
+
+  app-forgot-password .auth-card,
+  app-verify-password-otp .auth-card,
+  app-reset-password .auth-card {
+    max-height: calc(100dvh - 32px);
+    padding: 28px 32px;
+    overflow-y: auto;
+  }
+
+  /* Keep every tablet dialog inside the 768px viewport. */
+  .modal-overlay,
+  .modal-backdrop,
+  .attendance-detail-backdrop,
+  .history-modal-backdrop {
+    padding: 16px !important;
+  }
+
+  .modal-overlay > *,
+  .modal-backdrop > *,
+  .attendance-detail-backdrop > *,
+  .history-modal-backdrop > * {
+    max-width: calc(100vw - 32px) !important;
+    max-height: calc(100dvh - 32px) !important;
+    transform: none !important;
+    transform-origin: center center;
+  }
+
+  .history-detail-modal,
+  .leave-detail-modal,
+  .home-request-detail-modal {
+    max-height: calc(100dvh - 32px) !important;
+    overflow-y: auto !important;
+  }
+
+  .swal2-container {
+    padding: 16px !important;
+  }
+
+  .swal2-popup {
+    width: min(100%, 520px) !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: calc(100dvh - 32px) !important;
+    overflow-y: auto !important;
+    transform: none !important;
+  }
+
+  /* Dropdown and date menus use a 1:1 visual scale on tablet. */
+  .filter-native-menu,
+  .filter-date-menu {
+    transform: scale(1) !important;
+    max-width: calc(100vw - 24px);
+  }
+
+  .filter-native-option {
+    min-height: 38px;
+    padding: 8px 12px;
+    font-size: .875rem !important;
+  }
+
+  .employee-form-menu .filter-native-option {
+    min-height: 42px;
+    padding: 9px 14px;
+  }
+
+  .filter-date-menu {
+    width: min(320px, calc(100vw - 24px));
+  }
+
+  .filter-date-day {
+    min-height: 36px;
+    font-size: .875rem;
+  }
+}

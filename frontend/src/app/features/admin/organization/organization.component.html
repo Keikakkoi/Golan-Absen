@@ -137,7 +137,7 @@
 
 <!-- Division Modal -->
 <div class="modal-overlay" *ngIf="showDeptModal">
-  <div class="modal-content golan-card">
+  <div class="modal-content golan-card organization-modal">
     <h3>{{ deptForm.ID ? 'Edit' : 'Tambah' }} Divisi</h3>
     <form (ngSubmit)="saveDivision()">
       <div class="form-group">
@@ -162,7 +162,7 @@
 
 <!-- Project Modal -->
 <div class="modal-overlay" *ngIf="showProjectModal">
-  <div class="modal-content golan-card">
+  <div class="modal-content golan-card organization-modal">
     <h3>{{ projectForm.ID ? 'Edit' : 'Tambah' }} Project</h3>
     <form (ngSubmit)="saveProject()">
       <div class="form-group"><label>Nama Project</label><input type="text" class="form-control" name="nama_project" [(ngModel)]="projectForm.NamaProject" required></div>
@@ -175,7 +175,7 @@
 
 <!-- Position Modal -->
 <div class="modal-overlay" *ngIf="showPosModal">
-  <div class="modal-content golan-card">
+  <div class="modal-content golan-card organization-modal">
     <h3>{{ posForm.ID ? 'Edit' : 'Tambah' }} Jabatan</h3>
     <form (ngSubmit)="savePosition()">
       <div class="form-group">

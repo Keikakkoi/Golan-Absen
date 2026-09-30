@@ -180,3 +180,20 @@
 @media (min-width: 3700px) {
   .public-page { --large-screen-scale: 3; }
 }
+
+/* Tablet landscape baseline: keep the hero composition stable from the
+   default 1024x768 tablet through the wider tablet presets. */
+@media (min-width: 901px) and (max-width: 1600px) {
+  .public-page .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(400px, .86fr);
+    gap: 48px;
+  }
+
+  .public-page .hero-visual {
+    left: 0;
+  }
+
+  .public-page .hero-card {
+    width: min(100%, 487.5px);
+  }
+}

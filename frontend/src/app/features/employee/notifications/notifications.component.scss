@@ -200,3 +200,35 @@ body.dark-theme .notification-list {
   .admin-notification-tabs { overflow-x: auto; }
   .admin-notification-tabs a { white-space: nowrap; }
 }
+
+/* Tablet landscape baseline: keep the push and mark-all controls on the
+   same row with identical density. The smaller iPad mini viewport must not
+   hide the second action when the first button is disabled or busy. */
+@media (min-width: 901px) and (max-width: 1600px) {
+  .notification-actions {
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .notification-actions > button {
+    box-sizing: border-box;
+    min-height: 36px;
+    padding: 7px 9px;
+    font-size: .75rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .notification-actions .push-button {
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .notification-actions .push-button svg {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+  }
+}
