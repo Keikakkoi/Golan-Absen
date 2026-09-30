@@ -4153,6 +4153,59 @@ body.dark-theme .filter-date-year { border-color: #475569; background: #172033; 
   }
 }
 
+/* Employee create/edit form uses the same dialog frame as the Event form.
+   The employee form has more fields, so only its inner content scrolls; its
+   visible width, padding, controls, and header remain consistent with Event. */
+@media (min-width: 901px) {
+  .modal-overlay.employee-form-modal-overlay > .employee-form-modal {
+    width: 700px !important;
+    max-width: 700px !important;
+    box-sizing: border-box;
+    max-height: calc((100dvh - 40px) / var(--employee-form-popup-scale, 1)) !important;
+    overflow-y: auto !important;
+  }
+
+  .employee-form-modal .modal-header {
+    padding: 26px 32px 22px !important;
+  }
+
+  .employee-form-modal .modal-body {
+    padding: 25px 32px 30px !important;
+  }
+
+  .employee-form-modal .form-group {
+    margin-bottom: 18px;
+  }
+
+  .employee-form-modal .form-group label {
+    margin-bottom: 8px;
+    font-size: .84rem;
+    font-weight: 700;
+  }
+
+  .employee-form-modal .form-control {
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 10px 13px;
+    border-radius: 9px;
+    font-size: .9rem;
+  }
+
+  .employee-form-modal textarea.form-control {
+    min-height: 72px;
+  }
+
+  .employee-form-modal .form-group-row {
+    gap: 16px;
+  }
+
+  .employee-form-modal .modal-footer {
+    margin-top: 24px;
+    gap: 16px;
+    padding: 18px 32px 24px;
+  }
+}
+
 @media (min-width: 2400px) {
   .admin-theme { --dashboard-screen-scale: 2; }
   body.role-hrd .page-skeleton-overlay.app-layout,
@@ -4885,5 +4938,15 @@ body.dark-theme .filter-date-year { border-color: #475569; background: #172033; 
   body.role-magang app-profile app-shared-sidebar {
     height: calc(100dvh / var(--dashboard-screen-scale, var(--manager-dashboard-scale, var(--employee-dashboard-scale, var(--intern-dashboard-scale, 1))))) !important;
     max-height: calc(100dvh / var(--dashboard-screen-scale, var(--manager-dashboard-scale, var(--employee-dashboard-scale, var(--intern-dashboard-scale, 1))))) !important;
+  }
+}
+
+/* Final precedence for employee create/edit sizing: match the Event dialog
+   after all large-screen popup rules have been evaluated. */
+@media (min-width: 901px) {
+  .modal-overlay.employee-form-modal-overlay > .employee-form-modal {
+    width: 700px !important;
+    max-width: 700px !important;
+    max-height: calc((100dvh - 40px) / var(--employee-form-popup-scale, 1)) !important;
   }
 }
