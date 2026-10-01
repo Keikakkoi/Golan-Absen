@@ -15,6 +15,9 @@ import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { dateOnly, localDateString, monthRange, reportDayStatus } from './work-report-date.utils';
 import { isValidRealisasiKegiatan, REALISASI_KEGIATAN_ERROR } from './work-report-validation';
+import { requiresReportTitle as resolveRequiresReportTitle } from '../../../core/utils/report-completeness';
+
+type SavedScrollPosition = { left: number; top: number };
 
 @Component({
   selector: 'app-work-report',
@@ -35,6 +38,7 @@ export class WorkReportComponent implements OnInit {
   reportForm!: FormGroup;
   selectedDate: string = '';
   isSubmitting = false;
+  savingAction: 'draft' | 'submitted' | null = null;
   isLoading = true;
   isRefreshing = false;
   refreshError = '';
@@ -93,7 +97,7 @@ export class WorkReportComponent implements OnInit {
     });
   }
 
-  loadInitialData(isRefresh = false) {
+  loadInitialData(isRefresh = false, preserveScrollPosition?: SavedScrollPosition) {
     if (isRefresh && (this.isRefreshing || this.isLoading)) return;
 
     this.refreshError = '';
@@ -108,6 +112,7 @@ export class WorkReportComponent implements OnInit {
       finalize(() => {
         this.isLoading = false;
         this.isRefreshing = false;
+        if (preserveScrollPosition) this.restoreScrollPosition(preserveScrollPosition);
       })
     ).subscribe({
       next: ({ columns, reports }) => {
@@ -199,7 +204,9 @@ export class WorkReportComponent implements OnInit {
     return this.monthLabelFormatter.format(new Date(year, month - 1, 1));
   }
 
-  getDayStatus(c: ComplianceResult): 'reported' | 'missing' | 'future' {
+  getDayStatus(c: ComplianceResult): 'reported' | 'missing' | 'future' | 'draft' | 'needs-review' {
+    if (c.status === 'draft') return 'draft';
+    if (c.status === 'needs_improvement') return 'needs-review';
     return reportDayStatus(c.tanggal, c.has_report);
   }
 
@@ -265,6 +272,32 @@ export class WorkReportComponent implements OnInit {
     return status !== 'sesuai' && status !== 'tidak membuat laporan kerja';
   }
 
+  reportFillingStatus(report: WorkReport): 'late' | 'draft' | 'submitted' {
+    const isLate = report?.is_late_submission === true
+      || String(report?.is_late_submission ?? '').trim().toLowerCase() === 'true'
+      || String(report?.is_late_submission ?? '').trim() === '1';
+    if (isLate) return 'late';
+    return String(report?.status_laporan || '').trim().toLowerCase() === 'draft' ? 'draft' : 'submitted';
+  }
+
+  reportFillingLabel(report: WorkReport): string {
+    switch (this.reportFillingStatus(report)) {
+      case 'late': return 'Terlambat';
+      case 'draft': return 'Draft';
+      default: return 'Submitted';
+    }
+  }
+
+  reportFillingClass(report: WorkReport): string {
+    return this.reportFillingStatus(report) === 'draft' || this.reportFillingStatus(report) === 'late'
+      ? 'status-warning'
+      : 'status-success';
+  }
+
+  requiresReportTitle(): boolean {
+    return resolveRequiresReportTitle(this.userDivisi);
+  }
+
   editReport(r: WorkReport) {
     if (!this.canModifyReport(r)) return;
     this.viewMode = 'form';
@@ -319,44 +352,81 @@ export class WorkReportComponent implements OnInit {
     this.removedScreenshotIds = [];
   }
 
-  deleteReport(report: WorkReport) {
+  async deleteReport(report: WorkReport, event?: Event): Promise<void> {
+    event?.preventDefault();
+    event?.stopPropagation();
     if (!this.canModifyReport(report) || !report.ID) return;
     const id = report.ID;
+    const scrollPosition = this.captureScrollPosition();
     this.isExportOpen = false;
-    Swal.fire({
-      title: 'Hapus Laporan?',
-      text: "Data yang dihapus tidak dapat dikembalikan!",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Ya, Hapus!',
-      cancelButtonText: 'Batal'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        this.workReportService.deleteWorkReport(id).subscribe({
-          next: () => {
-            this.reports = this.reports.filter(report => report.ID !== id);
-            this.allReports = this.allReports.filter(report => report.ID !== id);
-            this.totalReports = Math.max(0, this.totalReports - 1);
-            Swal.fire('Terhapus!', 'Laporan berhasil dihapus.', 'success').then(() => {
-              this.loadInitialData();
-            });
-          },
-          error: (err) => {
-            const message = typeof err?.error?.error === 'string'
-              ? err.error.error
-              : typeof err?.error?.message === 'string'
-                ? err.error.message
-                : 'Laporan gagal dihapus.';
-            Swal.fire('Gagal', message, 'error');
-          }
-        });
+    if (!await this.alertService.confirm('Hapus Laporan?', 'Data yang dihapus tidak dapat dikembalikan!', 'Ya, Hapus!')) {
+      this.restoreScrollPosition(scrollPosition);
+      return;
+    }
+
+    this.workReportService.deleteWorkReport(id).subscribe({
+      next: async () => {
+        this.reports = this.reports.filter(report => report.ID !== id);
+        this.allReports = this.allReports.filter(report => report.ID !== id);
+        this.totalReports = Math.max(0, this.totalReports - 1);
+        await this.alertService.success('Terhapus!', 'Laporan berhasil dihapus.');
+        this.loadInitialData(false, scrollPosition);
+      },
+      error: async (err) => {
+        const message = typeof err?.error?.error === 'string'
+          ? err.error.error
+          : typeof err?.error?.message === 'string'
+            ? err.error.message
+            : 'Laporan gagal dihapus.';
+        await this.alertService.error('Gagal', message);
+        this.restoreScrollPosition(scrollPosition);
       }
     });
   }
 
+  private captureScrollPosition(): SavedScrollPosition {
+    return { left: window.scrollX, top: window.scrollY };
+  }
+
+  private restoreScrollPosition(position: SavedScrollPosition): void {
+    const restore = () => window.scrollTo(position.left, position.top);
+    restore();
+    requestAnimationFrame(() => {
+      restore();
+      requestAnimationFrame(restore);
+    });
+    window.setTimeout(restore, 80);
+  }
+
+  saveDraft(): void {
+    if (this.isSubmitting) return;
+    const date = String(this.reportForm.get('tanggal')?.value || '').trim();
+    if (!date) {
+      this.reportForm.get('tanggal')?.markAsTouched();
+      Swal.fire({ icon: 'error', title: 'Tanggal wajib diisi', text: 'Pilih tanggal laporan terlebih dahulu.', confirmButtonColor: '#2F80ED' });
+      return;
+    }
+    const realization = String(this.reportForm.get('realisasi_kegiatan')?.value || '').trim();
+    if (realization && !isValidRealisasiKegiatan(realization)) {
+      this.reportForm.get('realisasi_kegiatan')?.markAsTouched();
+      Swal.fire({ icon: 'error', title: 'Input tidak valid', text: REALISASI_KEGIATAN_ERROR, confirmButtonColor: '#2F80ED' });
+      return;
+    }
+    this.processSave('draft');
+  }
+
   submitReport() {
+    if (this.isSubmitting) return;
+    if (this.requiresReportTitle() && !String(this.reportForm.get('judul')?.value || '').trim()) {
+      this.reportForm.get('judul')?.markAsTouched();
+      Swal.fire({
+        icon: 'error',
+        title: 'Judul wajib diisi',
+        text: 'Divisi Golan Nusantara dan Golan Education wajib mengisi Judul laporan.',
+        confirmButtonColor: '#2F80ED'
+      });
+      return;
+    }
     if (this.reportForm.invalid) {
       this.reportForm.markAllAsTouched();
       Swal.fire({
@@ -381,17 +451,19 @@ export class WorkReportComponent implements OnInit {
       cancelButtonText: 'Batal'
     }).then((result) => {
       if (result.isConfirmed) {
-        this.processSubmit();
+        this.processSave('submitted');
       }
     });
   }
 
-  private processSubmit() {
+  private processSave(targetStatus: 'draft' | 'submitted') {
     this.isSubmitting = true;
+    this.savingAction = targetStatus;
     const formValue = this.reportForm.value;
-    if (!isValidRealisasiKegiatan(formValue.realisasi_kegiatan)) {
+    if (targetStatus === 'submitted' && !isValidRealisasiKegiatan(formValue.realisasi_kegiatan)) {
       this.reportForm.get('realisasi_kegiatan')?.markAsTouched();
       this.isSubmitting = false;
+      this.savingAction = null;
       Swal.fire({ icon: 'error', title: 'Input tidak valid', text: REALISASI_KEGIATAN_ERROR, confirmButtonColor: '#2F80ED' });
       return;
     }
@@ -407,6 +479,7 @@ export class WorkReportComponent implements OnInit {
     payload.append('link_artikel', formValue.link_artikel || '');
     payload.append('catatan_tambahan', formValue.catatan_tambahan || '');
     payload.append('custom_fields', JSON.stringify(formValue.customFieldsForm || {}));
+    payload.append('status_laporan', targetStatus);
     this.selectedScreenshots.forEach(file => payload.append('screenshots', file, file.name));
     if (this.removedScreenshotIds.length) payload.append('delete_attachment_ids', JSON.stringify(this.removedScreenshotIds));
 
@@ -417,10 +490,13 @@ export class WorkReportComponent implements OnInit {
     request.subscribe({
       next: () => {
         this.isSubmitting = false;
+        this.savingAction = null;
         Swal.fire({
           icon: 'success',
           title: 'Berhasil!',
-          text: this.editingReportId ? 'Laporan kerja berhasil diperbarui' : 'Laporan kerja berhasil dikirim',
+          text: targetStatus === 'draft'
+            ? (this.editingReportId ? 'Draft laporan kerja berhasil diperbarui' : 'Laporan kerja berhasil disimpan sebagai draft')
+            : (this.editingReportId ? 'Laporan kerja berhasil dikirim ulang' : 'Laporan kerja berhasil dikirim'),
           confirmButtonColor: '#2F80ED'
         }).then(() => {
           this.viewMode = 'list';
@@ -430,10 +506,11 @@ export class WorkReportComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting = false;
+        this.savingAction = null;
         const reason = this.getErrorReason(err, 'Terjadi kesalahan saat menyimpan laporan kerja.');
         Swal.fire({
           icon: 'error',
-          title: this.editingReportId ? 'Gagal mengedit laporan kerja' : 'Gagal menambahkan laporan kerja',
+          title: targetStatus === 'draft' ? 'Gagal menyimpan draft' : (this.editingReportId ? 'Gagal mengirim laporan kerja' : 'Gagal menambahkan laporan kerja'),
           text: reason,
           confirmButtonColor: '#2F80ED'
         });
@@ -453,102 +530,27 @@ export class WorkReportComponent implements OnInit {
 
   exportExcel() {
     if (!this.reports || this.reports.length === 0) return;
-    
-    const userName = localStorage.getItem('name') || '-';
-    const userDivisi = localStorage.getItem('divisi') || 'Belum Ditentukan';
-    const userJabatan = localStorage.getItem('jabatan') || 'Belum Ditentukan';
-
-    // Find custom fields headers
-    let customHeaders: string[] = [];
-    if (this.columns && this.columns.length > 0) {
-      customHeaders = this.columns.map(c => c.nama_kolom);
-    } else if (this.reports.length > 0 && this.reports[0].custom_fields) {
-      try {
-        const parsed = JSON.parse(this.reports[0].custom_fields);
-        customHeaders = Object.keys(parsed);
-      } catch(e) {}
-    }
-
+    const userName = localStorage.getItem('name') || 'Employee';
+    const headers = this.exportHeaders();
+    const rows = this.exportRows();
+    const escapeHtml = (value: unknown): string => String(value ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     let html = `
       <html xmlns:x="urn:schemas-microsoft-com:office:excel">
       <head>
         <meta charset="utf-8">
         <style>
           table { border-collapse: collapse; font-family: Arial, sans-serif; }
-          th, td { border: 1px solid #000000; padding: 6px; text-align: center; vertical-align: middle; }
+          th, td { border: 1px solid #000000; padding: 6px; text-align: left; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }
           .bg-yellow { background-color: #FFFF00; font-weight: bold; }
-          .bg-teal { background-color: #C6E0B4; font-weight: bold; } /* light green/teal from image */
         </style>
       </head>
       <body>
         <table>
           <thead>
-            <tr>
-              <th class="bg-yellow">No</th>
-              <th class="bg-teal">Hari/Tanggal</th>
-              <th class="bg-yellow">Nama</th>
-              <th class="bg-yellow">Divisi</th>
-              <th class="bg-yellow">Jabatan</th>
-              <th class="bg-yellow">Tugas</th>
-              <th class="bg-yellow">Judul Golan Nusantara/ Golan Education</th>
-              <th class="bg-yellow">Deskripsi Kegiatan</th>
-              <th class="bg-yellow">Realisasi Kegiatan. ( Capaian Target. % )</th>
-              <th class="bg-yellow">Kendala (Jika Ada)</th>
-              <th class="bg-yellow">Rencana Minggu Depan</th>
-              <th class="bg-yellow">Link Artikel</th>
-              <th class="bg-yellow">Catatan Tambahan</th>
-              <th class="bg-yellow">Status Validasi</th>`;
-              
-    customHeaders.forEach(ch => {
-      html += `<th class="bg-yellow">${ch}</th>`;
-    });
-
-    html += `</tr>
+            <tr>${headers.map(header => `<th class="bg-yellow">${escapeHtml(header)}</th>`).join('')}</tr>
           </thead>
           <tbody>
-    `;
-    
-    this.reports.forEach((r, index) => {
-      const [reportYear, reportMonth, reportDay] = dateOnly(r.tanggal).split('-').map(Number);
-      const dateObj = new Date(reportYear, reportMonth - 1, reportDay);
-      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-      const dateString = `${days[dateObj.getDay()]}, ${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
-      
-      html += `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${dateString}</td>
-          <td>${userName}</td>
-          <td>${userDivisi}</td>
-          <td>${userJabatan}</td>
-          <td style="text-align: left;">${(r.tugas || '').replace(/</g, '&lt;')}</td>
-          <td style="text-align: left;">${(r.judul || '').replace(/</g, '&lt;')}</td>
-          <td style="text-align: left;">${(r.deskripsi_kegiatan || '').replace(/</g, '&lt;')}</td>
-          <td>${r.realisasi_kegiatan || ''}</td>
-          <td style="text-align: left;">${(r.kendala || '').replace(/</g, '&lt;')}</td>
-          <td style="text-align: left;">${(r.rencana_minggu_depan || '').replace(/</g, '&lt;')}</td>
-          <td>${r.link_artikel ? `<a href="${r.link_artikel}">${r.link_artikel}</a>` : '-'}</td>
-          <td style="text-align: left;">${(r.catatan_tambahan || '').replace(/</g, '&lt;')}</td>
-          <td>${r.status_sesuai || 'Menunggu'}</td>`;
-          
-      let customData: any = {};
-      try { customData = JSON.parse(r.custom_fields || '{}'); } catch(e) {}
-      
-      if (this.columns && this.columns.length > 0) {
-        this.columns.forEach(col => {
-          html += `<td>${customData[col.ID] || ''}</td>`;
-        });
-      } else {
-        customHeaders.forEach(ch => {
-          html += `<td>${customData[ch] || ''}</td>`;
-        });
-      }
-      
-      html += `</tr>`;
-    });
-    
-    html += `
+            ${rows.map(row => `<tr>${row.map(value => `<td>${escapeHtml(value)}</td>`).join('')}</tr>`).join('')}
           </tbody>
         </table>
       </body>
@@ -559,7 +561,7 @@ export class WorkReportComponent implements OnInit {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `Laporan_Kerja_${userName}_${new Date().getTime()}.xls`);
+    link.setAttribute('download', `Laporan_Kerja_${userName.replace(/\s+/g, '_')}_${new Date().getTime()}.xls`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -570,31 +572,13 @@ export class WorkReportComponent implements OnInit {
     this.isExportOpen = false;
     if (!this.reports || this.reports.length === 0) return;
     const userName = localStorage.getItem('name')?.replace(/\s+/g, '_') || 'Employee';
-    
-    // Create CSV content manually
-    let csvContent = "data:text/csv;charset=utf-8,";
-    // Headers
-    const headers = ["No", "Tanggal", "Tugas", "Judul", "Deskripsi", "Realisasi", "Kendala", "Rencana", "Status Validasi"];
-    csvContent += headers.join(",") + "\n";
-    
-    this.reports.forEach((r, i) => {
-      const row = [
-        i + 1,
-        dateOnly(r.tanggal),
-        `"${(r.tugas || '').replace(/"/g, '""')}"`,
-        `"${(r.judul || '').replace(/"/g, '""')}"`,
-        `"${(r.deskripsi_kegiatan || '').replace(/"/g, '""')}"`,
-        `"${(r.realisasi_kegiatan || '').replace(/"/g, '""')}"`,
-        `"${(r.kendala || '').replace(/"/g, '""')}"`,
-        `"${(r.rencana_minggu_depan || '').replace(/"/g, '""')}"`,
-        `"${(r.status_sesuai || 'Menunggu').replace(/"/g, '""')}"`
-      ];
-      csvContent += row.join(",") + "\n";
-    });
-    
+    const csvEscape = (value: unknown): string => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const csvContent = [this.exportHeaders(), ...this.exportRows()]
+      .map(row => row.map(csvEscape).join(','))
+      .join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', `data:text/csv;charset=utf-8,${encodedUri}`);
     link.setAttribute('download', `Laporan_Kerja_${userName}_${new Date().getTime()}.csv`);
     document.body.appendChild(link);
     link.click();
@@ -604,7 +588,12 @@ export class WorkReportComponent implements OnInit {
   exportJSON() {
     this.isExportOpen = false;
     if (!this.reports || this.reports.length === 0) return;
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.reports, null, 2));
+    const data = this.reports.map(report => ({
+      ...report,
+      status_pengisian: this.reportFillingLabel(report),
+      catatan_review_alasan_penolakan: this.reviewOrRejectionNote(report)
+    }));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "laporan_kerja.json");
@@ -628,19 +617,57 @@ export class WorkReportComponent implements OnInit {
   }
 
   private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
-    const headers = ['No', 'Hari/Tanggal', 'Nama', 'Divisi', 'Jabatan', 'Tugas', 'Judul Golan Nusantara / Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Status Validasi', ...this.columns.map(column => column.nama_kolom)];
-    const userName = localStorage.getItem('name') || '-';
-    const userDivisi = localStorage.getItem('divisi') || 'Belum Ditentukan';
-    const userJabatan = localStorage.getItem('jabatan') || 'Belum Ditentukan';
-    const rows = this.reports.map((report, index) => {
-      let customData: Record<string, unknown> = {};
-      try { customData = JSON.parse(report.custom_fields || '{}'); } catch { /* gunakan nilai kosong */ }
-      return [index + 1, this.formatReportDate(report.tanggal), userName, userDivisi, userJabatan, report.tugas || '-', report.judul || '-', report.deskripsi_kegiatan || '-', report.realisasi_kegiatan || '-', report.kendala || '-', report.rencana_minggu_depan || '-', report.link_artikel || '-', report.catatan_tambahan || '-', report.status_sesuai || 'Menunggu', ...this.columns.map(column => customData[column.ID] ?? '-')];
-    });
-    return { headers, rows };
+    return { headers: this.exportHeaders(), rows: this.exportRows() };
+  }
+
+  private exportHeaders(): string[] {
+    return ['No', 'Hari/Tanggal', 'Divisi', 'Tugas', 'Judul Golan Nusantara/Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan (Capaian Target, %)', 'Kendala (Jika Ada)', 'Rencana Minggu Depan', 'Link Artikel', 'Screenshot/Bukti Pengisian', 'Status Pengisian', 'Catatan Tambahan', 'Status Validasi', 'Catatan Review/Alasan Penolakan', ...this.columns.map(column => column.nama_kolom)];
+  }
+
+  private exportRows(): unknown[][] {
+    return this.reports.map((report, index) => [
+      index + 1,
+      this.formatReportDate(report.tanggal),
+      this.userDivisi || '-',
+      report.tugas || '-',
+      report.judul || '-',
+      report.deskripsi_kegiatan || '-',
+      report.realisasi_kegiatan || '-',
+      report.kendala || '-',
+      report.rencana_minggu_depan || '-',
+      report.link_artikel || '-',
+      (report.attachments || []).map(image => image.file_url).filter(Boolean).join(' | ') || '-',
+      this.reportFillingLabel(report),
+      report.catatan_tambahan || '-',
+      report.status_sesuai || 'Menunggu',
+      this.reviewOrRejectionNote(report),
+      ...this.columns.map(column => this.customFieldValue(report, column))
+    ]);
   }
 
   private reportDate(): string { return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()); }
+  rejectionReason(report: WorkReport): string {
+    const validationStatus = String(report.status_sesuai || '').trim().toLowerCase();
+    const fillingStatus = String(report.status_laporan || '').trim().toLowerCase();
+    const isRejected = validationStatus === 'tidak sesuai'
+      || validationStatus === 'ditolak'
+      || fillingStatus === 'rejected';
+    const reason = String(report.rejection_reason || report.RejectionReason || '').trim();
+    return isRejected && reason ? reason : '-';
+  }
+  reviewOrRejectionNote(report: WorkReport): string {
+    const reviewNotes = String(report.review_notes || report.ReviewNotes || '').trim();
+    const rejectionReason = this.rejectionReason(report);
+    const notes: string[] = [];
+    if (reviewNotes) notes.push(`Catatan Review: ${reviewNotes}`);
+    if (rejectionReason !== '-') notes.push(`Alasan Penolakan: ${rejectionReason}`);
+    return notes.join('\n') || '-';
+  }
+  customFieldValue(report: WorkReport, column: WorkReportColumn): string {
+    let fields: Record<string, unknown> = {};
+    try { fields = JSON.parse(report.custom_fields || '{}'); } catch { fields = {}; }
+    return String(fields[column.nama_kolom] ?? fields[column.ID] ?? '-');
+  }
   formatReportDate(value: string): string {
     const [year, month, day] = dateOnly(value).split('-').map(Number);
     return Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)

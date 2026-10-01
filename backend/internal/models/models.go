@@ -532,10 +532,18 @@ type WorkReport struct {
 	CatatanTambahan      string                 `gorm:"type:text" json:"catatan_tambahan"`
 	StatusSesuai         string                 `gorm:"size:50" json:"status_sesuai"` // Sesuai/Tidak Sesuai
 	ValidasiOlehHR       bool                   `gorm:"default:false" json:"validasi_oleh_hr"`
-	StatusLogbook        string                 `gorm:"size:20;default:'draft'" json:"status_logbook"` // draft/submitted/approved/rejected
+	StatusLaporan        string                 `gorm:"size:20;not null;default:'submitted';index" json:"status_laporan"` // draft/submitted
+	StatusLogbook        string                 `gorm:"size:20;default:'draft'" json:"status_logbook"`                    // draft/submitted/approved/rejected
 	ReviewedBy           *uint                  `gorm:"index" json:"reviewed_by"`
 	ReviewedAt           *time.Time             `gorm:"type:timestamp" json:"reviewed_at"`
 	ReviewNotes          string                 `gorm:"type:text" json:"review_notes"`
+	AdminNotes           string                 `gorm:"type:text" json:"admin_notes"`
+	AdminNoteBy          *uint                  `gorm:"index" json:"admin_note_by,omitempty"`
+	AdminNoteAt          *time.Time             `gorm:"type:timestamp" json:"admin_note_at,omitempty"`
+	RejectionReason      string                 `gorm:"type:text" json:"rejection_reason"`
+	RejectedBy           *uint                  `gorm:"index" json:"rejected_by"`
+	RejectedAt           *time.Time             `gorm:"type:timestamp" json:"rejected_at"`
+	RejectionSource      string                 `gorm:"size:20" json:"rejection_source"` // manager/admin
 	ManagerReviewNote    string                 `gorm:"-" json:"manager_review_note,omitempty"`
 	ManagerReviewedAt    *time.Time             `gorm:"-" json:"manager_reviewed_at,omitempty"`
 	ManagerReviewedBy    *uint                  `gorm:"-" json:"manager_reviewed_by,omitempty"`

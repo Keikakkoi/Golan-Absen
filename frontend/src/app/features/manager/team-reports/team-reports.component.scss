@@ -70,6 +70,42 @@
   border-radius: 6px;
 }
 
+.team-reports-review-cell {
+  min-width: 260px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.manager-note-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.35rem;
+  background: #fff;
+  color: #1f2937;
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.manager-note-input:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgba(147, 197, 253, .25);
+}
+
+.team-reports-table .note-display {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
 .report-action-buttons {
   display: flex;
   align-items: center;
@@ -485,5 +521,134 @@
     min-width: 0;
     padding: 6px 8px;
     font-size: 0.75rem;
+  }
+}
+.team-report-card { min-width: 0; overflow: visible; }
+.team-report-card .team-filter-layout { min-width: 0; }
+.team-reports-toolbar { min-width: 0; }
+
+/* Match the wide, readable Laporan Kerja table. Keep the first column at the
+   left edge and let the wrapper provide horizontal scrolling. */
+.team-reports-table-wrapper {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  direction: ltr;
+  scrollbar-width: thin;
+}
+.team-reports-table {
+  width: max-content !important;
+  min-width: 2850px !important;
+  max-width: none !important;
+  table-layout: auto !important;
+  white-space: normal !important;
+}
+.team-reports-table th,
+.team-reports-table td {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 10px 12px;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+.team-reports-table th {
+  min-height: 52px;
+  height: auto;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.2;
+}
+.team-reports-table th:nth-child(1), .team-reports-table td:nth-child(1) { width: 130px; min-width: 130px; }
+.team-reports-table th:nth-child(2), .team-reports-table td:nth-child(2) { width: 200px; min-width: 200px; }
+.team-reports-table th:nth-child(3), .team-reports-table td:nth-child(3) { width: 140px; min-width: 140px; }
+.team-reports-table th:nth-child(4), .team-reports-table td:nth-child(4) { width: 150px; min-width: 150px; }
+.team-reports-table th:nth-child(5), .team-reports-table td:nth-child(5) { width: 210px; min-width: 210px; }
+.team-reports-table th:nth-child(6), .team-reports-table td:nth-child(6) { width: 250px; min-width: 250px; }
+.team-reports-table th:nth-child(7), .team-reports-table td:nth-child(7) { width: 310px; min-width: 310px; }
+.team-reports-table th:nth-child(8), .team-reports-table td:nth-child(8) { width: 190px; min-width: 190px; }
+.team-reports-table th:nth-child(9), .team-reports-table td:nth-child(9) { width: 220px; min-width: 220px; }
+.team-reports-table th:nth-child(10), .team-reports-table td:nth-child(10) { width: 220px; min-width: 220px; }
+.team-reports-table th:nth-child(11), .team-reports-table td:nth-child(11) { width: 180px; min-width: 180px; }
+.team-reports-table th:nth-child(12), .team-reports-table td:nth-child(12) { width: 220px; min-width: 220px; }
+.team-reports-table th:nth-child(13), .team-reports-table td:nth-child(13) { width: 150px; min-width: 150px; }
+.team-reports-table th:nth-child(14), .team-reports-table td:nth-child(14) { width: 150px; min-width: 150px; }
+.team-reports-table th:nth-child(15), .team-reports-table td:nth-child(15) { width: 165px; min-width: 165px; }
+.team-reports-table th:nth-child(16), .team-reports-table td:nth-child(16) { width: 260px; min-width: 260px; }
+.team-reports-table th:nth-child(n+17):not(:last-child), .team-reports-table td:nth-child(n+17):not(:last-child) { width: 160px; min-width: 160px; }
+.team-reports-table th:last-child, .team-reports-table td:last-child { width: 112px !important; min-width: 112px; max-width: 112px; }
+.team-reports-table .report-thumb { display: inline-flex; width: 68px; height: 52px; margin: 0 4px 4px 0; vertical-align: middle; }
+.team-reports-table .report-thumb img { width: 68px !important; height: 52px !important; max-width: 68px; object-fit: cover; }
+.team-reports-table .status-pill { display: inline-flex; max-width: 100%; white-space: nowrap !important; overflow-wrap: normal !important; word-break: normal !important; }
+.team-reports-table .note-input { width: 100%; min-width: 0; box-sizing: border-box; }
+.team-reports-table .report-action-buttons { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; width: max-content; max-width: 100%; }
+.team-reports-table th:nth-child(13), .team-reports-table td:nth-child(13) { width: 160px; min-width: 160px; }
+.team-reports-table th:nth-child(14), .team-reports-table td:nth-child(14) { width: 190px; min-width: 190px; }
+.team-reports-table th:nth-child(15), .team-reports-table td:nth-child(15) { width: 160px; min-width: 160px; }
+.team-reports-table th:nth-child(16), .team-reports-table td:nth-child(16) { width: 145px; min-width: 145px; }
+.team-reports-table th:nth-child(17), .team-reports-table td:nth-child(17) { width: 260px; min-width: 260px; }
+.team-reports-table .status-pill { white-space: normal !important; overflow-wrap: anywhere !important; word-break: break-word !important; }
+
+@media (max-width: 900px) {
+  .team-reports-toolbar { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; align-items: end; }
+  .team-reports-toolbar > label,
+  .team-reports-toolbar > .report-filter-action,
+  .team-reports-toolbar > .report-refresh-action,
+  .team-reports-toolbar > .export-dropdown { width: 100% !important; min-width: 0 !important; box-sizing: border-box; }
+}
+@media (max-width: 520px) { .team-reports-toolbar { grid-template-columns: minmax(0, 1fr); } }
+
+@media (max-width: 600px) {
+  .team-reports-table td:nth-child(6),
+  .team-reports-table td:nth-child(7) {
+    white-space: normal !important;
+    overflow: visible !important;
+  }
+}
+
+/* Keep Status Waktu identical to the Admin report badge without changing the
+   visual treatment of the other Manager status columns. */
+.team-reports-table .status-time-pill {
+  padding: 4px 12px;
+  border: 0 !important;
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.team-reports-table .status-time-pill.status-success {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+}
+
+.team-reports-table .status-time-pill.status-warning {
+  background: color-mix(in srgb, var(--warning) 16%, transparent) !important;
+  color: var(--warning) !important;
+}
+
+.team-reports-table .status-time-pill.status-warning::before {
+  display: none !important;
+}
+
+/* The legacy warning span remains in the user-edited template; keep it from
+   duplicating the shared badge while preserving the existing data flow. */
+.team-reports-table td:nth-child(16) > span.status-warning {
+  display: none !important;
+}
+
+@media (max-width: 600px) {
+  .team-reports-table .status-time-pill {
+    padding: 5px 8px;
+    font-size: 0.72rem;
   }
 }

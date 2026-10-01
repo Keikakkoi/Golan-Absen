@@ -25,10 +25,15 @@
               name="tanggal"
               required /></label
           ><label class="field-group"
-            ><span>Tugas / topik</span
-            ><input class="golan-input" [(ngModel)]="form.tugas" name="tugas"
+            ><span>Tugas <em>*</em></span
+            ><input class="golan-input" [(ngModel)]="form.tugas" name="tugas" required
           /></label>
         </div>
+        <label class="field-group"
+          ><span>Judul Golan Nusantara/Golan Education <em *ngIf="requiresReportTitle()">*</em></span
+          ><input class="golan-input" [(ngModel)]="form.judul" name="judul"
+             [required]="requiresReportTitle()"
+        /></label>
         <div *ngIf="deadlineInfo" class="alert alert-info">
           Shift: <strong>{{ deadlineInfo.shift_name }}</strong> · selesai
           {{ deadlineInfo.shift_end }} WIB · toleransi
@@ -49,16 +54,41 @@
             [(ngModel)]="form.deskripsi_kegiatan"
             name="deskripsi_kegiatan"
             required
-          ></textarea></label
-        ><label class="field-group"
-          ><span>Kendala</span
+          ></textarea></label>
+        <label class="field-group"
+          ><span>Realisasi Kegiatan (Capaian Target, %) <em>*</em></span
+          ><input class="golan-input" [(ngModel)]="form.realisasi_kegiatan" name="realisasi_kegiatan" placeholder="Contoh: 100%" inputmode="numeric" maxlength="4" pattern="^(100|[1-9]?\d)%$" required
+        /></label>
+        <label class="field-group"
+          ><span>Kendala (Jika Ada)</span
           ><textarea
             class="golan-input"
             rows="2"
             [(ngModel)]="form.kendala"
             name="kendala"
-          ></textarea></label
-        ><label class="field-group"
+          ></textarea></label>
+        <label class="field-group"
+          ><span>Rencana Minggu Depan</span
+          ><textarea class="golan-input" rows="2" [(ngModel)]="form.rencana_minggu_depan" name="rencana_minggu_depan"></textarea
+        ></label>
+        <label class="field-group"
+          ><span>Link Artikel Draft/Pending/Publish</span
+          ><input class="golan-input" [(ngModel)]="form.link_artikel" name="link_artikel"
+        /></label>
+        <label class="field-group"
+          ><span>Catatan Tambahan</span
+          ><textarea class="golan-input" rows="2" [(ngModel)]="form.catatan_tambahan" name="catatan_tambahan"></textarea
+        ></label>
+        <div class="dynamic-fields" *ngIf="columns.length">
+          <h4>Kolom Tambahan</h4>
+          <label class="field-group" *ngFor="let column of columns"
+            ><span>{{ column.nama_kolom }} <em *ngIf="column.wajib_diisi">*</em></span
+            ><input *ngIf="column.tipe_input === 'text'" class="golan-input" [(ngModel)]="form.custom_fields[column.nama_kolom]" [name]="'custom_' + column.ID" [required]="column.wajib_diisi" />
+            ><textarea *ngIf="column.tipe_input === 'textarea'" class="golan-input" rows="3" [(ngModel)]="form.custom_fields[column.nama_kolom]" [name]="'custom_' + column.ID" [required]="column.wajib_diisi"></textarea>
+            ><select *ngIf="column.tipe_input === 'dropdown'" class="golan-input" [(ngModel)]="form.custom_fields[column.nama_kolom]" [name]="'custom_' + column.ID" [required]="column.wajib_diisi"><option value="">-- Pilih --</option><option *ngFor="let option of getOptions(column.opsi)" [value]="option">{{ option }}</option></select>
+          </label>
+        </div>
+        <label class="field-group"
           ><span>Screenshot pekerjaan (maksimal 3 file, 5MB/file)</span
           ><app-file-preview
             [files]="selectedScreenshots"
@@ -214,25 +244,39 @@
         <table class="golan-table intern-logbook-table">
           <thead>
             <tr>
-              <th>Tanggal</th>
+              <th>No</th>
+              <th>Hari/Tanggal</th>
+              <th>Divisi</th>
               <th>Tugas</th>
-              <th>Kegiatan</th>
-              <th>Screenshot</th>
-              <th>Status</th>
-              <th>Catatan Manajer</th>
+              <th>Judul Golan Nusantara/Golan Education</th>
+              <th>Deskripsi Kegiatan</th>
+              <th>Realisasi Kegiatan (Capaian Target, %)</th>
+              <th>Kendala (Jika Ada)</th>
+              <th>Rencana Minggu Depan</th>
+              <th>Link Artikel</th>
+              <th>Screenshot/Bukti Pengisian</th>
+              <th>Catatan Tambahan</th>
+              <th>Status Logbook</th>
+              <th>Status Validasi</th>
+              <th>Catatan Review Manager</th>
+              <th>Alasan Penolakan</th>
+              <th *ngFor="let column of columns">{{ column.nama_kolom }}</th>
               <th>Aksi</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let item of displayedLogbooks">
-              <td data-label="Tanggal">
+            <tr *ngFor="let item of displayedLogbooks; let i = index">
+              <td data-label="No">{{ ((page - 1) * pageSize) + i + 1 }}</td>
+              <td data-label="Hari/Tanggal">
                 {{
                   item.tanggal || item.Tanggal || item.CreatedAt
                     | date: "dd MMM yyyy"
                 }}
               </td>
+              <td data-label="Divisi">{{ divisionName || '-' }}</td>
               <td data-label="Tugas">{{ item.tugas || item.Tugas || "-" }}</td>
-              <td data-label="Kegiatan">
+              <td data-label="Judul">{{ item.judul || item.Judul || '-' }}</td>
+              <td data-label="Deskripsi Kegiatan">
                 {{
                   item.deskripsi_kegiatan ||
                     item.DeskripsiKegiatan ||
@@ -240,6 +284,13 @@
                     item.Kegiatan ||
                     "-"
                 }}
+              </td>
+              <td data-label="Realisasi">{{ item.realisasi_kegiatan || item.RealisasiKegiatan || '-' }}</td>
+              <td data-label="Kendala" class="text-cell" [title]="item.kendala || item.Kendala || '-'">{{ item.kendala || item.Kendala || '-' }}</td>
+              <td data-label="Rencana" class="text-cell" [title]="item.rencana_minggu_depan || item.RencanaMingguDepan || '-'">{{ item.rencana_minggu_depan || item.RencanaMingguDepan || '-' }}</td>
+              <td data-label="Link Artikel">
+                <a *ngIf="item.link_artikel || item.LinkArtikel" [href]="item.link_artikel || item.LinkArtikel" target="_blank" rel="noopener" class="article-link">Link</a>
+                <span *ngIf="!(item.link_artikel || item.LinkArtikel)">-</span>
               </td>
               <td data-label="Screenshot">
                 <div class="logbook-screenshot-list">
@@ -258,18 +309,28 @@
                   >
                 </div>
               </td>
-              <td data-label="Status">
+              <td data-label="Catatan Tambahan" class="text-cell" [title]="item.catatan_tambahan || item.CatatanTambahan || '-'">{{ item.catatan_tambahan || item.CatatanTambahan || '-' }}</td>
+              <td data-label="Status Logbook">
                 <span
                   class="status-pill"
                   [ngClass]="logbookStatusClass(item)"
                   >{{
-                    item.status_logbook || item.StatusLogbook || "draft"
+                    logbookStatusLabel(item)
                   }}</span
                 >
               </td>
-              <td data-label="Catatan Manajer">
+              <td data-label="Status Validasi">
+                <span class="status-pill" [ngClass]="validationStatusClass(item)">
+                  {{ validationStatusLabel(item) }}
+                </span>
+              </td>
+              <td data-label="Catatan Review Manager">
                 {{ item.review_notes || item.ReviewNotes || "-" }}
               </td>
+              <td data-label="Alasan Penolakan" class="text-cell" [title]="rejectionReason(item)">
+                {{ rejectionReason(item) }}
+              </td>
+              <td *ngFor="let column of columns" data-label="Custom field">{{ customFieldValue(item, column.nama_kolom) }}</td>
               <td data-label="Aksi">
                 <div class="intern-logbook-actions">
                   <button type="button" class="icon-button view" (click)="viewDetail(item)" aria-label="Lihat detail logbook" title="Lihat detail logbook">
@@ -278,7 +339,7 @@
                   <button *ngIf="canEdit(item)" type="button" class="icon-button edit" (click)="edit(item)" aria-label="Edit logbook" title="Edit logbook">
                     <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
                   </button>
-                  <button *ngIf="canDelete(item)" type="button" class="icon-button delete" (click)="deleteLogbook(item)" aria-label="Hapus logbook" title="Hapus logbook">
+                  <button *ngIf="canDelete(item)" type="button" class="icon-button delete" (click)="deleteLogbook(item, $event)" aria-label="Hapus logbook" title="Hapus logbook">
                     <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg>
                   </button>
                 </div>
@@ -328,15 +389,19 @@
           [ngClass]="logbookStatusClass(selectedLogbookDetail)"
         >
           {{
-            selectedLogbookDetail.status_logbook ||
-              selectedLogbookDetail.StatusLogbook ||
-              "draft"
+            logbookStatusLabel(selectedLogbookDetail)
           }}
         </span>
       </div>
       <div class="detail-row" *ngIf="selectedLogbookDetail.is_late_submission">
         <strong>Pengisian:</strong>
         <span class="status-pill status-warning">⚠ Terlambat</span>
+      </div>
+      <div class="detail-row">
+        <strong>Status Validasi:</strong>
+        <span class="status-pill" [ngClass]="validationStatusClass(selectedLogbookDetail)">
+          {{ validationStatusLabel(selectedLogbookDetail) }}
+        </span>
       </div>
       <div class="detail-row">
         <strong>Tugas / Topik:</strong>
@@ -346,6 +411,7 @@
           }}
         </p>
       </div>
+      <div class="detail-row"><strong>Judul Golan Nusantara/Golan Education:</strong><p>{{ selectedLogbookDetail.judul || selectedLogbookDetail.Judul || '-' }}</p></div>
       <div class="detail-row">
         <strong>Deskripsi Kegiatan:</strong>
         <p style="white-space: pre-wrap">
@@ -356,6 +422,7 @@
           }}
         </p>
       </div>
+      <div class="detail-row"><strong>Realisasi Kegiatan:</strong><p>{{ selectedLogbookDetail.realisasi_kegiatan || selectedLogbookDetail.RealisasiKegiatan || '-' }}</p></div>
       <div class="detail-row">
         <strong>Kendala:</strong>
         <p style="white-space: pre-wrap">
@@ -366,6 +433,9 @@
           }}
         </p>
       </div>
+      <div class="detail-row"><strong>Rencana Minggu Depan:</strong><p style="white-space: pre-wrap">{{ selectedLogbookDetail.rencana_minggu_depan || selectedLogbookDetail.RencanaMingguDepan || '-' }}</p></div>
+      <div class="detail-row"><strong>Link Artikel:</strong><p><a *ngIf="selectedLogbookDetail.link_artikel || selectedLogbookDetail.LinkArtikel" [href]="selectedLogbookDetail.link_artikel || selectedLogbookDetail.LinkArtikel" target="_blank" rel="noopener">{{ selectedLogbookDetail.link_artikel || selectedLogbookDetail.LinkArtikel }}</a><span *ngIf="!(selectedLogbookDetail.link_artikel || selectedLogbookDetail.LinkArtikel)">-</span></p></div>
+      <div class="detail-row"><strong>Catatan Tambahan:</strong><p style="white-space: pre-wrap">{{ selectedLogbookDetail.catatan_tambahan || selectedLogbookDetail.CatatanTambahan || '-' }}</p></div>
       <div class="detail-row">
         <strong>Catatan Review Manager:</strong>
         <p>
@@ -376,6 +446,11 @@
           }}
         </p>
       </div>
+      <div class="detail-row" *ngIf="logbookStatus(selectedLogbookDetail) === 'rejected'">
+        <strong>Alasan Penolakan:</strong>
+        <p style="white-space: pre-wrap">{{ rejectionReason(selectedLogbookDetail) }}</p>
+      </div>
+      <div class="detail-row" *ngFor="let column of columns"><strong>{{ column.nama_kolom }}:</strong><p>{{ customFieldValue(selectedLogbookDetail, column.nama_kolom) }}</p></div>
       <div class="detail-row" *ngIf="selectedLogbookDetail.attachments?.length">
         <strong>Screenshot Pekerjaan:</strong>
         <div class="screenshot-preview-grid">

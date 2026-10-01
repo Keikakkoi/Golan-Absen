@@ -46,6 +46,8 @@
           <div *ngFor="let c of complianceData" class="compliance-day" [ngClass]="{
               'has-report': getDayStatus(c) === 'reported',
               'missing-report': getDayStatus(c) === 'missing',
+              'draft-report': getDayStatus(c) === 'draft',
+              'needs-review': getDayStatus(c) === 'needs-review',
               'unattended': getDayStatus(c) === 'future'
             }">
             <div class="date">{{ getDayNumber(c.tanggal) }}</div>
@@ -86,9 +88,11 @@
                 <th class="th-yellow">Kendala (Jika Ada)</th>
                 <th class="th-yellow">Rencana Minggu Depan</th>
                 <th class="th-yellow">Link Artikel</th>
-                <th class="th-yellow">Screenshot / Status Pengisian</th>
+                <th class="th-yellow">Screenshot/Bukti Pengisian</th>
+                <th class="th-yellow">Status Pengisian</th>
                 <th class="th-yellow">Catatan Tambahan</th>
                 <th class="th-yellow">Status Validasi</th>
+                <th class="th-yellow">Catatan Review/Alasan Penolakan</th>
                 <!-- Custom columns header -->
                 <th class="th-yellow" *ngFor="let col of columns">{{ col.nama_kolom }}</th>
                 <th style="width: 100px; text-align: center;" class="no-print">Aksi</th>
@@ -96,34 +100,39 @@
             </thead>
             <tbody>
               <tr *ngFor="let r of reports; let i = index">
-                <td>{{ ((currentPage - 1) * pageSize) + i + 1 }}</td>
-                <td>{{ formatReportDate(r.tanggal) }}</td>
-                <td>{{ userDivisi }}</td>
-                <td style="min-width: 250px; white-space: normal; line-height: 1.4;" [title]="r.tugas || '-'">{{ r.tugas || '-' }}</td>
-                <td style="min-width: 150px; white-space: normal; line-height: 1.4;" [title]="r.judul || '-'">{{ r.judul || '-' }}</td>
-                <td style="min-width: 350px; white-space: normal; line-height: 1.4;" [title]="r.deskripsi_kegiatan || '-'">{{ r.deskripsi_kegiatan || '-' }}</td>
-                <td>{{ r.realisasi_kegiatan || '-' }}</td>
-                <td style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.kendala || '-'">{{ r.kendala || '-' }}</td>
-                <td style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.rencana_minggu_depan || '-'">{{ r.rencana_minggu_depan || '-' }}</td>
-                <td>
+                <td data-label="No">{{ ((currentPage - 1) * pageSize) + i + 1 }}</td>
+                <td data-label="Hari/Tanggal">{{ formatReportDate(r.tanggal) }}</td>
+                <td data-label="Divisi">{{ userDivisi }}</td>
+                <td data-label="Tugas" style="min-width: 250px; white-space: normal; line-height: 1.4;" [title]="r.tugas || '-'">{{ r.tugas || '-' }}</td>
+                <td data-label="Judul" style="min-width: 150px; white-space: normal; line-height: 1.4;" [title]="r.judul || '-'">{{ r.judul || '-' }}</td>
+                <td data-label="Deskripsi Kegiatan" style="min-width: 350px; white-space: normal; line-height: 1.4;" [title]="r.deskripsi_kegiatan || '-'">{{ r.deskripsi_kegiatan || '-' }}</td>
+                <td data-label="Realisasi Kegiatan">{{ r.realisasi_kegiatan || '-' }}</td>
+                <td data-label="Kendala" style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.kendala || '-'">{{ r.kendala || '-' }}</td>
+                <td data-label="Rencana Minggu Depan" style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.rencana_minggu_depan || '-'">{{ r.rencana_minggu_depan || '-' }}</td>
+                <td data-label="Link Artikel">
                   <a *ngIf="r.link_artikel" [href]="r.link_artikel" target="_blank" style="color: #3B82F6; text-decoration: underline;">Link</a>
                   <span *ngIf="!r.link_artikel">-</span>
                 </td>
-                <td>
-                  <span *ngIf="r.is_late_submission" class="status-pill status-warning">⚠ Terlambat mengisi</span>
+                <td data-label="Screenshot/Bukti Pengisian" class="report-screenshot-cell">
                   <span *ngFor="let image of r.attachments" class="report-thumb"><a [href]="image.file_url" target="_blank"><img [src]="image.file_url" [alt]="image.file_name"></a></span>
+                  <span *ngIf="!r.attachments?.length">-</span>
                 </td>
-                <td style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.catatan_tambahan || '-'">{{ r.catatan_tambahan || '-' }}</td>
-                <td>
+                <td data-label="Status Pengisian">
+                  <span class="status-pill" [ngClass]="reportFillingClass(r)">{{ reportFillingLabel(r) }}</span>
+                </td>
+                <td data-label="Catatan Tambahan" style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.catatan_tambahan || '-'">{{ r.catatan_tambahan || '-' }}</td>
+                <td data-label="Status Validasi">
                   <span class="status-badge status-{{ r.status_sesuai === 'Sesuai' ? 'hadir' : (r.status_sesuai === 'Tidak Sesuai' || (r.status_sesuai || '').toLowerCase() === 'tidak membuat laporan kerja' ? 'alpha' : 'pending') }}">
                     {{ r.status_sesuai || 'Menunggu' }}
                   </span>
                 </td>
-                <td class="no-print" style="text-align: center;">
-                  <button *ngIf="canModifyReport(r)" class="icon-button edit" style="margin-right: 0.25rem;" (click)="editReport(r)" title="Edit Laporan">
+                <td data-label="Catatan Review/Alasan Penolakan" class="text-cell report-review-note" [title]="reviewOrRejectionNote(r)">{{ reviewOrRejectionNote(r) }}</td>
+                <td *ngFor="let col of columns" [attr.data-label]="col.nama_kolom">{{ customFieldValue(r, col) }}</td>
+                <td data-label="Aksi" class="no-print" style="text-align: center;">
+                  <button type="button" *ngIf="canModifyReport(r)" class="icon-button edit" style="margin-right: 0.25rem;" (click)="editReport(r)" title="Edit Laporan">
                     <i class="fas fa-edit"></i>
                   </button>
-                  <button *ngIf="canModifyReport(r)" class="icon-button delete" (click)="deleteReport(r)" title="Hapus Laporan">
+                  <button type="button" *ngIf="canModifyReport(r)" class="icon-button delete" (click)="deleteReport(r, $event)" title="Hapus Laporan">
                     <i class="fas fa-trash"></i>
                   </button>
                 </td>
@@ -149,8 +158,8 @@
               <input type="date" class="form-control" formControlName="tanggal" (change)="onReportDateChange($any($event.target).value)">
             </div>
             <div class="form-group">
-              <label>Judul Golan Nusantara/Education</label>
-              <input type="text" class="form-control" formControlName="judul" placeholder="Judul...">
+              <label>Judul Golan Nusantara/Education <span *ngIf="requiresReportTitle()" class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="judul" placeholder="Judul..." [required]="requiresReportTitle()">
             </div>
           </div>
 
@@ -233,8 +242,11 @@
 
           <div class="form-actions mt-4" style="display: flex; justify-content: flex-end; gap: 1rem;">
             <button type="button" class="btn-outline-primary work-report-secondary-action" (click)="cancelForm()">Batal</button>
-            <button type="submit" class="btn btn-primary" [disabled]="reportForm.invalid || isSubmitting">
-              {{ isSubmitting ? 'Mengirim...' : 'Kirim Laporan' }}
+            <button type="button" class="btn-outline-primary work-report-secondary-action" (click)="saveDraft()" [disabled]="isSubmitting || !reportForm.get('tanggal')?.value">
+              {{ savingAction === 'draft' ? 'Menyimpan...' : 'Simpan Draft' }}
+            </button>
+            <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+              {{ savingAction === 'submitted' ? 'Mengirim...' : 'Kirim Laporan' }}
             </button>
           </div>
         </form>

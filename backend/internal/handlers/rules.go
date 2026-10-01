@@ -223,7 +223,7 @@ func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
 
 	// Backfill existing empty reports that have blank/null/Menunggu status_sesuai
 	db.Model(&models.WorkReport{}).
-		Where("(status_sesuai IS NULL OR status_sesuai = '' OR status_sesuai = 'Menunggu') AND (tugas = '' OR tugas IS NULL) AND (judul = '' OR judul IS NULL) AND (deskripsi_kegiatan = '' OR deskripsi_kegiatan IS NULL)").
+		Where("(status_sesuai IS NULL OR status_sesuai = '' OR status_sesuai = 'Menunggu') AND (status_laporan IS NULL OR status_laporan = '' OR status_laporan = 'submitted') AND (tugas = '' OR tugas IS NULL) AND (judul = '' OR judul IS NULL) AND (deskripsi_kegiatan = '' OR deskripsi_kegiatan IS NULL)").
 		Update("status_sesuai", "tidak membuat laporan kerja")
 
 	setting := getGeneralSetting()
@@ -310,6 +310,7 @@ func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
 					RealisasiKegiatan: "",
 					Kendala:           "",
 					StatusSesuai:      "tidak membuat laporan kerja",
+					StatusLaporan:     "submitted",
 					StatusLogbook:     "submitted",
 					IsLateSubmission:  true,
 				}

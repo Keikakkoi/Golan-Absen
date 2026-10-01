@@ -65,12 +65,23 @@
             <tr>
               <th>Tanggal</th>
               <th>Anggota</th>
+              <th>Divisi</th>
+              <th>Jabatan</th>
               <th>Tugas</th>
-              <th>Kegiatan</th>
+              <th>Judul</th>
+              <th>Deskripsi Kegiatan</th>
+              <th>Realisasi Kegiatan</th>
+              <th>Kendala</th>
+              <th>Rencana Minggu Depan</th>
+              <th>Link Artikel</th>
+              <th>Catatan Tambahan</th>
               <th>Screenshot</th>
-              <th>Status Logbook</th>
-              <th>Pengisian</th>
+              <th>Status Logbook/Laporan</th>
+              <th>Status Pengisian</th>
+              <th>Status Waktu</th>
               <th>Catatan Review</th>
+               <th>Alasan Penolakan</th>
+              <th *ngFor="let column of columns">{{ column.nama_kolom }}</th>
               <th>Aksi</th>
             </tr>
           </thead>
@@ -90,27 +101,58 @@
                   </ng-template>
                 </small>
               </td>
+              <td>{{ row.Employee?.Division?.NamaDivisi || '-' }}</td>
+              <td>{{ row.Employee?.Position?.NamaJabatan || '-' }}</td>
               <td>{{ row.tugas || row.Tugas || '-' }}</td>
-              <td>{{ row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-' }}</td>
+              <td>{{ row.judul || row.Judul || '-' }}</td>
+              <td class="text-cell" [title]="row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-'">{{ row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-' }}</td>
+              <td>{{ row.realisasi_kegiatan || row.RealisasiKegiatan || '-' }}</td>
+              <td class="text-cell" [title]="row.kendala || row.Kendala || '-'">{{ row.kendala || row.Kendala || '-' }}</td>
+              <td class="text-cell" [title]="row.rencana_minggu_depan || row.RencanaMingguDepan || '-'">{{ row.rencana_minggu_depan || row.RencanaMingguDepan || '-' }}</td>
+              <td><a *ngIf="row.link_artikel || row.LinkArtikel" [href]="row.link_artikel || row.LinkArtikel" target="_blank" rel="noopener">Link</a><span *ngIf="!(row.link_artikel || row.LinkArtikel)">-</span></td>
+              <td class="text-cell" [title]="row.catatan_tambahan || row.CatatanTambahan || '-'">{{ row.catatan_tambahan || row.CatatanTambahan || '-' }}</td>
               <td>
-                <span *ngFor="let image of row.attachments" class="report-thumb">
-                  <a [href]="image.file_url" target="_blank">
-                    <img [src]="image.file_url" [alt]="image.file_name">
+                <span *ngFor="let image of (row.attachments || row.Attachments)" class="report-thumb">
+                  <a [href]="image.file_url || image.FileURL" target="_blank" rel="noopener">
+                    <img [src]="image.file_url || image.FileURL" [alt]="image.file_name || image.FileName">
                   </a>
                 </span>
+                <span *ngIf="!(row.attachments?.length || row.Attachments?.length)">-</span>
               </td>
               <td>
                 <span class="status-pill" [ngClass]="logbookStatusClass(row)">
-                  {{ logbookStatus(row) || '-' }}
+                  {{ statusLabel(row) }}
                 </span>
               </td>
               <td>
-                <span *ngIf="row.is_late_submission" class="status-pill status-warning">⚠ Terlambat</span>
-                <span *ngIf="!row.is_late_submission">Tepat waktu</span>
+                <span class="status-pill" [ngClass]="fillingStatusClass(row)">{{ fillingStatus(row) }}</span>
               </td>
               <td>
-                <input class="golan-input note-input" [(ngModel)]="notes[row.id || row.ID]" placeholder="Masukkan catatan review...">
+                <span *ngIf="row.is_late_submission" class="status-pill status-warning">⚠ Terlambat</span>
+                <ng-container [ngSwitch]="statusTimeLabel(row)">
+                  <span *ngSwitchCase="'Terlambat'" class="status-pill status-time-pill status-warning">&#9888; Terlambat</span>
+                  <span *ngSwitchCase="'Tepat waktu'" class="status-pill status-time-pill status-success">Tepat waktu</span>
+                  <span *ngSwitchDefault>-</span>
+                </ng-container>
               </td>
+              <td class="team-reports-review-cell">
+                <ng-container *ngIf="canReview(row); else savedReviewNote">
+                  <label class="sr-only" [for]="'team-report-note-' + (row.id || row.ID)">Catatan Review</label>
+                  <textarea
+                    class="golan-input manager-note-input note-input"
+                    [id]="'team-report-note-' + (row.id || row.ID)"
+                    [(ngModel)]="notes[row.id || row.ID]"
+                    rows="3"
+                    placeholder="Tulis catatan atau alasan keputusan Manager..."
+                    [disabled]="isProcessing(row.id || row.ID)"
+                  ></textarea>
+                </ng-container>
+                <ng-template #savedReviewNote>
+                  <span class="note-display" [title]="reviewNote(row)">{{ reviewNote(row) || '-' }}</span>
+                </ng-template>
+              </td>
+              <td class="text-cell" [title]="rejectionReason(row)">{{ rejectionReason(row) }}</td>
+              <td *ngFor="let column of columns">{{ customFieldValue(row, column.nama_kolom) }}</td>
               <td>
                 <div class="report-action-buttons">
                   <button *ngIf="canReview(row)" type="button" class="icon-button approve" (click)="reviewLogbook(row.id || row.ID, 'approved')" aria-label="Setujui logbook" title="Setujui logbook">

@@ -77,6 +77,9 @@ func GetWorkReports(c *fiber.Ctx) error {
 			return c.Status(400).JSON(fiber.Map{"error": "Employee not found"})
 		}
 	} else {
+		// HRD/Admin must never receive employee-owned filling drafts. Empty or
+		// NULL values are legacy rows and continue to behave as Submitted.
+		query = query.Where("LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) <> ?", "draft", "draft")
 		empID := c.Query("employee_id")
 		if empID != "" {
 			query = query.Where("employee_id = ?", empID)
@@ -122,7 +125,7 @@ func GetWorkReports(c *fiber.Ctx) error {
 func CreateWorkReport(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 	var emp models.Employee
-	if err := config.DB.Preload("User").Where("user_id = ?", userID).First(&emp).Error; err != nil {
+	if err := config.DB.Preload("User").Preload("Division").Where("user_id = ?", userID).First(&emp).Error; err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Employee not found"})
 	}
 
@@ -130,7 +133,11 @@ func CreateWorkReport(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	if err := validateRealisasiKegiatan(input.RealisasiKegiatan, true); err != nil {
+	statusLaporan := normalizeWorkReportStatus(input.StatusLaporan)
+	if err := validateWorkReportCompleteness(input, emp.Division.NamaDivisi, statusLaporan == "submitted"); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := validateRealisasiKegiatan(input.RealisasiKegiatan, statusLaporan == "submitted"); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
@@ -145,9 +152,9 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		return c.Status(err.Code).JSON(fiber.Map{"error": err.Message})
 	}
 
-	statusLogbook := "submitted"
 	var existing models.WorkReport
 	if config.DB.Where("employee_id = ? AND tanggal = ?", emp.ID, t).First(&existing).Error == nil {
+		wasSubmitted := normalizeWorkReportStatus(existing.StatusLaporan) == "submitted"
 		updates := map[string]interface{}{
 			"tugas":                input.Tugas,
 			"judul":                input.Judul,
@@ -158,8 +165,12 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			"link_artikel":         input.LinkArtikel,
 			"catatan_tambahan":     input.CatatanTambahan,
 			"custom_fields":        input.CustomFields,
-			"status_logbook":       statusLogbook,
-			"is_late_submission":   existing.IsLateSubmission || isLateWorkReportSubmission(emp.ID, t),
+			"status_laporan":       statusLaporan,
+			// Regular work reports are not internship logbooks. Keep the
+			// separate logbook status Submitted so the shared Draft rule does
+			// not classify a normal report as an internship Draft.
+			"status_logbook":     "submitted",
+			"is_late_submission": existing.IsLateSubmission || isLateWorkReportSubmission(emp.ID, t),
 		}
 		if existing.StatusSesuai == "tidak membuat laporan kerja" {
 			updates["status_sesuai"] = ""
@@ -171,6 +182,19 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			saveWorkReportAttachments(existing.ID, emp.NIK, files)
 		}
 		config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").First(&existing, existing.ID)
+		if statusLaporan == "submitted" && !wasSubmitted {
+			WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
+			var hrdUsers []models.User
+			if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
+				name := "Karyawan"
+				if emp.User != nil {
+					name = emp.User.Nama
+				}
+				for _, user := range hrdUsers {
+					utils.CreateNotification(config.DB, user.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", name, existing.Tanggal.Format("02-01-2006")))
+				}
+			}
+		}
 		return c.JSON(existing)
 	}
 
@@ -186,7 +210,8 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		LinkArtikel:        input.LinkArtikel,
 		CatatanTambahan:    input.CatatanTambahan,
 		CustomFields:       input.CustomFields,
-		StatusLogbook:      statusLogbook,
+		StatusLaporan:      statusLaporan,
+		StatusLogbook:      "submitted",
 		IsLateSubmission:   isLateWorkReportSubmission(emp.ID, t),
 	}
 
@@ -197,17 +222,21 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").First(&report, report.ID)
-	WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
+	if statusLaporan == "submitted" {
+		WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
+	}
 
-	// Notify HRD about the new work report
-	var hrdUsers []models.User
-	if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
-		nama := "Karyawan"
-		if emp.User != nil {
-			nama = emp.User.Nama
-		}
-		for _, u := range hrdUsers {
-			utils.CreateNotification(config.DB, u.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", nama, report.Tanggal.Format("02-01-2006")))
+	// Drafts do not enter HR validation or trigger a new-report notification.
+	if statusLaporan == "submitted" {
+		var hrdUsers []models.User
+		if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
+			nama := "Karyawan"
+			if emp.User != nil {
+				nama = emp.User.Nama
+			}
+			for _, u := range hrdUsers {
+				utils.CreateNotification(config.DB, u.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", nama, report.Tanggal.Format("02-01-2006")))
+			}
 		}
 	}
 
@@ -243,8 +272,17 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	if err := deleteRequestedWorkReportAttachments(c, report.ID); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	if err := validateRealisasiKegiatan(input.RealisasiKegiatan, false); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	statusLaporan := normalizeWorkReportStatus(input.StatusLaporan)
+	if input.StatusLaporan == "" && input.Status == "" {
+		statusLaporan = normalizeWorkReportStatus(report.StatusLaporan)
+	}
+	if userRole != string(models.RoleHRD) {
+		if err := validateWorkReportCompleteness(input, report.Employee.Division.NamaDivisi, statusLaporan == "submitted"); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err := validateRealisasiKegiatan(input.RealisasiKegiatan, statusLaporan == "submitted"); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
 	}
 	if userRole != string(models.RoleHRD) && report.EmployeeID != nil {
 		targetDate := report.Tanggal
@@ -267,42 +305,61 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 			updates["tanggal"] = t
 		}
 	}
-	if input.Tugas != "" {
+	if strings.HasPrefix(strings.ToLower(c.Get("Content-Type")), "multipart/form-data") && userRole != string(models.RoleHRD) {
+		// FormData represents the complete employee form, so empty values must
+		// also be persisted when a draft is edited and a field is cleared.
 		updates["tugas"] = input.Tugas
-	}
-	if input.Judul != "" {
 		updates["judul"] = input.Judul
-	}
-	if input.DeskripsiKegiatan != "" {
 		updates["deskripsi_kegiatan"] = input.DeskripsiKegiatan
-	}
-	if input.RealisasiKegiatan != "" {
 		updates["realisasi_kegiatan"] = input.RealisasiKegiatan
-	}
-	if input.Kendala != "" {
 		updates["kendala"] = input.Kendala
-	}
-	if input.RencanaMingguDepan != "" {
 		updates["rencana_minggu_depan"] = input.RencanaMingguDepan
-	}
-	if input.LinkArtikel != "" {
 		updates["link_artikel"] = input.LinkArtikel
-	}
-	if input.CatatanTambahan != "" {
 		updates["catatan_tambahan"] = input.CatatanTambahan
-	}
-	if input.CustomFields != "" {
 		updates["custom_fields"] = input.CustomFields
+		updates["status_laporan"] = statusLaporan
+		updates["status_logbook"] = "submitted"
+	} else if input.StatusLaporan != "" && userRole != string(models.RoleHRD) {
+		updates["status_laporan"] = statusLaporan
+		updates["status_logbook"] = "submitted"
 	}
 
 	var statusChanged bool
+	wasSubmitted := normalizeWorkReportStatus(report.StatusLaporan) == "submitted"
 
 	if userRole == string(models.RoleHRD) {
+		input.StatusSesuai = normalizeAdminValidationStatus(input.StatusSesuai)
+		if (input.StatusSesuai != "" || input.AdminNotes != nil) &&
+			(normalizeWorkReportStatus(report.StatusLaporan) == "draft" || strings.ToLower(strings.TrimSpace(report.StatusLogbook)) == "draft") {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Draft belum dapat divalidasi sebelum dikirim"})
+		}
+		if input.AdminNotes != nil {
+			notes := strings.TrimSpace(*input.AdminNotes)
+			now := time.Now()
+			updates["admin_notes"] = notes
+			updates["admin_note_by"] = userID
+			updates["admin_note_at"] = now
+		}
+		if input.StatusSesuai == "Tidak Sesuai" {
+			reason, reasonErr := normalizeRejectionReason(input.RejectionReason)
+			if reasonErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": reasonErr.Error()})
+			}
+			updates["rejection_reason"] = reason
+			updates["rejected_by"] = userID
+			now := time.Now()
+			updates["rejected_at"] = now
+			updates["rejection_source"] = "admin"
+		}
 		if input.StatusSesuai != "" && input.StatusSesuai != report.StatusSesuai {
 			updates["status_sesuai"] = input.StatusSesuai
 			updates["validasi_oleh_hr"] = true
 			statusChanged = true
 		}
+	}
+	if userRole != string(models.RoleHRD) && statusLaporan == "submitted" && report.StatusSesuai == "Minta Perbaikan" {
+		updates["status_sesuai"] = ""
+		updates["validasi_oleh_hr"] = false
 	}
 
 	if err := config.DB.Model(&report).Updates(updates).Error; err != nil {
@@ -314,10 +371,30 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		}
 	}
 	config.DB.Preload("Attachments").First(&report, report.ID)
+	if userRole != string(models.RoleHRD) && statusLaporan == "submitted" && !wasSubmitted {
+		WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
+		var hrdUsers []models.User
+		if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
+			name := report.EmployeeNameSnapshot
+			if name == "" && report.Employee.User != nil {
+				name = report.Employee.User.Nama
+			}
+			if name == "" {
+				name = "Karyawan"
+			}
+			for _, user := range hrdUsers {
+				utils.CreateNotification(config.DB, user.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", name, report.Tanggal.Format("02-01-2006")))
+			}
+		}
+	}
 
 	// Notify the employee if HRD updated their report
 	if statusChanged && report.Employee.UserID != 0 {
-		utils.CreateNotification(config.DB, report.Employee.UserID, models.RoleKaryawan, "Laporan Kerja", "Status Laporan Diperbarui", fmt.Sprintf("Laporan kerja Anda tanggal %s telah diperbarui menjadi: %s", report.Tanggal.Format("02-01-2006"), input.StatusSesuai))
+		message := fmt.Sprintf("Laporan kerja Anda tanggal %s telah diperbarui menjadi: %s", report.Tanggal.Format("02-01-2006"), input.StatusSesuai)
+		if input.StatusSesuai == "Tidak Sesuai" {
+			message += ". Alasan penolakan: " + strings.TrimSpace(input.RejectionReason)
+		}
+		utils.CreateNotification(config.DB, report.Employee.UserID, models.RoleKaryawan, "Laporan Kerja", "Status Laporan Diperbarui", message)
 	}
 
 	return c.JSON(report)
@@ -363,6 +440,16 @@ func DeleteWorkReport(c *fiber.Ctx) error {
 func isWorkReportLocked(status string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(status))
 	return normalized == "sesuai" || normalized == "tidak membuat laporan kerja"
+}
+
+// normalizeAdminValidationStatus removes the retired HRD workflow state. The
+// Manager logbook workflow uses status_logbook and is intentionally unaffected.
+func normalizeAdminValidationStatus(status string) string {
+	normalized := strings.ToLower(strings.TrimSpace(status))
+	if normalized == "minta perbaikan" || normalized == "minta_perbaikan" {
+		return "Tidak Sesuai"
+	}
+	return status
 }
 
 // deleteWorkReportData removes the dependent rows before the report row. The
@@ -443,6 +530,11 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 
 	var reports []models.WorkReport
 	repQuery := config.DB.Where("tanggal BETWEEN ? AND ?", startDate, endDate)
+	if userRole == string(models.RoleHRD) {
+		// Drafts remain visible to their owner, but never participate in the
+		// HRD compliance/validation read model.
+		repQuery = repQuery.Where("LOWER(COALESCE(NULLIF(BTRIM(status_laporan), ''), 'submitted')) <> ? AND LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted')) <> ?", "draft", "draft")
+	}
 	if empID != 0 {
 		repQuery = repQuery.Where("employee_id = ?", empID)
 	}
@@ -451,12 +543,14 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 	}
 
 	reportMap := workReportStatusMap(reports)
+	complianceStatusMap := workReportComplianceStatusMap(reports)
 
 	type ComplianceResult struct {
 		EmployeeID uint   `json:"employee_id"`
 		Tanggal    string `json:"tanggal"`
 		HasReport  bool   `json:"has_report"`
 		IsAttended bool   `json:"is_attended"`
+		Status     string `json:"status"`
 	}
 
 	var results []ComplianceResult
@@ -468,10 +562,14 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 			EmployeeID: empID,
 			Tanggal:    dateStr,
 			HasReport:  reportMap[key],
+			Status:     complianceStatusMap[key],
 			// Compliance is intentionally based only on a work report. Attendance
 			// must never make a date green (or change its reporting status).
 			IsAttended: false,
 		})
+		if results[len(results)-1].Status == "" {
+			results[len(results)-1].Status = "missing"
+		}
 	}
 
 	return c.JSON(results)
@@ -485,6 +583,11 @@ func workReportStatusMap(reports []models.WorkReport) map[string]bool {
 		if strings.EqualFold(strings.TrimSpace(report.StatusSesuai), "tidak membuat laporan kerja") {
 			continue
 		}
+		// Drafts are intentionally absent from compliance. Empty status values
+		// are treated as legacy submitted rows for backward compatibility.
+		if strings.EqualFold(strings.TrimSpace(report.StatusLaporan), "draft") || strings.EqualFold(strings.TrimSpace(report.StatusLogbook), "draft") {
+			continue
+		}
 		if report.EmployeeID != nil {
 			status[fmt.Sprintf("%d_%s", *report.EmployeeID, report.Tanggal.Format("2006-01-02"))] = true
 		}
@@ -492,20 +595,51 @@ func workReportStatusMap(reports []models.WorkReport) map[string]bool {
 	return status
 }
 
+func workReportComplianceStatusMap(reports []models.WorkReport) map[string]string {
+	status := make(map[string]string)
+	priority := map[string]int{"missing": 0, "draft": 1, "submitted": 2, "needs_improvement": 3, "validated": 4}
+	for _, report := range reports {
+		if report.EmployeeID == nil {
+			continue
+		}
+		key := fmt.Sprintf("%d_%s", *report.EmployeeID, report.Tanggal.Format("2006-01-02"))
+		current := "submitted"
+		if strings.EqualFold(strings.TrimSpace(report.StatusSesuai), "tidak membuat laporan kerja") {
+			current = "missing"
+		} else if strings.EqualFold(strings.TrimSpace(report.StatusLaporan), "draft") || strings.EqualFold(strings.TrimSpace(report.StatusLogbook), "draft") {
+			current = "draft"
+		} else {
+			switch strings.ToLower(strings.TrimSpace(report.StatusSesuai)) {
+			case "sesuai":
+				current = "validated"
+			case "tidak sesuai", "minta perbaikan":
+				current = "needs_improvement"
+			}
+		}
+		if priority[current] >= priority[status[key]] {
+			status[key] = current
+		}
+	}
+	return status
+}
+
 type workReportInput struct {
-	Tanggal            string `json:"tanggal"`
-	Tugas              string `json:"tugas"`
-	Judul              string `json:"judul"`
-	DeskripsiKegiatan  string `json:"deskripsi_kegiatan"`
-	RealisasiKegiatan  string `json:"realisasi_kegiatan"`
-	Kendala            string `json:"kendala"`
-	RencanaMingguDepan string `json:"rencana_minggu_depan"`
-	LinkArtikel        string `json:"link_artikel"`
-	CatatanTambahan    string `json:"catatan_tambahan"`
-	CustomFields       string `json:"custom_fields"`
-	StatusSesuai       string `json:"status_sesuai"`
-	Status             string `json:"status"`
-	StatusLogbook      string `json:"status_logbook"`
+	Tanggal            string  `json:"tanggal"`
+	Tugas              string  `json:"tugas"`
+	Judul              string  `json:"judul"`
+	DeskripsiKegiatan  string  `json:"deskripsi_kegiatan"`
+	RealisasiKegiatan  string  `json:"realisasi_kegiatan"`
+	Kendala            string  `json:"kendala"`
+	RencanaMingguDepan string  `json:"rencana_minggu_depan"`
+	LinkArtikel        string  `json:"link_artikel"`
+	CatatanTambahan    string  `json:"catatan_tambahan"`
+	CustomFields       string  `json:"custom_fields"`
+	StatusSesuai       string  `json:"status_sesuai"`
+	StatusLaporan      string  `json:"status_laporan"`
+	Status             string  `json:"status"`
+	StatusLogbook      string  `json:"status_logbook"`
+	RejectionReason    string  `json:"rejection_reason"`
+	AdminNotes         *string `json:"admin_notes"`
 }
 
 const realisasiKegiatanError = "Realisasi kegiatan harus berupa angka persentase antara 0% sampai 100%, contoh: 20%, 50%, atau 100%."
@@ -520,6 +654,36 @@ func validateRealisasiKegiatan(value string, required bool) error {
 		return fmt.Errorf("%s", realisasiKegiatanError)
 	}
 	return nil
+}
+
+func requiresWorkReportTitle(division string) bool {
+	switch strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(division)), " ")) {
+	case "golan nusantara", "golan education":
+		return true
+	default:
+		return false
+	}
+}
+
+func validateWorkReportCompleteness(input workReportInput, division string, submitted bool) error {
+	if !submitted {
+		return nil
+	}
+	if strings.TrimSpace(input.Tugas) == "" || strings.TrimSpace(input.DeskripsiKegiatan) == "" {
+		return fmt.Errorf("tugas dan deskripsi kegiatan wajib diisi saat laporan dikirim")
+	}
+	if requiresWorkReportTitle(division) && strings.TrimSpace(input.Judul) == "" {
+		return fmt.Errorf("judul wajib diisi untuk divisi Golan Nusantara dan Golan Education")
+	}
+	return nil
+}
+
+func normalizeWorkReportStatus(value string) string {
+	status := strings.ToLower(strings.TrimSpace(value))
+	if status == "draft" {
+		return "draft"
+	}
+	return "submitted"
 }
 
 func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeader, error) {
@@ -537,13 +701,19 @@ func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeade
 		input.CatatanTambahan = c.FormValue("catatan_tambahan")
 		input.CustomFields = c.FormValue("custom_fields")
 		input.StatusSesuai = c.FormValue("status_sesuai")
+		input.RejectionReason = c.FormValue("rejection_reason")
+		input.StatusLaporan = c.FormValue("status_laporan")
 		input.Status = c.FormValue("status")
-		if input.Status == "" {
-			input.Status = c.FormValue("status_logbook")
-		}
 		form, err := c.MultipartForm()
 		if err != nil {
 			return input, nil, err
+		}
+		if values, ok := form.Value["admin_notes"]; ok {
+			notes := ""
+			if len(values) > 0 {
+				notes = values[0]
+			}
+			input.AdminNotes = &notes
 		}
 		files := form.File["screenshots"]
 		if len(files) == 0 {
@@ -564,9 +734,6 @@ func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeade
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return input, nil, err
-	}
-	if input.Status == "" && input.StatusLogbook != "" {
-		input.Status = input.StatusLogbook
 	}
 	return input, nil, nil
 }

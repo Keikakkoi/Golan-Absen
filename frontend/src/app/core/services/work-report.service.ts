@@ -27,6 +27,20 @@ export interface WorkReport {
   link_artikel: string;
   catatan_tambahan: string;
   status_sesuai?: string;
+  status_laporan?: 'draft' | 'submitted' | string;
+  status_logbook?: 'draft' | 'submitted' | 'approved' | 'rejected' | string;
+  StatusLogbook?: 'draft' | 'submitted' | 'approved' | 'rejected' | string;
+  review_notes?: string;
+  ReviewNotes?: string;
+  admin_notes?: string;
+  AdminNotes?: string;
+  admin_note_by?: number;
+  admin_note_at?: string;
+  rejection_reason?: string;
+  RejectionReason?: string;
+  rejected_by?: number;
+  rejected_at?: string;
+  rejection_source?: 'manager' | 'admin' | string;
   validasi_oleh_hr?: boolean;
   custom_fields: string; // JSON string
   CreatedAt?: string;
@@ -46,6 +60,7 @@ export interface ComplianceResult {
   tanggal: string;
   has_report: boolean;
   is_attended?: boolean;
+  status?: 'missing' | 'draft' | 'submitted' | 'validated' | 'needs_improvement' | string;
 }
 
 export interface WorkReportDeadline {

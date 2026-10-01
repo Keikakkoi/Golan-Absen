@@ -42,13 +42,18 @@ export class AlertService {
   }
 
   async error(title: string, text = ''): Promise<void> {
+    const scrollPosition = { left: window.scrollX, top: window.scrollY };
     const sweetAlert = await this.load();
     await sweetAlert.fire({
       icon: 'error',
       title,
       text,
-      confirmButtonText: 'Tutup'
+      confirmButtonText: 'Tutup',
+      heightAuto: false,
+      scrollbarPadding: false,
+      didOpen: () => window.scrollTo(scrollPosition)
     });
+    window.scrollTo(scrollPosition);
   }
 
   async info(title: string, text = ''): Promise<void> {

@@ -4153,6 +4153,19 @@ body.dark-theme .filter-date-year { border-color: #475569; background: #172033; 
   }
 }
 
+/* Team reports has variable-height table content. The role-level desktop
+   shell rule above must not stretch this page to the viewport height. */
+body.role-manajer app-team-reports .dashboard-container.team-reports-shell {
+  min-height: 0 !important;
+  height: auto !important;
+  align-items: flex-start;
+}
+
+body.role-manajer app-team-reports .dashboard-container.team-reports-shell > .main-content.team-reports-page {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
 /* Employee create/edit form uses the same dialog frame as the Event form.
    The employee form has more fields, so only its inner content scrolls; its
    visible width, padding, controls, and header remain consistent with Event. */
@@ -4949,4 +4962,184 @@ body.dark-theme .filter-date-year { border-color: #475569; background: #172033; 
     max-width: 700px !important;
     max-height: calc((100dvh - 40px) / var(--employee-form-popup-scale, 1)) !important;
   }
+}
+
+/* Keep the intern Logbook detail dialog consistent with the Attendance
+   History detail dialog, including the desktop dashboard zoom compensation. */
+@media (min-width: 901px) and (max-width: 1600px) {
+  body.role-magang app-intern-logbook .modal-backdrop > .modal-card {
+    width: min(100%, 540px) !important;
+    max-width: 540px !important;
+    max-height: calc(100dvh - 32px) !important;
+    box-sizing: border-box;
+    overflow-y: auto !important;
+    transform: none !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  body.role-magang app-intern-logbook .dashboard-container .modal-backdrop > .modal-card {
+    --logbook-detail-popup-scale: 1;
+    --logbook-detail-visual-scale: 1.5;
+    width: min(100%, 540px) !important;
+    max-width: 540px !important;
+    max-height: calc((100vh - 36px) / var(--logbook-detail-visual-scale)) !important;
+    transform: scale(var(--logbook-detail-popup-scale)) !important;
+    transform-origin: center center;
+  }
+}
+
+@media (min-width: 2400px) {
+  body.role-magang app-intern-logbook .dashboard-container .modal-backdrop > .modal-card {
+    --logbook-detail-popup-scale: .875;
+    --logbook-detail-visual-scale: 1.75;
+  }
+}
+
+@media (min-width: 2760px) {
+  body.role-magang app-intern-logbook .dashboard-container .modal-backdrop > .modal-card {
+    --logbook-detail-popup-scale: .888889;
+    --logbook-detail-visual-scale: 2;
+  }
+}
+
+@media (min-width: 3120px) {
+  body.role-magang app-intern-logbook .dashboard-container .modal-backdrop > .modal-card {
+    --logbook-detail-popup-scale: .9;
+    --logbook-detail-visual-scale: 2.25;
+  }
+}
+
+@media (min-width: 3300px) {
+  body.role-magang app-intern-logbook .dashboard-container .modal-backdrop > .modal-card {
+    --logbook-detail-popup-scale: .906977;
+    --logbook-detail-visual-scale: 2.4375;
+  }
+}
+
+@media (min-width: 3700px) {
+  body.role-magang app-intern-logbook .dashboard-container .modal-backdrop > .modal-card {
+    --logbook-detail-popup-scale: .833333;
+    --logbook-detail-visual-scale: 2.5;
+  }
+}
+
+/* Prevent long logbook values, especially article URLs, from widening the
+   dialog or overflowing its right edge. */
+body.role-magang app-intern-logbook .modal-backdrop > .modal-card {
+  overflow-x: hidden !important;
+}
+
+body.role-magang app-intern-logbook .modal-backdrop > .modal-card .detail-row {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.role-magang app-intern-logbook .modal-backdrop > .modal-card .detail-row strong,
+body.role-magang app-intern-logbook .modal-backdrop > .modal-card .detail-row p,
+body.role-magang app-intern-logbook .modal-backdrop > .modal-card .detail-row a {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+body.role-magang app-intern-logbook .modal-backdrop > .modal-card .detail-row p {
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+body.role-magang app-intern-logbook .modal-backdrop > .modal-card .detail-row a {
+  display: block;
+  white-space: normal;
+}
+
+body.role-magang app-intern-logbook .modal-backdrop > .modal-card .screenshot-preview-grid {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* The admin Logbook Magang verification dialog uses the same compact frame
+   as the intern Logbook detail dialog. */
+@media (min-width: 901px) and (max-width: 1600px) {
+  app-admin-role-operations .modal-backdrop > .modal-card {
+    width: min(100%, 540px) !important;
+    max-width: 540px !important;
+    max-height: calc(100dvh - 32px) !important;
+    box-sizing: border-box;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    transform: none !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  .admin-theme app-admin-role-operations .modal-backdrop > .modal-card {
+    --admin-logbook-detail-popup-scale: 1;
+    --admin-logbook-detail-visual-scale: 1.5;
+    width: min(100%, 540px) !important;
+    max-width: 540px !important;
+    max-height: calc((100vh - 36px) / var(--admin-logbook-detail-visual-scale)) !important;
+    transform: scale(var(--admin-logbook-detail-popup-scale)) !important;
+    transform-origin: center center;
+  }
+}
+
+@media (min-width: 2400px) {
+  .admin-theme app-admin-role-operations .modal-backdrop > .modal-card {
+    --admin-logbook-detail-popup-scale: .875;
+    --admin-logbook-detail-visual-scale: 1.75;
+  }
+}
+
+@media (min-width: 2760px) {
+  .admin-theme app-admin-role-operations .modal-backdrop > .modal-card {
+    --admin-logbook-detail-popup-scale: .888889;
+    --admin-logbook-detail-visual-scale: 2;
+  }
+}
+
+@media (min-width: 3120px) {
+  .admin-theme app-admin-role-operations .modal-backdrop > .modal-card {
+    --admin-logbook-detail-popup-scale: .9;
+    --admin-logbook-detail-visual-scale: 2.25;
+  }
+}
+
+@media (min-width: 3300px) {
+  .admin-theme app-admin-role-operations .modal-backdrop > .modal-card {
+    --admin-logbook-detail-popup-scale: .906977;
+    --admin-logbook-detail-visual-scale: 2.4375;
+  }
+}
+
+@media (min-width: 3700px) {
+  .admin-theme app-admin-role-operations .modal-backdrop > .modal-card {
+    --admin-logbook-detail-popup-scale: .833333;
+    --admin-logbook-detail-visual-scale: 2.5;
+  }
+}
+
+app-admin-role-operations .modal-backdrop > .modal-card .detail-row {
+  min-width: 0;
+  max-width: 100%;
+}
+
+app-admin-role-operations .modal-backdrop > .modal-card .detail-row strong,
+app-admin-role-operations .modal-backdrop > .modal-card .detail-row p,
+app-admin-role-operations .modal-backdrop > .modal-card .detail-row a {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+app-admin-role-operations .modal-backdrop > .modal-card .detail-row p {
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+app-admin-role-operations .modal-backdrop > .modal-card .screenshot-preview-grid {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }

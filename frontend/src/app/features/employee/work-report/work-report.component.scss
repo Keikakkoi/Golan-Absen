@@ -82,6 +82,56 @@
   border-top-color: #475569 !important;
 }
 
+/* Keep the regular report table readable after adding the independent
+   filling-status column. Long labels wrap inside their own cells. */
+.report-history-table {
+  min-width: 2550px;
+  table-layout: fixed;
+}
+
+.report-history-table th,
+.report-history-table td {
+  box-sizing: border-box;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.report-history-table th { line-height: 1.25; }
+.report-history-table th:nth-child(1), .report-history-table td:nth-child(1) { width: 52px; }
+.report-history-table th:nth-child(2), .report-history-table td:nth-child(2) { width: 150px; }
+.report-history-table th:nth-child(3), .report-history-table td:nth-child(3) { width: 130px; }
+.report-history-table th:nth-child(4), .report-history-table td:nth-child(4) { width: 230px; }
+.report-history-table th:nth-child(5), .report-history-table td:nth-child(5) { width: 190px; }
+.report-history-table th:nth-child(6), .report-history-table td:nth-child(6) { width: 330px; }
+.report-history-table th:nth-child(7), .report-history-table td:nth-child(7) { width: 145px; }
+.report-history-table th:nth-child(8), .report-history-table td:nth-child(8) { width: 210px; }
+.report-history-table th:nth-child(9), .report-history-table td:nth-child(9) { width: 210px; }
+.report-history-table th:nth-child(10), .report-history-table td:nth-child(10) { width: 125px; }
+.report-history-table th:nth-child(11), .report-history-table td:nth-child(11) { width: 155px; }
+.report-history-table th:nth-child(12), .report-history-table td:nth-child(12) { width: 135px; }
+.report-history-table th:nth-child(13), .report-history-table td:nth-child(13) { width: 220px; }
+.report-history-table th:nth-child(14), .report-history-table td:nth-child(14) { width: 150px; }
+.report-history-table th:nth-child(15), .report-history-table td:nth-child(15) { width: 190px; }
+.report-history-table th:nth-child(n+16), .report-history-table td:nth-child(n+16) { min-width: 150px; }
+.report-history-table .status-pill,
+.report-history-table .status-badge { display: inline-flex; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.report-history-table .status-pill.status-success {
+  background: #ecfdf5;
+  color: #047857;
+}
+.report-history-table .report-thumb { display: inline-flex; flex-wrap: wrap; vertical-align: middle; }
+.report-history-table .report-thumb img { width: 64px; height: 48px; }
+
+.form-actions { flex-wrap: wrap; }
+
+@media (max-width: 640px) {
+  .report-history-table { min-width: 2550px; }
+  .form-actions > button { flex: 1 1 150px; }
+}
+
 @media (max-width: 640px) {
   .work-report-export-dropdown .dropdown-menu-custom {
     left: 0;
@@ -151,6 +201,18 @@
       // which makes the tooltip appear over the next date.
       transform: translate(-50%, 0);
     }
+  }
+
+  &.draft-report {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.08);
+    .indicator { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+  }
+
+  &.needs-review {
+    border-color: rgba(249, 115, 22, 0.45);
+    background: rgba(249, 115, 22, 0.08);
+    .indicator { background: #f97316; box-shadow: 0 0 8px rgba(249, 115, 22, 0.5); }
   }
 
   .hover-info {
@@ -424,6 +486,45 @@
 .existing-screenshot { position: relative; display: inline-flex; }
 .existing-screenshot-remove { position: absolute; z-index: 1; top: -8px; right: -8px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #fff; color: #b42318; box-shadow: 0 1px 5px #0003; cursor: pointer; }
 .report-thumb { display: inline-block; margin: 2px; }
+
+/* Keep the history header and body aligned after adding the review-note column. */
+.report-history-table th,
+.report-history-table td {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.report-history-table th:nth-child(11),
+.report-history-table td:nth-child(11) {
+  min-width: 170px;
+}
+
+.report-history-table th:nth-child(15),
+.report-history-table td:nth-child(15) {
+  width: 300px;
+  min-width: 300px;
+  max-width: 360px;
+}
+
+.report-history-table .report-review-note {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.report-history-table .report-screenshot-cell {
+  min-width: 170px;
+}
+
+.report-history-table th:last-child,
+.report-history-table td:last-child {
+  width: 130px;
+  min-width: 130px;
+  max-width: 160px;
+}
 
 /* Export menu dark-mode overrides are scoped to this component so the light
    theme and other dropdowns keep their existing appearance. */

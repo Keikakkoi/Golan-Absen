@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strings"
 	"time"
 
 	"absensi-golan-backend/config"
@@ -220,14 +221,22 @@ func chartReportStatus(ids []uint, start, end time.Time, logbook bool) []chartVa
 	for _, label := range labels {
 		var count int64
 		q := config.DB.Model(&models.WorkReport{}).Where("employee_id IN ? AND tanggal BETWEEN ? AND ?", ids, start, end)
+		// Dashboard charts are aggregate/admin-facing data. Treat legacy blank
+		// statuses as submitted, but never count either kind of Draft.
+		q = q.Where("LOWER(COALESCE(NULLIF(BTRIM(status_laporan), ''), 'submitted')) <> ?", "draft")
+		q = q.Where("LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted')) <> ?", "draft")
 		if logbook {
-			q = q.Where("status_logbook = ?", label)
+			if label == "Submitted" {
+				q = q.Where("LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted')) = ?", "submitted")
+			} else {
+				q = q.Where("LOWER(BTRIM(status_logbook)) = ?", strings.ToLower(label))
+			}
 		} else {
 			switch label {
 			case "Selesai":
 				q = q.Where("status_sesuai = ? OR status_logbook = ?", "Sesuai", "approved")
 			case "Pending":
-				q = q.Where("status_logbook IN ?", []string{"draft", "submitted"})
+				q = q.Where("LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted')) = ?", "submitted")
 			case "Terlambat":
 				q = q.Where("is_late_submission = ?", true)
 			case "Ditolak":

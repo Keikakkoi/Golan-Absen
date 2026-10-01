@@ -63,19 +63,23 @@ func GetAdminInternshipDashboard(c *fiber.Ctx) error {
 	var total, active, pending int64
 	config.DB.Model(&models.User{}).Where("role = ?", models.RoleMagang).Count(&total)
 	config.DB.Model(&models.User{}).Where("role = ? AND internship_end_date >= ?", models.RoleMagang, today).Count(&active)
-	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ? AND work_reports.status_logbook = ?", models.RoleMagang, "submitted").Count(&pending)
+	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ?", models.RoleMagang, "submitted", "draft").Count(&pending)
 	completed := getSertifikatTerbitCount()
 	return c.JSON(fiber.Map{"total_magang": total, "magang_aktif": active, "logbook_pending": pending, "sertifikat_terbit": completed})
 }
 
 func GetAdminInternshipLogbooks(c *fiber.Ctx) error {
 	EnsureDailyWorkReportsAutoCreated(config.DB, attendanceNow())
-	query := config.DB.Preload("Attachments").Preload("Employee.User").Preload("Employee.Division").Where("users.role = ?", models.RoleMagang).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Order("work_reports.tanggal desc")
+	query := config.DB.Preload("Attachments").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Where("users.role = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) <> ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ?", models.RoleMagang, "draft", "draft").Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Order("work_reports.tanggal desc")
 	if status := c.Query("status"); status != "" {
 		if status != "draft" && status != "submitted" && status != "approved" && status != "rejected" {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid logbook status"})
 		}
-		query = query.Where("work_reports.status_logbook = ?", status)
+		if status == "submitted" {
+			query = query.Where("LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) = ?", status)
+		} else {
+			query = query.Where("LOWER(BTRIM(work_reports.status_logbook)) = ?", status)
+		}
 	}
 	if start, end := c.Query("start_date"), c.Query("end_date"); start != "" && end != "" {
 		query = query.Where("work_reports.tanggal BETWEEN ? AND ?", start, end)
@@ -103,17 +107,7 @@ func ReviewAdminInternshipLogbook(c *fiber.Ctx) error {
 }
 
 func DeleteAdminInternshipLogbook(c *fiber.Ctx) error {
-	var report models.WorkReport
-	if err := config.DB.Preload("Employee.User").Where("id = ?", c.Params("id")).First(&report).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Logbook not found"})
-	}
-	if report.Employee.User == nil || report.Employee.User.Role != models.RoleMagang {
-		return c.Status(403).JSON(fiber.Map{"error": "Only internship logbooks can be deleted here"})
-	}
-	if err := config.DB.Delete(&report).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to delete logbook"})
-	}
-	return c.JSON(fiber.Map{"message": "Logbook deleted successfully"})
+	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Logbook tidak dapat dihapus dari Operasional Magang Admin"})
 }
 
 func GetAdminInternshipCertificates(c *fiber.Ctx) error {

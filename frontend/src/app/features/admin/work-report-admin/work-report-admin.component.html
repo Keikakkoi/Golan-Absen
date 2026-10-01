@@ -101,6 +101,7 @@
                   <option value="Sudah membuat laporan">Sudah membuat laporan</option>
                   <option value="Belum membuat laporan">Belum membuat laporan</option>
                   <option value="Laporan belum lengkap">Laporan belum lengkap</option>
+                  <option value="Submitted">Submitted</option>
                 </select>
                 <i class="fas fa-chevron-down icon-right"></i>
               </div>
@@ -128,7 +129,7 @@
         </div>
 
         <div class="golan-table-responsive work-report-table-wrapper">
-          <app-ui-skeleton *ngIf="isLoading" type="table" [rows]="6" [columns]="17" ariaLabel="Memuat daftar laporan masuk"></app-ui-skeleton>
+          <app-ui-skeleton *ngIf="isLoading" type="table" [rows]="6" [columns]="20" ariaLabel="Memuat daftar laporan masuk"></app-ui-skeleton>
           <p *ngIf="isLoading" class="table-scroll-hint">Geser ke samping untuk melihat kolom lainnya.</p>
           <table class="golan-table table-bordered table-sm work-report-table" *ngIf="!isLoading && reports.length > 0">
             <thead>
@@ -146,9 +147,13 @@
                 <th class="th-yellow">Rencana Minggu Depan</th>
                 <th class="th-yellow">Link Artikel</th>
                 <th class="th-yellow">Catatan Tambahan</th>
+                <th class="th-yellow">Status Pengisian</th>
                 <th class="th-yellow">Status Laporan</th>
                 <th class="th-yellow">Bukti Pengisian</th>
                 <th class="th-yellow">Status Waktu</th>
+                <th class="th-yellow">Status Validasi</th>
+                <th class="th-yellow">Catatan Manager/Admin</th>
+                <th class="th-yellow">Alasan Penolakan</th>
                 <th style="width: 150px; text-align: center;" class="th-yellow">Aksi & Validasi</th>
               </tr>
             </thead>
@@ -170,21 +175,56 @@
                   <span *ngIf="!r.link_artikel">-</span>
                 </td>
                 <td class="text-cell" [title]="r.catatan_tambahan || '-'">{{ r.catatan_tambahan || '-' }}</td>
+                <td><span class="status-pill" [ngClass]="reportFillingClass(r)">{{ reportFillingLabel(r) }}</span></td>
+                <td><span class="status-badge" [ngClass]="reportStatusClass(r)">{{ reportStatusLabel(r) }}</span></td>
                 <td>
-                  <span *ngIf="isNoReport(r)" class="status-badge status-alpha">Belum membuat laporan kerja</span>
-                  <span *ngIf="isIncompleteReport(r)" class="status-badge status-warning">Laporan belum lengkap</span>
-                  <span *ngIf="hasCompleteReport(r)" class="status-badge status-hadir">Sudah membuat laporan</span>
+                  <span *ngIf="isNoReport(r)" class="status-pill status-alpha">{{ evidenceLabel(r) }}</span>
+                  <ng-container *ngIf="!isNoReport(r)">
+                    <span *ngFor="let image of r.attachments" class="report-thumb"><a [href]="image.file_url" target="_blank"><img [src]="image.file_url" [alt]="image.file_name"></a></span>
+                    <span *ngIf="!hasEvidence(r)">{{ evidenceLabel(r) }}</span>
+                  </ng-container>
                 </td>
-                <td><span *ngIf="r.is_late_submission" class="status-pill status-warning">⚠ Terlambat</span><span *ngFor="let image of r.attachments" class="report-thumb"><a [href]="image.file_url" target="_blank"><img [src]="image.file_url" [alt]="image.file_name"></a></span></td>
                 <td>
-                  <span class="status-pill" [class.status-warning]="r.is_late_submission" [class.status-success]="!r.is_late_submission">{{ r.is_late_submission ? 'Terlambat' : 'Tepat waktu' }}</span>
+                  <span *ngIf="!isNoReport(r)" class="status-pill" [class.status-warning]="shouldShowLateStatus(r)" [class.status-success]="!shouldShowLateStatus(r)">{{ statusTimeLabel(r) }}</span>
+                  <span *ngIf="isNoReport(r)">-</span>
                 </td>
+                <td><span class="status-pill" [ngClass]="validationStatusClass(r)">{{ validationLabel(r) }}</span></td>
+                <td data-label="Catatan Manager/Admin" class="text-cell manager-admin-note-cell">
+                  <div class="manager-admin-note">
+                    <div *ngIf="managerNote(r)" class="manager-admin-note-line">
+                      <strong>Catatan Manager:</strong>
+                      <span>{{ managerNote(r) }}</span>
+                    </div>
+                    <ng-container *ngIf="canEditAdminNote(r); else readOnlyAdminNote">
+                      <textarea class="admin-note-input no-print"
+                                [ngModel]="adminNote(r)"
+                                (ngModelChange)="onAdminNoteChange(r, $event)"
+                                placeholder="Tulis catatan Admin..."
+                                aria-label="Catatan Admin"></textarea>
+                      <button type="button" class="admin-note-save no-print"
+                              *ngIf="adminNoteDirty(r)"
+                              [disabled]="isAdminNoteSaving(r)"
+                              (click)="saveAdminNote(r)">
+                        <i class="fas" [ngClass]="isAdminNoteSaving(r) ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                        {{ isAdminNoteSaving(r) ? 'Menyimpan...' : 'Simpan' }}
+                      </button>
+                    </ng-container>
+                    <ng-template #readOnlyAdminNote>
+                      <div *ngIf="adminNote(r)" class="manager-admin-note-line">
+                        <strong>Catatan Admin:</strong>
+                        <span>{{ adminNote(r) }}</span>
+                      </div>
+                    </ng-template>
+                    <span *ngIf="!managerNote(r) && !adminNote(r) && !canEditAdminNote(r)">-</span>
+                  </div>
+                </td>
+                <td data-label="Alasan Penolakan" class="text-cell rejection-reason-cell" [title]="rejectionReason(r)">{{ rejectionReason(r) }}</td>
                 <td>
                   <span class="print-only" style="display: none;">{{ validationLabel(r) }}</span>
                   <select class="form-control no-print" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 500; border-radius: 4px;" 
                           [value]="r.status_sesuai || ''"
                           (change)="updateValidation(r, $event)"
-                          [disabled]="isNoReport(r)"
+                          [disabled]="isNoReport(r) || reportFillingStatus(r) === 'draft'"
                           [ngStyle]="{
                             'background-color': r.status_sesuai === 'Sesuai' ? '#d4edda' : (r.status_sesuai === 'Tidak Sesuai' ? '#f8d7da' : (isNoReport(r) ? '#f8d7da' : '')),
                             'color': r.status_sesuai === 'Sesuai' ? '#155724' : (r.status_sesuai === 'Tidak Sesuai' ? '#721c24' : (isNoReport(r) ? '#721c24' : '#333')),
@@ -193,7 +233,6 @@
                     <option value="">-- Pilih --</option>
                     <option value="Sesuai">Validasi laporan</option>
                     <option value="Tidak Sesuai">Tolak laporan</option>
-                    <option value="Minta Perbaikan">Minta perbaikan</option>
                   </select>
                 </td>
               </tr>

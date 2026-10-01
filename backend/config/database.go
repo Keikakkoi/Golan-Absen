@@ -85,6 +85,20 @@ func ConnectDB(cfg *Config) {
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schemas: %v", err)
 	}
+	// Keep runtime startup compatible with installations that apply SQL
+	// migrations separately. Existing NULL/blank values are historical
+	// submissions; only an explicit Draft remains hidden from Admin views.
+	for _, statement := range []string{
+		"UPDATE work_reports SET status_laporan = 'submitted' WHERE status_laporan IS NULL OR BTRIM(status_laporan) = ''",
+		"UPDATE work_reports SET status_sesuai = 'Tidak Sesuai' WHERE LOWER(BTRIM(status_sesuai)) IN ('minta perbaikan', 'minta_perbaikan')",
+		"ALTER TABLE work_reports ALTER COLUMN status_laporan SET DEFAULT 'submitted'",
+		"ALTER TABLE work_reports ALTER COLUMN status_laporan SET NOT NULL",
+		"CREATE INDEX IF NOT EXISTS idx_work_reports_status_laporan ON work_reports(status_laporan)",
+	} {
+		if err := DB.Exec(statement).Error; err != nil {
+			log.Printf("Work-report filling status migration statement failed: %v", err)
+		}
+	}
 	if err := services.BackfillCodes(DB); err != nil {
 		log.Printf("Code backfill failed: %v", err)
 	}

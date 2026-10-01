@@ -7,6 +7,7 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { AlertService } from '../../../core/services/alert.service';
+import { hasReportContent } from '../../../core/utils/report-completeness';
 
 @Component({
   selector: 'app-team-reports',
@@ -20,6 +21,7 @@ export class TeamReportsComponent implements OnInit {
   end = '';
   search = '';
   reports: any[] = [];
+  columns: any[] = [];
   private allReports: any[] = [];
   private serverPaginated = false;
   error = '';
@@ -44,7 +46,15 @@ export class TeamReportsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadColumns();
     this.load();
+  }
+
+  private loadColumns(): void {
+    this.http.get<any[]>('http://localhost:8080/api/v1/work-reports/columns', { headers: this.headers() }).subscribe({
+      next: columns => this.columns = (columns || []).filter(column => column.aktif !== false),
+      error: () => this.columns = []
+    });
   }
 
   load(isRefresh = false): void {
@@ -75,12 +85,16 @@ export class TeamReportsComponent implements OnInit {
         if (requestId !== this.requestSequence) return;
         const paginated = !Array.isArray(response) && Array.isArray(response?.data);
         if (paginated) {
-          this.reports = (response.data || []).slice(0, this.pageSize);
+          const visibleReports = (response.data || []).filter((row: any) => !this.isDraft(row));
+          const hiddenDrafts = (response.data || []).length - visibleReports.length;
+          this.reports = visibleReports.slice(0, this.pageSize);
           this.allReports = [];
-          this.totalItems = Number(response.total || 0);
+          this.totalItems = hiddenDrafts > 0
+            ? Math.max(0, visibleReports.length)
+            : Number(response.total || 0);
           this.serverPaginated = true;
         } else {
-          this.allReports = response || [];
+          this.allReports = (response || []).filter((row: any) => !this.isDraft(row));
           this.reports = this.allReports.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
           this.totalItems = this.allReports.length;
           this.serverPaginated = false;
@@ -168,17 +182,20 @@ export class TeamReportsComponent implements OnInit {
     }
     this.error = '';
     this.success = '';
-    const noteText = this.notes[id] || '';
+    const noteText = this.reviewNote(found || { id });
+    let rejectionReason = '';
     this.confirmingIds.add(id);
 
-    const actionLabel = status === 'approved' ? 'menyetujui' : 'menolak';
     let confirmed = false;
     try {
-      confirmed = await this.alert.confirm(
-        `${status === 'approved' ? 'Setujui' : 'Tolak'} logbook?`,
-        `Apakah Anda yakin ingin ${actionLabel} logbook ini?`,
-        status === 'approved' ? 'Ya, setujui' : 'Ya, tolak'
-      );
+      if (status === 'rejected') {
+        const reason = await this.alert.textarea('Alasan Penolakan', 'Tuliskan alasan penolakan laporan ini.', 'Lanjutkan Penolakan', 'Alasan Penolakan');
+        if (reason === null) return;
+        rejectionReason = reason;
+        confirmed = true;
+      } else {
+        confirmed = await this.alert.confirm('Setujui logbook?', 'Apakah Anda yakin ingin menyetujui logbook ini?', 'Ya, setujui');
+      }
     } catch {
       this.error = 'Gagal menampilkan konfirmasi review logbook.';
     } finally {
@@ -190,15 +207,20 @@ export class TeamReportsComponent implements OnInit {
 
     this.reviewingIds.add(id);
 
-    this.http.put(`http://localhost:8080/api/v1/manager/team/logbooks/${id}/review`, { status, notes: noteText }, { headers: this.headers() }).subscribe({
+    this.http.put(`http://localhost:8080/api/v1/manager/team/logbooks/${id}/review`, { status, notes: noteText, review_notes: noteText, rejection_reason: rejectionReason }, { headers: this.headers() }).subscribe({
       next: (res: any) => {
         const latestStatus = this.normalizeStatus(res?.status_logbook || res?.status || status);
         if (found) {
           found.status_logbook = latestStatus;
           found.StatusLogbook = latestStatus;
-          found.review_notes = noteText;
-          found.ReviewNotes = noteText;
+          found.review_notes = res?.review_notes ?? noteText;
+          found.ReviewNotes = res?.review_notes ?? noteText;
+          found.rejection_reason = res?.rejection_reason ?? rejectionReason;
+          found.RejectionReason = res?.rejection_reason ?? rejectionReason;
+          found.reviewed_by = res?.reviewed_by ?? found.reviewed_by;
+          found.reviewed_at = res?.reviewed_at ?? found.reviewed_at;
         }
+        delete this.notes[id];
         this.success = latestStatus === 'approved' ? 'Logbook berhasil disetujui (Approved)' : 'Logbook berhasil ditolak (Rejected)';
         this.reviewingIds.delete(id);
         void this.alert.success(
@@ -232,7 +254,65 @@ export class TeamReportsComponent implements OnInit {
 
   canReview(row: any): boolean {
     const id = row?.id || row?.ID;
-    return this.logbookStatus(row) === 'submitted' && !this.reviewingIds.has(id);
+    return this.isInternshipLogbook(row) && this.logbookStatus(row) === 'submitted' && !this.reviewingIds.has(id);
+  }
+
+  isProcessing(id: number): boolean {
+    return this.reviewingIds.has(id) || this.confirmingIds.has(id);
+  }
+
+  isReviewed(row: any): boolean {
+    const status = this.logbookStatus(row);
+    return status === 'approved' || status === 'rejected';
+  }
+
+  reviewNote(row: any): string {
+    const id = row?.id || row?.ID;
+    const draftNote = id ? this.notes[id] : undefined;
+    return String(draftNote !== undefined ? draftNote : (row?.review_notes || row?.ReviewNotes || '')).trim();
+  }
+
+  isInternshipLogbook(row: any): boolean {
+    const role = String(row?.Employee?.User?.Role || row?.Employee?.User?.role || '').toUpperCase();
+    if (role) return role === 'MAGANG';
+    // Preserve the legacy response shape used by older cached/team payloads.
+    // New regular reports always carry status_laporan, so this fallback cannot
+    // route them into the logbook review UI.
+    return !row?.status_laporan && !row?.StatusLaporan && !!(row?.status_logbook || row?.StatusLogbook);
+  }
+
+  statusLabel(row: any): string {
+    return this.isInternshipLogbook(row) ? (this.logbookStatus(row) || '-') : (row?.status_sesuai || row?.StatusSesuai || 'Menunggu');
+  }
+
+  rejectionReason(row: any): string {
+    return row?.rejection_reason || row?.RejectionReason || '-';
+  }
+
+  fillingStatus(row: any): string {
+    if (this.isInternshipLogbook(row)) {
+      const status = this.logbookStatus(row);
+      return status ? status.charAt(0).toUpperCase() + status.slice(1) : '-';
+    }
+    return String(row?.status_laporan || row?.StatusLaporan || '').trim().toLowerCase() === 'draft' ? 'Draft' : 'Submitted';
+  }
+
+  fillingStatusClass(row: any): string {
+    return this.fillingStatus(row).toLowerCase() === 'draft' ? 'status-warning' : 'status-success';
+  }
+
+  statusTimeLabel(row: any): string {
+    if (!hasReportContent(row)) return '-';
+    return row?.is_late_submission ? 'Terlambat' : 'Tepat waktu';
+  }
+
+  customFieldValue(row: any, key: string): string {
+    const raw = row?.custom_fields || row?.CustomFields;
+    if (!raw) return '-';
+    try {
+      const fields = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return fields?.[key] ?? '-';
+    } catch { return '-'; }
   }
 
   private findReport(id: number): any {
@@ -242,6 +322,11 @@ export class TeamReportsComponent implements OnInit {
 
   private normalizeStatus(status: any): string {
     return String(status || '').trim().toLowerCase();
+  }
+
+  private isDraft(row: any): boolean {
+    return this.normalizeStatus(row?.status_laporan || row?.StatusLaporan) === 'draft'
+      || this.normalizeStatus(row?.status_logbook || row?.StatusLogbook) === 'draft';
   }
 
   toggleExportDropdown(): void {
@@ -262,7 +347,8 @@ export class TeamReportsComponent implements OnInit {
     this.isExportOpen = false;
     this.loadAllFilteredReports(rows => this.reportExport.downloadJson('laporan-tim.json', rows.map(row => ({
       ...row,
-      catatan_review: this.notes[row.id || row.ID] || row.review_notes || row.ReviewNotes || ''
+      status_waktu: this.statusTimeLabel(row),
+      catatan_review: this.reviewNote(row)
     }))));
   }
 
@@ -277,20 +363,30 @@ export class TeamReportsComponent implements OnInit {
   }
 
   private exportHeaders(): string[] {
-    return ['Tanggal', 'Anggota', 'Role', 'Tugas', 'Kegiatan', 'Screenshot', 'Status Logbook', 'Pengisian', 'Catatan Review'];
+    return ['Tanggal', 'Anggota', 'Divisi', 'Jabatan', 'Tugas', 'Judul', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Screenshot/Bukti Pengisian', 'Status Validasi/Logbook', 'Status Pengisian', 'Status Waktu', 'Catatan Review', 'Alasan Penolakan', ...this.columns.map(column => column.nama_kolom)];
   }
 
   private exportRows(reports: any[]): unknown[][] {
     return reports.map(row => [
       this.formatDate(row.tanggal || row.Tanggal),
       row.Employee?.User?.Nama || '-',
-      row.Employee?.User?.Role || 'Karyawan',
+      row.Employee?.Division?.NamaDivisi || '-',
+      row.Employee?.Position?.NamaJabatan || '-',
       row.tugas || row.Tugas || '-',
+      row.judul || row.Judul || '-',
       row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-',
+      row.realisasi_kegiatan || row.RealisasiKegiatan || '-',
+      row.kendala || row.Kendala || '-',
+      row.rencana_minggu_depan || row.RencanaMingguDepan || '-',
+      row.link_artikel || row.LinkArtikel || '-',
+      row.catatan_tambahan || row.CatatanTambahan || '-',
       (row.attachments || []).map((image: any) => image.file_url || image.FileURL).filter(Boolean).join(' | ') || '-',
-      row.status_logbook || row.StatusLogbook || '-',
-      row.is_late_submission ? 'Terlambat' : 'Tepat waktu',
-      this.notes[row.id || row.ID] || row.review_notes || row.ReviewNotes || '-'
+      this.statusLabel(row),
+      this.fillingStatus(row),
+      this.statusTimeLabel(row),
+      this.reviewNote(row) || '-',
+      this.rejectionReason(row),
+      ...this.columns.map(column => this.customFieldValue(row, column.nama_kolom))
     ]);
   }
 

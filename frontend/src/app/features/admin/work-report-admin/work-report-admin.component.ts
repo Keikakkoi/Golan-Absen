@@ -10,6 +10,12 @@ import Swal from 'sweetalert2';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
+import {
+  hasReportContent as resolveReportContent,
+  hasRequiredReportFields as resolveRequiredReportFields,
+  reportStatus as resolveReportStatus,
+  requiresReportTitle as resolveRequiresReportTitle
+} from '../../../core/utils/report-completeness';
 
 @Component({
   selector: 'app-work-report-admin',
@@ -30,6 +36,10 @@ export class WorkReportAdminComponent implements OnInit {
   pageSize = 25;
   currentPage = 1;
   printAllReports = false;
+  private readonly adminNoteDrafts = new Map<number, string>();
+  private readonly adminNoteOriginals = new Map<number, string>();
+  private readonly adminNoteSaving = new Set<number>();
+  private readonly adminNoteReadOnly = new Set<number>();
 
   // Filters
   filterOptions = {
@@ -45,6 +55,8 @@ export class WorkReportAdminComponent implements OnInit {
   uniqueDivisions: string[] = [];
   uniqueRoles: string[] = [];
   projects: any[] = [];
+
+  private readonly reportStatusFilters = ['Belum membuat laporan', 'Laporan belum lengkap', 'Sudah membuat laporan'];
 
   constructor(
     private workReportService: WorkReportService,
@@ -64,7 +76,10 @@ export class WorkReportAdminComponent implements OnInit {
     this.isLoading = true;
     this.workReportService.getWorkReports(undefined, this.filterOptions.startDate, this.filterOptions.endDate, this.filterOptions.project_id).subscribe({
       next: (res) => {
-        this.allReports = res;
+        // Admin must never expose Draft data, even if an older backend
+        // accidentally includes it in the response.
+        this.allReports = (res || []).filter(report => !this.isDraft(report));
+        this.initializeAdminNotes(this.allReports);
         this.applyFilters(false);
         this.isLoading = false;
       },
@@ -105,7 +120,9 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   applyFilters(resetPage = true) {
-    let temp = [...this.allReports];
+    // Keep the defensive guard here as well so Draft cannot enter filtering,
+    // pagination, sorting, or any downstream export path.
+    let temp = this.allReports.filter(report => !this.isDraft(report));
 
     // 1. Search (Name, Tugas, Judul)
     if (this.filterOptions.search) {
@@ -151,12 +168,15 @@ export class WorkReportAdminComponent implements OnInit {
 
     // 5. Status Validasi
     if (this.filterOptions.status) {
-      if (this.filterOptions.status === 'Menunggu') {
+      if (this.filterOptions.status === 'Submitted') {
+        temp = temp.filter(r => this.reportFillingLabel(r) === this.filterOptions.status);
+      } else if (this.filterOptions.status === 'Menunggu') {
         temp = temp.filter(r => (!r.status_sesuai || r.status_sesuai === 'Menunggu') && !this.isNoReport(r));
-      } else if (['Sudah membuat laporan', 'Belum membuat laporan', 'Laporan belum lengkap'].includes(this.filterOptions.status)) {
-        temp = temp.filter(r => this.reportStatus(r) === this.filterOptions.status);
+      } else if (this.reportStatusFilters.includes(this.filterOptions.status)) {
+        temp = temp.filter(r => this.reportStatusLabel(r) === this.filterOptions.status);
       } else {
-        temp = temp.filter(r => r.status_sesuai === this.filterOptions.status);
+        const requestedStatus = this.normalizedValidationStatusValue(this.filterOptions.status);
+        temp = temp.filter(r => this.normalizedValidationStatus(r) === requestedStatus);
       }
     }
 
@@ -225,7 +245,7 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   totalPages(): number {
-    return Math.max(1, Math.ceil(this.reports.length / this.pageSize));
+    return Math.max(1, Math.ceil(this.getNonDraftReports().length / this.pageSize));
   }
 
   pageNumbers(): Array<number | string> {
@@ -259,18 +279,19 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   get paginationStartIndex(): number {
-    return this.reports.length === 0 ? 0 : (this.currentPage - 1) * this.pageSize;
+    return this.getNonDraftReports().length === 0 ? 0 : (this.currentPage - 1) * this.pageSize;
   }
 
   get paginationEndIndex(): number {
-    return Math.min(this.paginationStartIndex + this.pageSize, this.reports.length);
+    return Math.min(this.paginationStartIndex + this.pageSize, this.getNonDraftReports().length);
   }
 
   get displayedReports(): WorkReport[] {
+    const visibleReports = this.getNonDraftReports();
     if (this.printAllReports) {
-      return this.reports;
+      return visibleReports;
     }
-    return this.reports.slice(this.paginationStartIndex, this.paginationEndIndex);
+    return visibleReports.slice(this.paginationStartIndex, this.paginationEndIndex);
   }
 
   private ensureValidPage() {
@@ -312,22 +333,132 @@ export class WorkReportAdminComponent implements OnInit {
     window.setTimeout(scrollToPagination, 80);
   }
 
+  private getNonDraftReports(): WorkReport[] {
+    return this.reports.filter(report => !this.isDraft(report));
+  }
+
   // HR Validation
-  updateValidation(report: WorkReport, event: any) {
-    if (this.isNoReport(report)) return;
-    const newVal = event.target.value;
+  async updateValidation(report: WorkReport, event: any): Promise<void> {
+    if (this.isNoReport(report) || this.reportFillingStatus(report) !== 'submitted') return;
+    const select = event.target as HTMLSelectElement;
+    const previousValue = report.status_sesuai || '';
+    const newVal = select.value;
     if (!newVal) return;
+
+    let rejectionReason = '';
+    if (newVal === 'Tidak Sesuai') {
+      const reason = await this.alertService.textarea('Alasan Penolakan', 'Tuliskan alasan penolakan laporan ini.', 'Lanjutkan Penolakan', 'Alasan Penolakan');
+      if (reason === null) {
+        select.value = previousValue;
+        return;
+      }
+      rejectionReason = reason;
+    }
     
-    this.workReportService.updateWorkReport(report.ID!, { status_sesuai: newVal }).subscribe({
+    this.workReportService.updateWorkReport(report.ID!, {
+      status_sesuai: newVal,
+      rejection_reason: rejectionReason,
+      admin_notes: this.adminNote(report)
+    }).subscribe({
       next: (res) => {
         report.status_sesuai = res.status_sesuai;
+        report.rejection_reason = res.rejection_reason || rejectionReason;
+        this.applyAdminNoteResponse(report, res);
         report.validasi_oleh_hr = true;
         this.alertService.success('Status validasi berhasil diupdate');
       },
       error: () => {
+        select.value = previousValue;
         this.alertService.error('Gagal mengupdate validasi');
       }
     });
+  }
+
+  private initializeAdminNotes(reports: WorkReport[]): void {
+    reports.forEach(report => {
+      const id = Number(report.ID || 0);
+      if (!id || this.adminNoteDrafts.has(id)) return;
+      const note = this.backendAdminNote(report);
+      this.adminNoteDrafts.set(id, note);
+      this.adminNoteOriginals.set(id, note);
+      if (note) this.adminNoteReadOnly.add(id);
+    });
+  }
+
+  private backendAdminNote(report: WorkReport): string {
+    return String(report.admin_notes || report.AdminNotes || '').trim();
+  }
+
+  managerNote(report: WorkReport): string {
+    return String(report.review_notes || report.ReviewNotes || '').trim();
+  }
+
+  adminNote(report: WorkReport): string {
+    const id = Number(report.ID || 0);
+    return id && this.adminNoteDrafts.has(id)
+      ? this.adminNoteDrafts.get(id) || ''
+      : this.backendAdminNote(report);
+  }
+
+  managerAdminNote(report: WorkReport): string {
+    const notes: string[] = [];
+    const managerNote = this.managerNote(report);
+    const adminNote = this.adminNote(report);
+    if (managerNote) notes.push(`Catatan Manager: ${managerNote}`);
+    if (adminNote) notes.push(`Catatan Admin: ${adminNote}`);
+    return notes.length ? notes.join('\n') : '-';
+  }
+
+  canEditAdminNote(report: WorkReport): boolean {
+    const id = Number(report.ID || 0);
+    return !this.isDraft(report) && !this.isNoReport(report) && !this.adminNoteReadOnly.has(id);
+  }
+
+  adminNoteDirty(report: WorkReport): boolean {
+    const id = Number(report.ID || 0);
+    if (!id) return false;
+    return this.adminNote(report).trim() !== (this.adminNoteOriginals.get(id) || '').trim();
+  }
+
+  isAdminNoteSaving(report: WorkReport): boolean {
+    return this.adminNoteSaving.has(Number(report.ID || 0));
+  }
+
+  onAdminNoteChange(report: WorkReport, value: string): void {
+    const id = Number(report.ID || 0);
+    if (id) this.adminNoteDrafts.set(id, value ?? '');
+  }
+
+  saveAdminNote(report: WorkReport): void {
+    const id = Number(report.ID || 0);
+    if (!id || !this.canEditAdminNote(report) || !this.adminNoteDirty(report) || this.adminNoteSaving.has(id)) return;
+
+    this.adminNoteSaving.add(id);
+    this.workReportService.updateWorkReport(id, { admin_notes: this.adminNote(report) }).subscribe({
+      next: response => {
+        this.applyAdminNoteResponse(report, response);
+        this.adminNoteSaving.delete(id);
+        this.alertService.success('Catatan Admin berhasil disimpan');
+      },
+      error: () => {
+        this.adminNoteSaving.delete(id);
+        this.alertService.error('Gagal menyimpan Catatan Admin');
+      }
+    });
+  }
+
+  private applyAdminNoteResponse(report: WorkReport, response: WorkReport): void {
+    const id = Number(report.ID || 0);
+    const responseNote = this.backendAdminNote(response);
+    report.admin_notes = responseNote;
+    report.AdminNotes = responseNote;
+    if (response.admin_note_by !== undefined) report.admin_note_by = response.admin_note_by;
+    if (response.admin_note_at !== undefined) report.admin_note_at = response.admin_note_at;
+    if (id) {
+      this.adminNoteDrafts.set(id, responseNote);
+      this.adminNoteOriginals.set(id, responseNote);
+      this.adminNoteReadOnly.add(id);
+    }
   }
 
   toggleExportDropdown() {
@@ -336,15 +467,16 @@ export class WorkReportAdminComponent implements OnInit {
 
   exportExcel() {
     this.isExportOpen = false;
-    if (!this.reports || this.reports.length === 0) return;
+    const reports = this.getNonDraftReports();
+    if (reports.length === 0) return;
 
     // Find custom fields headers
     let customHeaders: string[] = [];
     if (this.columns && this.columns.length > 0) {
       customHeaders = this.columns.map(c => c.nama_kolom);
-    } else if (this.reports.length > 0 && this.reports[0].custom_fields) {
+    } else if (reports[0].custom_fields) {
       try {
-        const parsed = JSON.parse(this.reports[0].custom_fields);
+        const parsed = JSON.parse(reports[0].custom_fields);
         customHeaders = Object.keys(parsed);
       } catch(e) {}
     }
@@ -358,6 +490,12 @@ export class WorkReportAdminComponent implements OnInit {
           th, td { border: 1px solid #000000; padding: 6px; text-align: center; vertical-align: middle; }
           .bg-yellow { background-color: #FFFF00; font-weight: bold; }
           .bg-teal { background-color: #C6E0B4; font-weight: bold; } /* light green/teal from image */
+           .validation-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-weight: 600; line-height: 1.4; }
+           .validation-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+           .validation-status-pending { background: #FFF4D6; color: #B7791F; }
+           .validation-status-approved { background: #E6F8EF; color: #087443; }
+           .validation-status-rejected { background: #FDEBEC; color: #C53030; }
+           .validation-status-none { background: #F1F5F9; color: #64748B; }
         </style>
       </head>
       <body>
@@ -377,9 +515,13 @@ export class WorkReportAdminComponent implements OnInit {
               <th class="bg-yellow">Rencana Minggu Depan</th>
               <th class="bg-yellow">Link Artikel</th>
               <th class="bg-yellow">Catatan Tambahan</th>
+              <th class="bg-yellow">Status Pengisian</th>
               <th class="bg-yellow">Status Laporan</th>
               <th class="bg-yellow">Status Waktu</th>
               <th class="bg-yellow">Bukti Pengisian</th>
+              <th class="bg-yellow">Status Validasi</th>
+              <th class="bg-yellow">Catatan Manager/Admin</th>
+              <th class="bg-yellow">Alasan Penolakan</th>
               <th class="bg-yellow">Aksi & Validasi</th>`;
               
     customHeaders.forEach(ch => {
@@ -391,7 +533,7 @@ export class WorkReportAdminComponent implements OnInit {
           <tbody>
     `;
     
-    this.reports.forEach((r, index) => {
+    reports.forEach((r, index) => {
       const dateObj = new Date(r.tanggal);
       const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -399,8 +541,8 @@ export class WorkReportAdminComponent implements OnInit {
       const dept = r.Employee?.Division?.NamaDivisi || '-';
       const jabatan = r.Employee?.Position?.NamaJabatan || '-';
       const userName = this.getEmployeeName(r);
-      const statusReport = this.reportStatus(r);
-      const statusTime = r.is_late_submission ? 'Terlambat' : 'Tepat waktu';
+      const statusReport = this.reportStatusLabel(r);
+      const statusTime = this.statusTimeLabel(r);
       const statusValidation = this.validationLabel(r);
       
       html += `
@@ -418,10 +560,14 @@ export class WorkReportAdminComponent implements OnInit {
           <td style="text-align: left;">${(r.rencana_minggu_depan || '').replace(/</g, '&lt;')}</td>
           <td>${r.link_artikel ? `<a href="${r.link_artikel}">${r.link_artikel}</a>` : '-'}</td>
           <td style="text-align: left;">${(r.catatan_tambahan || '').replace(/</g, '&lt;')}</td>
+          <td>${this.reportFillingLabel(r)}</td>
           <td>${statusReport}</td>
           <td>${statusTime}</td>
-          <td>${r.attachments?.length ? `${r.attachments.length} screenshot` : 'Belum ada laporan kerja'}</td>
-          <td>${statusValidation}</td>`;
+          <td>${this.evidenceExportLabel(r)}</td>
+          <td><span class="validation-status ${this.validationStatusClass(r)}">${statusValidation}</span></td>
+          <td style="white-space: pre-wrap; text-align: left;">${this.managerAdminNote(r).replace(/</g, '&lt;')}</td>
+          <td style="white-space: pre-wrap; text-align: left;">${this.rejectionReason(r).replace(/</g, '&lt;')}</td>
+          <td><span class="validation-status ${this.validationStatusClass(r)}">${statusValidation}</span></td>`;
           
       let customData: any = {};
       try { customData = JSON.parse(r.custom_fields || '{}'); } catch(e) {}
@@ -459,16 +605,17 @@ export class WorkReportAdminComponent implements OnInit {
 
   exportCSV() {
     this.isExportOpen = false;
-    if (!this.reports || this.reports.length === 0) return;
+    const reports = this.getNonDraftReports();
+    if (reports.length === 0) return;
     
     // Create CSV content manually
     let csvContent = "data:text/csv;charset=utf-8,";
     // Headers
-    const headers = ["No", "Tanggal", "Nama Karyawan", "Divisi", "Jabatan", "Tugas", "Judul", "Deskripsi", "Realisasi", "Kendala", "Rencana", "Status Laporan", "Status Waktu", "Status Validasi"];
+    const headers = ["No", "Tanggal", "Nama Karyawan", "Divisi", "Jabatan", "Tugas", "Judul", "Deskripsi", "Realisasi", "Kendala", "Rencana", "Status Pengisian", "Status Laporan", "Bukti Pengisian", "Status Waktu", "Status Validasi", "Catatan Manager/Admin", "Alasan Penolakan"];
     const customHeaders = this.columns.map(c => `"${c.nama_kolom.replace(/"/g, '""')}"`);
     csvContent += headers.concat(customHeaders).join(",") + "\n";
     
-    this.reports.forEach((r, i) => {
+    reports.forEach((r, i) => {
       const row = [
         i + 1,
         new Date(r.tanggal).toISOString().split('T')[0],
@@ -481,9 +628,13 @@ export class WorkReportAdminComponent implements OnInit {
         `"${(r.realisasi_kegiatan || '').replace(/"/g, '""')}"`,
         `"${(r.kendala || '').replace(/"/g, '""')}"`,
         `"${(r.rencana_minggu_depan || '').replace(/"/g, '""')}"`,
-        `"${this.reportStatus(r).replace(/"/g, '""')}"`,
-        `"${(r.is_late_submission ? 'Terlambat' : 'Tepat waktu').replace(/"/g, '""')}"`,
-        `"${this.validationLabel(r).replace(/"/g, '""')}"`
+        `"${this.reportFillingLabel(r).replace(/"/g, '""')}"`,
+        `"${this.reportStatusLabel(r).replace(/"/g, '""')}"`,
+        `"${this.evidenceExportLabel(r).replace(/"/g, '""')}"`,
+        `"${this.statusTimeLabel(r).replace(/"/g, '""')}"`,
+        `"${this.validationLabel(r).replace(/"/g, '""')}"`,
+        `"${this.managerAdminNote(r).replace(/"/g, '""')}"`,
+        `"${this.rejectionReason(r).replace(/"/g, '""')}"`
       ];
 
       // Custom fields
@@ -511,8 +662,16 @@ export class WorkReportAdminComponent implements OnInit {
 
   exportJSON() {
     this.isExportOpen = false;
-    if (!this.reports || this.reports.length === 0) return;
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.reports, null, 2));
+    const reports = this.getNonDraftReports();
+    if (reports.length === 0) return;
+    const data = reports.map(report => ({
+      ...report,
+      bukti_pengisian: this.evidenceExportLabel(report),
+      status_waktu: this.statusTimeLabel(report),
+      catatan_manager_admin: this.managerAdminNote(report),
+      alasan_penolakan: this.rejectionReason(report)
+    }));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "rekap_laporan_kerja.json");
@@ -534,12 +693,12 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
-    const headers = ['No', 'Hari/Tanggal', 'Nama', 'Divisi', 'Jabatan', 'Tugas', 'Judul Golan Nusantara / Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Status Laporan', 'Status Waktu', 'Status Validasi'];
-    const rows = this.reports.map((r, index) => {
+    const headers = ['No', 'Hari/Tanggal', 'Nama', 'Divisi', 'Jabatan', 'Tugas', 'Judul Golan Nusantara / Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Status Pengisian', 'Status Laporan', 'Bukti Pengisian', 'Status Waktu', 'Status Validasi', 'Catatan Manager/Admin', 'Alasan Penolakan'];
+    const rows = this.getNonDraftReports().map((r, index) => {
       const customData: Record<string, unknown> = {};
       try { Object.assign(customData, JSON.parse(r.custom_fields || '{}')); } catch { /* laporan tetap dapat diekspor meski custom field rusak */ }
       const customValues = this.columns.map(column => customData[column.ID] ?? '-');
-      return [index + 1, this.formatReportDate(r.tanggal), this.getEmployeeName(r), r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', r.tugas || '-', r.judul || '-', r.deskripsi_kegiatan || '-', r.realisasi_kegiatan || '-', r.kendala || '-', r.rencana_minggu_depan || '-', r.link_artikel || '-', r.catatan_tambahan || '-', this.reportStatus(r), r.is_late_submission ? 'Terlambat' : 'Tepat waktu', this.validationLabel(r), ...customValues];
+      return [index + 1, this.formatReportDate(r.tanggal), this.getEmployeeName(r), r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', r.tugas || '-', r.judul || '-', r.deskripsi_kegiatan || '-', r.realisasi_kegiatan || '-', r.kendala || '-', r.rencana_minggu_depan || '-', r.link_artikel || '-', r.catatan_tambahan || '-', this.reportFillingLabel(r), this.reportStatusLabel(r), this.evidenceExportLabel(r), this.statusTimeLabel(r), this.validationLabel(r), this.managerAdminNote(r), this.rejectionReason(r), ...customValues];
     });
     return { headers: headers.concat(this.columns.map(column => column.nama_kolom)), rows };
   }
@@ -557,31 +716,163 @@ export class WorkReportAdminComponent implements OnInit {
     return report.Employee?.User?.Nama || 'Unknown';
   }
 
-  reportStatus(report: WorkReport): string {
-    if (this.isNoReport(report)) return 'Belum membuat laporan';
-    return this.isIncompleteReport(report) ? 'Laporan belum lengkap' : 'Sudah membuat laporan';
+  reportStatus(report: WorkReport): 'draft' | 'no_report' | 'incomplete' | 'complete' {
+    return resolveReportStatus(report);
+  }
+
+  reportStatusLabel(report: WorkReport): string {
+    switch (this.reportStatus(report)) {
+      case 'draft': return '';
+      case 'no_report': return 'Belum membuat laporan kerja';
+      case 'incomplete': return 'Laporan belum lengkap';
+      default: return 'Sudah membuat laporan';
+    }
+  }
+
+  reportStatusClass(report: WorkReport): string {
+    switch (this.reportStatus(report)) {
+      case 'draft': return 'status-warning';
+      case 'no_report': return 'status-alpha';
+      case 'incomplete': return 'status-warning';
+      default: return 'status-hadir';
+    }
+  }
+
+  reportFillingStatus(report: WorkReport): 'draft' | 'submitted' | 'not_filled' {
+    if (this.isDraft(report)) return 'draft';
+    return this.isNoReport(report) ? 'not_filled' : 'submitted';
+  }
+
+  reportFillingLabel(report: WorkReport): string {
+    switch (this.reportFillingStatus(report)) {
+      case 'draft': return '';
+      case 'not_filled': return 'Belum mengisi';
+      default: return 'Submitted';
+    }
+  }
+
+  reportFillingClass(report: WorkReport): string {
+    return this.reportFillingStatus(report) === 'draft'
+      ? 'status-warning'
+      : this.reportFillingStatus(report) === 'not_filled' ? 'status-alpha' : 'status-success';
   }
 
   isIncompleteReport(report: WorkReport): boolean {
-    return !this.isNoReport(report) && (!report.tugas || !report.judul || !report.deskripsi_kegiatan);
+    return this.reportStatus(report) === 'incomplete';
   }
 
   hasCompleteReport(report: WorkReport): boolean {
-    return this.reportStatus(report) === 'Sudah membuat laporan';
+    return this.reportStatus(report) === 'complete';
   }
 
   validationLabel(report: WorkReport): string {
-    if (report.status_sesuai === 'Sesuai') return 'Validasi laporan';
-    if (report.status_sesuai === 'Tidak Sesuai') return 'Tolak laporan';
-    if (report.status_sesuai === 'Minta Perbaikan') return 'Minta perbaikan';
+    if (this.isNoReport(report) || this.isDraft(report)) return 'Tidak perlu validasi';
+    const status = this.normalizedValidationStatus(report);
+    if (status === 'sesuai' || status === 'validasi laporan') return 'Validasi laporan';
+    if (status === 'tidak sesuai' || status === 'tolak laporan') return 'Tolak laporan';
     return 'Menunggu validasi';
   }
 
-  isNoReport(report: WorkReport): boolean {
-    if (!report) return false;
-    if (report.status_sesuai === 'tidak membuat laporan kerja' || report.status_sesuai === 'Tidak Membuat Laporan Kerja') {
-      return true;
+  validationStatusClass(report: WorkReport): string {
+    const status = this.normalizedValidationStatus(report);
+    if (this.isNoReport(report) || this.isDraft(report) || status === 'tidak perlu validasi') {
+      return 'validation-status-none';
     }
-    return !report.tugas && !report.judul && !report.deskripsi_kegiatan;
+    if (status === 'sesuai' || status === 'validasi laporan') return 'validation-status-approved';
+    if (status === 'tidak sesuai' || status === 'tolak laporan') return 'validation-status-rejected';
+    return 'validation-status-pending';
+  }
+
+  private normalizedValidationStatus(report: WorkReport): string {
+    return this.normalizedValidationStatusValue(report?.status_sesuai || '');
+  }
+
+  private normalizedValidationStatusValue(value: string): string {
+    const status = String(value || '').trim().toLowerCase();
+    return status === 'minta perbaikan' || status === 'minta_perbaikan' ? 'tidak sesuai' : status;
+  }
+
+  rejectionReason(report: WorkReport): string {
+    const row = report as WorkReport & {
+      status_logbook?: string;
+      StatusLogbook?: string;
+      RejectionReason?: string;
+      RejectionSource?: string;
+      manager_rejection_reason?: string;
+      ManagerRejectionReason?: string;
+      admin_rejection_reason?: string;
+      AdminRejectionReason?: string;
+    };
+    const validationStatus = String(report.status_sesuai || '').trim().toLowerCase();
+    const logbookStatus = String(row.status_logbook || row.StatusLogbook || '').trim().toLowerCase();
+    const rejectionSource = String(report.rejection_source || row.RejectionSource || '').trim().toLowerCase();
+    const rejectionReason = String(report.rejection_reason || row.RejectionReason || '').trim();
+    const managerReason = String(row.manager_rejection_reason || row.ManagerRejectionReason || '').trim();
+    const adminReason = String(row.admin_rejection_reason || row.AdminRejectionReason || '').trim();
+    const reasons: string[] = [];
+
+    if (managerReason) reasons.push(`Alasan Manager: ${managerReason}`);
+    if (adminReason) reasons.push(`Alasan Admin: ${adminReason}`);
+    if (reasons.length) return reasons.join('\n');
+    if (!rejectionReason) return '-';
+
+    if (rejectionSource === 'manager' || (logbookStatus === 'rejected' && validationStatus !== 'tidak sesuai')) {
+      return `Alasan Manager: ${rejectionReason}`;
+    }
+    if (rejectionSource === 'admin' || rejectionSource === 'hrd' || validationStatus === 'tidak sesuai') {
+      return `Alasan Admin: ${rejectionReason}`;
+    }
+    if (logbookStatus === 'rejected') return `Alasan Manager: ${rejectionReason}`;
+    return '-';
+  }
+
+  isNoReport(report: WorkReport): boolean {
+    return this.reportStatus(report) === 'no_report';
+  }
+
+  hasReportContent(report: WorkReport): boolean {
+    return resolveReportContent(report);
+  }
+
+  hasEvidence(report: WorkReport): boolean {
+    return Array.isArray(report?.attachments) && report.attachments.length > 0;
+  }
+
+  evidenceLabel(report: WorkReport): string {
+    return this.isNoReport(report) ? 'Belum ada laporan kerja' : '-';
+  }
+
+  private evidenceExportLabel(report: WorkReport): string {
+    if (this.isNoReport(report)) return 'Belum ada laporan kerja';
+    return this.hasEvidence(report) ? String(report.attachments?.length || 0) + ' screenshot' : '-';
+  }
+
+  private isLateSubmission(report: WorkReport): boolean {
+    return report?.is_late_submission === true
+      || String(report?.is_late_submission ?? '').trim().toLowerCase() === 'true'
+      || String(report?.is_late_submission ?? '').trim() === '1';
+  }
+
+  shouldShowLateStatus(report: WorkReport): boolean {
+    return this.isLateSubmission(report) && !this.isNoReport(report) && this.hasReportContent(report);
+  }
+
+  statusTimeLabel(report: WorkReport): string {
+    if (this.isNoReport(report)) return '-';
+    return this.shouldShowLateStatus(report) ? 'Terlambat' : 'Tepat waktu';
+  }
+
+  private isDraft(report: WorkReport): boolean {
+    const fillingStatus = String(report?.status_laporan || '').trim().toLowerCase();
+    const logbookStatus = String(report?.status_logbook || report?.StatusLogbook || '').trim().toLowerCase();
+    return fillingStatus === 'draft' || logbookStatus === 'draft';
+  }
+
+  private hasRequiredReportFields(report: WorkReport): boolean {
+    return resolveRequiredReportFields(report);
+  }
+
+  requiresReportTitle(report: WorkReport): boolean {
+    return resolveRequiresReportTitle(report);
   }
 }

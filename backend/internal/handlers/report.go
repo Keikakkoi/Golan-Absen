@@ -171,7 +171,7 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 	var totalMagang, magangAktif, logbookPending int64
 	config.DB.Model(&models.User{}).Where("role = ?", models.RoleMagang).Count(&totalMagang)
 	config.DB.Model(&models.User{}).Where("role = ? AND internship_end_date >= ?", models.RoleMagang, today).Count(&magangAktif)
-	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ? AND work_reports.status_logbook = ?", models.RoleMagang, "submitted").Count(&logbookPending)
+	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ?", models.RoleMagang, "submitted", "draft").Count(&logbookPending)
 	sertifikatTerbit := getSertifikatTerbitCount()
 	var employeeIDs []uint
 	config.DB.Model(&models.Employee{}).Pluck("id", &employeeIDs)

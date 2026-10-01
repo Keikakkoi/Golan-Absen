@@ -143,6 +143,30 @@
     color: #475569;
     border: 1px solid #e2e8f0;
   }
+
+  &.validation-status-approved {
+    background-color: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+  }
+
+  &.validation-status-rejected {
+    background-color: #fee2e2;
+    color: #b42318;
+    border: 1px solid #fecaca;
+  }
+
+  &.validation-status-pending {
+    background-color: #fef3c7;
+    color: #b7791f;
+    border: 1px solid #fde68a;
+  }
+
+  &.validation-status-none {
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+  }
 }
 
 /* Keep the filter controls compact on phones. The shared report-toolbar
@@ -356,3 +380,198 @@
 .modal-body { display: flex; flex-direction: column; gap: 14px; .detail-row { strong { display: block; margin-bottom: 4px; font-size: 0.875rem; color: var(--text-muted, #6c757d); } p { margin: 0; font-size: 0.95rem; color: var(--text-dark, #212529); } } }
 .modal-footer { display: flex; justify-content: flex-end; margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border-color, #e5e7eb); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* History layout: keep the full report schema readable inside a horizontal
+   viewport. The table deliberately stays wider than the card; the wrapper
+   owns scrolling so the first column always starts at scroll position zero. */
+.table-card {
+  min-width: 0;
+  overflow: visible;
+}
+
+.table-card > .panel-heading {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.table-card > .panel-heading > h3 {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 1.3rem !important;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.table-card .report-toolbar {
+  flex: 1 1 760px;
+  min-width: 0;
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.table-card .report-toolbar > label {
+  flex: 1 1 170px;
+  min-width: 150px;
+}
+
+.table-card .report-toolbar > label:nth-of-type(3) {
+  flex-basis: 210px;
+}
+
+.intern-logbook-table-wrapper {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  direction: ltr;
+  scrollbar-width: thin;
+}
+
+.intern-logbook-table {
+  width: max-content !important;
+  min-width: 2850px !important;
+  max-width: none !important;
+  table-layout: auto !important;
+  white-space: normal !important;
+}
+
+.intern-logbook-table th,
+.intern-logbook-table td {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 10px 12px;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.intern-logbook-table th {
+  height: auto;
+  min-height: 52px;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.intern-logbook-table th:nth-child(1), .intern-logbook-table td:nth-child(1) { width: 52px; min-width: 52px; text-align: center; }
+.intern-logbook-table th:nth-child(2), .intern-logbook-table td:nth-child(2) { width: 130px; min-width: 130px; }
+.intern-logbook-table th:nth-child(3), .intern-logbook-table td:nth-child(3) { width: 140px; min-width: 140px; }
+.intern-logbook-table th:nth-child(4), .intern-logbook-table td:nth-child(4) { width: 210px; min-width: 210px; }
+.intern-logbook-table th:nth-child(5), .intern-logbook-table td:nth-child(5) { width: 250px; min-width: 250px; }
+.intern-logbook-table th:nth-child(6), .intern-logbook-table td:nth-child(6) { width: 310px; min-width: 310px; }
+.intern-logbook-table th:nth-child(7), .intern-logbook-table td:nth-child(7) { width: 190px; min-width: 190px; }
+.intern-logbook-table th:nth-child(8), .intern-logbook-table td:nth-child(8) { width: 220px; min-width: 220px; }
+.intern-logbook-table th:nth-child(9), .intern-logbook-table td:nth-child(9) { width: 220px; min-width: 220px; }
+.intern-logbook-table th:nth-child(10), .intern-logbook-table td:nth-child(10) { width: 180px; min-width: 180px; }
+.intern-logbook-table th:nth-child(11), .intern-logbook-table td:nth-child(11) { width: 150px; min-width: 150px; }
+.intern-logbook-table th:nth-child(12), .intern-logbook-table td:nth-child(12) { width: 220px; min-width: 220px; }
+.intern-logbook-table th:nth-child(13), .intern-logbook-table td:nth-child(13) { width: 150px; min-width: 150px; }
+.intern-logbook-table th:nth-child(14), .intern-logbook-table td:nth-child(14) { width: 280px; min-width: 280px; }
+.intern-logbook-table th:nth-child(n+15):not(:last-child), .intern-logbook-table td:nth-child(n+15):not(:last-child) { width: 160px; min-width: 160px; }
+.intern-logbook-table th:nth-child(15), .intern-logbook-table td:nth-child(15) { width: 280px; min-width: 280px; }
+.intern-logbook-table th:last-child,
+.intern-logbook-table td:last-child {
+  width: 200px !important;
+  min-width: 200px !important;
+  max-width: 200px !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+}
+
+.intern-logbook-table .logbook-screenshot-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.intern-logbook-table .report-thumb {
+  display: inline-flex;
+  flex: 0 0 68px;
+  width: 68px;
+  height: 52px;
+  margin: 0;
+}
+
+.intern-logbook-table .report-thumb img {
+  display: block;
+  width: 68px !important;
+  height: 52px !important;
+  max-width: 68px;
+  object-fit: cover;
+}
+
+.intern-logbook-table .status-pill {
+  display: inline-flex;
+  max-width: 100%;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.intern-logbook-table .intern-logbook-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+@media (max-width: 900px) {
+  .table-card > .panel-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .table-card > .panel-heading > h3 {
+    white-space: normal;
+  }
+
+  .table-card .report-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    align-items: end;
+    justify-content: stretch;
+  }
+
+  .table-card .report-toolbar > label,
+  .table-card .report-toolbar > .report-filter-action,
+  .table-card .report-toolbar > .export-dropdown {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 520px) {
+  .table-card .report-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Keep the report as a scrollable table on phones. The older card-style
+     mobile rules are intentionally neutralized because this table has many
+     dynamic columns and must preserve header/body alignment. */
+  .intern-logbook-table-wrapper { overflow-x: auto !important; }
+  .intern-logbook-table { display: table !important; width: max-content !important; min-width: 2850px !important; }
+  .intern-logbook-table thead { display: table-header-group !important; }
+  .intern-logbook-table tbody { display: table-row-group !important; }
+  .intern-logbook-table tr { display: table-row !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
+  .intern-logbook-table th,
+  .intern-logbook-table td { display: table-cell !important; width: auto; }
+  .intern-logbook-table td::before { display: none !important; content: none !important; }
+}

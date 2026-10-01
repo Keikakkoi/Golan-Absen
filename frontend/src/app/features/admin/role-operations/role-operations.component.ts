@@ -24,6 +24,7 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   activeSection: 'internship' | 'team' = 'internship';
   internshipStats: any = {};
   logbooks: any[] = [];
+  workReportColumns: any[] = [];
   logbookPageSizeOptions = [10, 25, 50, 100];
   logbookPageSize = 25;
   logbookCurrentPage = 1;
@@ -108,16 +109,15 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     const status = String(item?.status_logbook || item?.StatusLogbook || item?.status_sesuai || item?.StatusSesuai || 'draft').trim().toLowerCase();
     return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Draft';
   }
-  deleteLogbook(item: any): void {
-    const id = item.id || item.ID;
-    if (!id) return;
-    if (!confirm('Apakah Anda yakin ingin menghapus logbook ini?')) return;
-    this.http.delete(`${this.api}/admin/internship/logbooks/${id}`, { headers: this.headers() }).subscribe({ next: () => this.loadLogbooks(), error: e => this.fail(e) });
+  private isDraftForAdmin(item: any): boolean {
+    const logbookStatus = String(item?.status_logbook || item?.StatusLogbook || '').trim().toLowerCase();
+    const reportStatus = String(item?.status_laporan || item?.StatusLaporan || '').trim().toLowerCase();
+    return logbookStatus === 'draft' || reportStatus === 'draft';
   }
-
-  ngOnInit(): void { this.loadInternship(); this.disconnectRealtime = this.notificationService.connectRealtime(eventName => { if (['new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.scheduleRealtimeTeamRefresh(); }); }
+  ngOnInit(): void { this.loadWorkReportColumns(); this.loadInternship(); this.disconnectRealtime = this.notificationService.connectRealtime(eventName => { if (['new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.scheduleRealtimeTeamRefresh(); }); }
   ngOnDestroy(): void { this.destroyed = true; if (this.statisticsRefreshHandle) clearTimeout(this.statisticsRefreshHandle); this.disconnectRealtime?.(); }
   private scheduleRealtimeTeamRefresh(): void { if (this.destroyed || this.activeSection !== 'team' || this.statisticsRefreshHandle) return; this.statisticsRefreshHandle = setTimeout(() => { this.statisticsRefreshHandle = undefined; if (!this.destroyed && this.activeSection === 'team') this.loadTeam(true); }, 250); }
+  private loadWorkReportColumns(): void { this.http.get<any[]>(`${this.api}/work-reports/columns`, { headers: this.headers() }).subscribe({ next: columns => this.workReportColumns = (columns || []).filter(column => column.aktif !== false), error: () => this.workReportColumns = [] }); }
 
   selectSection(section: 'internship' | 'team'): void {
     this.activeSection = section;
@@ -153,7 +153,9 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     if (this.selectedInternId) params = params.set('user_id', this.selectedInternId);
     this.http.get<any[]>(`${this.api}/admin/internship/logbooks`, { params, headers: this.headers() }).subscribe({
       next: data => {
-        this.logbooks = data || [];
+        // Do not render or export a Draft even if an older backend responds
+        // without the Admin-side status filter.
+        this.logbooks = (data || []).filter((row: any) => !this.isDraftForAdmin(row));
         this.ensureValidLogbookPage();
         for (const row of this.logbooks) {
           const id = row.id || row.ID;
@@ -412,7 +414,11 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   exportRows(filename: string, headers: string[], rows: any[][]): void {
     this.reportExport.downloadCsv(filename, headers, rows);
   }
-  exportLogbooks(): void { this.openExportMenu = null; this.exportRows('logbook-magang.csv', ['Tanggal', 'Peserta', 'Tugas', 'Kegiatan', 'Status', 'Catatan Review'], this.logbooks.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || '-', row.review_notes || row.ReviewNotes || '-'])); }
+   private logbookExportHeaders(): string[] { return ['No', 'Hari/Tanggal', 'Nama Peserta', 'Divisi', 'Jabatan', 'Tugas', 'Judul', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Screenshot/Bukti Pengisian', 'Status Logbook', 'Status Waktu Pengisian', 'Catatan Review Pembimbing/Manager', 'Alasan Penolakan', ...this.workReportColumns.map(column => column.nama_kolom)]; }
+   private logbookExportRows(): any[][] { return this.logbooks.map((row, index) => [index + 1, row.tanggal || row.Tanggal || row.CreatedAt || '-', row.Employee?.User?.Nama || row.User?.Nama || '-', row.Employee?.Division?.NamaDivisi || '-', row.Employee?.Position?.NamaJabatan || '-', row.tugas || row.Tugas || '-', row.judul || row.Judul || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.realisasi_kegiatan || row.RealisasiKegiatan || '-', row.kendala || row.Kendala || '-', row.rencana_minggu_depan || row.RencanaMingguDepan || '-', row.link_artikel || row.LinkArtikel || '-', row.catatan_tambahan || row.CatatanTambahan || '-', this.attachmentLabel(row), this.logbookStatusLabel(row), row.is_late_submission || row.IsLateSubmission ? 'Terlambat' : 'Tepat waktu', row.review_notes || row.ReviewNotes || '-', this.logbookRejectionReason(row), ...this.workReportColumns.map(column => this.customFieldValue(row, column.nama_kolom))]); }
+  private attachmentLabel(row: any): string { const attachments = row.attachments || row.Attachments || []; return attachments.length ? attachments.map((item: any) => item.file_url || item.FileURL || item.file_name || item.FileName).join(' | ') : '-'; }
+  customFieldValue(row: any, key: string): string { const raw = row.custom_fields || row.CustomFields; if (!raw) return '-'; try { const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; return parsed?.[key] ?? '-'; } catch { return '-'; } }
+  exportLogbooks(): void { this.openExportMenu = null; this.exportRows('logbook-magang.csv', this.logbookExportHeaders(), this.logbookExportRows()); }
   private attendanceExportHeaders = ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'];
   private attendanceExportRows(): any[][] { return this.attendanceRows.map(row => [row.nama, row.tanggal, row.checkout_missing ? 'Belum Check-out' : row.status, row.jam_masuk || '-', row.jam_pulang || '-']); }
   exportAttendance(): void { this.openExportMenu = null; this.reportExport.downloadCsv('absensi-tim.csv', this.attendanceExportHeaders, this.attendanceExportRows()); }
@@ -421,18 +427,18 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   exportReports(): void { this.openExportMenu = null; this.reportExport.downloadCsv('laporan-tim.csv', this.reportExportHeaders, this.reportExportRows()); }
   exportCertificates(): void { this.openExportMenu = null; this.exportRows('sertifikat-magang.csv', ['Peserta', 'Institusi', 'Tanggal Selesai', 'Status', 'File'], this.certificates.map(row => [row.nama, row.institution_name, row.internship_end_date, row.uploaded ? 'Sudah diupload' : (!this.isInternshipEnded(row) ? 'Masa magang berlangsung' : 'Belum diupload'), row.file_name])); }
   toggleExportDropdown(menu: string): void { this.openExportMenu = this.openExportMenu === menu ? null : menu; }
-  exportLogbooksExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('logbook-magang.xls', ['Tanggal', 'Peserta', 'Tugas', 'Kegiatan', 'Status', 'Catatan Review'], this.logbooks.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || '-', row.review_notes || row.ReviewNotes || '-'])); }
+  exportLogbooksExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('logbook-magang.xls', this.logbookExportHeaders(), this.logbookExportRows()); }
   exportLogbooksJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('logbook-magang.json', this.logbooks); }
   exportLogbooksPDF(): void {
     this.openExportMenu = null;
-    const headers = ['Tanggal', 'Peserta', 'Tugas', 'Kegiatan', 'Status', 'Catatan Review'];
-    const rows = this.logbooks.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || '-', row.review_notes || row.ReviewNotes || '-']);
+    const headers = this.logbookExportHeaders();
+    const rows = this.logbookExportRows();
     void this.reportExport.downloadPdf(`laporan-logbook-magang-${this.exportDate()}.pdf`, 'Laporan Logbook Magang', this.exportDate(), headers, rows);
   }
   printLogbooks(): void {
     this.openExportMenu = null;
-    const headers = ['Tanggal', 'Peserta', 'Tugas', 'Kegiatan', 'Status', 'Catatan Review'];
-    const rows = this.logbooks.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || '-', row.review_notes || row.ReviewNotes || '-']);
+    const headers = this.logbookExportHeaders();
+    const rows = this.logbookExportRows();
     this.reportExport.printReport('Laporan Logbook Magang', this.exportDate(), headers, rows);
   }
   exportAttendanceExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('absensi-tim.xls', this.attendanceExportHeaders, this.attendanceExportRows()); }
@@ -647,7 +653,8 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     })).subscribe({ next: response => {
       if (requestId !== this.reportsRequestSequence) return;
       this.reportsServerPaginated = !Array.isArray(response) && Array.isArray(response?.data);
-      this.teamReports = this.reportsServerPaginated ? response.data : (response || []);
+      this.teamReports = (this.reportsServerPaginated ? response.data : (response || []))
+        .filter((row: any) => !this.isDraftForAdmin(row));
       this.reportsTotalItems = this.reportsServerPaginated ? Number(response.total || this.teamReports.length) : this.teamReports.length;
       this.reportsPage = Number(response?.page || requestedPage);
     }, error: e => {
@@ -678,7 +685,10 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
       pill.classList.add(normalized === 'hadir' ? 'status-hadir' : normalized === 'izin' ? 'status-izin' : normalized === 'terlambat' ? 'status-terlambat' : normalized === 'alpha' || normalized === 'alfa' || normalized === 'tidak hadir' ? 'status-alpha' : 'status-pending');
     });
   }
-  get displayedTeamReports(): any[] { return this.reportsServerPaginated ? this.teamReports : this.teamReports.slice((this.reportsPage - 1) * this.reportsPageSize, this.reportsPage * this.reportsPageSize); }
+  get displayedTeamReports(): any[] {
+    const visibleReports = this.teamReports.filter(row => !this.isDraftForAdmin(row));
+    return this.reportsServerPaginated ? visibleReports : visibleReports.slice((this.reportsPage - 1) * this.reportsPageSize, this.reportsPage * this.reportsPageSize);
+  }
   attendancePageChanged(page: number): void { this.loadAttendance(page, true); }
   attendancePageSizeChanged(size: number): void { this.attendancePageSize = size; this.loadAttendance(1, true); }
   private keepAttendancePanelVisible(): void {
@@ -741,6 +751,8 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     return notes.join(' | ') || '-';
   }
   rejectionReason(request: any): string { return request?.RejectionReason || request?.rejection_reason || '-'; }
+   logbookRejectionReason(row: any): string { return String(row?.status_logbook || row?.StatusLogbook || '').trim().toLowerCase() === 'rejected' ? (row?.rejection_reason || row?.RejectionReason || '-') : '-'; }
+   isRejectedLogbook(row: any): boolean { return String(row?.status_logbook || row?.StatusLogbook || '').trim().toLowerCase() === 'rejected'; }
 
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }
   private fail(error: any): void {

@@ -10,6 +10,7 @@ describe('TeamReportsComponent logbook review', () => {
     const reportExport = {} as any;
     const alert = {
       confirm: jasmine.createSpy('confirm').and.resolveTo(true),
+      textarea: jasmine.createSpy('textarea').and.resolveTo('Alasan penolakan test'),
       success: jasmine.createSpy('success').and.resolveTo(),
       error: jasmine.createSpy('error').and.resolveTo()
     } as any;
@@ -112,5 +113,13 @@ describe('TeamReportsComponent logbook review', () => {
     expect(component.end).toBe('');
     expect(component.search).toBe('');
     expect(http.get).toHaveBeenCalled();
+  });
+
+  it('renders the shared Admin-style time status labels without changing their value', () => {
+    const { component } = createComponent();
+
+    expect(component.statusTimeLabel({ tugas: 'Tugas', is_late_submission: false })).toBe('Tepat waktu');
+    expect(component.statusTimeLabel({ tugas: 'Tugas', is_late_submission: true })).toBe('Terlambat');
+    expect(component.statusTimeLabel({ is_late_submission: false })).toBe('-');
   });
 });

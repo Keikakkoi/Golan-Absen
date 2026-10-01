@@ -2136,3 +2136,62 @@ body.dark-theme .team-filter-panel .report-export-dropdown .dropdown-item-print 
   display: none !important;
 }
 .status-summary,.status-chip{display:inline-flex;align-items:center;gap:7px}.status-summary>span,.status-chip{display:inline-flex;align-items:center;gap:8px}.status-dot{display:inline-block;width:8px;height:8px;flex:0 0 8px;border-radius:50%;vertical-align:middle}.status-present{background:#16A34A}.status-late{background:#f59e0b}.status-leave{background:#8b5cf6}.status-alpha{background:#dc2626}.status-pending{background:#64748b}.status-neutral{background:#94a3b8}.statistics-manager-members .status-summary{display:flex;flex-wrap:wrap;gap:6px 10px;line-height:1.5}.statistics-manager-members .status-summary>span{white-space:nowrap}.bar-line .present{background:#16A34A}.bar-line .leave{background:#8b5cf6}.bar-line .alpha{background:#dc2626}.bar-line .pending{background:#64748b}.statistics-show-more{display:block;margin:12px auto 4px}
+.logbook-verification-panel { min-width: 0; overflow: visible; }
+.logbook-verification-panel > .panel-heading { min-width: 0; flex-wrap: wrap; }
+.logbook-verification-panel .report-toolbar { flex: 1 1 920px; min-width: 0; justify-content: flex-end; align-items: flex-end; }
+.logbook-verification-panel .report-toolbar > label { flex: 1 1 150px; min-width: 135px; }
+
+/* Keep the wide report schema readable. The wrapper scrolls; the table does
+   not compress its columns into the card width. */
+.role-operations-page .role-operations-logbook-table {
+  width: max-content !important;
+  min-width: 3000px !important;
+  max-width: none !important;
+  table-layout: auto !important;
+  white-space: normal !important;
+}
+.role-operations-page .role-operations-logbook-table th,
+.role-operations-page .role-operations-logbook-table td {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 10px 12px;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.35 !important;
+  vertical-align: middle !important;
+}
+.role-operations-page .role-operations-logbook-table th {
+  min-height: 52px;
+  height: auto;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+}
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(1) { width: 52px; min-width: 52px; text-align: center; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(2) { width: 130px; min-width: 130px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(3) { width: 200px; min-width: 200px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(4) { width: 140px; min-width: 140px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(5) { width: 150px; min-width: 150px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(6) { width: 210px; min-width: 210px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(7) { width: 260px; min-width: 260px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(8) { width: 310px; min-width: 310px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(9) { width: 190px; min-width: 190px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):is(:nth-child(10),:nth-child(11)) { width: 220px; min-width: 220px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(12) { width: 180px; min-width: 180px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(13) { width: 220px; min-width: 220px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):is(:nth-child(14),:nth-child(15)) { width: 150px; min-width: 150px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(16) { width: 165px; min-width: 165px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(17) { width: 260px; min-width: 260px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(n+18):not(:last-child) { width: 160px; min-width: 160px; }
+.role-operations-page .role-operations-logbook-table :is(th,td):last-child { width: 112px !important; min-width: 112px; max-width: 112px; }
+
+@media (max-width: 1100px) {
+  .logbook-verification-panel > .panel-heading { align-items: stretch; flex-direction: column; }
+  .logbook-verification-panel .report-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; align-items: end; justify-content: stretch; }
+  .logbook-verification-panel .report-toolbar > label,
+  .logbook-verification-panel .report-toolbar > .report-filter-action,
+  .logbook-verification-panel .report-toolbar > .export-dropdown { width: 100%; min-width: 0; box-sizing: border-box; }
+}
+@media (max-width: 520px) { .logbook-verification-panel .report-toolbar { grid-template-columns: minmax(0, 1fr); } }

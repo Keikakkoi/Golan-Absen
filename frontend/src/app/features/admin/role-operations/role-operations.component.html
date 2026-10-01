@@ -27,7 +27,6 @@
               <option value="submitted">Submitted</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
-              <option value="draft">Draft</option>
             </select>
           </label>
           <label>Mulai
@@ -78,19 +77,31 @@
           </colgroup>
           <thead>
             <tr>
-              <th>Tanggal</th>
-              <th>Peserta</th>
+              <th>No</th>
+              <th>Hari/Tanggal</th>
+              <th>Nama Peserta</th>
+              <th>Divisi</th>
+              <th>Jabatan</th>
               <th>Tugas</th>
-              <th>Kegiatan</th>
-              <th>Screenshot</th>
+              <th>Judul Golan Nusantara/Golan Education</th>
+              <th>Deskripsi Kegiatan</th>
+              <th>Realisasi Kegiatan (Capaian Target, %)</th>
+              <th>Kendala (Jika Ada)</th>
+              <th>Rencana Minggu Depan</th>
+              <th>Link Artikel</th>
+              <th>Catatan Tambahan</th>
+              <th>Screenshot/Bukti Pengisian</th>
               <th>Status Logbook</th>
-              <th>Pengisian</th>
-              <th>Catatan Review Pembimbing</th>
+              <th>Status Waktu Pengisian</th>
+              <th>Catatan Review Pembimbing/Manager</th>
+               <th>Alasan Penolakan</th>
+              <th *ngFor="let column of workReportColumns">{{ column.nama_kolom }}</th>
               <th>Aksi</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let row of displayedLogbooks">
+            <tr *ngFor="let row of displayedLogbooks; let i = index">
+              <td>{{ ((logbookCurrentPage - 1) * logbookPageSize) + i + 1 }}</td>
               <td>{{ (row.tanggal || row.Tanggal || row.CreatedAt) | date:'dd MMM yyyy' }}</td>
               <td>
                 <div style="font-weight: 600;">{{ row.Employee?.User?.Nama || row.User?.Nama || '-' }}</div>
@@ -99,8 +110,16 @@
                   Magang
                 </small>
               </td>
+              <td>{{ row.Employee?.Division?.NamaDivisi || '-' }}</td>
+              <td>{{ row.Employee?.Position?.NamaJabatan || '-' }}</td>
               <td>{{ row.tugas || row.Tugas || '-' }}</td>
-              <td>{{ row.deskripsi_kegiatan || row.DeskripsiKegiatan || row.kegiatan || row.Kegiatan || '-' }}</td>
+              <td>{{ row.judul || row.Judul || '-' }}</td>
+              <td class="text-cell" [title]="row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-'">{{ row.deskripsi_kegiatan || row.DeskripsiKegiatan || row.kegiatan || row.Kegiatan || '-' }}</td>
+              <td>{{ row.realisasi_kegiatan || row.RealisasiKegiatan || '-' }}</td>
+              <td class="text-cell" [title]="row.kendala || row.Kendala || '-'">{{ row.kendala || row.Kendala || '-' }}</td>
+              <td class="text-cell" [title]="row.rencana_minggu_depan || row.RencanaMingguDepan || '-'">{{ row.rencana_minggu_depan || row.RencanaMingguDepan || '-' }}</td>
+              <td><a *ngIf="row.link_artikel || row.LinkArtikel" [href]="row.link_artikel || row.LinkArtikel" target="_blank" rel="noopener">Link</a><span *ngIf="!(row.link_artikel || row.LinkArtikel)">-</span></td>
+              <td class="text-cell" [title]="row.catatan_tambahan || row.CatatanTambahan || '-'">{{ row.catatan_tambahan || row.CatatanTambahan || '-' }}</td>
               <td>
                 <span *ngFor="let image of (row.attachments || row.Attachments)" class="report-thumb">
                   <a [href]="image.file_url || image.FileURL" target="_blank" rel="noopener">
@@ -121,13 +140,12 @@
               <td>
                 {{ row.review_notes || row.ReviewNotes || '-' }}
               </td>
+               <td class="text-cell" [title]="logbookRejectionReason(row)">{{ logbookRejectionReason(row) }}</td>
+              <td *ngFor="let column of workReportColumns">{{ customFieldValue(row, column.nama_kolom) }}</td>
               <td>
                 <div class="logbook-actions">
                   <button type="button" class="icon-button view" (click)="viewLogbookDetail(row)" aria-label="Lihat detail logbook" title="Lihat detail logbook">
                     <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
-                  </button>
-                  <button type="button" class="icon-button delete" (click)="deleteLogbook(row)" aria-label="Hapus logbook" title="Hapus logbook">
-                    <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg>
                   </button>
                 </div>
               </td>
@@ -298,18 +316,28 @@
         <strong>Tugas / Topik:</strong>
         <p>{{ selectedLogbookDetail.tugas || selectedLogbookDetail.Tugas || '-' }}</p>
       </div>
+      <div class="detail-row"><strong>Judul:</strong><p>{{ selectedLogbookDetail.judul || selectedLogbookDetail.Judul || '-' }}</p></div>
       <div class="detail-row">
         <strong>Deskripsi Kegiatan:</strong>
         <p style="white-space: pre-wrap;">{{ selectedLogbookDetail.deskripsi_kegiatan || selectedLogbookDetail.DeskripsiKegiatan || selectedLogbookDetail.kegiatan || selectedLogbookDetail.Kegiatan || '-' }}</p>
       </div>
+      <div class="detail-row"><strong>Realisasi Kegiatan:</strong><p>{{ selectedLogbookDetail.realisasi_kegiatan || selectedLogbookDetail.RealisasiKegiatan || '-' }}</p></div>
       <div class="detail-row">
         <strong>Kendala:</strong>
         <p style="white-space: pre-wrap;">{{ selectedLogbookDetail.kendala || selectedLogbookDetail.Kendala || '-' }}</p>
       </div>
+      <div class="detail-row"><strong>Rencana Minggu Depan:</strong><p>{{ selectedLogbookDetail.rencana_minggu_depan || selectedLogbookDetail.RencanaMingguDepan || '-' }}</p></div>
+      <div class="detail-row"><strong>Link Artikel:</strong><p><a *ngIf="selectedLogbookDetail.link_artikel || selectedLogbookDetail.LinkArtikel" [href]="selectedLogbookDetail.link_artikel || selectedLogbookDetail.LinkArtikel" target="_blank" rel="noopener">Link</a><span *ngIf="!(selectedLogbookDetail.link_artikel || selectedLogbookDetail.LinkArtikel)">-</span></p></div>
+      <div class="detail-row"><strong>Catatan Tambahan:</strong><p>{{ selectedLogbookDetail.catatan_tambahan || selectedLogbookDetail.CatatanTambahan || '-' }}</p></div>
+      <div class="detail-row" *ngFor="let column of workReportColumns"><strong>{{ column.nama_kolom }}:</strong><p>{{ customFieldValue(selectedLogbookDetail, column.nama_kolom) }}</p></div>
       <div class="detail-row">
         <strong>Catatan Review Pembimbing:</strong>
         <p>{{ selectedLogbookDetail.review_notes || selectedLogbookDetail.ReviewNotes || '-' }}</p>
       </div>
+       <div class="detail-row" *ngIf="isRejectedLogbook(selectedLogbookDetail)">
+         <strong>Alasan Penolakan:</strong>
+         <p style="white-space: pre-wrap;">{{ logbookRejectionReason(selectedLogbookDetail) }}</p>
+       </div>
       <div class="detail-row" *ngIf="(selectedLogbookDetail.attachments || selectedLogbookDetail.Attachments)?.length">
         <strong>Screenshot Pekerjaan:</strong>
         <div class="screenshot-preview-grid" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">

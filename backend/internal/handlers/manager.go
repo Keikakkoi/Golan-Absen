@@ -261,7 +261,7 @@ func GetManagerTeamReports(c *fiber.Ctx) error {
 	}
 	// Set the model explicitly. Find can infer it from the destination slice,
 	// but pagination calls Count before Find and GORM cannot infer a model there.
-	query := config.DB.Model(&models.WorkReport{}).Preload("Employee.User").Preload("Employee.Division").Preload("Attachments").Where("employee_id IN ?", ids).Order("tanggal desc").Order("work_reports.id desc")
+	query := config.DB.Model(&models.WorkReport{}).Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").Where("employee_id IN ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) <> ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ?", ids, "draft", "draft").Order("tanggal desc").Order("work_reports.id desc")
 	if employeeID := c.Query("employee_id"); employeeID != "" {
 		id, parseErr := strconv.Atoi(employeeID)
 		if parseErr != nil {
@@ -446,6 +446,9 @@ func SaveManagerLeaveNote(c *fiber.Ctx) error {
 }
 
 func ReviewManagerLogbook(c *fiber.Ctx) error {
+	if c.Locals("role").(models.Role) != models.RoleManajer {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Review logbook hanya dapat dilakukan oleh Manager"})
+	}
 	managerID := c.Locals("user_id").(uint)
 	ids, err := managerTeamIDs(managerID)
 	if err != nil {
@@ -458,9 +461,17 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 	if report.EmployeeID == nil || !containsUint(ids, *report.EmployeeID) {
 		return c.Status(403).JSON(fiber.Map{"error": "Logbook is outside your team"})
 	}
+	// The same team inbox also contains regular work reports. Only internship
+	// rows may enter the logbook review workflow; regular reports keep using
+	// status_sesuai and are never changed by this endpoint.
+	if report.Employee.User == nil || report.Employee.User.Role != models.RoleMagang {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Review logbook hanya berlaku untuk peserta magang"})
+	}
 	var input struct {
-		Status string `json:"status"`
-		Notes  string `json:"notes"`
+		Status          string `json:"status"`
+		Notes           string `json:"notes"`
+		ReviewNotes     string `json:"review_notes"`
+		RejectionReason string `json:"rejection_reason"`
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid input"})
@@ -468,8 +479,26 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 	if input.Status != "approved" && input.Status != "rejected" {
 		return c.Status(400).JSON(fiber.Map{"error": "Status harus approved atau rejected"})
 	}
+	rejectionReason := ""
+	if input.Status == "rejected" {
+		var reasonErr error
+		rejectionReason, reasonErr = normalizeRejectionReason(input.RejectionReason)
+		if reasonErr != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": reasonErr.Error()})
+		}
+	}
+	reviewNotes := input.ReviewNotes
+	if strings.TrimSpace(reviewNotes) == "" {
+		reviewNotes = input.Notes
+	}
 	now := time.Now()
-	updates := map[string]interface{}{"status_logbook": input.Status, "reviewed_by": managerID, "reviewed_at": now, "review_notes": input.Notes}
+	updates := map[string]interface{}{"status_logbook": input.Status, "reviewed_by": managerID, "reviewed_at": now, "review_notes": reviewNotes}
+	if input.Status == "rejected" {
+		updates["rejection_reason"] = rejectionReason
+		updates["rejected_by"] = managerID
+		updates["rejected_at"] = now
+		updates["rejection_source"] = "manager"
+	}
 	result := config.DB.Model(&models.WorkReport{}).Where("id = ? AND employee_id = ? AND status_logbook = ?", report.ID, report.EmployeeID, "submitted").Updates(updates)
 	if result.Error != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to review logbook"})
@@ -479,7 +508,20 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 	}
 	WsHub.Broadcast <- fiber.Map{"event": "logbook_status_updated"}
 	if report.Employee.User != nil {
-		_ = utils.CreateNotification(config.DB, report.Employee.UserID, report.Employee.User.Role, "Logbook Magang", "Status Logbook Diperbarui", "Logbook harian Anda telah diperbarui menjadi "+input.Status)
+		message := "Logbook harian Anda telah diperbarui menjadi " + input.Status
+		if input.Status == "rejected" {
+			message += ". Alasan penolakan: " + rejectionReason
+		}
+		_ = utils.CreateNotification(config.DB, report.Employee.UserID, report.Employee.User.Role, "Logbook Magang", "Status Logbook Diperbarui", message)
 	}
-	return c.JSON(fiber.Map{"message": "Logbook reviewed", "status": input.Status, "status_logbook": input.Status, "review_notes": input.Notes})
+	return c.JSON(fiber.Map{
+		"message":          "Logbook reviewed",
+		"status":           input.Status,
+		"status_logbook":   input.Status,
+		"notes":            reviewNotes,
+		"review_notes":     reviewNotes,
+		"rejection_reason": rejectionReason,
+		"reviewed_by":      managerID,
+		"reviewed_at":      now,
+	})
 }
