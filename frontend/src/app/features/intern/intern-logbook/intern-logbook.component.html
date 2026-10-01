@@ -12,14 +12,6 @@
     <section #editLogbookForm class="golan-card form-card">
       <div class="panel-heading">
         <h3>{{ editingId ? "Edit Logbook" : "Catatan Hari Ini" }}</h3>
-        <button
-          class="btn-secondary"
-          type="button"
-          *ngIf="editingId"
-          (click)="cancelEdit()"
-        >
-          Batal Edit
-        </button>
       </div>
       <form (ngSubmit)="save('submitted')">
         <div class="field-row">
@@ -86,6 +78,14 @@
           </div
         ></label>
         <div style="display: flex; gap: 8px; margin-top: 1rem">
+          <button
+            *ngIf="editingId"
+            type="button"
+            class="btn-outline-primary"
+            (click)="cancelEdit()"
+          >
+            Batal Edit
+          </button>
           <button
             type="button"
             class="btn-outline-primary"
@@ -399,7 +399,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn-secondary" (click)="closeDetail()">
+      <button type="button" class="btn-outline-primary" (click)="closeDetail()">
         Tutup
       </button>
     </div>
