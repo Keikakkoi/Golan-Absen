@@ -265,7 +265,6 @@ func UploadAdminInternshipCertificate(c *fiber.Ctx) error {
 		certificate = models.InternshipCertificate{UserID: &user.ID, IssuedAt: now, CertificateNo: fmt.Sprintf("MAGANG-%06d", user.ID)}
 	}
 	uploader := c.Locals("user_id").(uint)
-	cfg := config.LoadConfig()
 	certificate.IssuedAt = now
 	certificate.StorageKey = key
 	certificate.FileName = file.Filename
@@ -273,7 +272,7 @@ func UploadAdminInternshipCertificate(c *fiber.Ctx) error {
 	certificate.FileSize = file.Size
 	certificate.UploadedBy = &uploader
 	certificate.UploadedAt = &now
-	certificate.FileURL = fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, storage.BucketName, key)
+	certificate.FileURL = storage.ObjectURL(key)
 	if err := config.DB.Save(&certificate).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Metadata sertifikat gagal disimpan"})
 	}

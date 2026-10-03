@@ -54,13 +54,20 @@ export class HistoryComponent implements OnInit {
   }
 
   selectedRecord: any = null;
+  imageLoadFailed: Record<string, boolean> = {};
 
   openDetail(record: any): void {
     this.selectedRecord = record;
+    this.imageLoadFailed = {};
   }
 
   closeDetail(): void {
     this.selectedRecord = null;
+    this.imageLoadFailed = {};
+  }
+
+  onImageError(url: string): void {
+    this.imageLoadFailed[url] = true;
   }
 
   getStatusShort(status: string): string {

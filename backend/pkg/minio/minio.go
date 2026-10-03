@@ -3,6 +3,7 @@ package minio
 import (
 	"context"
 	"log"
+	"net/url"
 	"strings"
 
 	"absensi-golan-backend/config"
@@ -62,16 +63,50 @@ func ObjectURL(key string) string {
 var currentEndpoint string
 
 // RewriteObjectURL makes URLs stored before MINIO_PUBLIC_URL was configured
-// usable by browsers without requiring a database rewrite.
+// usable by browsers without requiring a database rewrite. It recognizes the
+// current Docker endpoint as well as the local endpoints used by older
+// development/provisioning environments.
 func RewriteObjectURL(raw string) string {
-	if raw == "" || PublicURL == "" || currentEndpoint == "" {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || PublicURL == "" {
 		return raw
 	}
-	for _, scheme := range []string{"http://", "https://"} {
-		prefix := scheme + currentEndpoint
-		if strings.HasPrefix(raw, prefix) {
-			return PublicURL + strings.TrimPrefix(raw, prefix)
+
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Path == "" {
+		return raw
+	}
+	if parsed.IsAbs() && !isKnownInternalEndpoint(parsed.Host) {
+		return raw
+	}
+	if !parsed.IsAbs() && !strings.HasPrefix(parsed.Path, "/") {
+		return raw
+	}
+
+	public, err := url.Parse(PublicURL)
+	if err != nil || public.Scheme == "" || public.Host == "" {
+		return raw
+	}
+	public.Path = strings.TrimRight(public.Path, "/") + "/" + strings.TrimLeft(parsed.EscapedPath(), "/")
+	public.RawQuery = parsed.RawQuery
+	public.Fragment = parsed.Fragment
+	return public.String()
+}
+
+func isKnownInternalEndpoint(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	if host == "" {
+		return false
+	}
+
+	known := []string{"minio:9000", "localhost:9000", "127.0.0.1:9000"}
+	if currentEndpoint != "" {
+		known = append(known, strings.ToLower(strings.TrimSpace(currentEndpoint)))
+	}
+	for _, endpoint := range known {
+		if host == endpoint {
+			return true
 		}
 	}
-	return raw
+	return false
 }

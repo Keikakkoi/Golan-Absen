@@ -328,8 +328,7 @@ func SubmitLeaveRequest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to upload file"})
 	}
 
-	cfg := config.LoadConfig()
-	lampiranURL = fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, minio.BucketName, fileName)
+	lampiranURL = minio.ObjectURL(fileName)
 
 	days, err := workingLeaveDaysForEmployee(employee.ID, tglMulai, tglSelesai)
 	if err != nil {

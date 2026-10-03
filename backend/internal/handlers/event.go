@@ -196,8 +196,7 @@ func CreateCompanyEvent(c *fiber.Ctx) error {
 					ContentType: file.Header.Get("Content-Type"),
 				})
 				if uploadErr == nil {
-					cfg := config.LoadConfig()
-					event.FileAttachmentURL = fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, minio.BucketName, fileName)
+					event.FileAttachmentURL = minio.ObjectURL(fileName)
 					event.FileAttachmentName = file.Filename
 				}
 			}
@@ -271,8 +270,7 @@ func UpdateCompanyEvent(c *fiber.Ctx) error {
 					ContentType: file.Header.Get("Content-Type"),
 				})
 				if uploadErr == nil {
-					cfg := config.LoadConfig()
-					event.FileAttachmentURL = fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, minio.BucketName, fileName)
+					event.FileAttachmentURL = minio.ObjectURL(fileName)
 					event.FileAttachmentName = file.Filename
 				}
 			}

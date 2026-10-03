@@ -175,14 +175,13 @@ func UploadAdminInternshipDocument(c *fiber.Ctx) error {
 	} else {
 	}
 	uploader := c.Locals("user_id").(uint)
-	cfg := config.LoadConfig()
 	doc.StorageKey = key
 	doc.FileName = file.Filename
 	doc.MimeType = contentType
 	doc.FileSize = file.Size
 	doc.UploadedBy = &uploader
 	doc.UploadedAt = &now
-	doc.FileURL = fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, storage.BucketName, key)
+	doc.FileURL = storage.ObjectURL(key)
 	if err = config.DB.Save(&doc).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Metadata dokumen gagal disimpan"})
 	}

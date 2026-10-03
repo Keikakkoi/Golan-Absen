@@ -1016,8 +1016,7 @@ func saveWorkReportAttachments(reportID uint, nik string, files []*multipart.Fil
 		if uploadErr != nil {
 			return fmt.Errorf("gagal menyimpan screenshot")
 		}
-		cfg := config.LoadConfig()
-		url := fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, minio.BucketName, key)
+		url := minio.ObjectURL(key)
 		attachment := models.WorkReportAttachment{WorkReportID: reportID, FileURL: url, StorageKey: key, FileName: file.Filename, MimeType: file.Header.Get("Content-Type"), FileSize: file.Size}
 		if err := config.DB.Create(&attachment).Error; err != nil {
 			return fmt.Errorf("gagal menyimpan metadata screenshot")

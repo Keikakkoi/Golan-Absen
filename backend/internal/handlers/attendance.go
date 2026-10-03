@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"mime"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
@@ -432,6 +433,10 @@ func GetAttendanceHistory(c *fiber.Ctx) error {
 		if records[index].Status == models.StatusTerlambat {
 			records[index].Status = models.StatusHadir
 		}
+		// Keep legacy database values intact, but return browser-facing URLs so
+		// old attendance records work after the production storage migration.
+		records[index].FotoSelfieMasukURL = minio.RewriteObjectURL(records[index].FotoSelfieMasukURL)
+		records[index].FotoSelfiePulangURL = minio.RewriteObjectURL(records[index].FotoSelfiePulangURL)
 	}
 
 	return c.JSON(records)
@@ -447,19 +452,22 @@ func uploadToMinIO(file *multipart.FileHeader, nik, tipe string) (string, error)
 	fileName := fmt.Sprintf("%s-%s-%d%s", nik, tipe, time.Now().Unix(), filepath.Ext(file.Filename))
 
 	ctx := context.Background()
+	contentType := file.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = mime.TypeByExtension(strings.ToLower(filepath.Ext(file.Filename)))
+	}
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
 	_, err = minio.Client.PutObject(ctx, minio.BucketName, fileName, src, file.Size, miniogo.PutObjectOptions{
-		ContentType: file.Header.Get("Content-Type"),
+		ContentType: contentType,
 	})
 
 	if err != nil {
 		return "", err
 	}
 
-	// Assuming local development, format URL.
-	// In production, this should be configurable or use MinIO Presigned URL
-	cfg := config.LoadConfig()
-	url := fmt.Sprintf("http://%s/%s/%s", cfg.MinIOEndpoint, minio.BucketName, fileName)
-	return url, nil
+	return minio.ObjectURL(fileName), nil
 }
 
 func GetOfficeInfo(c *fiber.Ctx) error {

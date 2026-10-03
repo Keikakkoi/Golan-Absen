@@ -101,20 +101,30 @@
             <h4>Check-in</h4>
             <p><strong>Waktu:</strong> {{ selectedRecord.JamMasuk ? (selectedRecord.JamMasuk | date:'HH:mm:ss') : '-' }}</p>
             <p><strong>Koordinat:</strong> {{ selectedRecord.LatitudeMasuk }}, {{ selectedRecord.LongitudeMasuk }}</p>
-            <div *ngIf="selectedRecord.FotoSelfieMasukURL">
-              <a [href]="selectedRecord.FotoSelfieMasukURL" target="_blank">
-                <img [src]="selectedRecord.FotoSelfieMasukURL" alt="Selfie Masuk">
-              </a>
+            <div *ngIf="selectedRecord.FotoSelfieMasukURL as selfieMasukURL">
+              <ng-container *ngIf="!imageLoadFailed[selfieMasukURL]; else selfieMasukFallback">
+                <a [href]="selfieMasukURL" target="_blank" rel="noopener noreferrer">
+                  <img [src]="selfieMasukURL" alt="Selfie Masuk" (error)="onImageError(selfieMasukURL)">
+                </a>
+              </ng-container>
+              <ng-template #selfieMasukFallback>
+                <p class="image-fallback" role="status">Foto selfie masuk gagal dimuat. URL dari API tidak dapat diakses.</p>
+              </ng-template>
             </div>
           </div>
           <div class="attendance-detail-block">
             <h4>Check-out</h4>
             <p><strong>Waktu:</strong> {{ selectedRecord.JamPulang ? (selectedRecord.JamPulang | date:'HH:mm:ss') : '-' }}</p>
             <p><strong>Koordinat:</strong> {{ selectedRecord.LatitudePulang || '-' }}, {{ selectedRecord.LongitudePulang || '-' }}</p>
-            <div *ngIf="selectedRecord.FotoSelfiePulangURL">
-              <a [href]="selectedRecord.FotoSelfiePulangURL" target="_blank">
-                <img [src]="selectedRecord.FotoSelfiePulangURL" alt="Selfie Pulang">
-              </a>
+            <div *ngIf="selectedRecord.FotoSelfiePulangURL as selfiePulangURL">
+              <ng-container *ngIf="!imageLoadFailed[selfiePulangURL]; else selfiePulangFallback">
+                <a [href]="selfiePulangURL" target="_blank" rel="noopener noreferrer">
+                  <img [src]="selfiePulangURL" alt="Selfie Pulang" (error)="onImageError(selfiePulangURL)">
+                </a>
+              </ng-container>
+              <ng-template #selfiePulangFallback>
+                <p class="image-fallback" role="status">Foto selfie pulang gagal dimuat. URL dari API tidak dapat diakses.</p>
+              </ng-template>
             </div>
           </div>
         </div>

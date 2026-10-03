@@ -411,6 +411,12 @@
     border-radius: 8px;
     object-fit: cover;
   }
+
+  .image-fallback {
+    margin-top: 10px;
+    color: #b42318;
+    font-size: 0.85rem;
+  }
 }
 
 @keyframes historyFadeIn {
