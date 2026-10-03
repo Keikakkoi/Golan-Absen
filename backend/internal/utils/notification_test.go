@@ -76,6 +76,32 @@ func TestCreateAttendanceNotificationTreatsDuplicateAsAlreadyDelivered(t *testin
 	}
 }
 
+func TestCreateWorkReportRevisionNotificationTreatsRetryAsAlreadyDelivered(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: db}), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "notification_settings"`)).
+		WithArgs("Revisi Laporan Kerja", models.RoleHRD).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "is_in_app_enabled"}).AddRow(1, true))
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "notifications"`)).WillReturnError(assertDuplicateError{})
+	mock.ExpectRollback()
+
+	if err := CreateWorkReportRevisionNotification(gormDB, 7, models.RoleHRD, "Revisi Laporan Kerja", "message", 42); err != nil {
+		t.Fatalf("retry should be treated as delivered: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 type assertDuplicateError struct{}
 
 func (assertDuplicateError) Error() string { return "duplicate key value violates unique constraint" }

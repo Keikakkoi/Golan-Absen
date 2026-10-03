@@ -75,14 +75,25 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   }
 
   markAsRead(notif: any): void {
-    if (notif.StatusBaca) return;
+    if (notif.StatusBaca) {
+      this.openNotificationTarget(notif);
+      return;
+    }
 
     this.notificationService.markAsRead(notif.ID).subscribe({
       next: () => {
         notif.StatusBaca = true;
+        this.openNotificationTarget(notif);
       },
       error: (err) => console.error('Failed to mark notification as read', err)
     });
+  }
+
+  private openNotificationTarget(notif: AppNotification): void {
+    const reportID = notif.TargetID || notif.ReferenceID;
+    if (this.isAdminPage && notif.TipeNotifikasi === 'Revisi Laporan Kerja' && reportID) {
+      void this.router.navigate(['/admin/work-reports'], { queryParams: { report_id: reportID } });
+    }
   }
 
   markAllAsRead(): void {

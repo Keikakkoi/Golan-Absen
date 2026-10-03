@@ -8,6 +8,9 @@ export interface AppNotification {
   ID: number;
   Judul: string;
   Pesan: string;
+  TipeNotifikasi?: string;
+  ReferenceID?: number;
+  TargetID?: number;
   StatusBaca: boolean;
   Waktu: string;
 }

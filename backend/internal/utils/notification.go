@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -37,7 +38,28 @@ func CreateAttendanceNotification(db *gorm.DB, userID uint, role models.Role, no
 	return createNotification(db, userID, role, notificationType, title, message, &attendanceID)
 }
 
+// CreateWorkReportRevisionNotification creates an idempotent notification for
+// one work-report revision. The report ID is the stable reference, so retries
+// caused by a browser refresh or concurrent submit requests cannot create a
+// second in-app notification for the same rejection-to-submitted transition.
+func CreateWorkReportRevisionNotification(db *gorm.DB, userID uint, role models.Role, title, message string, reportID uint) error {
+	idempotencyKey := fmt.Sprintf("work-report-revision:%d", reportID)
+	return CreateWorkReportRevisionNotificationForCycle(db, userID, role, title, message, reportID, idempotencyKey)
+}
+
+// CreateWorkReportRevisionNotificationForCycle is the cycle-aware variant used
+// by the work-report handler. A new rejection timestamp creates a new
+// notification, while retries for the same rejection share one key.
+func CreateWorkReportRevisionNotificationForCycle(db *gorm.DB, userID uint, role models.Role, title, message string, reportID uint, idempotencyKey string) error {
+	targetID := reportID
+	return createNotificationWithTarget(db, userID, role, "Revisi Laporan Kerja", title, message, nil, &targetID, &idempotencyKey)
+}
+
 func createNotification(db *gorm.DB, userID uint, role models.Role, notificationType, title, message string, referenceID *uint) error {
+	return createNotificationWithTarget(db, userID, role, notificationType, title, message, referenceID, nil, nil)
+}
+
+func createNotificationWithTarget(db *gorm.DB, userID uint, role models.Role, notificationType, title, message string, referenceID, targetID *uint, idempotencyKey *string) error {
 	var setting models.NotificationSetting
 	err := db.Where("tipe_notifikasi = ? AND role = ?", notificationType, role).First(&setting).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -53,12 +75,14 @@ func createNotification(db *gorm.DB, userID uint, role models.Role, notification
 		Pesan:          message,
 		TipeNotifikasi: notificationType,
 		ReferenceID:    referenceID,
+		TargetID:       targetID,
+		IdempotencyKey: idempotencyKey,
 		Waktu:          time.Now(),
 	}
 	if err := db.Create(&notification).Error; err != nil {
 		// A concurrent retry may win the reference unique index. It means the
 		// intended notification already exists, not that the attendance failed.
-		if referenceID != nil && strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
+		if (referenceID != nil || idempotencyKey != nil) && strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
 			return nil
 		}
 		return err
@@ -72,11 +96,11 @@ func createNotification(db *gorm.DB, userID uint, role models.Role, notification
 
 	// Push delivery is best-effort. The in-app notification is already safely
 	// stored, so a browser/device that is offline can still read it later.
-	go sendWebPush(userID, role, title, message)
+	go sendWebPush(userID, role, notificationType, title, message, referenceID, targetID)
 	return nil
 }
 
-func sendWebPush(userID uint, role models.Role, title, message string) {
+func sendWebPush(userID uint, role models.Role, notificationType, title, message string, referenceID, targetID *uint) {
 	cfg := config.LoadConfig()
 	if cfg.VAPIDPublicKey == "" || cfg.VAPIDPrivateKey == "" {
 		return
@@ -89,6 +113,15 @@ func sendWebPush(userID uint, role models.Role, title, message string) {
 	url := "/employee/notifications"
 	if role == models.RoleHRD {
 		url = "/admin/dashboard"
+		if notificationType == "Revisi Laporan Kerja" {
+			id := referenceID
+			if id == nil {
+				id = targetID
+			}
+			if id != nil {
+				url = fmt.Sprintf("/admin/work-reports?report_id=%d", *id)
+			}
+		}
 	}
 	payload, err := json.Marshal(map[string]string{"title": title, "body": message, "url": url})
 	if err != nil {

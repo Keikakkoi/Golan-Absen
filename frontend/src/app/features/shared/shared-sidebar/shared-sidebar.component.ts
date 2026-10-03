@@ -106,12 +106,26 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   }
 
   markAsRead(notification: AppNotification): void {
-    if (notification.StatusBaca) return;
+    if (notification.StatusBaca) {
+      this.openNotificationTarget(notification);
+      return;
+    }
 
     this.notificationService.markAsRead(notification.ID).subscribe({
-      next: () => notification.StatusBaca = true,
+      next: () => {
+        notification.StatusBaca = true;
+        this.openNotificationTarget(notification);
+      },
       error: err => console.error('Failed to mark notification as read', err)
     });
+  }
+
+  private openNotificationTarget(notification: AppNotification): void {
+    this.showNotifications = false;
+    const reportID = notification.TargetID || notification.ReferenceID;
+    if (this.userRole === 'HRD' && notification.TipeNotifikasi === 'Revisi Laporan Kerja' && reportID) {
+      void this.router.navigate(['/admin/work-reports'], { queryParams: { report_id: reportID } });
+    }
   }
 
   get unreadCount(): number {

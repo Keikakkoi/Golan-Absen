@@ -5,7 +5,7 @@ import { HttpContext } from '@angular/common/http';
 import { SKIP_PAGE_LOADING } from '../../../core/interceptors/page-loading-context';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
 import { Subscription, filter, take } from 'rxjs';
@@ -41,7 +41,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private userSubscription?: Subscription;
   private initialized = false;
 
-  constructor(private http: HttpClient, private authService: AuthService, private notificationService: NotificationService) {}
+  constructor(private http: HttpClient, private authService: AuthService, private notificationService: NotificationService, private router: Router) {}
 
   ngOnInit(): void {
     this.notificationsSubscription = this.notificationService.notifications$.subscribe(notifications => {
@@ -113,11 +113,25 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   toggleNotifications(): void { this.showNotifications = !this.showNotifications; }
 
   markAsRead(notification: AppNotification): void {
-    if (notification.StatusBaca) return;
+    if (notification.StatusBaca) {
+      this.openNotificationTarget(notification);
+      return;
+    }
     this.notificationService.markAsRead(notification.ID).subscribe({
-      next: () => notification.StatusBaca = true,
+      next: () => {
+        notification.StatusBaca = true;
+        this.openNotificationTarget(notification);
+      },
       error: err => console.error('Failed to mark notification as read', err)
     });
+  }
+
+  private openNotificationTarget(notification: AppNotification): void {
+    this.showNotifications = false;
+    const reportID = notification.TargetID || notification.ReferenceID;
+    if (notification.TipeNotifikasi === 'Revisi Laporan Kerja' && reportID) {
+      void this.router.navigate(['/admin/work-reports'], { queryParams: { report_id: reportID } });
+    }
   }
 
   get unreadCount(): number { return this.notifications.filter(item => !item.StatusBaca).length; }

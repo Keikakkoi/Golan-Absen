@@ -449,13 +449,15 @@ func (LeaveQuota) TableName() string {
 
 type Notification struct {
 	Model
-	UserID         uint `gorm:"not null;index;uniqueIndex:idx_notification_reference"`
+	UserID         uint `gorm:"not null;index;uniqueIndex:idx_notification_reference;uniqueIndex:idx_notification_idempotency"`
 	User           User
-	Judul          string `gorm:"size:100;not null"`
-	Pesan          string `gorm:"type:text;not null"`
-	TipeNotifikasi string `gorm:"size:50;uniqueIndex:idx_notification_reference"`
-	ReferenceID    *uint  `gorm:"uniqueIndex:idx_notification_reference"`
-	StatusBaca     bool   `gorm:"default:false"`
+	Judul          string  `gorm:"size:100;not null"`
+	Pesan          string  `gorm:"type:text;not null"`
+	TipeNotifikasi string  `gorm:"size:50;uniqueIndex:idx_notification_reference;uniqueIndex:idx_notification_idempotency"`
+	ReferenceID    *uint   `gorm:"uniqueIndex:idx_notification_reference" json:"ReferenceID,omitempty"`
+	TargetID       *uint   `gorm:"index" json:"TargetID,omitempty"`
+	IdempotencyKey *string `gorm:"size:180;uniqueIndex:idx_notification_idempotency" json:"-"`
+	StatusBaca     bool    `gorm:"default:false"`
 	Waktu          time.Time
 }
 
