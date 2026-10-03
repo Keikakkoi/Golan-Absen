@@ -251,6 +251,10 @@ export class AdminReportsComponent implements OnInit {
     return report?.FotoSelfieMasukURL || report?.foto_selfie_masuk_url || '';
   }
 
+  checkOutPhoto(report: any): string {
+    return report?.FotoSelfiePulangURL || report?.foto_selfie_pulang_url || '';
+  }
+
   checkInLatitude(report: any): number | null {
     return this.coordinate(report?.LatitudeMasuk ?? report?.latitude_masuk);
   }
@@ -259,12 +263,32 @@ export class AdminReportsComponent implements OnInit {
     return this.coordinate(report?.LongitudeMasuk ?? report?.longitude_masuk);
   }
 
+  checkOutLatitude(report: any): number | null {
+    return this.coordinate(report?.LatitudePulang ?? report?.latitude_pulang);
+  }
+
+  checkOutLongitude(report: any): number | null {
+    return this.coordinate(report?.LongitudePulang ?? report?.longitude_pulang);
+  }
+
   locationSummary(report: any): string {
     const latitude = this.checkInLatitude(report);
     const longitude = this.checkInLongitude(report);
     return latitude !== null && longitude !== null
       ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
       : 'Tidak ada lokasi';
+  }
+
+  checkOutLocationSummary(report: any): string {
+    const latitude = this.checkOutLatitude(report);
+    const longitude = this.checkOutLongitude(report);
+    return latitude !== null && longitude !== null
+      ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
+      : 'Tidak ada lokasi';
+  }
+
+  hasCheckOutData(report: any): boolean {
+    return Boolean(report?.JamPulang && !report?.IsCheckoutMissing);
   }
 
   mapEmbedUrl(report: any): SafeResourceUrl | null {
@@ -276,9 +300,26 @@ export class AdminReportsComponent implements OnInit {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
+  checkOutMapEmbedUrl(report: any): SafeResourceUrl | null {
+    const latitude = this.checkOutLatitude(report);
+    const longitude = this.checkOutLongitude(report);
+    if (latitude === null || longitude === null) return null;
+    const delta = 0.003;
+    const url = `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - delta}%2C${latitude - delta}%2C${longitude + delta}%2C${latitude + delta}&layer=mapnik&marker=${latitude}%2C${longitude}`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
+
   mapsUrl(report: any): string | null {
     const latitude = this.checkInLatitude(report);
     const longitude = this.checkInLongitude(report);
+    return latitude !== null && longitude !== null
+      ? `https://www.google.com/maps?q=${latitude},${longitude}`
+      : null;
+  }
+
+  checkOutMapsUrl(report: any): string | null {
+    const latitude = this.checkOutLatitude(report);
+    const longitude = this.checkOutLongitude(report);
     return latitude !== null && longitude !== null
       ? `https://www.google.com/maps?q=${latitude},${longitude}`
       : null;

@@ -158,6 +158,7 @@
               <th style="padding: 0.75rem;">Jabatan</th>
               <th style="padding: 0.75rem;">Tipe Kerja</th>
               <th style="padding: 0.75rem;">Foto Check-in</th>
+              <th style="padding: 0.75rem;">Foto Check-out</th>
               <th style="padding: 0.75rem;">Lokasi Check-in</th>
               <th style="padding: 0.75rem;">Waktu Check-in</th>
               <th style="padding: 0.75rem;">Jam Pulang</th>
@@ -174,8 +175,16 @@
               <td style="padding: 0.75rem;">{{ req.Employee?.Position?.NamaJabatan || '-' }}</td>
               <td style="padding: 0.75rem;">{{ req.TipeKerja || 'WFO' }}</td>
               <td style="padding: 0.75rem;">
-                <img *ngIf="checkInPhoto(req)" class="checkin-photo-thumb" [src]="checkInPhoto(req)" alt="Foto check-in">
+                <a *ngIf="checkInPhoto(req)" class="photo-link" [href]="checkInPhoto(req)" target="_blank" rel="noopener" title="Lihat foto check-in ukuran besar">
+                  <img class="checkin-photo-thumb" [src]="checkInPhoto(req)" alt="Foto check-in">
+                </a>
                 <span *ngIf="!checkInPhoto(req)" class="photo-placeholder">Tidak ada foto</span>
+              </td>
+              <td style="padding: 0.75rem;">
+                <a *ngIf="checkOutPhoto(req)" class="photo-link" [href]="checkOutPhoto(req)" target="_blank" rel="noopener" title="Lihat foto check-out ukuran besar">
+                  <img class="checkout-photo-thumb" [src]="checkOutPhoto(req)" alt="Foto check-out">
+                </a>
+                <span *ngIf="!checkOutPhoto(req)" class="photo-placeholder">Tidak ada foto</span>
               </td>
               <td style="padding: 0.75rem;" class="location-cell" [title]="locationSummary(req)">{{ locationSummary(req) }}</td>
               <td style="padding: 0.75rem;">{{ req.JamMasuk ? (req.JamMasuk | date:'dd MMM yyyy, HH:mm:ss') : '-' }}</td>
@@ -218,24 +227,53 @@
 <div *ngIf="selectedReport" class="attendance-detail-backdrop" (click)="closeReportDetail()">
   <section class="attendance-detail-modal" role="dialog" aria-modal="true" aria-labelledby="attendance-detail-title" (click)="$event.stopPropagation()">
     <div class="attendance-detail-header">
-      <div><h3 id="attendance-detail-title">Detail Check-in</h3><p>{{ selectedReport.Employee?.User?.Nama || '-' }} · {{ selectedReport.Tanggal | date:'dd MMM yyyy' }}</p></div>
+      <div><h3 id="attendance-detail-title">Detail Absensi</h3><p>{{ selectedReport.Employee?.User?.Nama || '-' }} · {{ selectedReport.Tanggal | date:'dd MMM yyyy' }}</p></div>
       <button type="button" class="modal-close" aria-label="Tutup detail" (click)="closeReportDetail()">&times;</button>
     </div>
     <div class="attendance-detail-content">
-      <div class="attendance-detail-photo-wrap">
-        <img *ngIf="checkInPhoto(selectedReport)" class="attendance-detail-photo" [src]="checkInPhoto(selectedReport)" alt="Foto check-in ukuran besar">
-        <div *ngIf="!checkInPhoto(selectedReport)" class="photo-placeholder detail-placeholder">Tidak ada foto</div>
-      </div>
-      <div class="attendance-detail-info">
-        <dl>
-          <dt>Lokasi check-in</dt><dd>{{ locationSummary(selectedReport) }}</dd>
-          <dt>Koordinat GPS</dt><dd>{{ checkInLatitude(selectedReport) ?? '-' }}, {{ checkInLongitude(selectedReport) ?? '-' }}</dd>
-          <dt>Waktu check-in</dt><dd>{{ selectedReport.JamMasuk ? (selectedReport.JamMasuk | date:'dd MMM yyyy, HH:mm:ss') : '-' }}</dd>
-          <dt>Status</dt><dd>{{ selectedReport.Status || '-' }}</dd>
-        </dl>
-        <a *ngIf="mapsUrl(selectedReport)" class="btn btn-secondary map-link" [href]="mapsUrl(selectedReport)" target="_blank" rel="noopener">Buka di Google Maps</a>
-      </div>
+      <section class="attendance-detail-section" aria-labelledby="checkin-section-title">
+        <h4 id="checkin-section-title">A. Detail Check-in</h4>
+        <div class="attendance-detail-section-body">
+          <div class="attendance-detail-photo-wrap">
+            <a *ngIf="checkInPhoto(selectedReport)" class="photo-link" [href]="checkInPhoto(selectedReport)" target="_blank" rel="noopener" title="Lihat foto check-in ukuran besar">
+              <img class="attendance-detail-photo" [src]="checkInPhoto(selectedReport)" alt="Foto check-in ukuran besar">
+            </a>
+            <div *ngIf="!checkInPhoto(selectedReport)" class="photo-placeholder detail-placeholder">Tidak ada foto</div>
+          </div>
+          <div class="attendance-detail-info">
+            <dl>
+              <dt>Lokasi check-in</dt><dd>{{ locationSummary(selectedReport) }}</dd>
+              <dt>Koordinat GPS check-in</dt><dd>{{ checkInLatitude(selectedReport) ?? '-' }}, {{ checkInLongitude(selectedReport) ?? '-' }}</dd>
+              <dt>Waktu check-in</dt><dd>{{ selectedReport.JamMasuk ? (selectedReport.JamMasuk | date:'dd MMM yyyy, HH:mm:ss') : '-' }}</dd>
+              <dt>Status check-in</dt><dd>{{ selectedReport.Status || '-' }}</dd>
+            </dl>
+            <a *ngIf="mapsUrl(selectedReport)" class="btn btn-secondary map-link" [href]="mapsUrl(selectedReport)" target="_blank" rel="noopener">Buka di Google Maps</a>
+          </div>
+        </div>
+        <iframe *ngIf="mapEmbedUrl(selectedReport)" class="attendance-detail-map" [src]="mapEmbedUrl(selectedReport)" title="Peta lokasi check-in"></iframe>
+      </section>
+
+      <section class="attendance-detail-section" aria-labelledby="checkout-section-title">
+        <h4 id="checkout-section-title">B. Detail Check-out</h4>
+        <div class="attendance-detail-section-body">
+          <div class="attendance-detail-photo-wrap">
+            <a *ngIf="checkOutPhoto(selectedReport)" class="photo-link" [href]="checkOutPhoto(selectedReport)" target="_blank" rel="noopener" title="Lihat foto check-out ukuran besar">
+              <img class="attendance-detail-photo" [src]="checkOutPhoto(selectedReport)" alt="Foto check-out ukuran besar">
+            </a>
+            <div *ngIf="!checkOutPhoto(selectedReport)" class="photo-placeholder detail-placeholder">Tidak ada foto</div>
+          </div>
+          <div class="attendance-detail-info">
+            <dl>
+              <dt>Lokasi check-out</dt><dd>{{ hasCheckOutData(selectedReport) ? checkOutLocationSummary(selectedReport) : 'Belum check-out' }}</dd>
+              <dt>Koordinat GPS check-out</dt><dd>{{ hasCheckOutData(selectedReport) ? (checkOutLatitude(selectedReport) ?? '-') + ', ' + (checkOutLongitude(selectedReport) ?? '-') : '-' }}</dd>
+              <dt>Waktu check-out</dt><dd>{{ hasCheckOutData(selectedReport) ? (selectedReport.JamPulang | date:'dd MMM yyyy, HH:mm:ss') : 'Belum check-out' }}</dd>
+              <dt>Status check-out</dt><dd>{{ hasCheckOutData(selectedReport) ? (selectedReport.Status || '-') : 'Belum check-out' }}</dd>
+            </dl>
+            <a *ngIf="hasCheckOutData(selectedReport) && checkOutMapsUrl(selectedReport)" class="btn btn-secondary map-link" [href]="checkOutMapsUrl(selectedReport)" target="_blank" rel="noopener">Buka di Google Maps</a>
+          </div>
+        </div>
+        <iframe *ngIf="hasCheckOutData(selectedReport) && checkOutMapEmbedUrl(selectedReport)" class="attendance-detail-map" [src]="checkOutMapEmbedUrl(selectedReport)" title="Peta lokasi check-out"></iframe>
+      </section>
     </div>
-    <iframe *ngIf="mapEmbedUrl(selectedReport)" class="attendance-detail-map" [src]="mapEmbedUrl(selectedReport)" title="Peta lokasi check-in"></iframe>
   </section>
 </div>
