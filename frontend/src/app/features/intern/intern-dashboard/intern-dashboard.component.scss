@@ -48,7 +48,7 @@
 .dashboard-feedback.loading { color: var(--text-dark-lo); background: var(--mint-1); }
 .dashboard-feedback.error { color: #b42318; background: #fee4e2; }
 .stats-grid .stat-card:first-of-type > p.muted:not(.period-label) { display: none; }
-.progress-track { height: 10px; background: var(--mint-1); border-radius: 99px; overflow: hidden; margin-top: 16px; }.progress-value { height: 100%; background: var(--green); border-radius: inherit; transition: width .3s ease; }.muted { color: var(--text-dark-lo); font-size: .82rem; }.callout { margin-top: 24px; }.callout p { color: var(--text-dark-lo); }.callout .btn-primary { display: inline-block; text-decoration: none; margin-top: 8px; }
+.progress-track { height: 10px; background: var(--mint-1); border-radius: 99px; overflow: hidden; margin-top: 16px; }.progress-value { height: 100%; background: var(--green); border-radius: inherit; transition: width .3s ease; }.muted { color: var(--text-dark-lo); font-size: .82rem; }.callout { margin-top: 24px; }.callout p { color: var(--text-dark-lo); }.callout .btn-primary { display: flex; width: fit-content; align-items: center; justify-content: center; line-height: normal; text-decoration: none; margin-top: 8px; }
 
 @media (min-width: 901px) {
   .main-content { padding: var(--compact-content-padding); }
