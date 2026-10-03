@@ -2,7 +2,7 @@ import { WorkReportAdminComponent } from './work-report-admin.component';
 
 describe('WorkReportAdminComponent validation status colors', () => {
   function createComponent(): WorkReportAdminComponent {
-    return new WorkReportAdminComponent({} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    return new WorkReportAdminComponent({} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { snapshot: { queryParamMap: { get: () => null } } } as any, {} as any);
   }
 
   function report(status: string, fillingStatus = 'submitted'): any {
@@ -88,6 +88,22 @@ describe('WorkReportAdminComponent validation status colors', () => {
     component.applyFilters();
     expect(component.reports.length).toBe(1);
     expect(component.getEmployeeName(component.reports[0])).toBe('MAGANG User');
+  });
+
+  it('uses the shared status contract for legacy internship rows', () => {
+    const component = createComponent();
+    const legacy: any = {
+      ID: 9,
+      report_kind: 'legacy_logbook',
+      status_logbook: 'rejected',
+      status_laporan: 'submitted',
+      tugas: 'Tugas lama',
+      deskripsi_kegiatan: 'Deskripsi lama'
+    };
+
+    expect(component.validationSelection(legacy)).toBe('Tidak Sesuai');
+    expect(component.validationLabel(legacy)).toBe('Tolak laporan');
+    expect(component.validationStatusClass(legacy)).toBe('validation-status-rejected');
   });
 
   it('opens one shared detail model for an intern report and preserves attachments', () => {

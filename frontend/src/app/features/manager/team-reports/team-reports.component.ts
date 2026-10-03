@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, Optional } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
@@ -11,6 +11,7 @@ import { hasReportContent } from '../../../core/utils/report-completeness';
 import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
 import { canonicalWorkReportTitle } from '../../../core/utils/work-report-title';
 import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-team-reports',
@@ -19,7 +20,7 @@ import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report
   templateUrl: './team-reports.component.html',
   styleUrls: ['./team-reports.component.scss']
 })
-export class TeamReportsComponent implements OnInit {
+export class TeamReportsComponent implements OnDestroy, OnInit {
   readonly canonicalWorkReportTitle = canonicalWorkReportTitle;
   start = '';
   end = '';
@@ -46,12 +47,25 @@ export class TeamReportsComponent implements OnInit {
     private http: HttpClient,
     private auth: AuthService,
     private reportExport: ReportExportService,
-    private alert: AlertService
+    private alert: AlertService,
+    @Optional() private notificationService?: NotificationService
   ) {}
 
   ngOnInit(): void {
     this.loadColumns();
     this.load();
+    this.disconnectRealtime = this.notificationService?.connectRealtime(eventName => {
+      if (eventName === 'work_report_status_updated' || eventName === 'logbook_status_updated') {
+        this.load(true);
+      }
+    });
+  }
+
+  private disconnectRealtime?: () => void;
+
+  ngOnDestroy(): void {
+    this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
   }
 
   private loadColumns(): void {

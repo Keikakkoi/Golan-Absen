@@ -20,6 +20,64 @@ func TestNormalizeWorkReportStatusDefaultsToSubmitted(t *testing.T) {
 	}
 }
 
+func TestIsAdminRejectedWorkReportOnlyMatchesAdminRejection(t *testing.T) {
+	cases := []struct {
+		name     string
+		report   models.WorkReport
+		rejected bool
+	}{
+		{name: "admin rejected", report: models.WorkReport{StatusLaporan: "submitted", StatusSesuai: "Tidak Sesuai", RejectionSource: "admin"}, rejected: true},
+		{name: "admin rejected legacy label", report: models.WorkReport{StatusLaporan: "draft", StatusSesuai: "Minta Perbaikan", RejectionSource: "ADMIN"}, rejected: true},
+		{name: "manager rejected", report: models.WorkReport{StatusLaporan: "submitted", StatusSesuai: "Tidak Sesuai", RejectionSource: "manager"}, rejected: false},
+		{name: "pending", report: models.WorkReport{StatusLaporan: "submitted", StatusSesuai: "", RejectionSource: ""}, rejected: false},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if got := isAdminRejectedWorkReport(test.report); got != test.rejected {
+				t.Fatalf("isAdminRejectedWorkReport() = %v, want %v", got, test.rejected)
+			}
+		})
+	}
+}
+
+func TestWorkReportRevisionSubmissionRequiresRejectedPreviousState(t *testing.T) {
+	adminRejected := models.WorkReport{StatusLaporan: "submitted", StatusSesuai: "Tidak Sesuai", RejectionSource: "admin"}
+	if !isWorkReportRevisionSubmission(adminRejected, "submitted") {
+		t.Fatal("an admin-rejected report submitted again should be a revision")
+	}
+	if isWorkReportRevisionSubmission(adminRejected, "draft") {
+		t.Fatal("saving an admin-rejected report as draft must not notify a revision")
+	}
+	if isWorkReportRevisionSubmission(models.WorkReport{StatusLaporan: "submitted", StatusSesuai: "", RejectionSource: ""}, "submitted") {
+		t.Fatal("the first submission must not be treated as a revision")
+	}
+}
+
+func TestWorkReportRevisionDateUsesReportDateInJakarta(t *testing.T) {
+	date := time.Date(2026, 10, 3, 0, 0, 0, 0, jakartaLocation)
+	if !isWorkReportRevisionDateAllowed(date, time.Date(2026, 10, 3, 23, 59, 59, 0, jakartaLocation)) {
+		t.Fatal("revision should be allowed throughout the report date in Jakarta")
+	}
+	if isWorkReportRevisionDateAllowed(date, time.Date(2026, 10, 4, 0, 0, 0, 0, jakartaLocation)) {
+		t.Fatal("revision should be rejected after the report date has passed")
+	}
+	// 16:59:59Z is 23:59:59 WIB; 17:00:00Z is the next Jakarta date.
+	if !isWorkReportRevisionDateAllowed(date, time.Date(2026, 10, 3, 16, 59, 59, 0, time.UTC)) {
+		t.Fatal("revision date comparison must use Asia/Jakarta")
+	}
+	if isWorkReportRevisionDateAllowed(date, time.Date(2026, 10, 3, 17, 0, 0, 0, time.UTC)) {
+		t.Fatal("revision date comparison must reject the next Jakarta date")
+	}
+}
+
+func TestWorkReportRevisionDateErrorIsExplicit(t *testing.T) {
+	errorText := workReportRevisionDateError(time.Date(2026, 10, 1, 0, 0, 0, 0, jakartaLocation))
+	if !strings.Contains(errorText, "Revisi laporan") || !strings.Contains(errorText, "2026-10-01") || !strings.Contains(errorText, "sudah lewat") {
+		t.Fatalf("revision error is not actionable: %q", errorText)
+	}
+}
+
 func TestNormalizeAdminValidationStatusRetiresImprovement(t *testing.T) {
 	for _, status := range []string{"Minta Perbaikan", " minta_perbaikan ", "MINTA PERBAIKAN"} {
 		if got := normalizeAdminValidationStatus(status); got != "Tidak Sesuai" {
@@ -28,6 +86,30 @@ func TestNormalizeAdminValidationStatusRetiresImprovement(t *testing.T) {
 	}
 	if got := normalizeAdminValidationStatus("Sesuai"); got != "Sesuai" {
 		t.Fatalf("Sesuai must remain unchanged, got %q", got)
+	}
+	if got := normalizeAdminValidationStatus("status lain"); got != "" {
+		t.Fatalf("unknown admin status must be rejected, got %q", got)
+	}
+}
+
+func TestAdminValidationStatusUpdatesKeepCanonicalAndLegacyFieldsInSync(t *testing.T) {
+	legacy := models.WorkReport{ReportKind: models.WorkReportKindLegacyLogbook, StatusLogbook: "submitted"}
+	for _, test := range []struct {
+		status      string
+		legacyValue string
+	}{
+		{status: "Tidak Sesuai", legacyValue: "rejected"},
+		{status: "Sesuai", legacyValue: "approved"},
+	} {
+		updates := adminValidationStatusUpdates(legacy, test.status)
+		if updates["status_sesuai"] != test.status || updates["status_logbook"] != test.legacyValue || updates["validasi_oleh_hr"] != true {
+			t.Fatalf("status %q did not synchronize both workflow fields: %#v", test.status, updates)
+		}
+	}
+
+	canonical := adminValidationStatusUpdates(models.WorkReport{ReportKind: models.WorkReportKindCanonical}, "Sesuai")
+	if _, exists := canonical["status_logbook"]; exists {
+		t.Fatalf("canonical reports must not be assigned a legacy status: %#v", canonical)
 	}
 }
 

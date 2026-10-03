@@ -1,5 +1,6 @@
 import { WorkReportComponent } from './work-report.component';
 import { WorkReport } from '../../../core/services/work-report.service';
+import { jakartaDateString } from './work-report-date.utils';
 
 describe('WorkReportComponent canonical contract', () => {
   function createComponent(): WorkReportComponent {
@@ -30,7 +31,8 @@ describe('WorkReportComponent canonical contract', () => {
     expect(component.validationStatusLabel(report({ status_laporan: 'submitted', status_sesuai: 'Sesuai' }))).toBe('Disetujui');
     expect(component.validationStatusLabel(report({ status_laporan: 'submitted', status_sesuai: 'Tidak Sesuai' }))).toBe('Ditolak');
     expect(component.canModifyReport(report({ status_laporan: 'submitted', status_sesuai: 'Sesuai' }))).toBeFalse();
-    expect(component.canModifyReport(report({ status_laporan: 'submitted', status_sesuai: 'Tidak Sesuai' }))).toBeTrue();
+    expect(component.canModifyReport(report({ tanggal: jakartaDateString(), status_laporan: 'submitted', status_sesuai: 'Tidak Sesuai' }))).toBeTrue();
+    expect(component.canModifyReport(report({ tanggal: '2000-01-01', status_laporan: 'submitted', status_sesuai: 'Tidak Sesuai' }))).toBeFalse();
   });
 
   it('allows only legacy Draft records to use canonical edit/delete actions', () => {

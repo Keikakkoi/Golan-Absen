@@ -261,13 +261,13 @@
                     </button>
                     <span class="print-only" style="display: none;">{{ validationLabel(r) }}</span>
                     <select class="form-control no-print" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 500; border-radius: 4px;"
-                            [value]="r.status_sesuai || ''"
+                            [value]="validationSelection(r)"
                             (change)="updateValidation(r, $event)"
-                            [disabled]="isNoReport(r) || reportFillingStatus(r) === 'draft'"
+                            [disabled]="isNoReport(r) || isDraft(r) || isValidationUpdating(r)"
                             [ngStyle]="{
-                              'background-color': r.status_sesuai === 'Sesuai' ? '#d4edda' : (r.status_sesuai === 'Tidak Sesuai' ? '#f8d7da' : (isNoReport(r) ? '#f8d7da' : '')),
-                              'color': r.status_sesuai === 'Sesuai' ? '#155724' : (r.status_sesuai === 'Tidak Sesuai' ? '#721c24' : (isNoReport(r) ? '#721c24' : '#333')),
-                              'border-color': r.status_sesuai === 'Sesuai' ? '#c3e6cb' : (r.status_sesuai === 'Tidak Sesuai' ? '#f5c6cb' : (isNoReport(r) ? '#f5c6cb' : '#ccc'))
+                              'background-color': validationSelection(r) === 'Sesuai' ? '#d4edda' : (validationSelection(r) === 'Tidak Sesuai' ? '#f8d7da' : (isNoReport(r) ? '#f8d7da' : '')),
+                              'color': validationSelection(r) === 'Sesuai' ? '#155724' : (validationSelection(r) === 'Tidak Sesuai' ? '#721c24' : (isNoReport(r) ? '#721c24' : '#333')),
+                              'border-color': validationSelection(r) === 'Sesuai' ? '#c3e6cb' : (validationSelection(r) === 'Tidak Sesuai' ? '#f5c6cb' : (isNoReport(r) ? '#f5c6cb' : '#ccc'))
                             }">
                       <option value="">-- Pilih --</option>
                       <option value="Sesuai">Validasi laporan</option>

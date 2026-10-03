@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormArray, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { WorkReportService, WorkReport, WorkReportColumn, ComplianceResult, WorkReportDeadline, PaginatedWorkReports } from '../../../core/services/work-report.service';
 import { AlertService } from '../../../core/services/alert.service';
@@ -13,12 +13,13 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
-import { dateOnly, localDateString, monthRange, reportDayStatus } from './work-report-date.utils';
+import { dateOnly, isSameJakartaDate, localDateString, monthRange, reportDayStatus } from './work-report-date.utils';
 import { isValidRealisasiKegiatan, REALISASI_KEGIATAN_ERROR } from './work-report-validation';
 import { requiresReportTitle as resolveRequiresReportTitle } from '../../../core/utils/report-completeness';
 import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
 import { canonicalWorkReportTitle, canonicalWorkReportTitlePayload } from '../../../core/utils/work-report-title';
 import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
+import { NotificationService } from '../../../core/services/notification.service';
 
 type SavedScrollPosition = { left: number; top: number };
 
@@ -29,7 +30,7 @@ type SavedScrollPosition = { left: number; top: number };
   templateUrl: './work-report.component.html',
   styleUrls: ['./work-report.component.scss']
 })
-export class WorkReportComponent implements OnInit {
+export class WorkReportComponent implements OnDestroy, OnInit {
   readonly canonicalWorkReportTitle = canonicalWorkReportTitle;
   viewMode: 'list' | 'form' = 'list';
   isExportOpen = false;
@@ -63,13 +64,15 @@ export class WorkReportComponent implements OnInit {
   availableMonths: Array<{ value: string; label: string }> = [];
   complianceError = '';
   readonly monthLabelFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' });
+  private disconnectRealtime?: () => void;
 
   constructor(
     private fb: FormBuilder,
     private workReportService: WorkReportService,
     private alertService: AlertService,
     public authService: AuthService,
-    private reportExport: ReportExportService
+    private reportExport: ReportExportService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -77,6 +80,16 @@ export class WorkReportComponent implements OnInit {
     this.buildAvailableMonths();
     this.initForm();
     this.loadInitialData();
+    this.disconnectRealtime = this.notificationService.connectRealtime(eventName => {
+      if (eventName === 'work_report_status_updated' || eventName === 'logbook_status_updated') {
+        this.loadInitialData(true);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
   }
 
   private buildAvailableMonths(): void {
@@ -281,7 +294,15 @@ export class WorkReportComponent implements OnInit {
     // A legacy MAGANG Draft is recoverable through the canonical endpoint.
     // Submitted/approved/rejected legacy history remains view-only.
     if (contract.report_kind === 'legacy_logbook') return contract.status === 'draft';
+    if (contract.status === 'rejected' && !isSameJakartaDate(report.tanggal)) return false;
     return contract.status !== 'approved';
+  }
+
+  canReviseReport(report: WorkReport): boolean {
+    const contract = normalizeWorkReportContract(report);
+    return contract.report_kind === 'work_report'
+      && contract.status === 'rejected'
+      && isSameJakartaDate(report.tanggal);
   }
 
   reportFillingStatus(report: WorkReport): 'late' | 'draft' | 'submitted' | 'no_report' {

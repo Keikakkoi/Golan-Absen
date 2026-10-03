@@ -16,6 +16,26 @@ export function dateOnly(value: string | Date): string {
   return localDateString(value);
 }
 
+/** Returns a date-only value using the application's authoritative WIB zone. */
+export function jakartaDateString(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values['year']}-${values['month']}-${values['day']}`;
+}
+
+/** Revision uses the report's date, never a request/review timestamp. */
+export function isSameJakartaDate(reportDate: string | Date, now = new Date()): boolean {
+  const reportDateText = typeof reportDate === 'string'
+    ? reportDate.slice(0, 10)
+    : jakartaDateString(reportDate);
+  return reportDateText === jakartaDateString(now);
+}
+
 export function monthRange(month: string): ReportMonthRange {
   const [year, monthNumber] = month.split('-').map(Number);
   const lastDay = new Date(year, monthNumber, 0).getDate();

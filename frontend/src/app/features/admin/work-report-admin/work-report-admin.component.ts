@@ -2,6 +2,7 @@ import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { WorkReportService, WorkReport, WorkReportColumn } from '../../../core/services/work-report.service';
 import { AlertService } from '../../../core/services/alert.service';
@@ -45,9 +46,11 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
   private readonly adminNoteOriginals = new Map<number, string>();
   private readonly adminNoteSaving = new Set<number>();
   private readonly adminNoteReadOnly = new Set<number>();
+  private readonly validationUpdating = new Set<number>();
   private disconnectRealtime?: () => void;
   private refreshHandle?: ReturnType<typeof setTimeout>;
   private destroyed = false;
+  private notificationReportID: number | null = null;
 
   // Filters
   filterOptions = {
@@ -79,10 +82,14 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private authService: AuthService,
     private reportExport: ReportExportService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
+    const reportID = Number(this.route.snapshot.queryParamMap.get('report_id'));
+    this.notificationReportID = Number.isInteger(reportID) && reportID > 0 ? reportID : null;
     this.loadData();
     this.loadColumns();
     this.loadDivisionsAndRoles();
@@ -119,6 +126,7 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
         this.buildReportFilterOptions();
         this.initializeAdminNotes(this.allReports);
         this.applyFilters(false);
+        this.openNotificationReportIfReady();
         this.isLoading = false;
       },
       error: () => this.isLoading = false
@@ -405,11 +413,12 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
 
   // HR Validation
   async updateValidation(report: WorkReport, event: any): Promise<void> {
-    if (this.isNoReport(report) || this.reportFillingStatus(report) !== 'submitted') return;
+    if (this.isNoReport(report) || this.isDraft(report)) return;
     const select = event.target as HTMLSelectElement;
-    const previousValue = report.status_sesuai || '';
+    const previousValue = this.validationSelection(report);
     const newVal = select.value;
-    if (!newVal) return;
+    const id = Number(report.ID || 0);
+    if (!newVal || !id || this.validationUpdating.has(id)) return;
 
     let rejectionReason = '';
     if (newVal === 'Tidak Sesuai') {
@@ -421,23 +430,43 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
       rejectionReason = reason;
     }
     
-    this.workReportService.updateWorkReport(report.ID!, {
+    this.validationUpdating.add(id);
+    this.workReportService.updateWorkReport(id, {
       status_sesuai: newVal,
       rejection_reason: rejectionReason,
       admin_notes: this.adminNote(report)
     }).subscribe({
       next: (res) => {
         report.status_sesuai = res.status_sesuai;
+        report.StatusSesuai = res.StatusSesuai || res.status_sesuai;
+        if (res.status_logbook !== undefined) report.status_logbook = res.status_logbook;
+        if (res.StatusLogbook !== undefined) report.StatusLogbook = res.StatusLogbook;
         report.rejection_reason = res.rejection_reason || rejectionReason;
         this.applyAdminNoteResponse(report, res);
         report.validasi_oleh_hr = true;
+        this.validationUpdating.delete(id);
         this.alertService.success('Status validasi berhasil diupdate');
       },
-      error: () => {
+      error: (err) => {
         select.value = previousValue;
-        this.alertService.error('Gagal mengupdate validasi');
+        this.validationUpdating.delete(id);
+        const message = typeof err?.error?.error === 'string'
+          ? err.error.error
+          : 'Gagal mengupdate validasi';
+        this.alertService.error(message);
       }
     });
+  }
+
+  isValidationUpdating(report: WorkReport): boolean {
+    return this.validationUpdating.has(Number(report.ID || 0));
+  }
+
+  validationSelection(report: WorkReport): string {
+    const status = this.normalizedValidationStatus(report);
+    if (status === 'sesuai' || status === 'validasi laporan') return 'Sesuai';
+    if (status === 'tidak sesuai' || status === 'tolak laporan') return 'Tidak Sesuai';
+    return '';
   }
 
   private initializeAdminNotes(reports: WorkReport[]): void {
@@ -800,6 +829,16 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
 
   closeReportDetail(): void {
     this.selectedReportDetail = null;
+    if (this.notificationReportID !== null) {
+      this.notificationReportID = null;
+      void this.router.navigate([], { queryParams: { report_id: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    }
+  }
+
+  private openNotificationReportIfReady(): void {
+    if (this.notificationReportID === null) return;
+    const report = this.allReports.find(item => Number(item.ID) === this.notificationReportID);
+    if (report) this.selectedReportDetail = report;
   }
 
   reportStatus(report: WorkReport): 'draft' | 'no_report' | 'incomplete' | 'complete' {
@@ -962,7 +1001,7 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
     return this.shouldShowLateStatus(report) ? 'Terlambat' : 'Tepat waktu';
   }
 
-  private isDraft(report: WorkReport): boolean {
+  isDraft(report: WorkReport): boolean {
     return normalizeWorkReportContract(report).filling_status === 'draft';
   }
 

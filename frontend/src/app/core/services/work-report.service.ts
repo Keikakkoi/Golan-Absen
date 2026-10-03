@@ -31,6 +31,7 @@ export interface WorkReport extends Partial<WorkReportContract> {
   link_artikel: string;
   catatan_tambahan: string;
   status_sesuai?: string;
+  StatusSesuai?: string;
   status_laporan?: 'draft' | 'submitted' | string;
   // Compatibility fields for historical `legacy_logbook` rows. Canonical
   // reports use status_laporan/status_sesuai and never write these fields.

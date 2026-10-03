@@ -191,12 +191,21 @@ func CreateWorkReport(c *fiber.Ctx) error {
 	if _, ok := getWorkReportSchedule(emp.ID, t); !ok {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Tidak ada shift aktif atau jadwal shift untuk tanggal laporan ini. Hubungi admin untuk penjadwalan shift."})
 	}
+
+	// Check the existing row before the generic submission deadline. A rejected
+	// report is a special revision action: its original report date, rather than
+	// the request timestamp or a client-supplied replacement date, is the date
+	// that controls whether the revision is allowed.
+	var existing models.WorkReport
+	existingErr := config.DB.Preload("Employee.User").Where("employee_id = ? AND tanggal = ?", emp.ID, t).First(&existing).Error
+	if existingErr == nil && isWorkReportRevisionSubmission(existing, statusLaporan) && !isWorkReportRevisionDateAllowed(existing.Tanggal, attendanceNow()) {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": workReportRevisionDateError(existing.Tanggal)})
+	}
 	if err := validateWorkReportSubmission(emp.ID, t, attendanceNow()); err != nil {
 		return c.Status(err.Code).JSON(fiber.Map{"error": err.Message})
 	}
 
-	var existing models.WorkReport
-	if config.DB.Preload("Employee.User").Where("employee_id = ? AND tanggal = ?", emp.ID, t).First(&existing).Error == nil {
+	if existingErr == nil {
 		if models.IsWorkReportNoReport(existing) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Status no_report tidak memiliki aksi edit atau submit"})
 		}
@@ -209,6 +218,7 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Riwayat logbook lama sudah diajukan. Gunakan endpoint kompatibilitas untuk melihat detailnya."})
 		}
 		wasSubmitted := !isWorkReportDraft(existing)
+		isRevisionSubmission := isWorkReportRevisionSubmission(existing, statusLaporan)
 		updates := map[string]interface{}{
 			"deskripsi_kegiatan":   input.DeskripsiKegiatan,
 			"realisasi_kegiatan":   input.RealisasiKegiatan,
@@ -233,6 +243,12 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		if existing.StatusSesuai == "tidak membuat laporan kerja" {
 			updates["status_sesuai"] = ""
 		}
+		if isRevisionSubmission {
+			// A rejected report keeps its rejection audit fields, but its active
+			// review state must return to pending when the employee resubmits it.
+			updates["status_sesuai"] = ""
+			updates["validasi_oleh_hr"] = false
+		}
 		if err := config.DB.Model(&existing).Updates(updates).Error; err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to update work report"})
 		}
@@ -245,20 +261,15 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			message = "Draft legacy_logbook dipulihkan menjadi work_report melalui endpoint canonical"
 		}
 		_ = utils.LogAction(userID, "UPDATE", "WorkReport", existing.ID, message)
-		if statusLaporan == "submitted" && !wasSubmitted {
+		if statusLaporan == "submitted" && (isRevisionSubmission || !wasSubmitted) {
 			WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
-			var hrdUsers []models.User
-			if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
-				name := "Karyawan"
-				if emp.User != nil {
-					name = emp.User.Nama
+			if isRevisionSubmission {
+				notifyWorkReportRevision(existing)
+			} else {
+				notifyNewWorkReport(emp, existing)
+				if emp.User != nil && emp.User.Role == models.RoleMagang {
+					notifyWorkReportManagers(emp, existing)
 				}
-				for _, user := range hrdUsers {
-					utils.CreateNotification(config.DB, user.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", name, existing.Tanggal.Format("02-01-2006")))
-				}
-			}
-			if emp.User != nil && emp.User.Role == models.RoleMagang {
-				notifyWorkReportManagers(emp, existing)
 			}
 		}
 		return c.JSON(existing)
@@ -295,16 +306,7 @@ func CreateWorkReport(c *fiber.Ctx) error {
 
 	// Drafts do not enter HR validation or trigger a new-report notification.
 	if statusLaporan == "submitted" {
-		var hrdUsers []models.User
-		if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
-			nama := "Karyawan"
-			if emp.User != nil {
-				nama = emp.User.Nama
-			}
-			for _, u := range hrdUsers {
-				utils.CreateNotification(config.DB, u.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", nama, report.Tanggal.Format("02-01-2006")))
-			}
-		}
+		notifyNewWorkReport(emp, report)
 		if emp.User != nil && emp.User.Role == models.RoleMagang {
 			notifyWorkReportManagers(emp, report)
 		}
@@ -326,9 +328,9 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	userRole := string(c.Locals("role").(models.Role))
 	userID := c.Locals("user_id").(uint)
 	recoveringLegacyDraft := false
-	if userRole == string(models.RoleHRD) && report.ReportKind == models.WorkReportKindLegacyLogbook {
-		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Record legacy_logbook hanya dapat dibaca melalui endpoint compatibility"})
-	}
+	// HRD may update validation for legacy internship rows through this shared
+	// endpoint. Employee filling/editing remains restricted to the compatibility
+	// endpoint, but a validation decision must be persisted for every workflow.
 
 	if userRole != string(models.RoleHRD) {
 		var emp models.Employee
@@ -373,6 +375,9 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		}
 		if err := validateRealisasiKegiatan(input.RealisasiKegiatan, statusLaporan == "submitted"); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		if isWorkReportRevisionSubmission(report, statusLaporan) && !isWorkReportRevisionDateAllowed(report.Tanggal, attendanceNow()) {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": workReportRevisionDateError(report.Tanggal)})
 		}
 	}
 	if userRole != string(models.RoleHRD) && report.EmployeeID != nil {
@@ -425,9 +430,13 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 
 	var statusChanged bool
 	wasSubmitted := normalizeWorkReportStatus(report.StatusLaporan) == "submitted"
-
+	isRevisionSubmission := userRole != string(models.RoleHRD) && isWorkReportRevisionSubmission(report, statusLaporan)
 	if userRole == string(models.RoleHRD) {
-		input.StatusSesuai = normalizeAdminValidationStatus(input.StatusSesuai)
+		rawValidationStatus := strings.TrimSpace(input.StatusSesuai)
+		input.StatusSesuai = normalizeAdminValidationStatus(rawValidationStatus)
+		if rawValidationStatus != "" && input.StatusSesuai == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Status validasi harus Sesuai atau Tidak Sesuai"})
+		}
 		if (input.StatusSesuai != "" || input.AdminNotes != nil) &&
 			(normalizeWorkReportStatus(report.StatusLaporan) == "draft" || strings.ToLower(strings.TrimSpace(report.StatusLogbook)) == "draft") {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Draft belum dapat divalidasi sebelum dikirim"})
@@ -450,13 +459,14 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 			updates["rejected_at"] = now
 			updates["rejection_source"] = "admin"
 		}
-		if input.StatusSesuai != "" && input.StatusSesuai != report.StatusSesuai {
-			updates["status_sesuai"] = input.StatusSesuai
-			updates["validasi_oleh_hr"] = true
-			statusChanged = true
+		if input.StatusSesuai != "" {
+			for key, value := range adminValidationStatusUpdates(report, input.StatusSesuai) {
+				updates[key] = value
+			}
+			statusChanged = input.StatusSesuai != report.StatusSesuai
 		}
 	}
-	if userRole != string(models.RoleHRD) && statusLaporan == "submitted" && report.StatusSesuai == "Minta Perbaikan" {
+	if userRole != string(models.RoleHRD) && isRevisionSubmission {
 		updates["status_sesuai"] = ""
 		updates["validasi_oleh_hr"] = false
 	}
@@ -475,23 +485,15 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		message = "Draft legacy_logbook dipulihkan menjadi work_report melalui endpoint canonical"
 	}
 	_ = utils.LogAction(userID, "UPDATE", "WorkReport", report.ID, message)
-	if userRole != string(models.RoleHRD) && statusLaporan == "submitted" && !wasSubmitted {
+	if userRole != string(models.RoleHRD) && statusLaporan == "submitted" && (isRevisionSubmission || !wasSubmitted) {
 		WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
-		var hrdUsers []models.User
-		if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
-			name := report.EmployeeNameSnapshot
-			if name == "" && report.Employee.User != nil {
-				name = report.Employee.User.Nama
+		if isRevisionSubmission {
+			notifyWorkReportRevision(report)
+		} else {
+			notifyNewWorkReport(report.Employee, report)
+			if report.Employee.User != nil && report.Employee.User.Role == models.RoleMagang {
+				notifyWorkReportManagers(report.Employee, report)
 			}
-			if name == "" {
-				name = "Karyawan"
-			}
-			for _, user := range hrdUsers {
-				utils.CreateNotification(config.DB, user.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", name, report.Tanggal.Format("02-01-2006")))
-			}
-		}
-		if report.Employee.User != nil && report.Employee.User.Role == models.RoleMagang {
-			notifyWorkReportManagers(report.Employee, report)
 		}
 	}
 
@@ -657,7 +659,31 @@ func workReportNoReportCondition(prefix string) string {
 // normalizeAdminValidationStatus removes the retired HRD workflow state. The
 // Manager logbook workflow uses status_logbook and is intentionally unaffected.
 func normalizeAdminValidationStatus(status string) string {
-	return models.NormalizeLegacyValidationStatus(status)
+	switch strings.ToLower(strings.TrimSpace(models.NormalizeLegacyValidationStatus(status))) {
+	case "sesuai", "validasi laporan":
+		return "Sesuai"
+	case "tidak sesuai", "tolak laporan":
+		return "Tidak Sesuai"
+	default:
+		return ""
+	}
+}
+
+// adminValidationStatusUpdates is the single write mapping for an HRD
+// decision. Legacy internship screens read status_logbook while canonical
+// employee/manager screens read status_sesuai, so both must move together.
+func adminValidationStatusUpdates(report models.WorkReport, status string) map[string]interface{} {
+	updates := map[string]interface{}{
+		"status_sesuai":    status,
+		"validasi_oleh_hr": true,
+	}
+	if report.ReportKind == models.WorkReportKindLegacyLogbook {
+		updates["status_logbook"] = map[string]string{
+			"Sesuai":       "approved",
+			"Tidak Sesuai": "rejected",
+		}[status]
+	}
+	return updates
 }
 
 // deleteWorkReportData removes the dependent rows before the report row. The
@@ -887,6 +913,70 @@ func validateWorkReportCompleteness(input workReportInput, division string, subm
 
 func normalizeWorkReportStatus(value string) string {
 	return string(models.NormalizeWorkReportFillingStatus(value))
+}
+
+// isAdminRejectedWorkReport is deliberately based on the persisted admin
+// review fields. A submitted report with an empty review status is pending;
+// only an explicit admin rejection can enter the revision notification path.
+// Rejection audit fields are retained after resubmission, so this predicate is
+// evaluated before the employee's update is applied.
+func isAdminRejectedWorkReport(report models.WorkReport) bool {
+	status := strings.ToLower(strings.TrimSpace(report.StatusSesuai))
+	if status != "tidak sesuai" && status != "ditolak" && status != "minta perbaikan" && status != "minta_perbaikan" {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(report.RejectionSource), "admin")
+}
+
+func isWorkReportRevisionSubmission(report models.WorkReport, targetStatus string) bool {
+	return targetStatus == "submitted" && isAdminRejectedWorkReport(report)
+}
+
+// isWorkReportRevisionDateAllowed deliberately compares date-only values in
+// Asia/Jakarta. The report's Tanggal is the source of truth; CreatedAt,
+// ReviewedAt, RejectedAt, and the request timestamp must not affect this rule.
+func isWorkReportRevisionDateAllowed(reportDate, now time.Time) bool {
+	return reportDate.In(jakartaLocation).Format("2006-01-02") == now.In(jakartaLocation).Format("2006-01-02")
+}
+
+func workReportRevisionDateError(reportDate time.Time) string {
+	return fmt.Sprintf("Revisi laporan hanya dapat dilakukan pada tanggal laporan kerja (%s WIB). Tanggal laporan sudah lewat.", reportDate.In(jakartaLocation).Format("2006-01-02"))
+}
+
+func notifyNewWorkReport(employee models.Employee, report models.WorkReport) {
+	var hrdUsers []models.User
+	if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err != nil {
+		return
+	}
+	name := "Karyawan"
+	if employee.User != nil {
+		name = employee.User.Nama
+	}
+	for _, user := range hrdUsers {
+		_ = utils.CreateNotification(config.DB, user.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", name, report.Tanggal.Format("02-01-2006")))
+	}
+}
+
+func notifyWorkReportRevision(report models.WorkReport) {
+	var hrdUsers []models.User
+	if err := config.DB.Where("role = ? AND status = ?", models.RoleHRD, "aktif").Find(&hrdUsers).Error; err != nil {
+		return
+	}
+	name := report.EmployeeNameSnapshot
+	if name == "" && report.Employee.User != nil {
+		name = report.Employee.User.Nama
+	}
+	if name == "" {
+		name = "Karyawan"
+	}
+	message := fmt.Sprintf("Ada revisi laporan kerja dari %s pada tanggal %s", name, report.Tanggal.Format("02-01-2006"))
+	idempotencyKey := fmt.Sprintf("work-report-revision:%d", report.ID)
+	if report.RejectedAt != nil {
+		idempotencyKey = fmt.Sprintf("work-report-revision:%d:%s", report.ID, report.RejectedAt.UTC().Format(time.RFC3339Nano))
+	}
+	for _, user := range hrdUsers {
+		_ = utils.CreateWorkReportRevisionNotificationForCycle(config.DB, user.ID, models.RoleHRD, "Revisi Laporan Kerja", message, report.ID, idempotencyKey)
+	}
 }
 
 // workReportTitleUpdates keeps old clients writable while ensuring the active
