@@ -8,6 +8,9 @@ import { ReportExportService } from '../../../core/services/report-export.servic
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { AlertService } from '../../../core/services/alert.service';
 import { hasReportContent } from '../../../core/utils/report-completeness';
+import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
+import { canonicalWorkReportTitle } from '../../../core/utils/work-report-title';
+import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
 
 @Component({
   selector: 'app-team-reports',
@@ -17,6 +20,7 @@ import { hasReportContent } from '../../../core/utils/report-completeness';
   styleUrls: ['./team-reports.component.scss']
 })
 export class TeamReportsComponent implements OnInit {
+  readonly canonicalWorkReportTitle = canonicalWorkReportTitle;
   start = '';
   end = '';
   search = '';
@@ -173,10 +177,10 @@ export class TeamReportsComponent implements OnInit {
     this.load();
   }
 
-  async reviewLogbook(id: number, status: 'approved' | 'rejected'): Promise<void> {
+  async reviewReport(id: number, status: 'approved' | 'rejected'): Promise<void> {
     if (!id || this.reviewingIds.has(id) || this.confirmingIds.has(id)) return;
     const found = this.findReport(id);
-    if (found && this.logbookStatus(found) !== 'submitted') {
+    if (found && !this.canReview(found)) {
       this.error = 'Review hanya dapat dilakukan pada laporan berstatus Submitted.';
       return;
     }
@@ -194,10 +198,10 @@ export class TeamReportsComponent implements OnInit {
         rejectionReason = reason;
         confirmed = true;
       } else {
-        confirmed = await this.alert.confirm('Setujui logbook?', 'Apakah Anda yakin ingin menyetujui logbook ini?', 'Ya, setujui');
+        confirmed = await this.alert.confirm('Setujui laporan kerja?', 'Apakah Anda yakin ingin menyetujui laporan kerja ini?', 'Ya, setujui');
       }
     } catch {
-      this.error = 'Gagal menampilkan konfirmasi review logbook.';
+      this.error = 'Gagal menampilkan konfirmasi review laporan kerja.';
     } finally {
       this.confirmingIds.delete(id);
     }
@@ -207,12 +211,12 @@ export class TeamReportsComponent implements OnInit {
 
     this.reviewingIds.add(id);
 
-    this.http.put(`http://localhost:8080/api/v1/manager/team/logbooks/${id}/review`, { status, notes: noteText, review_notes: noteText, rejection_reason: rejectionReason }, { headers: this.headers() }).subscribe({
+    this.http.put(`http://localhost:8080/api/v1/manager/team/reports/${id}/review`, { status, notes: noteText, review_notes: noteText, rejection_reason: rejectionReason }, { headers: this.headers() }).subscribe({
       next: (res: any) => {
-        const latestStatus = this.normalizeStatus(res?.status_logbook || res?.status || status);
+        const latestStatus = this.normalizeStatus(res?.status || status);
         if (found) {
-          found.status_logbook = latestStatus;
-          found.StatusLogbook = latestStatus;
+          found.status_sesuai = res?.status_sesuai ?? (latestStatus === 'approved' ? 'Sesuai' : 'Tidak Sesuai');
+          found.StatusSesuai = found.status_sesuai;
           found.review_notes = res?.review_notes ?? noteText;
           found.ReviewNotes = res?.review_notes ?? noteText;
           found.rejection_reason = res?.rejection_reason ?? rejectionReason;
@@ -221,40 +225,47 @@ export class TeamReportsComponent implements OnInit {
           found.reviewed_at = res?.reviewed_at ?? found.reviewed_at;
         }
         delete this.notes[id];
-        this.success = latestStatus === 'approved' ? 'Logbook berhasil disetujui (Approved)' : 'Logbook berhasil ditolak (Rejected)';
+        this.success = latestStatus === 'approved' ? 'Laporan kerja berhasil disetujui (Approved)' : 'Laporan kerja berhasil ditolak (Rejected)';
         this.reviewingIds.delete(id);
         void this.alert.success(
-          latestStatus === 'approved' ? 'Logbook berhasil disetujui' : 'Logbook berhasil ditolak',
-          'Status logbook sudah diperbarui.'
+          latestStatus === 'approved' ? 'Laporan kerja berhasil disetujui' : 'Laporan kerja berhasil ditolak',
+          'Status laporan kerja sudah diperbarui.'
         );
         setTimeout(() => this.success = '', 4000);
       },
       error: e => {
         this.reviewingIds.delete(id);
-        this.error = 'Gagal memperbarui review logbook: ' + (e.error?.error || 'Unknown error');
-        void this.alert.error('Review logbook gagal', this.error);
+        this.error = 'Gagal memperbarui review laporan kerja: ' + (e.error?.error || 'Unknown error');
+        void this.alert.error('Review laporan kerja gagal', this.error);
       }
     });
   }
 
-  logbookStatus(row: any): string {
-    return this.normalizeStatus(row?.status_logbook || row?.StatusLogbook);
+  reportStatus(row: any): string {
+    return normalizeWorkReportContract(row).status;
   }
 
-  logbookStatusClass(row: any): string {
-    const status = this.logbookStatus(row);
+  reportStatusClass(row: any): string {
+    const status = this.reportStatus(row);
     return status === 'approved'
       ? 'status-success'
       : status === 'submitted'
         ? 'status-warning status-submitted'
         : status === 'rejected'
           ? 'status-danger'
+          : status === 'no_report'
+            ? 'status-neutral'
           : 'status-pending';
   }
 
   canReview(row: any): boolean {
     const id = row?.id || row?.ID;
-    return this.isInternshipLogbook(row) && this.logbookStatus(row) === 'submitted' && !this.reviewingIds.has(id);
+    const contract = normalizeWorkReportContract(row);
+    return contract.report_kind === 'work_report'
+      && this.isInternshipReport(row)
+      && contract.filling_status === 'submitted'
+      && contract.review_status === 'pending'
+      && !this.reviewingIds.has(id);
   }
 
   isProcessing(id: number): boolean {
@@ -262,7 +273,7 @@ export class TeamReportsComponent implements OnInit {
   }
 
   isReviewed(row: any): boolean {
-    const status = this.logbookStatus(row);
+    const status = this.reportStatus(row);
     return status === 'approved' || status === 'rejected';
   }
 
@@ -272,17 +283,15 @@ export class TeamReportsComponent implements OnInit {
     return String(draftNote !== undefined ? draftNote : (row?.review_notes || row?.ReviewNotes || '')).trim();
   }
 
-  isInternshipLogbook(row: any): boolean {
+  isInternshipReport(row: any): boolean {
     const role = String(row?.Employee?.User?.Role || row?.Employee?.User?.role || '').toUpperCase();
     if (role) return role === 'MAGANG';
-    // Preserve the legacy response shape used by older cached/team payloads.
-    // New regular reports always carry status_laporan, so this fallback cannot
-    // route them into the logbook review UI.
-    return !row?.status_laporan && !row?.StatusLaporan && !!(row?.status_logbook || row?.StatusLogbook);
+    return false;
   }
 
   statusLabel(row: any): string {
-    return this.isInternshipLogbook(row) ? (this.logbookStatus(row) || '-') : (row?.status_sesuai || row?.StatusSesuai || 'Menunggu');
+    const status = this.reportStatus(row);
+    return status === 'approved' ? 'Disetujui' : status === 'rejected' ? 'Ditolak' : status === 'draft' ? 'Draft' : status === 'no_report' ? WORK_REPORT_NO_REPORT_LABEL : 'Menunggu';
   }
 
   rejectionReason(row: any): string {
@@ -290,15 +299,12 @@ export class TeamReportsComponent implements OnInit {
   }
 
   fillingStatus(row: any): string {
-    if (this.isInternshipLogbook(row)) {
-      const status = this.logbookStatus(row);
-      return status ? status.charAt(0).toUpperCase() + status.slice(1) : '-';
-    }
-    return String(row?.status_laporan || row?.StatusLaporan || '').trim().toLowerCase() === 'draft' ? 'Draft' : 'Submitted';
+    const status = normalizeWorkReportContract(row).filling_status;
+    return status === 'draft' ? 'Draft' : status === 'no_report' ? WORK_REPORT_NO_REPORT_LABEL : 'Diajukan';
   }
 
   fillingStatusClass(row: any): string {
-    return this.fillingStatus(row).toLowerCase() === 'draft' ? 'status-warning' : 'status-success';
+    return this.fillingStatus(row) === WORK_REPORT_NO_REPORT_LABEL ? 'status-neutral' : this.fillingStatus(row).toLowerCase() === 'draft' ? 'status-warning' : 'status-success';
   }
 
   statusTimeLabel(row: any): string {
@@ -325,8 +331,7 @@ export class TeamReportsComponent implements OnInit {
   }
 
   private isDraft(row: any): boolean {
-    return this.normalizeStatus(row?.status_laporan || row?.StatusLaporan) === 'draft'
-      || this.normalizeStatus(row?.status_logbook || row?.StatusLogbook) === 'draft';
+    return normalizeWorkReportContract(row).filling_status === 'draft';
   }
 
   toggleExportDropdown(): void {
@@ -345,8 +350,10 @@ export class TeamReportsComponent implements OnInit {
 
   exportJSON(): void {
     this.isExportOpen = false;
-    this.loadAllFilteredReports(rows => this.reportExport.downloadJson('laporan-tim.json', rows.map(row => ({
-      ...row,
+    this.loadAllFilteredReports(rows => this.reportExport.downloadJson('laporan-tim.json', rows.map(row => canonicalWorkReportExportRecord(row, {
+      judul_tugas: canonicalWorkReportTitle(row),
+      status_pengisian: this.fillingStatus(row),
+      status_validasi: this.statusLabel(row),
       status_waktu: this.statusTimeLabel(row),
       catatan_review: this.reviewNote(row)
     }))));
@@ -363,7 +370,7 @@ export class TeamReportsComponent implements OnInit {
   }
 
   private exportHeaders(): string[] {
-    return ['Tanggal', 'Anggota', 'Divisi', 'Jabatan', 'Tugas', 'Judul', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Screenshot/Bukti Pengisian', 'Status Validasi/Logbook', 'Status Pengisian', 'Status Waktu', 'Catatan Review', 'Alasan Penolakan', ...this.columns.map(column => column.nama_kolom)];
+    return ['Tanggal', 'Anggota', 'Divisi', 'Jabatan', 'Judul Tugas', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Screenshot/Bukti Pengisian', 'Status Validasi', 'Status Pengisian', 'Status Waktu', 'Catatan Review', 'Alasan Penolakan', ...this.columns.map(column => column.nama_kolom)];
   }
 
   private exportRows(reports: any[]): unknown[][] {
@@ -372,8 +379,7 @@ export class TeamReportsComponent implements OnInit {
       row.Employee?.User?.Nama || '-',
       row.Employee?.Division?.NamaDivisi || '-',
       row.Employee?.Position?.NamaJabatan || '-',
-      row.tugas || row.Tugas || '-',
-      row.judul || row.Judul || '-',
+      canonicalWorkReportTitle(row) || '-',
       row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-',
       row.realisasi_kegiatan || row.RealisasiKegiatan || '-',
       row.kendala || row.Kendala || '-',
@@ -396,7 +402,19 @@ export class TeamReportsComponent implements OnInit {
     if (this.end) params = params.set('end_date', this.end);
     if (this.search) params = params.set('search', this.search);
     this.http.get<any>('http://localhost:8080/api/v1/manager/team/reports', { params, headers: this.headers() }).subscribe({
-      next: response => done(Array.isArray(response) ? response : (response?.data || [])),
+      next: response => {
+        const rows = (Array.isArray(response) ? response : (response?.data || []))
+          .filter((row: any) => !this.isDraft(row));
+        const seen = new Set<string>();
+        done(rows.filter((row: any) => {
+          const id = row?.ID ?? row?.id;
+          if (id === undefined || id === null || id === '') return true;
+          const key = String(id);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }));
+      },
       error: e => this.error = 'Gagal menyiapkan data unduhan: ' + (e.error?.error || 'Periksa koneksi lalu coba lagi.')
     });
   }

@@ -161,11 +161,11 @@
             </label>
             <label class="schedule-field schedule-date-filter">
               <span>Dari Tanggal</span>
-              <input type="date" class="golan-input" [(ngModel)]="scheduleStartDate" name="scheduleStartDate" (change)="loadSchedules()">
+              <input type="date" class="golan-input" [(ngModel)]="scheduleStartDate" name="schedule_shift_start_date" (change)="loadSchedules()">
             </label>
             <label class="schedule-field schedule-date-filter">
               <span>Sampai Tanggal</span>
-              <input type="date" class="golan-input" [(ngModel)]="scheduleEndDate" name="scheduleEndDate" (change)="loadSchedules()">
+              <input type="date" class="golan-input" name="schedule_shift_end_date" [(ngModel)]="scheduleEndDate" (change)="loadSchedules()">
             </label>
             <div class="schedule-filter-action">
               <button class="btn-primary" type="button" (click)="loadSchedules()">Filter</button>

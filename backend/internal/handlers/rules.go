@@ -135,15 +135,20 @@ func getWorkReportSchedule(employeeID uint, date time.Time) (models.WorkSchedule
 }
 
 func missingWorkReportRows(employeeIDs []uint, now time.Time) []fiber.Map {
+	rows, _ := missingWorkReportRowsAndEmployeeCount(employeeIDs, now)
+	return rows
+}
+
+func missingWorkReportRowsAndEmployeeCount(employeeIDs []uint, now time.Time) ([]fiber.Map, int) {
 	_ = now // Warning visibility is attendance-based; deadline is enforced on save.
 	if len(employeeIDs) == 0 {
-		return []fiber.Map{}
+		return []fiber.Map{}, 0
 	}
 	setting := getGeneralSetting()
 	var records []models.AttendanceRecord
 	config.DB.Preload("Employee.User").Where("employee_id IN ? AND jam_masuk IS NOT NULL", employeeIDs).Order("tanggal DESC").Order("id DESC").Find(&records)
 	if len(records) == 0 {
-		return []fiber.Map{}
+		return []fiber.Map{}, 0
 	}
 	var reports []models.WorkReport
 	config.DB.Where("employee_id IN ?", employeeIDs).Find(&reports)
@@ -158,6 +163,7 @@ func missingWorkReportRows(employeeIDs []uint, now time.Time) []fiber.Map {
 	// most recent missing date; older missed days remain available in history.
 	var latestDate time.Time
 	var latestRow fiber.Map
+	missingEmployeeIDs := make(map[uint]struct{})
 	for _, record := range records {
 		if record.EmployeeID == nil {
 			continue
@@ -169,11 +175,12 @@ func missingWorkReportRows(employeeIDs []uint, now time.Time) []fiber.Map {
 		}
 		deadline := workReportDeadline(record, schedule, setting)
 		// The dashboard warning starts immediately after a successful check-in
-		// and remains until a real report/logbook is saved. The deadline only
+		// and remains until a real work report is saved. The deadline only
 		// controls whether a new submission is accepted by the write endpoints.
 		if hasReport[workReportKey(employeeID, record.Tanggal)] {
 			continue
 		}
+		missingEmployeeIDs[employeeID] = struct{}{}
 		name := "-"
 		if record.Employee.User != nil {
 			name = record.Employee.User.Nama
@@ -184,13 +191,17 @@ func missingWorkReportRows(employeeIDs []uint, now time.Time) []fiber.Map {
 			"tanggal":        record.Tanggal.Format("2006-01-02"),
 			"deadline":       deadline.Format(time.RFC3339),
 			"deadline_label": deadline.Format("02 Jan 2006 15:04"),
+			"status":         string(models.WorkReportStatusNoReport),
+			"state":          string(models.WorkReportStatusNoReport),
+			"label":          models.WorkReportNoReportLabel,
+			"has_report":     false,
 		}
 		latestRow, latestDate = selectLatestMissingWorkReport(latestRow, latestDate, row, record.Tanggal)
 	}
 	if latestRow == nil {
-		return []fiber.Map{}
+		return []fiber.Map{}, 0
 	}
-	return []fiber.Map{latestRow}
+	return []fiber.Map{latestRow}, len(missingEmployeeIDs)
 }
 
 func selectLatestMissingWorkReport(current fiber.Map, currentDate time.Time, candidate fiber.Map, candidateDate time.Time) (fiber.Map, time.Time) {
@@ -223,7 +234,7 @@ func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
 
 	// Backfill existing empty reports that have blank/null/Menunggu status_sesuai
 	db.Model(&models.WorkReport{}).
-		Where("(status_sesuai IS NULL OR status_sesuai = '' OR status_sesuai = 'Menunggu') AND (status_laporan IS NULL OR status_laporan = '' OR status_laporan = 'submitted') AND (tugas = '' OR tugas IS NULL) AND (judul = '' OR judul IS NULL) AND (deskripsi_kegiatan = '' OR deskripsi_kegiatan IS NULL)").
+		Where("(status_sesuai IS NULL OR status_sesuai = '' OR status_sesuai = 'Menunggu') AND (status_laporan IS NULL OR status_laporan = '' OR status_laporan = 'submitted') AND (tugas = '' OR tugas IS NULL) AND (judul = '' OR judul IS NULL) AND (judul_tugas = '' OR judul_tugas IS NULL) AND (deskripsi_kegiatan = '' OR deskripsi_kegiatan IS NULL)").
 		Update("status_sesuai", "tidak membuat laporan kerja")
 
 	setting := getGeneralSetting()
@@ -302,6 +313,7 @@ func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
 
 			if now.After(deadline) {
 				autoReport := models.WorkReport{
+					ReportKind:        models.WorkReportKindCanonical,
 					EmployeeID:        &emp.ID,
 					Tanggal:           d,
 					Tugas:             "",

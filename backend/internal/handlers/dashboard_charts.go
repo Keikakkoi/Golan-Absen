@@ -57,6 +57,7 @@ func GetDashboardCharts(c *fiber.Ctx) error {
 		"start_date": start.Format("2006-01-02"), "end_date": end.Format("2006-01-02"),
 		"attendance_trend": trend, "today_status": todayStatus,
 		"comparison": make([]chartValue, 0), "report_status": make([]chartValue, 0),
+		// Legacy chart alias; active consumers use report_status.
 		"logbook_status": make([]chartValue, 0), "internship": fiber.Map{"progress_percent": 0, "days_remaining": 0},
 	}
 	if role == models.RoleKaryawan || role == models.RoleMagang {
@@ -72,7 +73,7 @@ func GetDashboardCharts(c *fiber.Ctx) error {
 	} else if role == models.RoleKaryawan {
 		result["report_status"] = chartReportStatus(ids, start, end, false)
 	} else if role == models.RoleMagang {
-		result["logbook_status"] = chartLogbookStatus(ids, start, end)
+		result["report_status"] = chartReportStatus(ids, start, end, false)
 		result["internship"] = chartInternship(userID)
 	}
 	return c.JSON(result)
@@ -212,41 +213,56 @@ func chartMemberComparison(ids []uint, start, end time.Time) []chartValue {
 	return result
 }
 
+// chartReportStatus keeps a legacy branch only for historical dashboard payloads.
 func chartReportStatus(ids []uint, start, end time.Time, logbook bool) []chartValue {
-	labels := []string{"Selesai", "Pending", "Terlambat", "Ditolak"}
-	if logbook {
-		labels = []string{"Submitted", "Approved", "Pending", "Rejected"}
-	}
+	labels := workReportChartLabels(logbook)
 	result := make([]chartValue, 0, len(labels))
 	for _, label := range labels {
 		var count int64
 		q := config.DB.Model(&models.WorkReport{}).Where("employee_id IN ? AND tanggal BETWEEN ? AND ?", ids, start, end)
-		// Dashboard charts are aggregate/admin-facing data. Treat legacy blank
-		// statuses as submitted, but never count either kind of Draft.
-		q = q.Where("LOWER(COALESCE(NULLIF(BTRIM(status_laporan), ''), 'submitted')) <> ?", "draft")
-		q = q.Where("LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted')) <> ?", "draft")
+		legacy := "COALESCE(NULLIF(BTRIM(report_kind), ''), 'work_report') = 'legacy_logbook'"
+		canonical := "COALESCE(NULLIF(BTRIM(report_kind), ''), 'work_report') <> 'legacy_logbook'"
+		legacyFilling := "LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted'))"
+		canonicalFilling := "LOWER(COALESCE(NULLIF(BTRIM(status_laporan), ''), 'submitted'))"
+		canonicalValidation := "LOWER(COALESCE(NULLIF(BTRIM(status_sesuai), ''), ''))"
+		if label != models.WorkReportNoReportLabel {
+			// Dashboard charts are aggregate/admin-facing data. Treat legacy blank
+			// statuses as submitted, but never count either kind of Draft. An empty
+			// Draft belongs to the explicit no-report bucket instead.
+			q = q.Where("(("+legacy+" AND "+legacyFilling+" <> ?) OR ("+canonical+" AND "+canonicalFilling+" <> ?))", "draft", "draft")
+			q = q.Where("NOT " + workReportNoReportCondition("work_reports."))
+		}
 		if logbook {
-			if label == "Submitted" {
-				q = q.Where("LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted')) = ?", "submitted")
+			if label == models.WorkReportNoReportLabel {
+				q = q.Where(workReportNoReportCondition("work_reports."))
+			} else if label == "Submitted" {
+				q = q.Where(legacy+" AND "+legacyFilling+" = ?", "submitted")
 			} else {
-				q = q.Where("LOWER(BTRIM(status_logbook)) = ?", strings.ToLower(label))
+				q = q.Where(legacy+" AND LOWER(BTRIM(status_logbook)) = ?", strings.ToLower(label))
 			}
 		} else {
 			switch label {
-			case "Selesai":
-				q = q.Where("status_sesuai = ? OR status_logbook = ?", "Sesuai", "approved")
-			case "Pending":
-				q = q.Where("LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted')) = ?", "submitted")
-			case "Terlambat":
-				q = q.Where("is_late_submission = ?", true)
+			case models.WorkReportNoReportLabel:
+				q = q.Where(workReportNoReportCondition("work_reports."))
+			case "Menunggu Review":
+				q = q.Where("("+legacy+" AND "+legacyFilling+" = ?) OR ("+canonical+" AND "+canonicalFilling+" = ? AND "+canonicalValidation+" NOT IN ?)", "submitted", "submitted", []string{"sesuai", "tidak sesuai", "ditolak", "minta perbaikan", "minta_perbaikan"})
+			case "Disetujui":
+				q = q.Where("("+legacy+" AND "+legacyFilling+" = ?) OR ("+canonical+" AND "+canonicalValidation+" = ?)", "approved", "sesuai")
 			case "Ditolak":
-				q = q.Where("status_logbook = ?", "rejected")
+				q = q.Where("("+legacy+" AND "+legacyFilling+" = ?) OR ("+canonical+" AND "+canonicalValidation+" IN ?)", "rejected", []string{"tidak sesuai", "ditolak", "minta perbaikan", "minta_perbaikan"})
 			}
 		}
 		q.Count(&count)
 		result = append(result, chartValue{Label: label, Value: count})
 	}
 	return result
+}
+
+func workReportChartLabels(logbook bool) []string {
+	if logbook {
+		return []string{"Submitted", "Approved", "Pending", "Rejected", models.WorkReportNoReportLabel}
+	}
+	return []string{models.WorkReportNoReportLabel, "Menunggu Review", "Disetujui", "Ditolak"}
 }
 
 func chartLogbookStatus(ids []uint, start, end time.Time) []chartValue {

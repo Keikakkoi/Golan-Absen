@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 
 import { AuditLogComponent } from './audit-log.component';
 
@@ -8,7 +10,8 @@ describe('AuditLogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AuditLogComponent]
+      imports: [AuditLogComponent],
+      providers: [provideHttpClient(), provideRouter([])]
     })
     .compileComponents();
 

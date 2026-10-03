@@ -24,6 +24,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private activeDateInput: HTMLInputElement | null = null;
   private dateView = new Date();
   private dateSelectorOpen = false;
+  private dateYearOpen = false;
   private fontAwesomeLink?: HTMLLinkElement;
   private readonly onFilterPointerDown = (event: Event) => {
     const select = event.target instanceof HTMLSelectElement ? event.target : null;
@@ -249,6 +250,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const selected = parseDateValue(input.value) || new Date();
     this.dateView = new Date(selected.getFullYear(), selected.getMonth(), 1);
     this.dateSelectorOpen = false;
+    this.dateYearOpen = false;
     this.renderDateMenu();
   }
 
@@ -264,16 +266,16 @@ export class AppComponent implements OnInit, OnDestroy {
 
     const header = this.document.createElement('div');
     header.className = 'filter-date-header';
-    const birthDateInput = input.name === 'tanggal_lahir';
-    const title = this.document.createElement(birthDateInput ? 'button' : 'strong');
-    if (birthDateInput) {
+    const hasMonthYearSelector = this.hasMonthYearSelector(input);
+    const title = this.document.createElement(hasMonthYearSelector ? 'button' : 'strong');
+    if (hasMonthYearSelector) {
       (title as HTMLButtonElement).type = 'button';
       title.className = 'filter-date-title';
       title.setAttribute('aria-label', 'Pilih bulan dan tahun');
       title.setAttribute('aria-expanded', String(this.dateSelectorOpen));
     }
     title.textContent = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(this.dateView);
-    if (birthDateInput) title.addEventListener('click', (event) => {
+    if (hasMonthYearSelector) title.addEventListener('click', (event) => {
         event.stopPropagation();
         this.dateSelectorOpen = !this.dateSelectorOpen;
         this.renderDateMenu();
@@ -284,7 +286,7 @@ export class AppComponent implements OnInit, OnDestroy {
     next.addEventListener('click', (event) => { event.stopPropagation(); this.dateView.setMonth(this.dateView.getMonth() + 1); this.renderDateMenu(); });
     header.append(title, previous, next);
     menu.appendChild(header);
-    if (birthDateInput && this.dateSelectorOpen) this.renderDateSelector(menu);
+    if (hasMonthYearSelector && this.dateSelectorOpen) this.renderDateSelector(menu);
 
     const weekdays = this.document.createElement('div');
     weekdays.className = 'filter-date-weekdays';
@@ -323,6 +325,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.document.body.appendChild(menu);
     this.dateMenu = menu;
     this.positionDateMenu(input, menu);
+    if (this.dateYearOpen) this.positionDateYearMenu(menu);
   }
 
   private renderDateSelector(menu: HTMLDivElement): void {
@@ -351,26 +354,116 @@ export class AppComponent implements OnInit, OnDestroy {
     const yearLabel = this.document.createElement('label');
     yearLabel.className = 'filter-date-year-label';
     yearLabel.textContent = 'Tahun';
-    const yearSelect = this.document.createElement('select');
-    yearSelect.className = 'filter-date-year';
-    yearSelect.setAttribute('aria-label', 'Pilih tahun');
-    const currentYear = new Date().getFullYear();
-    for (let year = currentYear; year >= 1900; year--) {
-      const option = this.document.createElement('option');
-      option.value = String(year);
-      option.textContent = String(year);
-      option.selected = year === this.dateView.getFullYear();
-      yearSelect.appendChild(option);
-    }
-    yearSelect.addEventListener('change', (event) => {
+    const yearControl = this.document.createElement('div');
+    yearControl.className = 'filter-date-year-control';
+    const yearButton = this.document.createElement('button');
+    yearButton.type = 'button';
+    yearButton.className = 'filter-date-year';
+    yearButton.textContent = String(this.dateView.getFullYear());
+    yearButton.setAttribute('aria-label', 'Pilih tahun');
+    yearButton.setAttribute('aria-haspopup', 'listbox');
+    yearButton.setAttribute('aria-expanded', String(this.dateYearOpen));
+    yearButton.addEventListener('click', (event) => {
       event.stopPropagation();
-      this.dateView = new Date(Number(yearSelect.value), this.dateView.getMonth(), 1);
-      this.dateSelectorOpen = false;
+      this.dateYearOpen = !this.dateYearOpen;
       this.renderDateMenu();
+      if (this.dateYearOpen) this.scrollSelectedDateYearIntoView();
     });
-    yearLabel.appendChild(yearSelect);
+    yearButton.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault();
+      this.dateYearOpen = true;
+      this.renderDateMenu();
+      const selectedOption = this.dateMenu?.querySelector<HTMLButtonElement>('.filter-date-year-option.selected');
+      selectedOption?.focus();
+    });
+
+    const yearMenu = this.document.createElement('div');
+    yearMenu.className = 'filter-date-year-menu';
+    yearMenu.setAttribute('role', 'listbox');
+    yearMenu.setAttribute('aria-label', 'Daftar tahun');
+    const currentYear = new Date().getFullYear();
+    for (let year = 1900; year <= currentYear + 10; year++) {
+      const option = this.document.createElement('button');
+      option.type = 'button';
+      option.className = 'filter-date-year-option';
+      option.textContent = String(year);
+      option.setAttribute('role', 'option');
+      option.setAttribute('aria-selected', String(year === this.dateView.getFullYear()));
+      option.classList.toggle('selected', year === this.dateView.getFullYear());
+      option.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.selectDateYear(year);
+      });
+      yearMenu.appendChild(option);
+    }
+    yearControl.append(yearButton);
+    if (this.dateYearOpen) yearControl.append(yearMenu);
+    yearLabel.appendChild(yearControl);
     selector.appendChild(yearLabel);
     menu.appendChild(selector);
+  }
+
+  private selectDateYear(year: number): void {
+    const month = this.dateView.getMonth();
+    const currentDate = parseDateValue(this.activeDateInput?.value || '');
+    const selectedDay = currentDate?.getDate() || new Date().getDate();
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    this.dateView = new Date(year, month, 1);
+    // Keep the selected month/day where possible and commit the new year
+    // immediately. This also keeps ngModel in sync before the picker closes.
+    this.setDateValue(
+      formatDateValue(new Date(year, month, Math.min(selectedDay, lastDayOfMonth))),
+      false
+    );
+    this.dateYearOpen = false;
+    this.dateSelectorOpen = false;
+    this.renderDateMenu();
+  }
+
+  private scrollSelectedDateYearIntoView(): void {
+    const selectedOption = this.dateMenu?.querySelector<HTMLButtonElement>('.filter-date-year-option.selected');
+    selectedOption?.scrollIntoView({ block: 'center' });
+  }
+
+  private positionDateYearMenu(menu: HTMLDivElement): void {
+    const yearMenu = menu.querySelector<HTMLElement>('.filter-date-year-menu');
+    const yearControl = menu.querySelector<HTMLElement>('.filter-date-year-control');
+    const viewportHeight = this.document.defaultView?.innerHeight || this.document.documentElement.clientHeight;
+    if (!yearMenu || !yearControl || !viewportHeight) return;
+
+    yearMenu.classList.remove('opens-up');
+    const viewportPadding = 8;
+    const controlBounds = yearControl.getBoundingClientRect();
+    const menuBounds = yearMenu.getBoundingClientRect();
+    const roomBelow = viewportHeight - controlBounds.bottom - viewportPadding;
+    const roomAbove = controlBounds.top - viewportPadding;
+    if (menuBounds.bottom > viewportHeight - viewportPadding && roomAbove > roomBelow) {
+      yearMenu.classList.add('opens-up');
+    }
+  }
+
+  private hasMonthYearSelector(input: HTMLInputElement): boolean {
+    return [
+      'tanggal_lahir',
+      'tanggal_bergabung',
+      'internship_start_date',
+      'internship_end_date',
+      'event_start_date',
+      'event_end_date',
+      'team_attendance_start_date',
+      'team_attendance_end_date',
+      'team_report_start_date',
+      'team_report_end_date',
+      'work_report_start_date',
+      'work_report_end_date',
+      'attendance_recap_start_date',
+      'attendance_recap_end_date',
+      'schedule_shift_start_date',
+      'schedule_shift_end_date',
+      'team_statistics_start_date',
+      'team_statistics_end_date'
+    ].includes(input.name);
   }
 
   private createDateButton(text: string, label?: string): HTMLButtonElement {
@@ -382,12 +475,12 @@ export class AppComponent implements OnInit, OnDestroy {
     return button;
   }
 
-  private setDateValue(value: string): void {
+  private setDateValue(value: string, close = true): void {
     if (!this.activeDateInput) return;
     this.activeDateInput.value = value;
     this.activeDateInput.dispatchEvent(new Event('input', { bubbles: true }));
     this.activeDateInput.dispatchEvent(new Event('change', { bubbles: true }));
-    this.closeDateMenu();
+    if (close) this.closeDateMenu();
   }
 
   private positionDateMenu(input: HTMLInputElement, menu: HTMLDivElement): void {
@@ -420,7 +513,7 @@ export class AppComponent implements OnInit, OnDestroy {
     menu.style.top = `${Math.round(top)}px`;
   }
 
-  private closeDateMenu(): void { this.dateMenu?.remove(); this.dateMenu = null; this.activeDateInput = null; this.dateSelectorOpen = false; }
+  private closeDateMenu(): void { this.dateMenu?.remove(); this.dateMenu = null; this.activeDateInput = null; this.dateSelectorOpen = false; this.dateYearOpen = false; }
   private closeMenus(): void { this.closeFilterMenu(); this.closeDateMenu(); }
 }
 

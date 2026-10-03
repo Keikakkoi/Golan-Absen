@@ -22,10 +22,10 @@ export class AdminBackupComponent {
   showRestoreFailures = false;
   preview: any = null;
   history: BackupHistory[] = this.readHistory();
-  readonly modules = ['Karyawan', 'Organisasi & jabatan', 'Project', 'Presensi', 'Pengajuan izin/cuti', 'Lokasi WFH', 'Jadwal & shift', 'Work Report/Logbook', 'Agenda & Hari Libur', 'Sertifikat & Dokumen Magang', 'Pengaturan Aplikasi', 'Notifikasi & Perangkat', 'Audit & Sistem'];
+  readonly modules = ['Karyawan', 'Organisasi & jabatan', 'Project', 'Presensi', 'Pengajuan izin/cuti', 'Lokasi WFH', 'Jadwal & shift', 'Work Report', 'Agenda & Hari Libur', 'Sertifikat & Dokumen Magang', 'Pengaturan Aplikasi', 'Notifikasi & Perangkat', 'Audit & Sistem'];
   selectedModules = new Set<string>();
   private readonly moduleKeys: Record<string, string> = {
-    'Karyawan': 'karyawan', 'Organisasi & jabatan': 'organisasi_jabatan', 'Project': 'project', 'Presensi': 'presensi', 'Pengajuan izin/cuti': 'pengajuan_izin_cuti', 'Lokasi WFH': 'lokasi_wfh', 'Jadwal & shift': 'jadwal_shift', 'Work Report/Logbook': 'work_report', 'Agenda & Hari Libur': 'agenda_event', 'Sertifikat & Dokumen Magang': 'sertifikat_dokumen_magang', 'Pengaturan Aplikasi': 'pengaturan_aplikasi', 'Notifikasi & Perangkat': 'notifikasi_perangkat', 'Audit & Sistem': 'audit_sistem'
+    'Karyawan': 'karyawan', 'Organisasi & jabatan': 'organisasi_jabatan', 'Project': 'project', 'Presensi': 'presensi', 'Pengajuan izin/cuti': 'pengajuan_izin_cuti', 'Lokasi WFH': 'lokasi_wfh', 'Jadwal & shift': 'jadwal_shift', 'Work Report': 'work_report', 'Agenda & Hari Libur': 'agenda_event', 'Sertifikat & Dokumen Magang': 'sertifikat_dokumen_magang', 'Pengaturan Aplikasi': 'pengaturan_aplikasi', 'Notifikasi & Perangkat': 'notifikasi_perangkat', 'Audit & Sistem': 'audit_sistem'
   };
   private backupUrl = 'http://localhost:8080/api/v1/admin/settings/backup';
   constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}

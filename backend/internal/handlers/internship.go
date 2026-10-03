@@ -10,6 +10,7 @@ import (
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/middleware"
 	"absensi-golan-backend/internal/models"
+	"absensi-golan-backend/internal/utils"
 	"absensi-golan-backend/pkg/minio"
 
 	"github.com/gofiber/fiber/v2"
@@ -26,10 +27,18 @@ func SetupInternshipRoutes(api fiber.Router) {
 	intern.Get("/certificate/download", DownloadInternshipCertificate)
 	intern.Get("/documents", GetInternshipDocuments)
 	intern.Get("/documents/:type/download", DownloadInternshipDocument)
-	intern.Get("/logbooks", GetInternshipLogbooks)
-	intern.Post("/logbooks", CreateInternshipLogbook)
-	intern.Put("/logbooks/:id", UpdateInternshipLogbook)
-	intern.Delete("/logbooks/:id", DeleteInternshipLogbook)
+	intern.Get("/logbooks", markLegacyWorkReportRoute, GetInternshipLogbooks)
+	intern.Post("/logbooks", markLegacyWorkReportRoute, CreateInternshipLogbook)
+	intern.Put("/logbooks/:id", markLegacyWorkReportRoute, UpdateInternshipLogbook)
+	intern.Delete("/logbooks/:id", markLegacyWorkReportRoute, DeleteInternshipLogbook)
+}
+
+// markLegacyWorkReportRoute keeps old clients working while making the
+// canonical work-report endpoint the explicit successor for new clients.
+func markLegacyWorkReportRoute(c *fiber.Ctx) error {
+	c.Set("Deprecation", "true")
+	c.Set("Link", "</api/v1/work-reports>; rel=\"successor-version\"")
+	return c.Next()
 }
 
 func getInternUser(c *fiber.Ctx) (models.User, error) {
@@ -83,18 +92,23 @@ func GetInternshipDashboard(c *fiber.Ctx) error {
 	var submitted, approved int64
 	config.DB.Model(&models.WorkReport{}).
 		Where("employee_id = ? AND status_logbook IN ?", user.Employee.ID, []string{"submitted", "approved", "rejected"}).
+		Where("NOT " + workReportNoReportCondition("work_reports.")).
 		Distinct("tanggal").Count(&submitted)
 	config.DB.Model(&models.WorkReport{}).
 		Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "approved").
+		Where("NOT " + workReportNoReportCondition("work_reports.")).
 		Distinct("tanggal").Count(&approved)
+	workReportsSubmitted, workReportsApproved := internshipWorkReportCounts(user.Employee.ID, "", "")
 	return c.JSON(fiber.Map{
-		"internship_start_date": user.InternshipStartDate,
-		"internship_end_date":   user.InternshipEndDate,
-		"days_remaining":        remaining,
-		"progress_percent":      progress,
-		"logbooks_submitted":    submitted,
-		"logbooks_approved":     approved,
-		"missing_work_reports":  missingWorkReportRowsForEmployee(user.Employee.ID, attendanceNow()),
+		"internship_start_date":  user.InternshipStartDate,
+		"internship_end_date":    user.InternshipEndDate,
+		"days_remaining":         remaining,
+		"progress_percent":       progress,
+		"logbooks_submitted":     submitted,
+		"logbooks_approved":      approved,
+		"work_reports_submitted": workReportsSubmitted,
+		"work_reports_approved":  workReportsApproved,
+		"missing_work_reports":   missingWorkReportRowsForEmployee(user.Employee.ID, attendanceNow()),
 	})
 }
 
@@ -225,8 +239,9 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 	leaveQuery.Count(&leaveCount)
 
 	var logbooksSubmitted, logbooksApproved int64
-	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook IN ?", user.Employee.ID, []string{"submitted", "approved", "rejected"}).Distinct("tanggal").Count(&logbooksSubmitted)
-	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "approved").Distinct("tanggal").Count(&logbooksApproved)
+	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook IN ?", user.Employee.ID, []string{"submitted", "approved", "rejected"}).Where("NOT " + workReportNoReportCondition("work_reports.")).Distinct("tanggal").Count(&logbooksSubmitted)
+	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "approved").Where("NOT " + workReportNoReportCondition("work_reports.")).Distinct("tanggal").Count(&logbooksApproved)
+	workReportsSubmitted, workReportsApproved := internshipWorkReportCounts(user.Employee.ID, start, end)
 
 	totalDays := int64(len(records)) + leaveCount
 	if totalDays == 0 {
@@ -314,12 +329,33 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 			"wfh":    wfhCount,
 			"remote": remoteCount,
 		},
-		"logbooks_submitted": logbooksSubmitted,
-		"logbooks_approved":  logbooksApproved,
-		"daily_trend":        dailyTrend,
-		"start_date":         start,
-		"end_date":           end,
+		"logbooks_submitted":     logbooksSubmitted,
+		"logbooks_approved":      logbooksApproved,
+		"work_reports_submitted": workReportsSubmitted,
+		"work_reports_approved":  workReportsApproved,
+		"daily_trend":            dailyTrend,
+		"start_date":             start,
+		"end_date":               end,
 	})
+}
+
+// internshipWorkReportCounts is the canonical dashboard read model. Legacy
+// logbooks remain countable, but canonical reports use status_laporan and
+// status_sesuai so a submitted canonical report is not lost or counted twice.
+func internshipWorkReportCounts(employeeID uint, startDate string, endDate string) (submitted int64, approved int64) {
+	base := config.DB.Model(&models.WorkReport{}).Where("employee_id = ?", employeeID)
+	if startDate != "" && endDate != "" {
+		base = base.Where("tanggal BETWEEN ? AND ?", startDate, endDate)
+	}
+	legacy := "COALESCE(NULLIF(BTRIM(report_kind), ''), 'work_report') = 'legacy_logbook'"
+	legacyStatus := "LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted'))"
+	canonical := "COALESCE(NULLIF(BTRIM(report_kind), ''), 'work_report') <> 'legacy_logbook'"
+	fillingStatus := "LOWER(COALESCE(NULLIF(BTRIM(status_laporan), ''), 'submitted'))"
+	submittedQuery := base.Where("NOT "+workReportNoReportCondition("work_reports.")).Where("(("+legacy+" AND "+legacyStatus+" IN ?) OR ("+canonical+" AND "+fillingStatus+" <> ?))", []string{"submitted", "approved", "rejected"}, "draft").Distinct("tanggal")
+	submittedQuery.Count(&submitted)
+	approvedQuery := base.Where("NOT "+workReportNoReportCondition("work_reports.")).Where("(("+legacy+" AND "+legacyStatus+" = ?) OR ("+canonical+" AND LOWER(COALESCE(NULLIF(BTRIM(status_sesuai), ''), '')) = ?))", "approved", "sesuai").Distinct("tanggal")
+	approvedQuery.Count(&approved)
+	return submitted, approved
 }
 
 func GetInternshipCertificate(c *fiber.Ctx) error {
@@ -396,7 +432,7 @@ func GetInternshipLogbooks(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Intern profile not found"})
 	}
 	var reports []models.WorkReport
-	query := config.DB.Preload("Attachments").Where("employee_id = ?", user.Employee.ID).Order("tanggal desc")
+	query := config.DB.Preload("Attachments").Where("employee_id = ? AND COALESCE(NULLIF(BTRIM(report_kind), ''), 'legacy_logbook') = ?", user.Employee.ID, models.WorkReportKindLegacyLogbook).Order("tanggal desc")
 	if start, end := c.Query("start_date"), c.Query("end_date"); start != "" && end != "" {
 		query = query.Where("tanggal BETWEEN ? AND ?", start, end)
 	}
@@ -465,10 +501,12 @@ func CreateInternshipLogbook(c *fiber.Ctx) error {
 	}
 
 	report := models.WorkReport{
+		ReportKind:         models.WorkReportKindLegacyLogbook,
 		EmployeeID:         &user.Employee.ID,
 		Tanggal:            date,
 		Tugas:              input.Tugas,
 		Judul:              input.Judul,
+		JudulTugas:         input.JudulTugas,
 		DeskripsiKegiatan:  input.DeskripsiKegiatan,
 		RealisasiKegiatan:  input.RealisasiKegiatan,
 		Kendala:            input.Kendala,
@@ -486,6 +524,7 @@ func CreateInternshipLogbook(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	config.DB.Preload("Attachments").First(&report, report.ID)
+	_ = utils.LogAction(user.ID, "CREATE", "WorkReport", report.ID, "Legacy logbook dibuat melalui endpoint compatibility")
 	if status == "submitted" {
 		WsHub.Broadcast <- fiber.Map{"event": "new_logbook"}
 	}
@@ -498,7 +537,7 @@ func UpdateInternshipLogbook(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Intern profile not found"})
 	}
 	var report models.WorkReport
-	if err := config.DB.Where("id = ? AND employee_id = ?", c.Params("id"), user.Employee.ID).First(&report).Error; err != nil {
+	if err := config.DB.Where("id = ? AND employee_id = ? AND COALESCE(NULLIF(BTRIM(report_kind), ''), 'legacy_logbook') = ?", c.Params("id"), user.Employee.ID, models.WorkReportKindLegacyLogbook).First(&report).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Logbook not found"})
 	}
 	if !canModifyInternshipLogbook(report.StatusLogbook) {
@@ -515,8 +554,6 @@ func UpdateInternshipLogbook(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	updates := map[string]interface{}{
-		"tugas":                input.Tugas,
-		"judul":                input.Judul,
 		"deskripsi_kegiatan":   input.DeskripsiKegiatan,
 		"realisasi_kegiatan":   input.RealisasiKegiatan,
 		"kendala":              input.Kendala,
@@ -524,6 +561,9 @@ func UpdateInternshipLogbook(c *fiber.Ctx) error {
 		"link_artikel":         input.LinkArtikel,
 		"catatan_tambahan":     input.CatatanTambahan,
 		"custom_fields":        input.CustomFields,
+	}
+	for key, value := range workReportTitleUpdates(input) {
+		updates[key] = value
 	}
 	if input.Tanggal != "" {
 		date, parseErr := time.ParseInLocation("2006-01-02", input.Tanggal, jakartaLocation)
@@ -561,6 +601,7 @@ func UpdateInternshipLogbook(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	config.DB.Preload("Attachments").First(&report, report.ID)
+	_ = utils.LogAction(user.ID, "UPDATE", "WorkReport", report.ID, "Legacy logbook diperbarui melalui endpoint compatibility")
 	if status == "submitted" && !wasSubmitted {
 		WsHub.Broadcast <- fiber.Map{"event": "new_logbook"}
 	}
@@ -573,7 +614,7 @@ func DeleteInternshipLogbook(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Intern profile not found"})
 	}
 	var report models.WorkReport
-	if err := config.DB.Where("id = ? AND employee_id = ?", c.Params("id"), user.Employee.ID).First(&report).Error; err != nil {
+	if err := config.DB.Where("id = ? AND employee_id = ? AND COALESCE(NULLIF(BTRIM(report_kind), ''), 'legacy_logbook') = ?", c.Params("id"), user.Employee.ID, models.WorkReportKindLegacyLogbook).First(&report).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Logbook not found"})
 	}
 	if !canModifyInternshipLogbook(report.StatusLogbook) {
@@ -595,6 +636,7 @@ func DeleteInternshipLogbook(c *fiber.Ctx) error {
 			log.Printf("internship logbook attachment cleanup failed: report_id=%d storage_key=%q: %v", report.ID, attachment.StorageKey, err)
 		}
 	}
+	_ = utils.LogAction(user.ID, "DELETE", "WorkReport", report.ID, "Legacy logbook dihapus melalui endpoint compatibility")
 	WsHub.Broadcast <- fiber.Map{"event": "logbook_deleted"}
 	return c.JSON(fiber.Map{"message": "Logbook berhasil dihapus"})
 }

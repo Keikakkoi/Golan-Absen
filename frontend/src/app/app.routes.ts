@@ -28,13 +28,15 @@ export const routes: Routes = [
   { path: 'employee/checkout', loadComponent: () => import('./features/employee/checkin/checkin.component').then(m => m.CheckinComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
   { path: 'employee/history', loadComponent: () => import('./features/employee/history/history.component').then(m => m.HistoryComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
   { path: 'employee/leaves', loadComponent: () => import('./features/employee/leave-request/leave-request.component').then(m => m.LeaveRequestComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
-  { path: 'employee/work-report', loadComponent: () => import('./features/employee/work-report/work-report.component').then(m => m.WorkReportComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MANAJER'] } },
+  { path: 'employee/work-report', loadComponent: () => import('./features/employee/work-report/work-report.component').then(m => m.WorkReportComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MANAJER', 'MAGANG'] } },
   { path: 'employee/statistics', loadComponent: () => import('./features/employee/statistics/statistics.component').then(m => m.StatisticsComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
   { path: 'employee/notifications', loadComponent: () => import('./features/employee/notifications/notifications.component').then(m => m.NotificationsComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
   { path: 'employee/profile', loadComponent: () => import('./features/employee/profile/profile.component').then(m => m.ProfileComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
   { path: 'employee/manager', loadComponent: () => import('./features/employee/manager/manager.component').then(m => m.ManagerComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
   { path: 'intern/dashboard', loadComponent: () => import('./features/intern/intern-dashboard/intern-dashboard.component').then(m => m.InternDashboardComponent), canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
-  { path: 'intern/logbooks', loadComponent: () => import('./features/intern/intern-logbook/intern-logbook.component').then(m => m.InternLogbookComponent), canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
+  // Compatibility redirect for historical bookmarks. Legacy API routes remain
+  // available to adapters, while all browser users enter the canonical report UI.
+  { path: 'intern/logbooks', redirectTo: 'employee/work-report', pathMatch: 'full' },
   { path: 'intern/statistics', loadComponent: () => import('./features/intern/intern-statistics/intern-statistics.component').then(m => m.InternStatisticsComponent), canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
   { path: 'intern/mentor', loadComponent: () => import('./features/intern/intern-mentor/intern-mentor.component').then(m => m.InternMentorComponent), canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
   { path: 'intern/certificate', loadComponent: () => import('./features/intern/intern-certificate/intern-certificate.component').then(m => m.InternCertificateComponent), canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },

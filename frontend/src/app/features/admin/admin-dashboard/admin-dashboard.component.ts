@@ -25,7 +25,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     izin_cuti_hari_ini: 0,
     total_magang: 0,
     magang_aktif: 0,
-    logbook_pending: 0,
+    work_reports_pending: 0,
     sertifikat_terbit: 0
   };
 
@@ -37,12 +37,16 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   notifications: AppNotification[] = [];
   showNotifications = false;
   private disconnectRealtime?: () => void;
+  private notificationsSubscription?: Subscription;
   private userSubscription?: Subscription;
   private initialized = false;
 
   constructor(private http: HttpClient, private authService: AuthService, private notificationService: NotificationService) {}
 
   ngOnInit(): void {
+    this.notificationsSubscription = this.notificationService.notifications$.subscribe(notifications => {
+      this.notifications = notifications;
+    });
     this.userSubscription = this.authService.currentUser$.pipe(
       filter(user => user?.role === 'HRD'),
       take(1)
@@ -71,7 +75,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
     this.http.get<any>('http://localhost:8080/api/v1/admin/reports/stats', { headers, context }).subscribe({
       next: (data) => {
-        this.stats = data;
+        this.stats = {
+          ...data,
+          // `logbook_pending` is a backend compatibility alias for old clients.
+          work_reports_pending: Number(data?.work_reports_pending ?? data?.logbook_pending) || 0,
+          missing_work_report_employee_count: Number(data?.missing_work_report_employee_count ?? data?.missing_work_report_count) || 0
+        };
         this.lastUpdated = new Date().toLocaleTimeString('id-ID');
         this.isLoading = false;
       },
@@ -87,6 +96,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.refreshTimer = undefined;
     this.disconnectRealtime?.();
     this.disconnectRealtime = undefined;
+    this.notificationsSubscription?.unsubscribe();
+    this.notificationsSubscription = undefined;
     this.userSubscription?.unsubscribe();
     this.userSubscription = undefined;
     this.initialized = false;

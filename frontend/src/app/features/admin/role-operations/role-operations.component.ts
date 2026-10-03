@@ -11,23 +11,24 @@ import Swal from 'sweetalert2';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 import { NotificationService } from '../../../core/services/notification.service';
+import { RouterLink } from '@angular/router';
+import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
+import { canonicalWorkReportTitle } from '../../../core/utils/work-report-title';
+import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
 
 @Component({
   selector: 'app-admin-role-operations',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent, FilePreviewComponent],
+  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent, FilePreviewComponent, RouterLink],
   templateUrl: './role-operations.component.html',
   styleUrls: ['./role-operations.component.scss']
 })
 export class RoleOperationsComponent implements OnInit, OnDestroy {
 
+  readonly canonicalWorkReportTitle = canonicalWorkReportTitle;
+
   activeSection: 'internship' | 'team' = 'internship';
   internshipStats: any = {};
-  logbooks: any[] = [];
-  workReportColumns: any[] = [];
-  logbookPageSizeOptions = [10, 25, 50, 100];
-  logbookPageSize = 25;
-  logbookCurrentPage = 1;
   certificatePageSizeOptions = [10, 25, 50, 100];
   certificatePageSize = 25;
   certificateCurrentPage = 1;
@@ -53,7 +54,6 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   endDate = this.startDate;
   start = '';
   end = '';
-  selectedLogbookStatus = '';
   internSearch = '';
   selectedInternId = '';
   certificateStatus = '';
@@ -68,7 +68,6 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   uploadingDocumentKey: string | null = null;
   errorMessage = '';
   openExportMenu: string | null = null;
-  selectedLogbookDetail: any = null;
   private readonly api = 'http://localhost:8080/api/v1';
   private disconnectRealtime?: () => void;
   private statisticsRefreshHandle?: ReturnType<typeof setTimeout>;
@@ -93,31 +92,28 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     return endDateStr <= todayStr;
   }
 
-  viewLogbookDetail(item: any): void { this.selectedLogbookDetail = item; }
-  closeLogbookDetail(): void { this.selectedLogbookDetail = null; }
-  logbookStatusClass(item: any): string {
-    const status = String(item?.status_logbook || item?.StatusLogbook || item?.status_sesuai || item?.StatusSesuai || 'draft').trim().toLowerCase();
-    return status === 'approved'
-      ? 'status-success'
-      : status === 'submitted'
-        ? 'status-warning'
-        : status === 'rejected'
-          ? 'status-danger'
-          : 'status-pending';
+  reportStatusClass(row: any): string {
+    const status = normalizeWorkReportContract(row).status;
+    return status === 'approved' ? 'status-success' : status === 'rejected' ? 'status-danger' : status === 'no_report' ? 'status-neutral' : status === 'submitted' ? 'status-warning' : 'status-pending';
   }
-  logbookStatusLabel(item: any): string {
-    const status = String(item?.status_logbook || item?.StatusLogbook || item?.status_sesuai || item?.StatusSesuai || 'draft').trim().toLowerCase();
-    return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Draft';
+
+  reportStatusLabel(row: any): string {
+    const status = normalizeWorkReportContract(row).status;
+    return status === 'approved' ? 'Disetujui' : status === 'rejected' ? 'Ditolak' : status === 'draft' ? 'Draft' : status === 'no_report' ? WORK_REPORT_NO_REPORT_LABEL : 'Diajukan';
   }
-  private isDraftForAdmin(item: any): boolean {
-    const logbookStatus = String(item?.status_logbook || item?.StatusLogbook || '').trim().toLowerCase();
-    const reportStatus = String(item?.status_laporan || item?.StatusLaporan || '').trim().toLowerCase();
-    return logbookStatus === 'draft' || reportStatus === 'draft';
+
+  private isDraftReport(row: any): boolean {
+    return normalizeWorkReportContract(row).filling_status === 'draft';
   }
-  ngOnInit(): void { this.loadWorkReportColumns(); this.loadInternship(); this.disconnectRealtime = this.notificationService.connectRealtime(eventName => { if (['new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.scheduleRealtimeTeamRefresh(); }); }
+
+  private blurActiveControl(): void {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) activeElement.blur();
+  }
+
+  ngOnInit(): void { this.loadInternship(); this.disconnectRealtime = this.notificationService.connectRealtime(eventName => { if (['new_checkin', 'new_checkout', 'new_work_report', 'work_report_status_updated', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.scheduleRealtimeTeamRefresh(); }); }
   ngOnDestroy(): void { this.destroyed = true; if (this.statisticsRefreshHandle) clearTimeout(this.statisticsRefreshHandle); this.disconnectRealtime?.(); }
   private scheduleRealtimeTeamRefresh(): void { if (this.destroyed || this.activeSection !== 'team' || this.statisticsRefreshHandle) return; this.statisticsRefreshHandle = setTimeout(() => { this.statisticsRefreshHandle = undefined; if (!this.destroyed && this.activeSection === 'team') this.loadTeam(true); }, 250); }
-  private loadWorkReportColumns(): void { this.http.get<any[]>(`${this.api}/work-reports/columns`, { headers: this.headers() }).subscribe({ next: columns => this.workReportColumns = (columns || []).filter(column => column.aktif !== false), error: () => this.workReportColumns = [] }); }
 
   selectSection(section: 'internship' | 'team'): void {
     this.activeSection = section;
@@ -127,8 +123,8 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
 
   loadInternship(): void {
     const headers = this.headers();
-    this.http.get<any>(`${this.api}/admin/internship/dashboard`, { headers }).subscribe({ next: data => this.internshipStats = data, error: e => this.fail(e) });
-    this.loadLogbooks();
+    this.http.get<any>(`${this.api}/admin/internship/dashboard`, { headers }).subscribe({ next: data => this.internshipStats = { ...data, // `logbook_pending` is a compatibility alias only.
+      work_reports_pending: Number(data?.work_reports_pending ?? data?.logbook_pending) || 0 }, error: e => this.fail(e) });
     this.certificateCurrentPage = 1;
     let certificateParams = new HttpParams();
     if (this.certificateStatus) certificateParams = certificateParams.set('status', this.certificateStatus);
@@ -142,127 +138,6 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
       error: e => this.fail(e)
     });
   }
-
-  loadLogbooks(): void {
-    this.logbookCurrentPage = 1;
-    let params = new HttpParams();
-    if (this.selectedLogbookStatus) params = params.set('status', this.selectedLogbookStatus);
-    if (this.start) params = params.set('start_date', this.start);
-    if (this.end) params = params.set('end_date', this.end);
-    if (this.internSearch) params = params.set('search', this.internSearch);
-    if (this.selectedInternId) params = params.set('user_id', this.selectedInternId);
-    this.http.get<any[]>(`${this.api}/admin/internship/logbooks`, { params, headers: this.headers() }).subscribe({
-      next: data => {
-        // Do not render or export a Draft even if an older backend responds
-        // without the Admin-side status filter.
-        this.logbooks = (data || []).filter((row: any) => !this.isDraftForAdmin(row));
-        this.ensureValidLogbookPage();
-        for (const row of this.logbooks) {
-          const id = row.id || row.ID;
-          if (id) {
-            this.notes[id] = row.review_notes || row.ReviewNotes || '';
-          }
-        }
-      },
-      error: e => this.fail(e)
-    });
-  }
-
-  reviewLogbook(id: number, status: 'approved' | 'rejected' | 'submitted'): void {
-    this.errorMessage = 'Admin tidak memiliki akses untuk mereview logbook magang.';
-  }
-
-  onLogbookPageSizeChange(): void {
-    this.logbookCurrentPage = 1;
-    this.ensureValidLogbookPage();
-  }
-
-  goToLogbookPage(page: number | string): void {
-    if (typeof page !== 'number') return;
-    this.changeLogbookPage(page);
-  }
-
-  previousLogbookPage(): void {
-    if (this.logbookCurrentPage > 1) {
-      this.changeLogbookPage(this.logbookCurrentPage - 1);
-    }
-  }
-
-  nextLogbookPage(): void {
-    if (this.logbookCurrentPage < this.logbookTotalPages()) {
-      this.changeLogbookPage(this.logbookCurrentPage + 1);
-    }
-  }
-
-  logbookTotalPages(): number {
-    return Math.max(1, Math.ceil(this.logbooks.length / this.logbookPageSize));
-  }
-
-  logbookPageNumbers(): Array<number | string> {
-    const total = this.logbookTotalPages();
-    const current = this.logbookCurrentPage;
-
-    if (total <= 7) {
-      return Array.from({ length: total }, (_, i) => i + 1);
-    }
-
-    if (current <= 3) {
-      return [1, 2, 3, 4, '...', total];
-    }
-
-    if (current >= total - 2) {
-      return [1, '...', total - 3, total - 2, total - 1, total];
-    }
-
-    const pages: Array<number | string> = [1];
-    const start = Math.max(2, current - 1);
-    const end = Math.min(total - 1, current + 1);
-
-    if (start > 2) pages.push('...');
-    for (let page = start; page <= end; page++) {
-      pages.push(page);
-    }
-    if (end < total - 1) pages.push('...');
-    pages.push(total);
-
-    return pages;
-  }
-
-  get logbookPaginationStartIndex(): number {
-    return this.logbooks.length === 0 ? 0 : (this.logbookCurrentPage - 1) * this.logbookPageSize;
-  }
-
-  get logbookPaginationEndIndex(): number {
-    return Math.min(this.logbookPaginationStartIndex + this.logbookPageSize, this.logbooks.length);
-  }
-
-  get displayedLogbooks(): any[] {
-    return this.logbooks.slice(this.logbookPaginationStartIndex, this.logbookPaginationEndIndex);
-  }
-
-  private ensureValidLogbookPage(): void {
-    if (this.logbookCurrentPage > this.logbookTotalPages()) {
-      this.logbookCurrentPage = this.logbookTotalPages();
-    }
-  }
-
-  private changeLogbookPage(page: number): void {
-    const target = Math.min(Math.max(page, 1), this.logbookTotalPages());
-    if (target === this.logbookCurrentPage) return;
-
-    this.blurActiveControl();
-    this.logbookCurrentPage = target;
-    this.keepLogbookPaginationVisible();
-  }
-
-  private blurActiveControl(): void {
-    const activeElement = document.activeElement;
-    if (activeElement instanceof HTMLElement) {
-      activeElement.blur();
-    }
-  }
-
-  private keepLogbookPaginationVisible(): void {}
 
   onCertificatePageSizeChange(): void {
     this.certificateCurrentPage = 1;
@@ -414,33 +289,14 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   exportRows(filename: string, headers: string[], rows: any[][]): void {
     this.reportExport.downloadCsv(filename, headers, rows);
   }
-   private logbookExportHeaders(): string[] { return ['No', 'Hari/Tanggal', 'Nama Peserta', 'Divisi', 'Jabatan', 'Tugas', 'Judul', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Screenshot/Bukti Pengisian', 'Status Logbook', 'Status Waktu Pengisian', 'Catatan Review Pembimbing/Manager', 'Alasan Penolakan', ...this.workReportColumns.map(column => column.nama_kolom)]; }
-   private logbookExportRows(): any[][] { return this.logbooks.map((row, index) => [index + 1, row.tanggal || row.Tanggal || row.CreatedAt || '-', row.Employee?.User?.Nama || row.User?.Nama || '-', row.Employee?.Division?.NamaDivisi || '-', row.Employee?.Position?.NamaJabatan || '-', row.tugas || row.Tugas || '-', row.judul || row.Judul || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.realisasi_kegiatan || row.RealisasiKegiatan || '-', row.kendala || row.Kendala || '-', row.rencana_minggu_depan || row.RencanaMingguDepan || '-', row.link_artikel || row.LinkArtikel || '-', row.catatan_tambahan || row.CatatanTambahan || '-', this.attachmentLabel(row), this.logbookStatusLabel(row), row.is_late_submission || row.IsLateSubmission ? 'Terlambat' : 'Tepat waktu', row.review_notes || row.ReviewNotes || '-', this.logbookRejectionReason(row), ...this.workReportColumns.map(column => this.customFieldValue(row, column.nama_kolom))]); }
-  private attachmentLabel(row: any): string { const attachments = row.attachments || row.Attachments || []; return attachments.length ? attachments.map((item: any) => item.file_url || item.FileURL || item.file_name || item.FileName).join(' | ') : '-'; }
-  customFieldValue(row: any, key: string): string { const raw = row.custom_fields || row.CustomFields; if (!raw) return '-'; try { const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; return parsed?.[key] ?? '-'; } catch { return '-'; } }
-  exportLogbooks(): void { this.openExportMenu = null; this.exportRows('logbook-magang.csv', this.logbookExportHeaders(), this.logbookExportRows()); }
   private attendanceExportHeaders = ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'];
   private attendanceExportRows(): any[][] { return this.attendanceRows.map(row => [row.nama, row.tanggal, row.checkout_missing ? 'Belum Check-out' : row.status, row.jam_masuk || '-', row.jam_pulang || '-']); }
   exportAttendance(): void { this.openExportMenu = null; this.reportExport.downloadCsv('absensi-tim.csv', this.attendanceExportHeaders, this.attendanceExportRows()); }
-  private reportExportHeaders = ['Tanggal', 'Anggota', 'Tugas', 'Kegiatan', 'Status'];
-  private reportExportRows(): any[][] { return this.teamReports.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', row.tugas || row.Tugas || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', row.status_logbook || row.StatusLogbook || row.status_sesuai || row.StatusSesuai || '-']); }
-  exportReports(): void { this.openExportMenu = null; this.reportExport.downloadCsv('laporan-tim.csv', this.reportExportHeaders, this.reportExportRows()); }
+  private reportExportHeaders = ['Tanggal', 'Anggota', 'Judul Tugas', 'Kegiatan', 'Status'];
+  private reportExportRows(reports = this.teamReports): any[][] { return reports.map(row => [row.tanggal || row.Tanggal, row.Employee?.User?.Nama || '-', canonicalWorkReportTitle(row) || '-', row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-', this.reportStatusLabel(row)]); }
+  exportReports(): void { this.openExportMenu = null; this.withAllExportReports(rows => this.reportExport.downloadCsv('laporan-tim.csv', this.reportExportHeaders, this.reportExportRows(rows))); }
   exportCertificates(): void { this.openExportMenu = null; this.exportRows('sertifikat-magang.csv', ['Peserta', 'Institusi', 'Tanggal Selesai', 'Status', 'File'], this.certificates.map(row => [row.nama, row.institution_name, row.internship_end_date, row.uploaded ? 'Sudah diupload' : (!this.isInternshipEnded(row) ? 'Masa magang berlangsung' : 'Belum diupload'), row.file_name])); }
   toggleExportDropdown(menu: string): void { this.openExportMenu = this.openExportMenu === menu ? null : menu; }
-  exportLogbooksExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('logbook-magang.xls', this.logbookExportHeaders(), this.logbookExportRows()); }
-  exportLogbooksJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('logbook-magang.json', this.logbooks); }
-  exportLogbooksPDF(): void {
-    this.openExportMenu = null;
-    const headers = this.logbookExportHeaders();
-    const rows = this.logbookExportRows();
-    void this.reportExport.downloadPdf(`laporan-logbook-magang-${this.exportDate()}.pdf`, 'Laporan Logbook Magang', this.exportDate(), headers, rows);
-  }
-  printLogbooks(): void {
-    this.openExportMenu = null;
-    const headers = this.logbookExportHeaders();
-    const rows = this.logbookExportRows();
-    this.reportExport.printReport('Laporan Logbook Magang', this.exportDate(), headers, rows);
-  }
   exportAttendanceExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('absensi-tim.xls', this.attendanceExportHeaders, this.attendanceExportRows()); }
   exportAttendanceJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('absensi-tim.json', this.attendanceRows); }
   exportAttendancePDF(): void {
@@ -448,13 +304,35 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     void this.reportExport.downloadPdf(`laporan-absensi-tim-${this.exportDate()}.pdf`, 'Laporan Absensi Tim', this.exportDate(), this.attendanceExportHeaders, this.attendanceExportRows());
   }
   printAttendance(): void { this.openExportMenu = null; this.reportExport.printReport('Absensi Tim', this.attendanceDateRange(), this.attendanceExportHeaders, this.attendanceExportRows()); }
-  exportReportsExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('laporan-tim.xls', this.reportExportHeaders, this.reportExportRows()); }
-  exportReportsJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('laporan-tim.json', this.teamReports); }
+  exportReportsExcel(): void { this.openExportMenu = null; this.withAllExportReports(rows => this.reportExport.downloadExcel('laporan-tim.xls', this.reportExportHeaders, this.reportExportRows(rows))); }
+  exportReportsJSON(): void { this.openExportMenu = null; this.withAllExportReports(rows => this.reportExport.downloadJson('laporan-tim.json', rows.map(row => canonicalWorkReportExportRecord(row, { judul_tugas: canonicalWorkReportTitle(row), status_pengisian: this.reportStatusLabel(row), status_validasi: this.reportStatusLabel(row) })))); }
   exportReportsPDF(): void {
     this.openExportMenu = null;
-    void this.reportExport.downloadPdf(`laporan-tim-magang-manejer-${this.exportDate()}.pdf`, 'Laporan Tim MAGANG & MANAJER', this.reportDateRange(), this.reportExportHeaders, this.reportExportRows());
+    this.withAllExportReports(rows => void this.reportExport.downloadPdf(`laporan-tim-magang-manejer-${this.exportDate()}.pdf`, 'Laporan Tim MAGANG & MANAJER', this.reportDateRange(), this.reportExportHeaders, this.reportExportRows(rows)));
   }
-  printReports(): void { this.openExportMenu = null; this.reportExport.printReport('Laporan Tim / Logbook', this.reportDateRange(), this.reportExportHeaders, this.reportExportRows()); }
+  printReports(): void { this.openExportMenu = null; this.withAllExportReports(rows => this.reportExport.printReport('Laporan Tim', this.reportDateRange(), this.reportExportHeaders, this.reportExportRows(rows))); }
+  private withAllExportReports(done: (reports: any[]) => void): void {
+    let params = new HttpParams();
+    if (this.start) params = params.set('start_date', this.start);
+    if (this.end) params = params.set('end_date', this.end);
+    if (this.reportSearch) params = params.set('search', this.reportSearch);
+    this.http.get<any>(`${this.api}/manager/team/reports`, { params, headers: this.headers() }).subscribe({
+      next: response => {
+        const rows = (Array.isArray(response) ? response : (response?.data || []))
+          .filter((row: any) => !this.isDraftReport(row));
+        const seen = new Set<string>();
+        done(rows.filter((row: any) => {
+          const id = row?.ID ?? row?.id;
+          if (id === undefined || id === null || id === '') return true;
+          const key = String(id);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }));
+      },
+      error: () => done(this.teamReports.filter(row => !this.isDraftReport(row)))
+    });
+  }
   exportCertificatesExcel(): void { this.openExportMenu = null; this.reportExport.downloadExcel('sertifikat-magang.xls', ['Peserta', 'Institusi', 'Tanggal Selesai', 'Status', 'File'], this.certificates.map(row => [row.nama, row.institution_name, row.internship_end_date, row.uploaded ? 'Sudah diupload' : (!this.isInternshipEnded(row) ? 'Masa magang berlangsung' : 'Belum diupload'), row.file_name])); }
   exportCertificatesJSON(): void { this.openExportMenu = null; this.reportExport.downloadJson('sertifikat-magang.json', this.certificates); }
   exportCertificatesPDF(): void {
@@ -654,7 +532,7 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
       if (requestId !== this.reportsRequestSequence) return;
       this.reportsServerPaginated = !Array.isArray(response) && Array.isArray(response?.data);
       this.teamReports = (this.reportsServerPaginated ? response.data : (response || []))
-        .filter((row: any) => !this.isDraftForAdmin(row));
+        .filter((row: any) => !this.isDraftReport(row));
       this.reportsTotalItems = this.reportsServerPaginated ? Number(response.total || this.teamReports.length) : this.teamReports.length;
       this.reportsPage = Number(response?.page || requestedPage);
     }, error: e => {
@@ -686,7 +564,7 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     });
   }
   get displayedTeamReports(): any[] {
-    const visibleReports = this.teamReports.filter(row => !this.isDraftForAdmin(row));
+    const visibleReports = this.teamReports.filter(row => !this.isDraftReport(row));
     return this.reportsServerPaginated ? visibleReports : visibleReports.slice((this.reportsPage - 1) * this.reportsPageSize, this.reportsPage * this.reportsPageSize);
   }
   attendancePageChanged(page: number): void { this.loadAttendance(page, true); }
@@ -751,9 +629,6 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     return notes.join(' | ') || '-';
   }
   rejectionReason(request: any): string { return request?.RejectionReason || request?.rejection_reason || '-'; }
-   logbookRejectionReason(row: any): string { return String(row?.status_logbook || row?.StatusLogbook || '').trim().toLowerCase() === 'rejected' ? (row?.rejection_reason || row?.RejectionReason || '-') : '-'; }
-   isRejectedLogbook(row: any): boolean { return String(row?.status_logbook || row?.StatusLogbook || '').trim().toLowerCase() === 'rejected'; }
-
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }
   private fail(error: any): void {
     const serverError = typeof error?.error === 'string' ? error.error : error?.error?.error;

@@ -7,8 +7,8 @@ Dokumen ini menjelaskan alur bisnis utama aplikasi Absensi Golan Digital Kreatif
 | Role      | Fokus utama                                                        | Scope data                         |
 | --------- | ------------------------------------------------------------------ | ---------------------------------- |
 | Karyawan  | Absensi, riwayat, izin/cuti, laporan kerja, profil                 | Data pribadi                       |
-| Magang    | Absensi, izin, laporan kerja, logbook, mentor, sertifikat          | Data pribadi dan logbook sendiri   |
-| Manajer   | Dashboard, absensi tim, laporan tim, approval izin, review logbook | Tim yang menjadi tanggung jawabnya |
+| Magang    | Absensi, izin, laporan kerja, mentor, sertifikat                   | Data pribadi dan laporan sendiri   |
+| Manajer   | Dashboard, absensi tim, laporan tim, approval izin, review laporan kerja | Tim yang menjadi tanggung jawabnya |
 | HRD/Admin | Master data, konfigurasi, approval, rekap, audit, operasional      | Seluruh organisasi                 |
 
 Semua endpoint yang memuat atau mengubah data wajib memvalidasi JWT dan role/scope di backend. Route guard frontend hanya menjadi lapisan tambahan.
@@ -121,7 +121,7 @@ Aturan penting:
 - User tidak boleh check-in maupun check-out selama periode izin/cuti aktif.
 - Perubahan status mengirim notifikasi kepada pemohon dan reviewer terkait.
 
-## 5. Alur laporan kerja dan logbook
+## 5. Alur laporan kerja
 
 ### 5.1 Laporan kerja karyawan/manajer
 
@@ -133,13 +133,13 @@ Aturan penting:
 
 Status minimal: `DRAFT`, `SUBMITTED`, `APPROVED`, `REJECTED`, dan `TIDAK_MEMBUAT_LAPORAN`.
 
-### 5.2 Logbook magang
+### 5.2 Laporan kerja peserta magang
 
-1. Peserta magang membuat atau mengedit logbook miliknya.
-2. Logbook dapat disimpan sebagai draft atau dikirim untuk review.
-3. Manajer pembimbing melakukan review dan mengisi catatan review.
+1. Peserta magang membuat atau mengedit laporan kerja miliknya.
+2. Laporan kerja dapat disimpan sebagai draft atau dikirim untuk review.
+3. Manajer pembimbing melakukan review laporan kerja dan mengisi catatan review.
 4. Manajer mengubah hasil menjadi disetujui atau ditolak.
-5. HRD memantau hasil review dan kepatuhan, tetapi bukan reviewer utama logbook.
+5. HRD memantau hasil review dan kepatuhan melalui Manajemen Laporan Kerja.
 6. Setelah periode magang berakhir, HRD dapat mengunggah atau menerbitkan sertifikat sesuai kewenangan.
 
 ## 6. Alur operasional HRD/Admin
@@ -162,16 +162,19 @@ Setelah login, user diarahkan ke dashboard berdasarkan role:
 | Role     | Halaman utama          | Data utama                                                       |
 | -------- | ---------------------- | ---------------------------------------------------------------- |
 | Karyawan | `/employee/dashboard`  | Status absensi pribadi, statistik, laporan, agenda, notifikasi   |
-| Magang   | `/intern/dashboard`    | Absensi, logbook, mentor, progres, sertifikat, agenda            |
-| Manajer  | `/manager/dashboard`   | Status tim, laporan tim, approval, review logbook, agenda        |
+| Magang   | `/intern/dashboard`    | Absensi, laporan kerja, mentor, progres, sertifikat, agenda     |
+| Manajer  | `/manager/dashboard`   | Status tim, laporan tim, approval, review laporan kerja, agenda  |
 | HRD      | `/admin/dashboard`     | Rekap organisasi, belum absen, izin/cuti, laporan, tindak lanjut |
 | Manajer | `/manager/dashboard` | Ringkasan tim, absensi, statistik, dan laporan     |
 
-Perubahan absensi, izin/cuti, laporan, logbook, dan notifikasi dikirim sebagai event realtime jika koneksi tersedia. Client melakukan refresh agregat yang relevan berdasarkan scope user. Jika WebSocket gagal, gunakan polling terkontrol dengan reconnect exponential backoff dan hentikan polling setelah koneksi kembali.
+Perubahan absensi, izin/cuti, laporan kerja, dan notifikasi dikirim sebagai event realtime jika koneksi tersedia. Client melakukan refresh agregat yang relevan berdasarkan scope user. Jika WebSocket gagal, gunakan polling terkontrol dengan reconnect exponential backoff dan hentikan polling setelah koneksi kembali.
 
 Event utama:
 
-`attendance.created`, `attendance.updated`, `leave.created`, `leave.updated`, `work_report.created`, `work_report.updated`, `logbook.created`, `logbook.updated`, `notification.created`, dan `dashboard.refresh`.
+`attendance.created`, `attendance.updated`, `leave.created`, `leave.updated`, `work_report.created`, `work_report.updated`, `notification.created`, dan `dashboard.refresh`.
+
+Event `logbook.*` hanya dipertahankan pada adapter kompatibilitas untuk data historis;
+event tersebut bukan bagian dari alur laporan kerja aktif.
 
 Event harus difilter backend berdasarkan user, role, divisi, dan team. Data dari team lain tidak boleh dikirim ke browser.
 
@@ -211,7 +214,7 @@ Tanggal bisnis harus mengikuti timezone **Asia/Jakarta (WIB)** dan konfigurasi s
 - Karyawan yang belum check-in muncul sebagai alpha setelah proses penutupan hari.
 - Izin/cuti approved tetap muncul pada setiap tanggal periodenya dan mengurangi kuota jika berlaku.
 - Laporan kerja yang terlewat menjadi `Tidak membuat laporan`.
-- Logbook direview manajer dan hasilnya terlihat oleh HRD.
+- Laporan kerja peserta magang dapat direview manajer dan hasilnya terlihat oleh HRD.
 - Event realtime hanya diterima user yang memiliki scope.
 - Export rekap mengikuti filter tanggal/role/divisi dan tidak membocorkan data lintas scope.
 - Tampilan tabel tetap dapat digunakan pada mobile dan mode gelap.

@@ -25,14 +25,9 @@
               name="tanggal"
               required /></label
           ><label class="field-group"
-            ><span>Tugas <em>*</em></span
-            ><input class="golan-input" [(ngModel)]="form.tugas" name="tugas" required
-          /></label>
-        </div>
-        <label class="field-group"
-          ><span>Judul Golan Nusantara/Golan Education <em *ngIf="requiresReportTitle()">*</em></span
-          ><input class="golan-input" [(ngModel)]="form.judul" name="judul"
-             [required]="requiresReportTitle()"
+            ><span>Judul Tugas <em>*</em></span
+            ><input class="golan-input" [(ngModel)]="form.judul_tugas" name="judul_tugas" required aria-label="Judul Tugas"
+             placeholder="Masukkan judul tugas yang dikerjakan"
         /></label>
         <div *ngIf="deadlineInfo" class="alert alert-info">
           Shift: <strong>{{ deadlineInfo.shift_name }}</strong> · selesai
@@ -247,8 +242,7 @@
               <th>No</th>
               <th>Hari/Tanggal</th>
               <th>Divisi</th>
-              <th>Tugas</th>
-              <th>Judul Golan Nusantara/Golan Education</th>
+              <th>Judul Tugas</th>
               <th>Deskripsi Kegiatan</th>
               <th>Realisasi Kegiatan (Capaian Target, %)</th>
               <th>Kendala (Jika Ada)</th>
@@ -274,8 +268,7 @@
                 }}
               </td>
               <td data-label="Divisi">{{ divisionName || '-' }}</td>
-              <td data-label="Tugas">{{ item.tugas || item.Tugas || "-" }}</td>
-              <td data-label="Judul">{{ item.judul || item.Judul || '-' }}</td>
+              <td data-label="Judul Tugas">{{ canonicalWorkReportTitle(item) || '-' }}</td>
               <td data-label="Deskripsi Kegiatan">
                 {{
                   item.deskripsi_kegiatan ||
@@ -404,14 +397,13 @@
         </span>
       </div>
       <div class="detail-row">
-        <strong>Tugas / Topik:</strong>
+        <strong>Judul Tugas:</strong>
         <p>
           {{
-            selectedLogbookDetail.tugas || selectedLogbookDetail.Tugas || "-"
+            canonicalWorkReportTitle(selectedLogbookDetail) || "-"
           }}
         </p>
       </div>
-      <div class="detail-row"><strong>Judul Golan Nusantara/Golan Education:</strong><p>{{ selectedLogbookDetail.judul || selectedLogbookDetail.Judul || '-' }}</p></div>
       <div class="detail-row">
         <strong>Deskripsi Kegiatan:</strong>
         <p style="white-space: pre-wrap">

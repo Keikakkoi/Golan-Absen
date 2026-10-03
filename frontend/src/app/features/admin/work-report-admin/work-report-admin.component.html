@@ -36,7 +36,7 @@
               <label>Pencarian Kata Kunci</label>
               <div class="input-wrapper">
                  <i class="fas fa-search icon-left"></i>
-                 <input type="text" class="filter-input has-icon" [(ngModel)]="filterOptions.search" (ngModelChange)="onFilterChange()" placeholder="Cari nama karyawan, judul laporan, atau tugas...">
+                 <input type="text" class="filter-input has-icon" [(ngModel)]="filterOptions.search" (ngModelChange)="onFilterChange()" placeholder="Cari nama karyawan atau Judul Tugas..." aria-label="Cari nama karyawan atau Judul Tugas">
               </div>
             </div>
             
@@ -44,7 +44,7 @@
               <label>Dari Tanggal</label>
               <div class="input-wrapper">
                 <i class="fas fa-calendar icon-left"></i>
-                <input type="date" class="filter-input has-icon" [(ngModel)]="filterOptions.startDate" (ngModelChange)="onFilterChange()">
+                 <input type="date" name="work_report_start_date" class="filter-input has-icon" [(ngModel)]="filterOptions.startDate" (ngModelChange)="onFilterChange()">
               </div>
             </div>
 
@@ -52,7 +52,7 @@
               <label>Sampai Tanggal</label>
               <div class="input-wrapper">
                 <i class="fas fa-calendar icon-left"></i>
-                <input type="date" class="filter-input has-icon" [(ngModel)]="filterOptions.endDate" (ngModelChange)="onFilterChange()">
+                 <input type="date" name="work_report_end_date" class="filter-input has-icon" [(ngModel)]="filterOptions.endDate" (ngModelChange)="onFilterChange()">
               </div>
             </div>
 
@@ -63,6 +63,39 @@
                 <select class="filter-input" [(ngModel)]="filterOptions.division" (ngModelChange)="onFilterChange()">
                   <option value="">Semua Divisi</option>
                   <option *ngFor="let div of uniqueDivisions" [value]="div">{{ div }}</option>
+                </select>
+                <i class="fas fa-chevron-down icon-right"></i>
+              </div>
+            </div>
+
+            <div class="filter-group">
+              <label>User Pelapor</label>
+              <div class="input-wrapper select-wrapper">
+                <select class="filter-input" [(ngModel)]="filterOptions.user_id" (ngModelChange)="onFilterChange()">
+                  <option value="">Semua User</option>
+                  <option *ngFor="let reporter of uniqueReporters" [value]="reporter.id">{{ reporter.name }}</option>
+                </select>
+                <i class="fas fa-chevron-down icon-right"></i>
+              </div>
+            </div>
+
+            <div class="filter-group">
+              <label>Role Pelapor</label>
+              <div class="input-wrapper select-wrapper">
+                <select class="filter-input" [(ngModel)]="filterOptions.role" (ngModelChange)="onFilterChange()">
+                  <option value="">Semua Role</option>
+                  <option *ngFor="let reporterRole of reporterRoles" [value]="reporterRole">{{ reporterRole }}</option>
+                </select>
+                <i class="fas fa-chevron-down icon-right"></i>
+              </div>
+            </div>
+
+            <div class="filter-group">
+              <label>Tim</label>
+              <div class="input-wrapper select-wrapper">
+                <select class="filter-input" [(ngModel)]="filterOptions.team" (ngModelChange)="onFilterChange()">
+                  <option value="">Semua Tim</option>
+                  <option *ngFor="let team of uniqueTeams" [value]="team">{{ team }}</option>
                 </select>
                 <i class="fas fa-chevron-down icon-right"></i>
               </div>
@@ -82,7 +115,7 @@
             <div class="filter-group">
               <label>Jabatan</label>
               <div class="input-wrapper select-wrapper">
-                <select class="filter-input" [(ngModel)]="filterOptions.role" (ngModelChange)="onFilterChange()">
+                <select class="filter-input" [(ngModel)]="filterOptions.position" (ngModelChange)="onFilterChange()">
                   <option value="">Semua Jabatan</option>
                   <option *ngFor="let role of uniqueRoles" [value]="role">{{ role }}</option>
                 </select>
@@ -99,7 +132,7 @@
                   <option value="Sesuai">Sesuai</option>
                   <option value="Tidak Sesuai">Tidak Sesuai</option>
                   <option value="Sudah membuat laporan">Sudah membuat laporan</option>
-                  <option value="Belum membuat laporan">Belum membuat laporan</option>
+                  <option value="Belum Membuat Laporan Kerja">Belum Membuat Laporan Kerja</option>
                   <option value="Laporan belum lengkap">Laporan belum lengkap</option>
                   <option value="Submitted">Submitted</option>
                 </select>
@@ -137,10 +170,11 @@
                 <th class="th-yellow">No</th>
                 <th class="th-teal">Hari/Tanggal</th>
                 <th class="th-yellow">Nama</th>
+                <th class="th-yellow">Role Pelapor</th>
+                <th class="th-yellow">Tim</th>
                 <th class="th-yellow">Divisi</th>
                 <th class="th-yellow">Jabatan</th>
-                <th class="th-yellow">Tugas</th>
-                <th class="th-yellow">Judul Golan Nusantara/ Golan Education</th>
+                <th class="th-yellow">Judul Tugas</th>
                 <th class="th-yellow">Deskripsi Kegiatan</th>
                 <th class="th-yellow">Realisasi Kegiatan. ( Capaian Target. % )</th>
                 <th class="th-yellow">Kendala (Jika Ada)</th>
@@ -153,8 +187,8 @@
                 <th class="th-yellow">Status Waktu</th>
                 <th class="th-yellow">Status Validasi</th>
                 <th class="th-yellow">Catatan Manager/Admin</th>
-                <th class="th-yellow">Alasan Penolakan</th>
-                <th style="width: 150px; text-align: center;" class="th-yellow">Aksi & Validasi</th>
+                <th class="th-yellow rejection-reason-header">Alasan Penolakan</th>
+                <th class="th-yellow action-validation-header">Aksi & Validasi</th>
               </tr>
             </thead>
             <tbody>
@@ -162,10 +196,11 @@
                 <td>{{ paginationStartIndex + i + 1 }}</td>
                 <td>{{ r.tanggal | date:'EEEE, dd MMM yyyy' }}</td>
                 <td>{{ getEmployeeName(r) }}</td>
+                <td>{{ reporterRole(r) }}</td>
+                <td>{{ reporterTeam(r) }}</td>
                 <td>{{ r.Employee?.Division?.NamaDivisi || '-' }}</td>
                 <td>{{ r.Employee?.Position?.NamaJabatan || '-' }}</td>
-                <td class="text-cell task-cell" [title]="r.tugas || '-'">{{ r.tugas || '-' }}</td>
-                <td class="text-cell title-cell" [title]="r.judul || '-'">{{ r.judul || '-' }}</td>
+                <td class="text-cell title-cell" [title]="canonicalWorkReportTitle(r) || '-'">{{ canonicalWorkReportTitle(r) || '-' }}</td>
                 <td class="text-cell description-cell" [title]="r.deskripsi_kegiatan || '-'">{{ r.deskripsi_kegiatan || '-' }}</td>
                 <td>{{ r.realisasi_kegiatan || '-' }}</td>
                 <td class="text-cell" [title]="r.kendala || '-'">{{ r.kendala || '-' }}</td>
@@ -219,21 +254,26 @@
                   </div>
                 </td>
                 <td data-label="Alasan Penolakan" class="text-cell rejection-reason-cell" [title]="rejectionReason(r)">{{ rejectionReason(r) }}</td>
-                <td>
-                  <span class="print-only" style="display: none;">{{ validationLabel(r) }}</span>
-                  <select class="form-control no-print" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 500; border-radius: 4px;" 
-                          [value]="r.status_sesuai || ''"
-                          (change)="updateValidation(r, $event)"
-                          [disabled]="isNoReport(r) || reportFillingStatus(r) === 'draft'"
-                          [ngStyle]="{
-                            'background-color': r.status_sesuai === 'Sesuai' ? '#d4edda' : (r.status_sesuai === 'Tidak Sesuai' ? '#f8d7da' : (isNoReport(r) ? '#f8d7da' : '')),
-                            'color': r.status_sesuai === 'Sesuai' ? '#155724' : (r.status_sesuai === 'Tidak Sesuai' ? '#721c24' : (isNoReport(r) ? '#721c24' : '#333')),
-                            'border-color': r.status_sesuai === 'Sesuai' ? '#c3e6cb' : (r.status_sesuai === 'Tidak Sesuai' ? '#f5c6cb' : (isNoReport(r) ? '#f5c6cb' : '#ccc'))
-                          }">
-                    <option value="">-- Pilih --</option>
-                    <option value="Sesuai">Validasi laporan</option>
-                    <option value="Tidak Sesuai">Tolak laporan</option>
-                  </select>
+                <td class="action-validation-cell">
+                  <div class="action-validation-controls">
+                    <button type="button" class="icon-button view btn-view-detail" (click)="viewReportDetail(r)" title="Lihat detail laporan kerja" aria-label="Lihat detail laporan kerja">
+                      <i class="fas fa-eye" aria-hidden="true"></i>
+                    </button>
+                    <span class="print-only" style="display: none;">{{ validationLabel(r) }}</span>
+                    <select class="form-control no-print" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 500; border-radius: 4px;"
+                            [value]="r.status_sesuai || ''"
+                            (change)="updateValidation(r, $event)"
+                            [disabled]="isNoReport(r) || reportFillingStatus(r) === 'draft'"
+                            [ngStyle]="{
+                              'background-color': r.status_sesuai === 'Sesuai' ? '#d4edda' : (r.status_sesuai === 'Tidak Sesuai' ? '#f8d7da' : (isNoReport(r) ? '#f8d7da' : '')),
+                              'color': r.status_sesuai === 'Sesuai' ? '#155724' : (r.status_sesuai === 'Tidak Sesuai' ? '#721c24' : (isNoReport(r) ? '#721c24' : '#333')),
+                              'border-color': r.status_sesuai === 'Sesuai' ? '#c3e6cb' : (r.status_sesuai === 'Tidak Sesuai' ? '#f5c6cb' : (isNoReport(r) ? '#f5c6cb' : '#ccc'))
+                            }">
+                      <option value="">-- Pilih --</option>
+                      <option value="Sesuai">Validasi laporan</option>
+                      <option value="Tidak Sesuai">Tolak laporan</option>
+                    </select>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -247,6 +287,48 @@
           <app-pagination [totalItems]="reports.length" [currentPage]="currentPage" [pageSize]="pageSize" [loading]="isLoading" (pageChange)="goToPage($event)" (pageSizeChange)="pageSize = $event; onPageSizeChange()"></app-pagination>
         </div>
     </div>
+
+    <ng-container *ngIf="selectedReportDetail as detail">
+      <div class="admin-report-detail-backdrop" (click)="closeReportDetail()" role="presentation">
+        <section class="admin-report-detail-modal golan-card" role="dialog" aria-modal="true" aria-labelledby="admin-report-detail-title" (click)="$event.stopPropagation()">
+          <div class="admin-report-detail-header">
+            <div>
+              <span class="eyebrow">Detail Laporan Kerja</span>
+              <h3 id="admin-report-detail-title">{{ getEmployeeName(detail) }} · {{ detail.tanggal | date:'EEEE, dd MMM yyyy' }}</h3>
+            </div>
+            <button type="button" class="icon-button" (click)="closeReportDetail()" title="Tutup detail laporan kerja" aria-label="Tutup detail laporan kerja">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div class="admin-report-detail-meta">
+            <span>Role: {{ reporterRole(detail) }}</span>
+            <span>Tim: {{ reporterTeam(detail) }}</span>
+            <span>Divisi: {{ detail.Employee?.Division?.NamaDivisi || '-' }}</span>
+            <span class="status-pill" [ngClass]="reportFillingClass(detail)">{{ reportFillingLabel(detail) }}</span>
+            <span class="status-pill" [ngClass]="validationStatusClass(detail)">{{ validationLabel(detail) }}</span>
+          </div>
+          <dl class="admin-report-detail-grid">
+            <div><dt>Judul Tugas</dt><dd>{{ canonicalWorkReportTitle(detail) || '-' }}</dd></div>
+            <div class="wide"><dt>Deskripsi Kegiatan</dt><dd>{{ detail.deskripsi_kegiatan || '-' }}</dd></div>
+            <div><dt>Realisasi Kegiatan</dt><dd>{{ detail.realisasi_kegiatan || '-' }}</dd></div>
+            <div><dt>Status Waktu</dt><dd>{{ statusTimeLabel(detail) }}</dd></div>
+            <div><dt>Kendala</dt><dd>{{ detail.kendala || '-' }}</dd></div>
+            <div><dt>Rencana Minggu Depan</dt><dd>{{ detail.rencana_minggu_depan || '-' }}</dd></div>
+            <div><dt>Link Artikel</dt><dd><a *ngIf="detail.link_artikel" [href]="detail.link_artikel" target="_blank" rel="noopener">Buka tautan</a><span *ngIf="!detail.link_artikel">-</span></dd></div>
+            <div class="wide"><dt>Catatan Manager/Admin</dt><dd class="preformatted">{{ managerAdminNote(detail) }}</dd></div>
+            <div class="wide"><dt>Alasan Penolakan</dt><dd class="preformatted">{{ rejectionReason(detail) }}</dd></div>
+          </dl>
+          <div class="admin-report-detail-attachments" *ngIf="detail.attachments?.length">
+            <h4>Lampiran</h4>
+            <div class="report-thumb-grid">
+              <a *ngFor="let attachment of detail.attachments" [href]="attachment.file_url" target="_blank" rel="noopener">
+                <img [src]="attachment.file_url" [alt]="attachment.file_name || 'Lampiran laporan kerja'">
+              </a>
+            </div>
+          </div>
+        </section>
+      </div>
+    </ng-container>
 
   </div>
 </div>

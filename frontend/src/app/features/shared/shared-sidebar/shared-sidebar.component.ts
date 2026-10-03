@@ -36,6 +36,7 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   isMenuLoading = true;
   isNotificationsLoading = true;
   private themeSubscription = new Subscription();
+  private notificationSubscription?: Subscription;
   private disconnectRealtime?: () => void;
   private userSubscription?: Subscription;
 
@@ -48,6 +49,9 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
 
   ngOnInit(): void {
     this.userRole = this.authService.getRole();
+    this.notificationSubscription = this.notificationService.notifications$.subscribe(notifications => {
+      this.notifications = notifications;
+    });
     this.userSubscription = this.authService.currentUser$.pipe(
       filter(user => !!user),
       take(1)
@@ -83,6 +87,8 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
     this.themeSubscription.unsubscribe();
     this.disconnectRealtime?.();
     this.disconnectRealtime = undefined;
+    this.notificationSubscription?.unsubscribe();
+    this.notificationSubscription = undefined;
     this.userSubscription?.unsubscribe();
     this.userSubscription = undefined;
   }

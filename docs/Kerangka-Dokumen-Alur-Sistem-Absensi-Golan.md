@@ -1,5 +1,9 @@
 # DOKUMEN ALUR SISTEM INFORMASI ABSENSI GOLAN
 
+> **Catatan terminologi Stage 7:** alur aktif peserta magang menggunakan **Laporan Kerja**.
+> Penyebutan `logbook` di dokumen kerangka ini dipertahankan hanya sebagai istilah historis
+> atau kompatibilitas, bukan sebagai menu, endpoint, atau workflow aktif.
+
 Dokumen ini disusun sebagai acuan awal dalam pengembangan, pengujian, dan pemeliharaan Sistem Informasi Absensi Golan Digital Kreatif. Dokumen menjelaskan konsep alur sistem dan kerangka dokumen yang akan digunakan untuk mendokumentasikan aturan bisnis, proses pengguna, hak akses, status data, serta kebutuhan teknis sistem.
 
 Dokumen ini mencakup bagian **1. Konsep Alur Sistem**, **2. Kerangka Alur Sistem**, dan **3. Dokumen Alur Sistem Informasi Absensi Golan**. Bagian 3 disusun dengan mengadaptasi struktur dokumen referensi SIMKEU dan menyesuaikan isinya dengan fitur serta implementasi project Absensi Golan.
@@ -24,7 +28,7 @@ Dokumen alur sistem digunakan untuk:
 | No. | Kategori | Pertanyaan yang Dijawab | Isi Utama pada Sistem Absensi Golan |
 |---:|---|---|---|
 | 1 | Bisnis | Mengapa sistem dibuat dan siapa yang menggunakannya? | Latar belakang absensi digital, tujuan, ruang lingkup, jenis pengguna, hak akses, dan aturan operasional kehadiran. |
-| 2 | Produk | Fitur apa yang tersedia dan bagaimana pengguna menjalankan prosesnya? | Struktur navigasi, fitur per role, alur login, check-in/check-out, izin/cuti, laporan kerja, logbook magang, approval, dan status data. |
+| 2 | Produk | Fitur apa yang tersedia dan bagaimana pengguna menjalankan prosesnya? | Struktur navigasi, fitur per role, alur login, check-in/check-out, izin/cuti, laporan kerja peserta magang, approval, dan status data. |
 | 3 | Teknis | Bagaimana sistem dibangun dan dijaga keamanannya? | Arsitektur Angular dan Go, API, database, autentikasi JWT, validasi GPS/selfie, audit log, penyimpanan berkas, notifikasi realtime, dan operasional sistem. |
 
 ### 1.3 Prinsip Dasar Sistem
@@ -244,7 +248,7 @@ Diagram yang perlu disiapkan pada bagian 3:
 - alur check-out;
 - alur pengajuan dan approval izin/cuti;
 - alur pembuatan, pengumpulan, dan review laporan kerja;
-- alur pengisian dan review logbook magang;
+- alur pengisian dan review laporan kerja peserta magang;
 - alur manajemen karyawan oleh HRD/Admin;
 - alur rekap dan ekspor laporan;
 - alur notifikasi realtime.
@@ -259,7 +263,7 @@ Entitas yang perlu didokumentasikan:
 - record absensi;
 - pengajuan izin/cuti;
 - laporan kerja;
-- logbook magang;
+- laporan kerja peserta magang;
 - dokumen dan sertifikat magang;
 - tipe kerja;
 - data karyawan;
@@ -536,7 +540,7 @@ flowchart LR
 | Absensi | Belum absen / Hadir / Terlambat / Izin / Cuti / Alpha / Belum check-out | Check-in valid membuat hadir/terlambat; approval izin/cuti mengisi status periode; proses penutupan dapat menandai alpha. |
 | Pengajuan izin/cuti | Draft / Pending / Approved / Rejected / Cancelled | Pengajuan valid disimpan pending; reviewer menyetujui, menolak, atau membatalkan sesuai kewenangan. |
 | Laporan kerja | Draft / Submitted / Approved / Rejected | Pengguna menyimpan atau mengirim laporan; manajer melakukan review dan dapat mengembalikannya. |
-| Logbook magang | Draft / Submitted / Approved / Rejected | Peserta mengisi dan mengirim logbook; mentor/manajer melakukan review. |
+| Laporan kerja magang | Draft / Submitted / Approved / Rejected | Peserta mengisi dan mengirim laporan kerja; mentor/manajer melakukan review. |
 | Tipe kerja | Aktif / Nonaktif | HRD/Admin membuat, mengubah, mengaktifkan, atau menonaktifkan tipe kerja; data absensi lama tetap menggunakan tipe yang tersimpan. |
 | Notifikasi | Belum dibaca / Dibaca | Sistem membuat notifikasi dari event; pengguna membuka notifikasi untuk mengubah statusnya menjadi dibaca. |
 | Data karyawan | Aktif / Nonaktif | HRD/Admin memperbarui status akun atau kepegawaian sesuai aturan; data historis tidak dihapus secara sembarangan. |
@@ -565,6 +569,6 @@ Setiap kegagalan penting dicatat dalam log aplikasi atau audit sesuai jenis akti
 
 ### 3.13 Hasil Akhir Sistem
 
-Alur sistem menghasilkan data kehadiran yang terhubung dengan tipe kerja, lokasi, foto selfie, jadwal, izin/cuti, laporan kerja, dashboard, rekap, dan audit log. Data peserta magang juga terhubung dengan logbook, mentor, statistik, dokumen, dan sertifikat sesuai kewenangannya.
+Alur sistem menghasilkan data kehadiran yang terhubung dengan tipe kerja, lokasi, foto selfie, jadwal, izin/cuti, laporan kerja, dashboard, rekap, dan audit log. Data peserta magang juga terhubung dengan laporan kerja, mentor, statistik, dokumen, dan sertifikat sesuai kewenangannya.
 
 Setiap proses dibatasi oleh autentikasi, role dan scope, validasi backend, status entitas, jadwal, geofence, kuota, dan aturan approval. Dengan demikian, Sistem Informasi Absensi Golan menyediakan satu sumber data terpusat untuk kebutuhan operasional karyawan, pemantauan manajer, administrasi HRD, pelaporan, dan pengujian penerimaan pengguna.

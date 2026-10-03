@@ -1,6 +1,7 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 
 @Component({
@@ -13,16 +14,23 @@ import { AppNotification, NotificationService } from '../../../core/services/not
 export class NotificationBellComponent implements OnInit, OnDestroy {
   notifications: AppNotification[] = [];
   showNotifications = false;
+  private notificationsSubscription?: Subscription;
   private disconnectRealtime?: () => void;
 
   constructor(private notificationService: NotificationService) {}
 
   ngOnInit(): void {
+    this.notificationsSubscription = this.notificationService.notifications$.subscribe(notifications => {
+      this.notifications = notifications;
+    });
     this.loadNotifications();
     this.disconnectRealtime = this.notificationService.connectRealtime(() => this.loadNotifications(true));
   }
 
-  ngOnDestroy(): void { this.disconnectRealtime?.(); }
+  ngOnDestroy(): void {
+    this.disconnectRealtime?.();
+    this.notificationsSubscription?.unsubscribe();
+  }
 
   loadNotifications(background = false): void {
     this.notificationService.getAll(background).subscribe({

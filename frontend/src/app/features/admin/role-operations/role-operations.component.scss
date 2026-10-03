@@ -98,8 +98,7 @@
   vertical-align: middle;
 }
 
-/* Compact status pills for the Absensi Tim table, matching the reference
-   treatment used by the attendance/logbook tables. */
+/* Compact status pills for the Absensi Tim table. */
 .role-operations-page section.team-filter-panel:first-of-type td:nth-child(3) {
   white-space: nowrap !important;
 }
@@ -151,8 +150,7 @@
   color: #d97706;
 }
 
-/* Apply the same compact sizing to the status column in Laporan Tim /
-   Logbook, which is the team-filter panel immediately after Absensi Tim. */
+/* Apply the same compact sizing to the status column in Laporan Tim. */
 .role-operations-page section.team-filter-panel + section.team-filter-panel td:last-child {
   white-space: nowrap !important;
 }
@@ -179,57 +177,6 @@
 .role-operations-page .golan-table td:first-child,
 .role-operations-page .golan-table th:first-child {
   white-space: nowrap !important;
-}
-
-.role-operations-logbook-table {
-  min-width: 1180px !important;
-}
-
-.role-operations-logbook-table .col-date { width: 112px; }
-.role-operations-logbook-table .col-participant { width: 190px; }
-.role-operations-logbook-table .col-task { width: 170px; }
-.role-operations-logbook-table .col-activity { width: 240px; }
-.role-operations-logbook-table .col-screenshot { width: 116px; }
-.role-operations-logbook-table .col-status { width: 132px; }
-.role-operations-logbook-table .col-filling { width: 112px; }
-.role-operations-logbook-table .col-review { width: 210px; }
-.role-operations-logbook-table .col-actions { width: 132px; }
-
-.role-operations-logbook-table .logbook-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-}
-
-.role-operations-logbook-table td:nth-child(2) > div:first-child,
-.role-operations-logbook-table td:nth-child(3),
-.role-operations-logbook-table td:nth-child(4),
-.role-operations-logbook-table td:nth-child(8) {
-  overflow-wrap: break-word !important;
-  word-break: normal !important;
-}
-
-.role-operations-logbook-table .status-pill {
-  white-space: nowrap;
-}
-
-.role-operations-logbook-table .report-thumb {
-  display: inline-block;
-  width: 68px;
-  height: 48px;
-  margin: 2px;
-  vertical-align: middle;
-}
-
-.role-operations-logbook-table .report-thumb img {
-  display: block;
-  width: 68px !important;
-  height: 48px !important;
-  max-width: 100% !important;
-  object-fit: cover;
-  border: 1px solid var(--mint-2);
-  border-radius: 6px;
 }
 
 .role-operations-page .pagination-bar {
@@ -600,20 +547,6 @@
   .role-operations-page .golan-table th {
     font-size: 0.6875rem;
     letter-spacing: 0.03em;
-  }
-
-  .role-operations-logbook-table .col-participant { width: 200px; }
-  .role-operations-logbook-table .col-task { width: 180px; }
-  .role-operations-logbook-table .col-activity { width: 250px; }
-
-  .role-operations-logbook-table .report-thumb {
-    width: 56px;
-    height: 42px;
-  }
-
-  .role-operations-logbook-table .report-thumb img {
-    width: 56px !important;
-    height: 42px !important;
   }
 
   .role-operations-page .pagination-bar {
@@ -1441,14 +1374,11 @@
 }
 
 /* Match the typography used by the Admin "Approval Izin & Cuti" table. */
-.role-operations-page .role-operations-logbook-table,
 .role-operations-page .role-operations-certificate-table {
   font-size: 0.875rem;
   line-height: 1.4;
 }
 
-.role-operations-page .role-operations-logbook-table th,
-.role-operations-page .role-operations-logbook-table td,
 .role-operations-page .role-operations-certificate-table th,
 .role-operations-page .role-operations-certificate-table td {
   padding: 0.75rem 0.8rem;
@@ -1457,13 +1387,11 @@
   vertical-align: top;
 }
 
-.role-operations-page .role-operations-logbook-table th,
 .role-operations-page .role-operations-certificate-table th {
   font-size: 0.75rem !important;
   line-height: 1.25 !important;
 }
 
-.role-operations-page .role-operations-logbook-table .status-pill,
 .role-operations-page .role-operations-certificate-table .status-pill {
   font-size: 0.8125rem !important;
   line-height: 1.4 !important;
@@ -1505,7 +1433,6 @@
   color: #dc2626;
 }
 
-.role-operations-page .role-operations-logbook-table .btn-small,
 .role-operations-page .role-operations-certificate-table .btn-small,
 .role-operations-page .role-operations-certificate-table .file-picker-button {
   font-size: 0.8rem !important;
@@ -1523,7 +1450,7 @@
 }
 
 .role-operations-page .role-operations-certificate-table .role-badge,
-.role-operations-page .role-operations-logbook-table .role-badge {
+.role-operations-page .role-operations-certificate-table .role-badge {
   font-size: 0.72rem !important;
   line-height: 1.3 !important;
 }
@@ -1547,15 +1474,11 @@
 }
 
 /* Center every table value consistently. */
-.role-operations-page .role-operations-logbook-table th,
-.role-operations-page .role-operations-logbook-table td,
 .role-operations-page .role-operations-certificate-table th,
 .role-operations-page .role-operations-certificate-table td {
   text-align: center;
 }
 
-.role-operations-page .role-operations-logbook-table td > div,
-.role-operations-page .role-operations-logbook-table .report-thumb,
 .role-operations-page .role-operations-certificate-table .certificate-participant-content,
 .role-operations-page .role-operations-certificate-table .document-file-list,
 .role-operations-page .role-operations-certificate-table .document-actions {
@@ -1573,17 +1496,6 @@
 .role-operations-page .role-operations-certificate-table .document-action-row strong,
 .role-operations-page .role-operations-certificate-table .document-action-row .muted-file {
   text-align: center;
-}
-
-/* Keep the Logbook Magang table content aligned to the left. */
-.role-operations-page .role-operations-logbook-table th,
-.role-operations-page .role-operations-logbook-table td {
-  text-align: left;
-}
-
-.role-operations-page .role-operations-logbook-table td > div {
-  align-items: flex-start;
-  justify-content: flex-start;
 }
 
 .role-operations-page .role-operations-certificate-table .cert-link {
@@ -1738,57 +1650,6 @@
   white-space: nowrap;
 }
 
-.logbook-verification-panel .report-toolbar > .report-filter-action {
-  /* Match the standard team filter button size. */
-  width: 111px;
-  min-width: 111px;
-  height: 34px;
-  min-height: 34px;
-  box-sizing: border-box;
-}
-
-.logbook-verification-panel .export-icon {
-  flex: 0 0 16px;
-  width: 16px;
-  margin-right: 0.5rem;
-  text-align: center;
-}
-
-/* Keep the Logbook Magang export icons aligned with the dark-mode reference. */
-.logbook-verification-panel .export-icon-csv,
-.logbook-verification-panel .export-icon-print {
-  color: #17a2b8 !important;
-}
-
-.logbook-verification-panel .export-icon-excel {
-  color: #28a745 !important;
-}
-
-.logbook-verification-panel .export-icon-json {
-  color: #ffc107 !important;
-}
-
-.logbook-verification-panel .export-icon-pdf {
-  color: #dc3545 !important;
-}
-
-body.dark-theme .logbook-verification-panel .export-icon-csv,
-body.dark-theme .logbook-verification-panel .export-icon-print {
-  color: #17a2b8 !important;
-}
-
-body.dark-theme .logbook-verification-panel .export-icon-excel {
-  color: #28a745 !important;
-}
-
-body.dark-theme .logbook-verification-panel .export-icon-json {
-  color: #ffc107 !important;
-}
-
-body.dark-theme .logbook-verification-panel .export-icon-pdf {
-  color: #dc3545 !important;
-}
-
 .certificate-filter-panel .report-toolbar > .report-filter-action {
   /* Match the standard filter button size used across the team pages. */
   width: 111px;
@@ -1841,11 +1702,6 @@ body.dark-theme .certificate-filter-panel .export-icon-pdf {
 }
 
 @media (max-width: 768px) {
-  .logbook-verification-panel .report-toolbar > .report-filter-action {
-    width: 100%;
-    min-width: 0;
-  }
-
   .certificate-filter-panel .report-toolbar > .report-filter-action {
     width: 100%;
     min-width: 0;
@@ -1949,7 +1805,7 @@ body.dark-theme .team-filter-panel .report-export-dropdown .dropdown-item-print 
   }
 }
 
-/* Logbook status badges in Laporan Tim / Logbook. Keep these rules last so
+/* Laporan Tim status badges. Keep these rules last so
    they win over the generic status-pill and table-specific overrides. */
 .role-operations-page .team-report-status {
   display: inline-flex !important;
@@ -2063,135 +1919,4 @@ body.dark-theme .team-filter-panel .report-export-dropdown .dropdown-item-print 
   }
 }
 
-/* Logbook Magang badges use the same visual language as Laporan Tim. */
-.role-operations-page .role-operations-logbook-table .logbook-status,
-.role-operations-page .role-operations-logbook-table .status-pill.status-warning,
-.role-operations-page .role-operations-logbook-table .filling-status,
-.role-operations-page .detail-row .filling-status {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  min-height: 32px;
-  box-sizing: border-box;
-  gap: 0;
-  padding: 7px 12px !important;
-  border: 1px solid transparent !important;
-  border-radius: 999px;
-  font-size: 0.8125rem !important;
-  font-weight: 600;
-  line-height: 1.25 !important;
-  white-space: nowrap !important;
-}
-
-.role-operations-page .role-operations-logbook-table .logbook-status::before,
-.role-operations-page .role-operations-logbook-table .status-pill.status-warning::before,
-.role-operations-page .role-operations-logbook-table .filling-status::before,
-.role-operations-page .detail-row .filling-status::before {
-  display: inline-block !important;
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  margin-right: 9px;
-  border-radius: 50%;
-  background: currentColor;
-  content: '';
-}
-
-.role-operations-page .role-operations-logbook-table .logbook-status.status-success,
-.role-operations-page .role-operations-logbook-table .filling-status.status-success {
-  background: #dcfce7 !important;
-  color: #166534 !important;
-  border-color: #bbf7d0 !important;
-}
-
-.role-operations-page .role-operations-logbook-table .logbook-status.status-warning,
-.role-operations-page .role-operations-logbook-table .filling-status.status-warning {
-  background: #fef3c7 !important;
-  color: #b7791f !important;
-  border-color: #fde68a !important;
-}
-
-.role-operations-page .role-operations-logbook-table .filling-status.status-danger,
-.role-operations-page .detail-row .filling-status.status-danger {
-  background: #fee2e2 !important;
-  color: #b42318 !important;
-  border-color: #fecaca !important;
-}
-
-.role-operations-page .role-operations-logbook-table .logbook-status.status-danger {
-  background: #fee2e2 !important;
-  color: #b42318 !important;
-  border-color: #fecaca !important;
-}
-
-.role-operations-page .role-operations-logbook-table .logbook-status.status-pending {
-  background: #f1f5f9 !important;
-  color: #475569 !important;
-  border-color: #e2e8f0 !important;
-}
-
-/* Late-submission status already has its own warning icon; do not add a dot. */
-.role-operations-page .role-operations-logbook-table .filling-status.status-danger::before,
-.role-operations-page .detail-row .filling-status.status-danger::before {
-  display: none !important;
-}
 .status-summary,.status-chip{display:inline-flex;align-items:center;gap:7px}.status-summary>span,.status-chip{display:inline-flex;align-items:center;gap:8px}.status-dot{display:inline-block;width:8px;height:8px;flex:0 0 8px;border-radius:50%;vertical-align:middle}.status-present{background:#16A34A}.status-late{background:#f59e0b}.status-leave{background:#8b5cf6}.status-alpha{background:#dc2626}.status-pending{background:#64748b}.status-neutral{background:#94a3b8}.statistics-manager-members .status-summary{display:flex;flex-wrap:wrap;gap:6px 10px;line-height:1.5}.statistics-manager-members .status-summary>span{white-space:nowrap}.bar-line .present{background:#16A34A}.bar-line .leave{background:#8b5cf6}.bar-line .alpha{background:#dc2626}.bar-line .pending{background:#64748b}.statistics-show-more{display:block;margin:12px auto 4px}
-.logbook-verification-panel { min-width: 0; overflow: visible; }
-.logbook-verification-panel > .panel-heading { min-width: 0; flex-wrap: wrap; }
-.logbook-verification-panel .report-toolbar { flex: 1 1 920px; min-width: 0; justify-content: flex-end; align-items: flex-end; }
-.logbook-verification-panel .report-toolbar > label { flex: 1 1 150px; min-width: 135px; }
-
-/* Keep the wide report schema readable. The wrapper scrolls; the table does
-   not compress its columns into the card width. */
-.role-operations-page .role-operations-logbook-table {
-  width: max-content !important;
-  min-width: 3000px !important;
-  max-width: none !important;
-  table-layout: auto !important;
-  white-space: normal !important;
-}
-.role-operations-page .role-operations-logbook-table th,
-.role-operations-page .role-operations-logbook-table td {
-  box-sizing: border-box;
-  min-width: 0;
-  padding: 10px 12px;
-  white-space: normal !important;
-  overflow-wrap: anywhere !important;
-  word-break: break-word !important;
-  line-height: 1.35 !important;
-  vertical-align: middle !important;
-}
-.role-operations-page .role-operations-logbook-table th {
-  min-height: 52px;
-  height: auto;
-  overflow-wrap: anywhere !important;
-  word-break: break-word !important;
-  line-height: 1.2 !important;
-  white-space: normal !important;
-}
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(1) { width: 52px; min-width: 52px; text-align: center; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(2) { width: 130px; min-width: 130px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(3) { width: 200px; min-width: 200px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(4) { width: 140px; min-width: 140px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(5) { width: 150px; min-width: 150px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(6) { width: 210px; min-width: 210px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(7) { width: 260px; min-width: 260px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(8) { width: 310px; min-width: 310px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(9) { width: 190px; min-width: 190px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):is(:nth-child(10),:nth-child(11)) { width: 220px; min-width: 220px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(12) { width: 180px; min-width: 180px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(13) { width: 220px; min-width: 220px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):is(:nth-child(14),:nth-child(15)) { width: 150px; min-width: 150px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(16) { width: 165px; min-width: 165px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(17) { width: 260px; min-width: 260px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):nth-child(n+18):not(:last-child) { width: 160px; min-width: 160px; }
-.role-operations-page .role-operations-logbook-table :is(th,td):last-child { width: 112px !important; min-width: 112px; max-width: 112px; }
-
-@media (max-width: 1100px) {
-  .logbook-verification-panel > .panel-heading { align-items: stretch; flex-direction: column; }
-  .logbook-verification-panel .report-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; align-items: end; justify-content: stretch; }
-  .logbook-verification-panel .report-toolbar > label,
-  .logbook-verification-panel .report-toolbar > .report-filter-action,
-  .logbook-verification-panel .report-toolbar > .export-dropdown { width: 100%; min-width: 0; box-sizing: border-box; }
-}
-@media (max-width: 520px) { .logbook-verification-panel .report-toolbar { grid-template-columns: minmax(0, 1fr); } }

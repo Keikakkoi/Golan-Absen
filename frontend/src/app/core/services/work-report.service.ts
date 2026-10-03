@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
+import { WorkReportContract } from '../utils/work-report-contract';
 
 export interface WorkReportColumn {
   ID: number;
@@ -13,13 +14,16 @@ export interface WorkReportColumn {
   urutan: number;
 }
 
-export interface WorkReport {
+export interface WorkReport extends Partial<WorkReportContract> {
   ID?: number;
   EmployeeID?: number;
   Employee?: any; // For nested employee data
   tanggal: string;
-  tugas: string;
-  judul: string;
+  judul_tugas?: string;
+  JudulTugas?: string;
+  // Raw legacy fields are optional in the canonical API, but remain readable.
+  tugas?: string;
+  judul?: string;
   deskripsi_kegiatan: string;
   realisasi_kegiatan: string;
   kendala: string;
@@ -28,6 +32,8 @@ export interface WorkReport {
   catatan_tambahan: string;
   status_sesuai?: string;
   status_laporan?: 'draft' | 'submitted' | string;
+  // Compatibility fields for historical `legacy_logbook` rows. Canonical
+  // reports use status_laporan/status_sesuai and never write these fields.
   status_logbook?: 'draft' | 'submitted' | 'approved' | 'rejected' | string;
   StatusLogbook?: 'draft' | 'submitted' | 'approved' | 'rejected' | string;
   review_notes?: string;
@@ -60,7 +66,7 @@ export interface ComplianceResult {
   tanggal: string;
   has_report: boolean;
   is_attended?: boolean;
-  status?: 'missing' | 'draft' | 'submitted' | 'validated' | 'needs_improvement' | string;
+  status?: 'no_report' | 'missing' | 'draft' | 'submitted' | 'validated' | 'needs_improvement' | string;
 }
 
 export interface WorkReportDeadline {

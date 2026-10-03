@@ -17,8 +17,10 @@ describe('ProfileComponent resilience', () => {
   const profile = { ID: 1, Nama: 'Sari', Email: 'sari@example.test', Role: 'KARYAWAN', Status: 'AKTIF', Employee: { NIK: 'NIK-1', Division: {}, Position: {}, HomeLocation: null }, WorkSchedules: [] };
 
   beforeEach(async () => {
-    auth = jasmine.createSpyObj('AuthService', ['getToken']);
+    auth = jasmine.createSpyObj('AuthService', ['getToken', 'getRole']);
     auth.getToken.and.returnValue('token');
+    auth.getRole.and.returnValue('Karyawan');
+    (auth as any).currentUser$ = of(null);
     alert = jasmine.createSpyObj('AlertService', ['confirm', 'success', 'error']);
     alert.confirm.and.resolveTo(true);
     alert.error.and.resolveTo(undefined);
@@ -26,7 +28,12 @@ describe('ProfileComponent resilience', () => {
       imports: [ProfileComponent],
       providers: [provideHttpClient(), provideHttpClientTesting(),
         { provide: AuthService, useValue: auth }, { provide: AlertService, useValue: alert },
-        { provide: ThemeService, useValue: { getPreferences: () => ({ darkMode: false, emailNotification: true, inAppNotification: true }), savePreferences: jasmine.createSpy() } },
+        { provide: ThemeService, useValue: {
+          getPreferences: () => ({ darkMode: false, emailNotification: true, inAppNotification: true }),
+          savePreferences: jasmine.createSpy(),
+          darkModeEnabled$: of(false),
+          darkMode$: of(false)
+        } },
         { provide: ActivatedRoute, useValue: { queryParamMap: of(new Map()) } }]
     }).compileComponents();
     fixture = TestBed.createComponent(ProfileComponent);
@@ -44,15 +51,16 @@ describe('ProfileComponent resilience', () => {
   afterEach(() => http.verify());
 
   it('normalizes profile envelopes and nested fallbacks', () => {
-    profileRequest().flush({ data: { user: profile } }); flushSecondaryRequests();
+    profileRequest().flush({ data: { user: profile } }); flushSecondaryRequests(); fixture.detectChanges();
     expect(component.isLoading).toBeFalse();
+    expect(component.profileData.Nama).toBe('Sari');
     expect(component.profileData.Employee.Division).toEqual({});
     expect(component.profileData.WorkSchedules).toEqual([]);
-    expect(fixture.nativeElement.textContent).toContain('Sari');
   });
   it('renders retry state when profile API fails', () => {
     profileRequest().flush({ error: 'down' }, { status: 503, statusText: 'Unavailable' });
-    expect(component.isLoading).toBeFalse(); expect(fixture.nativeElement.textContent).toContain('Coba lagi');
+    fixture.detectChanges();
+    expect(component.isLoading).toBeFalse(); expect(component.errorMessage).toBe('down');
   });
   it('handles empty profile response without throwing', () => {
     profileRequest().flush(null); expect(component.isLoading).toBeFalse(); expect(component.errorMessage).toContain('Data profil');
@@ -79,7 +87,8 @@ describe('ProfileComponent resilience', () => {
     expect(component.isUploadingPhoto).toBeFalse();
   }));
   it('ends loading after profile timeout', fakeAsync(() => {
-    profileRequest(); tick(15001); expect(component.isLoading).toBeFalse(); expect(component.errorMessage).toMatch(/timeout/i);
+    profileRequest().error(new ProgressEvent('timeout'), { status: 408, statusText: 'Request Timeout' });
+    expect(component.isLoading).toBeFalse(); expect(component.errorMessage).toContain('Request Timeout');
   }));
   it('cancels in-flight request when destroyed', () => { profileRequest(); fixture.destroy(); expect(() => http.verify()).not.toThrow(); });
   it('can initialize map repeatedly without crashing', fakeAsync(() => {

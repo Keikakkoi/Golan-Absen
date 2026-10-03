@@ -45,15 +45,15 @@
         <div class="compliance-grid">
           <div *ngFor="let c of complianceData" class="compliance-day" [ngClass]="{
               'has-report': getDayStatus(c) === 'reported',
-              'missing-report': getDayStatus(c) === 'missing',
+              'no-report': getDayStatus(c) === 'no_report',
               'draft-report': getDayStatus(c) === 'draft',
               'needs-review': getDayStatus(c) === 'needs-review',
               'unattended': getDayStatus(c) === 'future'
             }">
             <div class="date">{{ getDayNumber(c.tanggal) }}</div>
             <div class="indicator"></div>
-            <div class="hover-info" *ngIf="getDayStatus(c) === 'missing'">
-              Belum lapor! <a (click)="openForm(c.tanggal)" style="color: white; text-decoration: underline; cursor: pointer;">Isi Sekarang</a>
+            <div class="hover-info" *ngIf="getDayStatus(c) === 'no_report'">
+              {{ 'Belum Membuat Laporan Kerja' }}
             </div>
           </div>
         </div>
@@ -81,8 +81,7 @@
                 <th class="th-yellow">No</th>
                 <th class="th-teal">Hari/Tanggal</th>
                 <th class="th-yellow">Divisi</th>
-                <th class="th-yellow">Tugas</th>
-                <th class="th-yellow">Judul Golan Nusantara/ Golan Education</th>
+                <th class="th-yellow">Judul Tugas</th>
                 <th class="th-yellow">Deskripsi Kegiatan</th>
                 <th class="th-yellow">Realisasi Kegiatan. ( Capaian Target. % )</th>
                 <th class="th-yellow">Kendala (Jika Ada)</th>
@@ -103,8 +102,7 @@
                 <td data-label="No">{{ ((currentPage - 1) * pageSize) + i + 1 }}</td>
                 <td data-label="Hari/Tanggal">{{ formatReportDate(r.tanggal) }}</td>
                 <td data-label="Divisi">{{ userDivisi }}</td>
-                <td data-label="Tugas" style="min-width: 250px; white-space: normal; line-height: 1.4;" [title]="r.tugas || '-'">{{ r.tugas || '-' }}</td>
-                <td data-label="Judul" style="min-width: 150px; white-space: normal; line-height: 1.4;" [title]="r.judul || '-'">{{ r.judul || '-' }}</td>
+                <td data-label="Judul Tugas" style="min-width: 300px; white-space: normal; line-height: 1.4;" [title]="canonicalWorkReportTitle(r) || '-'">{{ canonicalWorkReportTitle(r) || '-' }}</td>
                 <td data-label="Deskripsi Kegiatan" style="min-width: 350px; white-space: normal; line-height: 1.4;" [title]="r.deskripsi_kegiatan || '-'">{{ r.deskripsi_kegiatan || '-' }}</td>
                 <td data-label="Realisasi Kegiatan">{{ r.realisasi_kegiatan || '-' }}</td>
                 <td data-label="Kendala" style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.kendala || '-'">{{ r.kendala || '-' }}</td>
@@ -122,25 +120,28 @@
                 </td>
                 <td data-label="Catatan Tambahan" style="min-width: 200px; white-space: normal; line-height: 1.4;" [title]="r.catatan_tambahan || '-'">{{ r.catatan_tambahan || '-' }}</td>
                 <td data-label="Status Validasi">
-                  <span class="status-badge status-{{ r.status_sesuai === 'Sesuai' ? 'hadir' : (r.status_sesuai === 'Tidak Sesuai' || (r.status_sesuai || '').toLowerCase() === 'tidak membuat laporan kerja' ? 'alpha' : 'pending') }}">
-                    {{ r.status_sesuai || 'Menunggu' }}
+                  <span class="status-badge" [ngClass]="validationStatusClass(r)">
+                    {{ validationStatusLabel(r) }}
                   </span>
                 </td>
                 <td data-label="Catatan Review/Alasan Penolakan" class="text-cell report-review-note" [title]="reviewOrRejectionNote(r)">{{ reviewOrRejectionNote(r) }}</td>
                 <td *ngFor="let col of columns" [attr.data-label]="col.nama_kolom">{{ customFieldValue(r, col) }}</td>
                 <td data-label="Aksi" class="no-print" style="text-align: center;">
+                  <button type="button" class="icon-button view" style="margin-right: 0.25rem;" (click)="viewReportDetail(r)" title="Lihat detail laporan kerja" aria-label="Lihat detail laporan kerja">
+                    <i class="fas fa-eye" aria-hidden="true"></i>
+                  </button>
                   <button type="button" *ngIf="canModifyReport(r)" class="icon-button edit" style="margin-right: 0.25rem;" (click)="editReport(r)" title="Edit Laporan">
-                    <i class="fas fa-edit"></i>
+                    <i class="fas fa-edit" aria-hidden="true"></i>
                   </button>
                   <button type="button" *ngIf="canModifyReport(r)" class="icon-button delete" (click)="deleteReport(r, $event)" title="Hapus Laporan">
-                    <i class="fas fa-trash"></i>
+                    <i class="fas fa-trash" aria-hidden="true"></i>
                   </button>
                 </td>
               </tr>
             </tbody>
           </table>
             <div *ngIf="!isLoading && !isRefreshing && reports.length === 0" class="empty-state">
-            Belum ada laporan kerja yang dikirim.
+            Belum Membuat Laporan Kerja
           </div>
         </div>
         <app-pagination [totalItems]="totalReports" [currentPage]="currentPage" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions" [loading]="isLoading || isRefreshing" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
@@ -158,14 +159,9 @@
               <input type="date" class="form-control" formControlName="tanggal" (change)="onReportDateChange($any($event.target).value)">
             </div>
             <div class="form-group">
-              <label>Judul Golan Nusantara/Education <span *ngIf="requiresReportTitle()" class="text-danger">*</span></label>
-              <input type="text" class="form-control" formControlName="judul" placeholder="Judul..." [required]="requiresReportTitle()">
+              <label for="work-report-title-task">Judul Tugas <span class="text-danger">*</span></label>
+              <input id="work-report-title-task" type="text" class="form-control" formControlName="judul_tugas" placeholder="Masukkan judul tugas yang dikerjakan" aria-label="Judul Tugas" required>
             </div>
-          </div>
-
-          <div class="form-group">
-            <label>Tugas <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" formControlName="tugas" placeholder="Tugas yang dikerjakan...">
           </div>
 
           <div class="form-group">
@@ -250,6 +246,47 @@
             </button>
           </div>
         </form>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="selectedReportDetail as detail">
+      <div class="report-detail-backdrop" (click)="closeReportDetail()" role="presentation">
+        <section class="report-detail-modal golan-card" role="dialog" aria-modal="true" aria-labelledby="report-detail-title" (click)="$event.stopPropagation()">
+          <div class="report-detail-header">
+            <div>
+              <span class="eyebrow">Detail Laporan Kerja</span>
+              <h3 id="report-detail-title">{{ formatReportDate(detail.tanggal) }}</h3>
+            </div>
+            <button type="button" class="icon-button" (click)="closeReportDetail()" title="Tutup detail laporan kerja" aria-label="Tutup detail laporan kerja">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+
+          <div class="report-detail-statuses">
+            <span class="status-pill" [ngClass]="reportFillingClass(detail)">Status pengisian: {{ reportFillingLabel(detail) }}</span>
+            <span class="status-badge" [ngClass]="validationStatusClass(detail)">Status validasi: {{ validationStatusLabel(detail) }}</span>
+          </div>
+
+          <dl class="report-detail-grid">
+            <div><dt>Judul Tugas</dt><dd>{{ canonicalWorkReportTitle(detail) || '-' }}</dd></div>
+            <div class="wide"><dt>Deskripsi Kegiatan</dt><dd>{{ detail.deskripsi_kegiatan || '-' }}</dd></div>
+            <div><dt>Realisasi Kegiatan</dt><dd>{{ detail.realisasi_kegiatan || '-' }}</dd></div>
+            <div><dt>Link Artikel</dt><dd><a *ngIf="detail.link_artikel" [href]="detail.link_artikel" target="_blank" rel="noopener">Buka tautan</a><span *ngIf="!detail.link_artikel">-</span></dd></div>
+            <div><dt>Kendala</dt><dd>{{ detail.kendala || '-' }}</dd></div>
+            <div><dt>Rencana Minggu Depan</dt><dd>{{ detail.rencana_minggu_depan || '-' }}</dd></div>
+            <div class="wide"><dt>Catatan Tambahan</dt><dd>{{ detail.catatan_tambahan || '-' }}</dd></div>
+            <div class="wide"><dt>Catatan Review / Alasan Penolakan</dt><dd class="preformatted">{{ reviewOrRejectionNote(detail) }}</dd></div>
+          </dl>
+
+          <div class="report-detail-attachments" *ngIf="detail.attachments?.length">
+            <h4>Lampiran</h4>
+            <div class="screenshot-preview-grid">
+              <a *ngFor="let attachment of detail.attachments" [href]="attachment.file_url" target="_blank" rel="noopener">
+                <img [src]="attachment.file_url" [alt]="attachment.file_name || 'Lampiran laporan kerja'">
+              </a>
+            </div>
+          </div>
+        </section>
       </div>
     </ng-container>
 

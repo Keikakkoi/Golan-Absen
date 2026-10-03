@@ -185,7 +185,7 @@
     }
   }
 
-  &.missing-report {
+  &.no-report {
     border-color: rgba(239, 68, 68, 0.3);
     background: rgba(239, 68, 68, 0.05);
     .indicator {
@@ -486,6 +486,58 @@
 .existing-screenshot { position: relative; display: inline-flex; }
 .existing-screenshot-remove { position: absolute; z-index: 1; top: -8px; right: -8px; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #fff; color: #b42318; box-shadow: 0 1px 5px #0003; cursor: pointer; }
 .report-thumb { display: inline-block; margin: 2px; }
+
+.report-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, .62);
+}
+
+.report-detail-modal {
+  width: min(820px, 100%);
+  max-height: min(90vh, 760px);
+  overflow-y: auto;
+  margin: 0;
+  background: var(--card-bg, #fff);
+}
+
+.report-detail-header,
+.report-detail-statuses {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.report-detail-statuses {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+
+.report-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.report-detail-grid > div { min-width: 0; }
+.report-detail-grid .wide { grid-column: 1 / -1; }
+.report-detail-grid dt { color: var(--text-dark-lo); font-size: .8rem; margin-bottom: .25rem; }
+.report-detail-grid dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.report-detail-grid .preformatted { white-space: pre-wrap; }
+.report-detail-attachments { margin-top: 1.25rem; }
+
+@media (max-width: 640px) {
+  .report-detail-grid { grid-template-columns: 1fr; }
+  .report-detail-grid .wide { grid-column: auto; }
+}
 
 /* Keep the history header and body aligned after adding the review-note column. */
 .report-history-table th,

@@ -89,6 +89,25 @@ func ConnectDB(cfg *Config) {
 	// migrations separately. Existing NULL/blank values are historical
 	// submissions; only an explicit Draft remains hidden from Admin views.
 	for _, statement := range []string{
+		"ALTER TABLE work_reports ADD COLUMN IF NOT EXISTS judul_tugas VARCHAR(513)",
+		`UPDATE work_reports
+			 SET judul_tugas = CASE
+			   WHEN BTRIM(COALESCE(judul, '')) <> '' AND BTRIM(COALESCE(tugas, '')) <> '' THEN BTRIM(judul) || ' — ' || BTRIM(tugas)
+			   WHEN BTRIM(COALESCE(judul, '')) <> '' THEN BTRIM(judul)
+			   ELSE BTRIM(COALESCE(tugas, ''))
+			 END
+			 WHERE BTRIM(COALESCE(judul_tugas, '')) = ''`,
+		`UPDATE work_reports wr
+		 SET report_kind = 'legacy_logbook'
+		 FROM employees e JOIN users u ON u.id = e.user_id
+		 WHERE wr.employee_id = e.id
+		   AND (wr.report_kind IS NULL OR BTRIM(wr.report_kind) = '')
+		   AND u.role = 'MAGANG'
+		   AND LOWER(COALESCE(NULLIF(BTRIM(wr.status_logbook), ''), 'submitted')) IN ('draft', 'submitted', 'approved', 'rejected')`,
+		"UPDATE work_reports SET report_kind = 'work_report' WHERE report_kind IS NULL OR BTRIM(report_kind) = ''",
+		"ALTER TABLE work_reports ALTER COLUMN report_kind SET DEFAULT 'work_report'",
+		"ALTER TABLE work_reports ALTER COLUMN report_kind SET NOT NULL",
+		"CREATE INDEX IF NOT EXISTS idx_work_reports_report_kind ON work_reports(report_kind)",
 		"UPDATE work_reports SET status_laporan = 'submitted' WHERE status_laporan IS NULL OR BTRIM(status_laporan) = ''",
 		"UPDATE work_reports SET status_sesuai = 'Tidak Sesuai' WHERE LOWER(BTRIM(status_sesuai)) IN ('minta perbaikan', 'minta_perbaikan')",
 		"ALTER TABLE work_reports ALTER COLUMN status_laporan SET DEFAULT 'submitted'",

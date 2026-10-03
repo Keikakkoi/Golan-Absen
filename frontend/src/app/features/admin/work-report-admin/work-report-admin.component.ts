@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -10,12 +10,16 @@ import Swal from 'sweetalert2';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import {
   hasReportContent as resolveReportContent,
   hasRequiredReportFields as resolveRequiredReportFields,
   reportStatus as resolveReportStatus,
   requiresReportTitle as resolveRequiresReportTitle
 } from '../../../core/utils/report-completeness';
+import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
+import { canonicalWorkReportTitle } from '../../../core/utils/work-report-title';
+import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
 
 @Component({
   selector: 'app-work-report-admin',
@@ -24,7 +28,8 @@ import {
   templateUrl: './work-report-admin.component.html',
   styleUrls: ['./work-report-admin.component.scss']
 })
-export class WorkReportAdminComponent implements OnInit {
+export class WorkReportAdminComponent implements OnInit, OnDestroy {
+  readonly canonicalWorkReportTitle = canonicalWorkReportTitle;
   @ViewChild('paginationBar') paginationBar?: ElementRef<HTMLElement>;
 
   reports: WorkReport[] = [];
@@ -40,6 +45,9 @@ export class WorkReportAdminComponent implements OnInit {
   private readonly adminNoteOriginals = new Map<number, string>();
   private readonly adminNoteSaving = new Set<number>();
   private readonly adminNoteReadOnly = new Set<number>();
+  private disconnectRealtime?: () => void;
+  private refreshHandle?: ReturnType<typeof setTimeout>;
+  private destroyed = false;
 
   // Filters
   filterOptions = {
@@ -49,27 +57,56 @@ export class WorkReportAdminComponent implements OnInit {
     division: '',
     project_id: '',
     role: '',
+    position: '',
+    team: '',
+    user_id: '',
     status: '',
     sort_order: 'desc'
   };
   uniqueDivisions: string[] = [];
   uniqueRoles: string[] = [];
+  readonly reporterRoles = ['Karyawan', 'MANAJER', 'MAGANG'];
+  uniqueReporters: Array<{ id: string; name: string }> = [];
+  uniqueTeams: string[] = [];
   projects: any[] = [];
+  selectedReportDetail: WorkReport | null = null;
 
-  private readonly reportStatusFilters = ['Belum membuat laporan', 'Laporan belum lengkap', 'Sudah membuat laporan'];
+  private readonly reportStatusFilters = [WORK_REPORT_NO_REPORT_LABEL, 'Laporan belum lengkap', 'Sudah membuat laporan'];
 
   constructor(
     private workReportService: WorkReportService,
     private alertService: AlertService,
     private http: HttpClient,
     private authService: AuthService,
-    private reportExport: ReportExportService
+    private reportExport: ReportExportService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
     this.loadData();
     this.loadColumns();
     this.loadDivisionsAndRoles();
+    this.disconnectRealtime = this.notificationService.connectRealtime(eventName => {
+      if (['new_work_report', 'work_report_status_updated', 'notification_created'].includes(eventName)) {
+        this.scheduleRealtimeRefresh();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
+    if (this.refreshHandle) clearTimeout(this.refreshHandle);
+    this.refreshHandle = undefined;
+    this.disconnectRealtime?.();
+    this.disconnectRealtime = undefined;
+  }
+
+  private scheduleRealtimeRefresh(): void {
+    if (this.destroyed || this.refreshHandle) return;
+    this.refreshHandle = setTimeout(() => {
+      this.refreshHandle = undefined;
+      if (!this.destroyed) this.loadData();
+    }, 250);
   }
 
   loadData() {
@@ -79,6 +116,7 @@ export class WorkReportAdminComponent implements OnInit {
         // Admin must never expose Draft data, even if an older backend
         // accidentally includes it in the response.
         this.allReports = (res || []).filter(report => !this.isDraft(report));
+        this.buildReportFilterOptions();
         this.initializeAdminNotes(this.allReports);
         this.applyFilters(false);
         this.isLoading = false;
@@ -119,18 +157,32 @@ export class WorkReportAdminComponent implements OnInit {
     });
   }
 
+  private buildReportFilterOptions(): void {
+    const reporters = new Map<string, string>();
+    const teams = new Set<string>();
+    this.allReports.forEach(report => {
+      const id = this.reporterUserId(report);
+      if (id) reporters.set(id, this.getEmployeeName(report));
+      const team = this.reporterTeam(report);
+      if (team !== '-') teams.add(team);
+    });
+    this.uniqueReporters = Array.from(reporters.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    this.uniqueTeams = Array.from(teams).sort((a, b) => a.localeCompare(b));
+  }
+
   applyFilters(resetPage = true) {
     // Keep the defensive guard here as well so Draft cannot enter filtering,
     // pagination, sorting, or any downstream export path.
     let temp = this.allReports.filter(report => !this.isDraft(report));
 
-    // 1. Search (Name, Tugas, Judul)
+    // 1. Search (Name, Judul Tugas)
     if (this.filterOptions.search) {
       const q = this.filterOptions.search.toLowerCase();
       temp = temp.filter(r => 
         this.getEmployeeName(r).toLowerCase().includes(q) ||
-        (r.tugas && r.tugas.toLowerCase().includes(q)) ||
-        (r.judul && r.judul.toLowerCase().includes(q)) ||
+        canonicalWorkReportTitle(r).toLowerCase().includes(q) ||
         (r.deskripsi_kegiatan && r.deskripsi_kegiatan.toLowerCase().includes(q))
       );
     }
@@ -161,12 +213,23 @@ export class WorkReportAdminComponent implements OnInit {
       temp = temp.filter(r => r.Employee?.Division?.NamaDivisi === this.filterOptions.division);
     }
 
-    // 4. Role (Jabatan)
+    // 4. Pelapor role
     if (this.filterOptions.role) {
-      temp = temp.filter(r => r.Employee?.Position?.NamaJabatan === this.filterOptions.role);
+      temp = temp.filter(r => this.reporterRole(r) === this.filterOptions.role);
     }
 
-    // 5. Status Validasi
+    // 5. Team, position, and user
+    if (this.filterOptions.team) {
+      temp = temp.filter(r => this.reporterTeam(r) === this.filterOptions.team);
+    }
+    if (this.filterOptions.position) {
+      temp = temp.filter(r => r.Employee?.Position?.NamaJabatan === this.filterOptions.position);
+    }
+    if (this.filterOptions.user_id) {
+      temp = temp.filter(r => this.reporterUserId(r) === this.filterOptions.user_id);
+    }
+
+    // 6. Status Validasi
     if (this.filterOptions.status) {
       if (this.filterOptions.status === 'Submitted') {
         temp = temp.filter(r => this.reportFillingLabel(r) === this.filterOptions.status);
@@ -206,6 +269,9 @@ export class WorkReportAdminComponent implements OnInit {
       division: '',
       project_id: '',
       role: '',
+      position: '',
+      team: '',
+      user_id: '',
       status: '',
       sort_order: 'desc'
     };
@@ -507,8 +573,7 @@ export class WorkReportAdminComponent implements OnInit {
               <th class="bg-yellow">Nama</th>
               <th class="bg-yellow">Divisi</th>
               <th class="bg-yellow">Jabatan</th>
-              <th class="bg-yellow">Tugas</th>
-              <th class="bg-yellow">Judul Golan Nusantara/ Golan Education</th>
+              <th class="bg-yellow">Judul Tugas</th>
               <th class="bg-yellow">Deskripsi Kegiatan</th>
               <th class="bg-yellow">Realisasi Kegiatan. ( Capaian Target. % )</th>
               <th class="bg-yellow">Kendala (Jika Ada)</th>
@@ -543,7 +608,7 @@ export class WorkReportAdminComponent implements OnInit {
       const userName = this.getEmployeeName(r);
       const statusReport = this.reportStatusLabel(r);
       const statusTime = this.statusTimeLabel(r);
-      const statusValidation = this.validationLabel(r);
+      const statusValidation = this.exportValidationLabel(r);
       
       html += `
         <tr>
@@ -552,8 +617,7 @@ export class WorkReportAdminComponent implements OnInit {
           <td>${userName}</td>
           <td>${dept}</td>
           <td>${jabatan}</td>
-          <td style="text-align: left;">${(r.tugas || '').replace(/</g, '&lt;')}</td>
-          <td style="text-align: left;">${(r.judul || '').replace(/</g, '&lt;')}</td>
+          <td style="text-align: left;">${canonicalWorkReportTitle(r).replace(/</g, '&lt;')}</td>
           <td style="text-align: left;">${(r.deskripsi_kegiatan || '').replace(/</g, '&lt;')}</td>
           <td>${r.realisasi_kegiatan || ''}</td>
           <td style="text-align: left;">${(r.kendala || '').replace(/</g, '&lt;')}</td>
@@ -611,7 +675,7 @@ export class WorkReportAdminComponent implements OnInit {
     // Create CSV content manually
     let csvContent = "data:text/csv;charset=utf-8,";
     // Headers
-    const headers = ["No", "Tanggal", "Nama Karyawan", "Divisi", "Jabatan", "Tugas", "Judul", "Deskripsi", "Realisasi", "Kendala", "Rencana", "Status Pengisian", "Status Laporan", "Bukti Pengisian", "Status Waktu", "Status Validasi", "Catatan Manager/Admin", "Alasan Penolakan"];
+    const headers = ["No", "Tanggal", "Nama Karyawan", "Divisi", "Jabatan", "Judul Tugas", "Deskripsi", "Realisasi", "Kendala", "Rencana", "Status Pengisian", "Status Laporan", "Bukti Pengisian", "Status Waktu", "Status Validasi", "Catatan Manager/Admin", "Alasan Penolakan"];
     const customHeaders = this.columns.map(c => `"${c.nama_kolom.replace(/"/g, '""')}"`);
     csvContent += headers.concat(customHeaders).join(",") + "\n";
     
@@ -622,8 +686,7 @@ export class WorkReportAdminComponent implements OnInit {
         `"${(r.Employee?.User?.Nama || '').replace(/"/g, '""')}"`,
         `"${(r.Employee?.Division?.NamaDivisi || '').replace(/"/g, '""')}"`,
         `"${(r.Employee?.Position?.NamaJabatan || '').replace(/"/g, '""')}"`,
-        `"${(r.tugas || '').replace(/"/g, '""')}"`,
-        `"${(r.judul || '').replace(/"/g, '""')}"`,
+        `"${canonicalWorkReportTitle(r).replace(/"/g, '""')}"`,
         `"${(r.deskripsi_kegiatan || '').replace(/"/g, '""')}"`,
         `"${(r.realisasi_kegiatan || '').replace(/"/g, '""')}"`,
         `"${(r.kendala || '').replace(/"/g, '""')}"`,
@@ -632,7 +695,7 @@ export class WorkReportAdminComponent implements OnInit {
         `"${this.reportStatusLabel(r).replace(/"/g, '""')}"`,
         `"${this.evidenceExportLabel(r).replace(/"/g, '""')}"`,
         `"${this.statusTimeLabel(r).replace(/"/g, '""')}"`,
-        `"${this.validationLabel(r).replace(/"/g, '""')}"`,
+        `"${this.exportValidationLabel(r).replace(/"/g, '""')}"`,
         `"${this.managerAdminNote(r).replace(/"/g, '""')}"`,
         `"${this.rejectionReason(r).replace(/"/g, '""')}"`
       ];
@@ -664,8 +727,10 @@ export class WorkReportAdminComponent implements OnInit {
     this.isExportOpen = false;
     const reports = this.getNonDraftReports();
     if (reports.length === 0) return;
-    const data = reports.map(report => ({
-      ...report,
+    const data = reports.map(report => canonicalWorkReportExportRecord(report, {
+      judul_tugas: canonicalWorkReportTitle(report),
+      status_pengisian: this.reportFillingLabel(report),
+      status_validasi: this.exportValidationLabel(report),
       bukti_pengisian: this.evidenceExportLabel(report),
       status_waktu: this.statusTimeLabel(report),
       catatan_manager_admin: this.managerAdminNote(report),
@@ -693,12 +758,12 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
-    const headers = ['No', 'Hari/Tanggal', 'Nama', 'Divisi', 'Jabatan', 'Tugas', 'Judul Golan Nusantara / Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Status Pengisian', 'Status Laporan', 'Bukti Pengisian', 'Status Waktu', 'Status Validasi', 'Catatan Manager/Admin', 'Alasan Penolakan'];
+    const headers = ['No', 'Hari/Tanggal', 'Nama', 'Divisi', 'Jabatan', 'Judul Tugas', 'Deskripsi Kegiatan', 'Realisasi Kegiatan', 'Kendala', 'Rencana Minggu Depan', 'Link Artikel', 'Catatan Tambahan', 'Status Pengisian', 'Status Laporan', 'Bukti Pengisian', 'Status Waktu', 'Status Validasi', 'Catatan Manager/Admin', 'Alasan Penolakan'];
     const rows = this.getNonDraftReports().map((r, index) => {
       const customData: Record<string, unknown> = {};
       try { Object.assign(customData, JSON.parse(r.custom_fields || '{}')); } catch { /* laporan tetap dapat diekspor meski custom field rusak */ }
       const customValues = this.columns.map(column => customData[column.ID] ?? '-');
-      return [index + 1, this.formatReportDate(r.tanggal), this.getEmployeeName(r), r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', r.tugas || '-', r.judul || '-', r.deskripsi_kegiatan || '-', r.realisasi_kegiatan || '-', r.kendala || '-', r.rencana_minggu_depan || '-', r.link_artikel || '-', r.catatan_tambahan || '-', this.reportFillingLabel(r), this.reportStatusLabel(r), this.evidenceExportLabel(r), this.statusTimeLabel(r), this.validationLabel(r), this.managerAdminNote(r), this.rejectionReason(r), ...customValues];
+      return [index + 1, this.formatReportDate(r.tanggal), this.getEmployeeName(r), r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', canonicalWorkReportTitle(r) || '-', r.deskripsi_kegiatan || '-', r.realisasi_kegiatan || '-', r.kendala || '-', r.rencana_minggu_depan || '-', r.link_artikel || '-', r.catatan_tambahan || '-', this.reportFillingLabel(r), this.reportStatusLabel(r), this.evidenceExportLabel(r), this.statusTimeLabel(r), this.exportValidationLabel(r), this.managerAdminNote(r), this.rejectionReason(r), ...customValues];
     });
     return { headers: headers.concat(this.columns.map(column => column.nama_kolom)), rows };
   }
@@ -716,6 +781,27 @@ export class WorkReportAdminComponent implements OnInit {
     return report.Employee?.User?.Nama || 'Unknown';
   }
 
+  reporterUserId(report: WorkReport): string {
+    return String(report.Employee?.User?.ID || report.Employee?.UserID || report.EmployeeID || '');
+  }
+
+  reporterRole(report: WorkReport): string {
+    return String(report.Employee?.User?.Role || 'Karyawan');
+  }
+
+  reporterTeam(report: WorkReport): string {
+    const team = String(report.Employee?.User?.TeamID || '').trim();
+    return team || '-';
+  }
+
+  viewReportDetail(report: WorkReport): void {
+    this.selectedReportDetail = report;
+  }
+
+  closeReportDetail(): void {
+    this.selectedReportDetail = null;
+  }
+
   reportStatus(report: WorkReport): 'draft' | 'no_report' | 'incomplete' | 'complete' {
     return resolveReportStatus(report);
   }
@@ -723,7 +809,7 @@ export class WorkReportAdminComponent implements OnInit {
   reportStatusLabel(report: WorkReport): string {
     switch (this.reportStatus(report)) {
       case 'draft': return '';
-      case 'no_report': return 'Belum membuat laporan kerja';
+      case 'no_report': return WORK_REPORT_NO_REPORT_LABEL;
       case 'incomplete': return 'Laporan belum lengkap';
       default: return 'Sudah membuat laporan';
     }
@@ -732,21 +818,22 @@ export class WorkReportAdminComponent implements OnInit {
   reportStatusClass(report: WorkReport): string {
     switch (this.reportStatus(report)) {
       case 'draft': return 'status-warning';
-      case 'no_report': return 'status-alpha';
+      case 'no_report': return 'status-neutral';
       case 'incomplete': return 'status-warning';
       default: return 'status-hadir';
     }
   }
 
   reportFillingStatus(report: WorkReport): 'draft' | 'submitted' | 'not_filled' {
-    if (this.isDraft(report)) return 'draft';
-    return this.isNoReport(report) ? 'not_filled' : 'submitted';
+    const contract = normalizeWorkReportContract(report);
+    if (contract.status === 'no_report' || contract.filling_status === 'no_report') return 'not_filled';
+    return contract.filling_status === 'draft' ? 'draft' : 'submitted';
   }
 
   reportFillingLabel(report: WorkReport): string {
     switch (this.reportFillingStatus(report)) {
       case 'draft': return '';
-      case 'not_filled': return 'Belum mengisi';
+      case 'not_filled': return WORK_REPORT_NO_REPORT_LABEL;
       default: return 'Submitted';
     }
   }
@@ -754,7 +841,7 @@ export class WorkReportAdminComponent implements OnInit {
   reportFillingClass(report: WorkReport): string {
     return this.reportFillingStatus(report) === 'draft'
       ? 'status-warning'
-      : this.reportFillingStatus(report) === 'not_filled' ? 'status-alpha' : 'status-success';
+      : this.reportFillingStatus(report) === 'not_filled' ? 'status-neutral' : 'status-success';
   }
 
   isIncompleteReport(report: WorkReport): boolean {
@@ -766,11 +853,18 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   validationLabel(report: WorkReport): string {
-    if (this.isNoReport(report) || this.isDraft(report)) return 'Tidak perlu validasi';
     const status = this.normalizedValidationStatus(report);
+    const contract = normalizeWorkReportContract(report);
+    if (contract.status === 'no_report' || contract.status === 'draft' || status === 'tidak perlu validasi') return 'Tidak perlu validasi';
+    if (contract.status === 'approved') return 'Validasi laporan';
+    if (contract.status === 'rejected') return 'Tolak laporan';
     if (status === 'sesuai' || status === 'validasi laporan') return 'Validasi laporan';
     if (status === 'tidak sesuai' || status === 'tolak laporan') return 'Tolak laporan';
     return 'Menunggu validasi';
+  }
+
+  private exportValidationLabel(report: WorkReport): string {
+    return this.isNoReport(report) ? WORK_REPORT_NO_REPORT_LABEL : this.validationLabel(report);
   }
 
   validationStatusClass(report: WorkReport): string {
@@ -784,7 +878,12 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   private normalizedValidationStatus(report: WorkReport): string {
-    return this.normalizedValidationStatusValue(report?.status_sesuai || '');
+    const raw = this.normalizedValidationStatusValue(report?.status_sesuai || '');
+    if (raw) return raw;
+    const contract = normalizeWorkReportContract(report);
+    if (contract.status === 'approved') return 'sesuai';
+    if (contract.status === 'rejected') return 'tidak sesuai';
+    return '';
   }
 
   private normalizedValidationStatusValue(value: string): string {
@@ -804,7 +903,8 @@ export class WorkReportAdminComponent implements OnInit {
       AdminRejectionReason?: string;
     };
     const validationStatus = String(report.status_sesuai || '').trim().toLowerCase();
-    const logbookStatus = String(row.status_logbook || row.StatusLogbook || '').trim().toLowerCase();
+    // Read-only fallback for historical legacy_logbook rows.
+    const legacyStatus = String(row.status_logbook || row.StatusLogbook || '').trim().toLowerCase();
     const rejectionSource = String(report.rejection_source || row.RejectionSource || '').trim().toLowerCase();
     const rejectionReason = String(report.rejection_reason || row.RejectionReason || '').trim();
     const managerReason = String(row.manager_rejection_reason || row.ManagerRejectionReason || '').trim();
@@ -816,13 +916,13 @@ export class WorkReportAdminComponent implements OnInit {
     if (reasons.length) return reasons.join('\n');
     if (!rejectionReason) return '-';
 
-    if (rejectionSource === 'manager' || (logbookStatus === 'rejected' && validationStatus !== 'tidak sesuai')) {
+    if (rejectionSource === 'manager' || (legacyStatus === 'rejected' && validationStatus !== 'tidak sesuai')) {
       return `Alasan Manager: ${rejectionReason}`;
     }
     if (rejectionSource === 'admin' || rejectionSource === 'hrd' || validationStatus === 'tidak sesuai') {
       return `Alasan Admin: ${rejectionReason}`;
     }
-    if (logbookStatus === 'rejected') return `Alasan Manager: ${rejectionReason}`;
+    if (legacyStatus === 'rejected') return `Alasan Manager: ${rejectionReason}`;
     return '-';
   }
 
@@ -839,11 +939,11 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   evidenceLabel(report: WorkReport): string {
-    return this.isNoReport(report) ? 'Belum ada laporan kerja' : '-';
+    return this.isNoReport(report) ? WORK_REPORT_NO_REPORT_LABEL : '-';
   }
 
   private evidenceExportLabel(report: WorkReport): string {
-    if (this.isNoReport(report)) return 'Belum ada laporan kerja';
+    if (this.isNoReport(report)) return WORK_REPORT_NO_REPORT_LABEL;
     return this.hasEvidence(report) ? String(report.attachments?.length || 0) + ' screenshot' : '-';
   }
 
@@ -863,9 +963,7 @@ export class WorkReportAdminComponent implements OnInit {
   }
 
   private isDraft(report: WorkReport): boolean {
-    const fillingStatus = String(report?.status_laporan || '').trim().toLowerCase();
-    const logbookStatus = String(report?.status_logbook || report?.StatusLogbook || '').trim().toLowerCase();
-    return fillingStatus === 'draft' || logbookStatus === 'draft';
+    return normalizeWorkReportContract(report).filling_status === 'draft';
   }
 
   private hasRequiredReportFields(report: WorkReport): boolean {

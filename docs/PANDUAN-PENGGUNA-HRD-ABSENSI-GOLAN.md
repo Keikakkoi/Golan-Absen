@@ -32,7 +32,7 @@
 | --- | --- |
 | HRD/Admin | Role dengan akses pengelolaan master data, approval, rekap, konfigurasi, dan audit organisasi. |
 | Karyawan | Pengguna yang mencatat absensi, melihat riwayat, mengajukan izin/cuti, dan mengisi laporan kerja. |
-| Magang | Pengguna dengan tambahan alur logbook, mentor, dan sertifikat magang. |
+| Magang | Pengguna dengan laporan kerja, mentor, dan sertifikat magang. |
 | Manajer | Pengguna yang memantau tim dan melakukan approval atau review sesuai scope-nya. |
 | Divisi | Unit organisasi yang digunakan untuk mengelompokkan karyawan. |
 | Jabatan | Posisi atau peran pekerjaan karyawan dalam organisasi. |
@@ -107,8 +107,8 @@ Dashboard HRD menampilkan ringkasan yang membantu pemantauan operasional harian:
 - Belum Absen Hari Ini.
 - Izin / Cuti Hari Ini.
 - Magang Aktif.
-- Logbook Pending.
-- Belum Isi Laporan.
+- Laporan Kerja Pending.
+- Belum Membuat Laporan Kerja.
 - Grafik dan quick action untuk membuka modul terkait.
 
 Langkah membuka dashboard:
@@ -261,7 +261,7 @@ Role yang tersedia saat ini adalah:
 | HRD | Seluruh organisasi, master data, approval, rekap, konfigurasi, operasional, dan audit. |
 | Manajer | Dashboard dan data tim yang menjadi tanggung jawabnya, termasuk approval tim. |
 | Karyawan | Absensi pribadi, riwayat, izin/cuti, laporan kerja, statistik, dan profil. |
-| Magang | Absensi pribadi, riwayat, logbook, statistik, izin, mentor, sertifikat, dan profil. |
+| Magang | Absensi pribadi, riwayat, laporan kerja, statistik, izin, mentor, sertifikat, dan profil. |
 
 Berbeda dari PDF contoh, aplikasi ini belum menyediakan halaman frontend untuk mengubah
 checkbox permission per role. Karena itu, jangan menuliskan bahwa HRD dapat membuka menu
@@ -276,7 +276,7 @@ yang sudah ditetapkan aplikasi.
 | Check-in / Check-out | Tidak pada route karyawan | Ya | Ya | Ya |
 | Riwayat absensi pribadi | Tidak pada route karyawan | Ya | Ya | Ya |
 | Pengajuan izin/cuti | Approval admin | Pengajuan dan approval tim | Pengajuan | Pengajuan |
-| Laporan kerja | Kelola dan validasi | Isi laporan sendiri | Isi laporan sendiri | Menggunakan logbook |
+| Laporan kerja | Kelola dan validasi | Review laporan tim | Isi laporan sendiri | Isi laporan sendiri |
 | Kelola data karyawan | Ya | Tidak | Tidak | Tidak |
 | Rekap organisasi | Ya | Scope tim | Tidak | Tidak |
 | Operasional Magang & Tim | Ya | Operasional tim sendiri | Tidak | Tidak |
@@ -334,7 +334,7 @@ Manajer berfokus pada data tim. Manajer dapat:
 - Melihat absensi anggota tim.
 - Melihat laporan tim dan statistik tim.
 - Meninjau serta memproses pengajuan izin/cuti anggota tim sesuai alur approval.
-- Melakukan review logbook pada data peserta magang yang menjadi tanggung jawabnya.
+- Melakukan review laporan kerja peserta magang yang menjadi tanggung jawabnya.
 - Menggunakan check-in/check-out, riwayat, statistik, notifikasi, dan profil pribadi.
 
 Scope Manajer tidak sama dengan scope HRD. Data tim diperoleh dari hubungan manager/team di
@@ -372,21 +372,21 @@ akses tambahan.
 Magang memiliki alur pribadi yang mirip dengan Karyawan, dengan tambahan fitur khusus:
 
 - Dashboard periode magang.
-- Logbook harian.
+- Laporan kerja harian.
 - Statistik kehadiran magang.
 - Informasi mentor/manajer.
 - Sertifikat magang.
 - Check-in/check-out, riwayat, izin, notifikasi, dan profil.
 
-HRD memantau logbook dan dokumen magang melalui **Operasional Magang**. HRD tidak menjadi
-reviewer utama logbook apabila alur review ditetapkan kepada Manajer pembimbing. Pada halaman
-operasional, HRD dapat menghapus logbook sesuai kewenangan administratif serta mengunggah atau
-menghapus dokumen sertifikat setelah periode magang berakhir.
+HRD memantau laporan kerja dan dokumen magang melalui **Manajemen Laporan Kerja** serta
+**Operasional Magang**. Review laporan kerja peserta dilakukan oleh Manajer pembimbing sesuai
+scope tim, sedangkan HRD memproses validasi administratif pada halaman Manajemen Laporan Kerja.
+Dokumen sertifikat dapat diunggah atau dihapus setelah periode magang berakhir.
 
 ### Referensi screenshot web — R-SC-11 (Operasional Magang)
 
-Tempatkan screenshot tab **Operasional Magang** yang menampilkan kartu Total Magang, Magang
-Aktif, Logbook Pending, serta daftar Logbook atau Sertifikat.
+Tempatkan screenshot halaman **Manajemen Laporan Kerja** dan tab **Operasional Magang** yang
+menampilkan kartu Total Magang, Magang Aktif, Laporan Kerja Pending, serta daftar Sertifikat.
 
 - Route yang ditampilkan: `/admin/role-operations`
 - Bagian template operasional: [`role-operations.component.html`](../frontend/src/app/features/admin/role-operations/role-operations.component.html)

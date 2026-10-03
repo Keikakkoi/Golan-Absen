@@ -4,6 +4,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-notifications',
@@ -17,6 +18,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   isLoading = true;
   filterMode: 'all' | 'unread' = 'all';
   private refreshTimer?: ReturnType<typeof setInterval>;
+  private notificationsSubscription?: Subscription;
   private disconnectRealtime?: () => void;
   pushEnabled = false;
   pushBusy = false;
@@ -29,6 +31,9 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.notificationsSubscription = this.notificationService.notifications$.subscribe(notifications => {
+      this.notifications = notifications;
+    });
     this.fetchNotifications();
     this.refreshTimer = setInterval(() => this.fetchNotifications(true), 15_000);
     this.notificationService.enablePush(false).then(enabled => this.pushEnabled = enabled).catch(() => undefined);
@@ -40,6 +45,8 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     this.refreshTimer = undefined;
     this.disconnectRealtime?.();
     this.disconnectRealtime = undefined;
+    this.notificationsSubscription?.unsubscribe();
+    this.notificationsSubscription = undefined;
   }
 
   fetchNotifications(background = false): void {

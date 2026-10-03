@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 
 import { AdminAlphaReportsComponent } from './admin-alpha-reports.component';
 
@@ -8,7 +10,8 @@ describe('AdminAlphaReportsComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AdminAlphaReportsComponent]
+      imports: [AdminAlphaReportsComponent],
+      providers: [provideHttpClient(), provideRouter([])]
     })
     .compileComponents();
 

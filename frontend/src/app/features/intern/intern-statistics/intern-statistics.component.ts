@@ -41,8 +41,8 @@ export class InternStatisticsComponent implements OnInit {
     attendance_rate: 100,
     average_checkin_time: '-',
     work_type_stats: { wfo: 0, wfh: 0, remote: 0 },
-    logbooks_submitted: 0,
-    logbooks_approved: 0,
+    work_reports_submitted: 0,
+    work_reports_approved: 0,
     daily_trend: []
   };
 
@@ -71,6 +71,9 @@ export class InternStatisticsComponent implements OnInit {
       next: data => {
         this.stats = data || {};
         this.stats.work_type_stats = this.stats.work_type_stats || { wfo: 0, wfh: 0, remote: 0 };
+        // Legacy statistics aliases are read only while old dashboard payloads exist.
+        this.stats.work_reports_submitted = Number(this.stats.work_reports_submitted ?? this.stats.logbooks_submitted) || 0;
+        this.stats.work_reports_approved = Number(this.stats.work_reports_approved ?? this.stats.logbooks_approved) || 0;
         this.processDailyTrend(this.stats.daily_trend || []);
         this.isLoading = false;
       },
@@ -116,7 +119,7 @@ export class InternStatisticsComponent implements OnInit {
       ['Izin & Cuti', `${this.stats.izin_disetujui || 0} Hari`, '', '', '', ''],
       ['Alpha / Mangkir', `${this.stats.alpha || 0} Hari`, '', '', '', ''],
       ['Rata-rata Check-in', `${this.stats.average_checkin_time || '-'}`, '', '', '', ''],
-      ['Logbook Disetujui', `${this.stats.logbooks_approved || 0}`, '', '', '', ''],
+      ['Laporan Kerja Disetujui', `${this.stats.work_reports_approved || 0}`, '', '', '', ''],
       ['--- DETIL HARIAN ---', '', '', '', '', '']
     ];
     const trendRows = this.weeklyTrend.map(bar => [
@@ -140,7 +143,7 @@ export class InternStatisticsComponent implements OnInit {
       ['Izin & Cuti', `${this.stats.izin_disetujui || 0} Hari`, '', '', '', ''],
       ['Alpha / Mangkir', `${this.stats.alpha || 0} Hari`, '', '', '', ''],
       ['Rata-rata Check-in', `${this.stats.average_checkin_time || '-'}`, '', '', '', ''],
-      ['Logbook Disetujui', `${this.stats.logbooks_approved || 0}`, '', '', '', ''],
+      ['Laporan Kerja Disetujui', `${this.stats.work_reports_approved || 0}`, '', '', '', ''],
       ['--- DETIL HARIAN ---', '', '', '', '', '']
     ];
     const trendRows = this.weeklyTrend.map(bar => [
@@ -181,7 +184,7 @@ export class InternStatisticsComponent implements OnInit {
       ['Izin & Cuti', `${this.stats.izin_disetujui || 0} Hari`, '', '', '', ''],
       ['Alpha / Mangkir', `${this.stats.alpha || 0} Hari`, '', '', '', ''],
       ['Rata-rata Check-in', `${this.stats.average_checkin_time || '-'}`, '', '', '', ''],
-      ['Logbook Disetujui', `${this.stats.logbooks_approved || 0}`, '', '', '', ''],
+      ['Laporan Kerja Disetujui', `${this.stats.work_reports_approved || 0}`, '', '', '', ''],
       ['--- DETIL HARIAN ---', '', '', '', '', '']
     ];
   }

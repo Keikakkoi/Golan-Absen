@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpContext } from '@angular/common/http';
-import { firstValueFrom, Observable, finalize, shareReplay } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, Observable, distinctUntilChanged, finalize, map, shareReplay, tap } from 'rxjs';
 import { AuthService } from './auth.service';
 import { SKIP_PAGE_LOADING } from '../interceptors/page-loading-context';
 
@@ -19,31 +19,58 @@ export class NotificationService {
   private realtimeCallbacks = new Set<(eventName: string) => void>();
   private notificationsRequest$?: Observable<AppNotification[]>;
   private realtimeReconnectTimer?: ReturnType<typeof setTimeout>;
+  private realtimeFallbackTimer?: ReturnType<typeof setInterval>;
+  private readonly notificationsSubject = new BehaviorSubject<AppNotification[]>([]);
+  private activeUserId: number | null = null;
+  readonly notifications$ = this.notificationsSubject.asObservable();
+  readonly unreadCount$ = this.notifications$.pipe(
+    map(notifications => notifications.filter(notification => !notification.StatusBaca).length),
+    distinctUntilChanged()
+  );
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(private http: HttpClient, private authService: AuthService) {
+    // Do not let a singleton service expose the previous session's badge while
+    // the next role/user is being loaded after login.
+    this.authService.currentUser$.subscribe(user => {
+      const userId = user?.user_id ? Number(user.user_id) : null;
+      if (userId === this.activeUserId) return;
+      this.activeUserId = userId;
+      this.notificationsSubject.next([]);
+      this.notificationsRequest$ = undefined;
+    });
+  }
 
   getAll(background = false) {
     // Several dashboard widgets can request notifications in response to the
     // same realtime event. Share only the in-flight request so those widgets
     // receive one HTTP response without keeping stale data cached forever.
     if (!this.notificationsRequest$) {
+      const requestUserId = this.activeUserId;
       const context = new HttpContext().set(SKIP_PAGE_LOADING, background);
-      this.notificationsRequest$ = this.http.get<AppNotification[]>(this.baseUrl, { headers: this.headers(), context }).pipe(
-        finalize(() => this.notificationsRequest$ = undefined),
+      const request$ = this.http.get<AppNotification[]>(this.baseUrl, { headers: this.headers(), context }).pipe(
+        tap(notifications => {
+          if (this.activeUserId === requestUserId) this.notificationsSubject.next(notifications || []);
+        }),
+        finalize(() => {
+          if (this.notificationsRequest$ === request$) this.notificationsRequest$ = undefined;
+        }),
         shareReplay({ bufferSize: 1, refCount: true })
       );
+      this.notificationsRequest$ = request$;
     }
     return this.notificationsRequest$;
   }
 
   markAsRead(id: number) {
     return this.http.put(`${this.baseUrl}/${id}/read`, {}, { headers: this.headers() }).pipe(
+      tap(() => this.updateNotificationState(notification => notification.ID === id ? { ...notification, StatusBaca: true } : notification)),
       finalize(() => this.notificationsRequest$ = undefined)
     );
   }
 
   markAllAsRead() {
     return this.http.put(`${this.baseUrl}/read-all`, {}, { headers: this.headers() }).pipe(
+      tap(() => this.updateNotificationState(notification => ({ ...notification, StatusBaca: true }))),
       finalize(() => this.notificationsRequest$ = undefined)
     );
   }
@@ -62,6 +89,7 @@ export class NotificationService {
       if (!this.realtimeCallbacks.size) {
         if (this.realtimeReconnectTimer) clearTimeout(this.realtimeReconnectTimer);
         this.realtimeReconnectTimer = undefined;
+        this.stopRealtimeFallbackPolling();
         this.realtimeSocket?.close();
         this.realtimeSocket = undefined;
       }
@@ -70,24 +98,61 @@ export class NotificationService {
 
   private openRealtimeSocket(): void {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//localhost:8080/ws/dashboard`);
+    let socket: WebSocket;
+    try {
+      socket = new WebSocket(`${protocol}//localhost:8080/ws/dashboard`);
+    } catch {
+      this.startRealtimeFallbackPolling();
+      this.scheduleRealtimeReconnect();
+      return;
+    }
     this.realtimeSocket = socket;
+    socket.onopen = () => this.stopRealtimeFallbackPolling();
     socket.onmessage = (event) => {
       try {
-        const eventName = JSON.parse(event.data)?.event;
-        if (['notification_created', 'new_checkin', 'new_checkout', 'new_work_report', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'new_leave', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.realtimeCallbacks.forEach(callback => callback(eventName));
+        const payload = JSON.parse(event.data);
+        const eventName = payload?.event;
+        // Notification events are user-scoped. Ignore broadcasts for other
+        // users so a role only refreshes data it is allowed to read.
+        if (eventName === 'notification_created' && Number(payload?.user_id) !== Number(localStorage.getItem('user_id'))) return;
+        // Legacy logbook events remain accepted only for historical adapters.
+        if (['notification_created', 'new_checkin', 'new_checkout', 'new_work_report', 'work_report_status_updated', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'new_leave', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.realtimeCallbacks.forEach(callback => callback(eventName));
       } catch { /* Ignore malformed broadcast messages. */ }
     };
     socket.onclose = () => {
       if (this.realtimeSocket !== socket) return;
       this.realtimeSocket = undefined;
       if (this.realtimeCallbacks.size) {
-        this.realtimeReconnectTimer = setTimeout(() => {
-          this.realtimeReconnectTimer = undefined;
-          if (this.realtimeCallbacks.size) this.openRealtimeSocket();
-        }, 3_000);
+        this.startRealtimeFallbackPolling();
+        this.scheduleRealtimeReconnect();
       }
     };
+  }
+
+  private scheduleRealtimeReconnect(): void {
+    if (this.realtimeReconnectTimer || !this.realtimeCallbacks.size) return;
+    this.realtimeReconnectTimer = setTimeout(() => {
+      this.realtimeReconnectTimer = undefined;
+      if (this.realtimeCallbacks.size) this.openRealtimeSocket();
+    }, 3_000);
+  }
+
+  /** Poll only while the WebSocket is unavailable, keeping offline/restarted
+   * backends from leaving the sidebar badge stale. */
+  private startRealtimeFallbackPolling(): void {
+    if (this.realtimeFallbackTimer || !this.realtimeCallbacks.size) return;
+    const refresh = () => this.getAll(true).subscribe({ error: () => undefined });
+    refresh();
+    this.realtimeFallbackTimer = setInterval(refresh, 15_000);
+  }
+
+  private stopRealtimeFallbackPolling(): void {
+    if (this.realtimeFallbackTimer) clearInterval(this.realtimeFallbackTimer);
+    this.realtimeFallbackTimer = undefined;
+  }
+
+  private updateNotificationState(update: (notification: AppNotification) => AppNotification): void {
+    this.notificationsSubject.next(this.notificationsSubject.value.map(update));
   }
 
   /**

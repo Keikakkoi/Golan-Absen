@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 
 import { AdminBackupComponent } from './admin-backup.component';
 
@@ -8,7 +10,8 @@ describe('AdminBackupComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AdminBackupComponent]
+      imports: [AdminBackupComponent],
+      providers: [provideHttpClient(), provideRouter([])]
     })
     .compileComponents();
 

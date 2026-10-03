@@ -16,6 +16,9 @@ import { ReportExportService } from '../../../core/services/report-export.servic
 import { dateOnly, localDateString, monthRange, reportDayStatus } from './work-report-date.utils';
 import { isValidRealisasiKegiatan, REALISASI_KEGIATAN_ERROR } from './work-report-validation';
 import { requiresReportTitle as resolveRequiresReportTitle } from '../../../core/utils/report-completeness';
+import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
+import { canonicalWorkReportTitle, canonicalWorkReportTitlePayload } from '../../../core/utils/work-report-title';
+import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
 
 type SavedScrollPosition = { left: number; top: number };
 
@@ -27,6 +30,7 @@ type SavedScrollPosition = { left: number; top: number };
   styleUrls: ['./work-report.component.scss']
 })
 export class WorkReportComponent implements OnInit {
+  readonly canonicalWorkReportTitle = canonicalWorkReportTitle;
   viewMode: 'list' | 'form' = 'list';
   isExportOpen = false;
   editingReportId: number | null = null;
@@ -46,6 +50,7 @@ export class WorkReportComponent implements OnInit {
   userDivisi: string = '';
   selectedScreenshots: File[] = [];
   existingScreenshots: any[] = [];
+  selectedReportDetail: WorkReport | null = null;
   removedScreenshotIds: number[] = [];
   deadlineInfo: WorkReportDeadline | null = null;
   deadlineError = '';
@@ -85,8 +90,7 @@ export class WorkReportComponent implements OnInit {
   initForm() {
     this.reportForm = this.fb.group({
       tanggal: ['', Validators.required],
-      tugas: ['', Validators.required],
-      judul: [''],
+      judul_tugas: ['', Validators.required],
       deskripsi_kegiatan: ['', Validators.required],
       realisasi_kegiatan: ['', [Validators.required, Validators.pattern(/^(?:100|[1-9]?\d)%$/)]],
       kendala: [''],
@@ -204,10 +208,12 @@ export class WorkReportComponent implements OnInit {
     return this.monthLabelFormatter.format(new Date(year, month - 1, 1));
   }
 
-  getDayStatus(c: ComplianceResult): 'reported' | 'missing' | 'future' | 'draft' | 'needs-review' {
+  getDayStatus(c: ComplianceResult): 'reported' | 'no_report' | 'future' | 'draft' | 'needs-review' {
+    if (c.status === 'no_report' || c.status === 'missing' || c.has_report === false) return 'no_report';
     if (c.status === 'draft') return 'draft';
     if (c.status === 'needs_improvement') return 'needs-review';
-    return reportDayStatus(c.tanggal, c.has_report);
+    const dayStatus = reportDayStatus(c.tanggal, c.has_report);
+    return dayStatus === 'missing' ? 'no_report' : dayStatus;
   }
 
   getDayNumber(date: string): string {
@@ -236,6 +242,7 @@ export class WorkReportComponent implements OnInit {
 
   openForm(date?: string) {
     this.viewMode = 'form';
+    this.selectedReportDetail = null;
     this.editingReportId = null;
     this.reportForm.reset();
     this.clearScreenshots();
@@ -268,30 +275,72 @@ export class WorkReportComponent implements OnInit {
   }
 
   canModifyReport(report: WorkReport): boolean {
-    const status = (report.status_sesuai || '').trim().toLowerCase();
-    return status !== 'sesuai' && status !== 'tidak membuat laporan kerja';
+    const contract = normalizeWorkReportContract(report);
+    if (contract.status === 'no_report') return false;
+    // A legacy MAGANG Draft is recoverable through the canonical endpoint.
+    // Submitted/approved/rejected legacy history remains view-only.
+    if (contract.report_kind === 'legacy_logbook') return contract.status === 'draft';
+    return contract.status !== 'approved';
   }
 
-  reportFillingStatus(report: WorkReport): 'late' | 'draft' | 'submitted' {
-    const isLate = report?.is_late_submission === true
-      || String(report?.is_late_submission ?? '').trim().toLowerCase() === 'true'
-      || String(report?.is_late_submission ?? '').trim() === '1';
-    if (isLate) return 'late';
-    return String(report?.status_laporan || '').trim().toLowerCase() === 'draft' ? 'draft' : 'submitted';
+  reportFillingStatus(report: WorkReport): 'late' | 'draft' | 'submitted' | 'no_report' {
+    const contract = normalizeWorkReportContract(report);
+    if (contract.status === 'no_report') return 'no_report';
+    if (contract.submission_timing === 'late') return 'late';
+    return contract.filling_status;
   }
 
   reportFillingLabel(report: WorkReport): string {
     switch (this.reportFillingStatus(report)) {
       case 'late': return 'Terlambat';
       case 'draft': return 'Draft';
+      case 'no_report': return WORK_REPORT_NO_REPORT_LABEL;
       default: return 'Submitted';
     }
   }
 
   reportFillingClass(report: WorkReport): string {
-    return this.reportFillingStatus(report) === 'draft' || this.reportFillingStatus(report) === 'late'
+    const status = this.reportFillingStatus(report);
+    return status === 'draft' || status === 'late'
       ? 'status-warning'
-      : 'status-success';
+      : status === 'no_report' ? 'status-neutral' : 'status-success';
+  }
+
+  validationStatus(report: WorkReport): 'approved' | 'rejected' | 'pending' | 'draft' | 'no_report' {
+    const contract = normalizeWorkReportContract(report);
+    if (contract.status === 'no_report') return 'no_report';
+    if (contract.status === 'approved') return 'approved';
+    if (contract.status === 'rejected') return 'rejected';
+    if (contract.status === 'draft') return 'draft';
+    return 'pending';
+  }
+
+  validationStatusLabel(report: WorkReport): string {
+    switch (this.validationStatus(report)) {
+      case 'approved': return 'Disetujui';
+      case 'rejected': return 'Ditolak';
+      case 'draft': return 'Draft';
+      case 'no_report': return WORK_REPORT_NO_REPORT_LABEL;
+      default: return 'Menunggu Review';
+    }
+  }
+
+  validationStatusClass(report: WorkReport): string {
+    switch (this.validationStatus(report)) {
+      case 'approved': return 'status-hadir';
+      case 'rejected': return 'status-alpha';
+      case 'draft': return 'status-warning';
+      case 'no_report': return 'status-neutral';
+      default: return 'status-pending';
+    }
+  }
+
+  viewReportDetail(report: WorkReport): void {
+    this.selectedReportDetail = report;
+  }
+
+  closeReportDetail(): void {
+    this.selectedReportDetail = null;
   }
 
   requiresReportTitle(): boolean {
@@ -317,8 +366,7 @@ export class WorkReportComponent implements OnInit {
     
     this.reportForm.patchValue({
       tanggal: dateOnly(r.tanggal),
-      tugas: r.tugas,
-      judul: r.judul,
+      judul_tugas: canonicalWorkReportTitle(r),
       deskripsi_kegiatan: r.deskripsi_kegiatan,
       realisasi_kegiatan: r.realisasi_kegiatan,
       kendala: r.kendala,
@@ -329,10 +377,7 @@ export class WorkReportComponent implements OnInit {
     });
     this.loadDeadline(this.reportForm.value.tanggal);
     
-    // If we want to support updating, we would store the active report ID.
-    // For now, let's keep it simple or implement full update logic.
-    // Since createWorkReport exists, I will just open it. If update is needed, 
-    // a new state 'editingReportId' would be needed. 
+    // editingReportId makes the same canonical save path update this report.
   }
 
   onScreenshotFilesChange(files: File[]): void {
@@ -417,12 +462,12 @@ export class WorkReportComponent implements OnInit {
 
   submitReport() {
     if (this.isSubmitting) return;
-    if (this.requiresReportTitle() && !String(this.reportForm.get('judul')?.value || '').trim()) {
-      this.reportForm.get('judul')?.markAsTouched();
+    if (!String(this.reportForm.get('judul_tugas')?.value || '').trim()) {
+      this.reportForm.get('judul_tugas')?.markAsTouched();
       Swal.fire({
         icon: 'error',
-        title: 'Judul wajib diisi',
-        text: 'Divisi Golan Nusantara dan Golan Education wajib mengisi Judul laporan.',
+        title: 'Judul Tugas wajib diisi',
+        text: 'Isi Judul Tugas sebelum mengirim laporan kerja.',
         confirmButtonColor: '#2F80ED'
       });
       return;
@@ -470,8 +515,7 @@ export class WorkReportComponent implements OnInit {
     
     const payload = new FormData();
     payload.append('tanggal', formValue.tanggal || '');
-    payload.append('tugas', formValue.tugas || '');
-    payload.append('judul', formValue.judul || '');
+    payload.append('judul_tugas', canonicalWorkReportTitlePayload(formValue.judul_tugas).judul_tugas);
     payload.append('deskripsi_kegiatan', formValue.deskripsi_kegiatan || '');
     payload.append('realisasi_kegiatan', formValue.realisasi_kegiatan || '');
     payload.append('kendala', formValue.kendala || '');
@@ -530,11 +574,13 @@ export class WorkReportComponent implements OnInit {
 
   exportExcel() {
     if (!this.reports || this.reports.length === 0) return;
-    const userName = localStorage.getItem('name') || 'Employee';
-    const headers = this.exportHeaders();
-    const rows = this.exportRows();
-    const escapeHtml = (value: unknown): string => String(value ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    let html = `
+    this.withExportReports(reports => {
+      if (reports.length === 0) return;
+      const userName = localStorage.getItem('name') || 'Employee';
+      const headers = this.exportHeaders();
+      const rows = this.exportRows(reports);
+      const escapeHtml = (value: unknown): string => String(value ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      let html = `
       <html xmlns:x="urn:schemas-microsoft-com:office:excel">
       <head>
         <meta charset="utf-8">
@@ -555,82 +601,95 @@ export class WorkReportComponent implements OnInit {
         </table>
       </body>
       </html>
-    `;
-    
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Laporan_Kerja_${userName.replace(/\s+/g, '_')}_${new Date().getTime()}.xls`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      `;
+
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Laporan_Kerja_${userName.replace(/\s+/g, '_')}_${new Date().getTime()}.xls`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
   }
     
   exportCSV() {
     this.isExportOpen = false;
     if (!this.reports || this.reports.length === 0) return;
-    const userName = localStorage.getItem('name')?.replace(/\s+/g, '_') || 'Employee';
-    const csvEscape = (value: unknown): string => `"${String(value ?? '').replace(/"/g, '""')}"`;
-    const csvContent = [this.exportHeaders(), ...this.exportRows()]
-      .map(row => row.map(csvEscape).join(','))
-      .join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', `data:text/csv;charset=utf-8,${encodedUri}`);
-    link.setAttribute('download', `Laporan_Kerja_${userName}_${new Date().getTime()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    this.withExportReports(reports => {
+      if (reports.length === 0) return;
+      const userName = localStorage.getItem('name')?.replace(/\s+/g, '_') || 'Employee';
+      const csvEscape = (value: unknown): string => `"${String(value ?? '').replace(/"/g, '""')}"`;
+      const csvContent = [this.exportHeaders(), ...this.exportRows(reports)]
+        .map(row => row.map(csvEscape).join(','))
+        .join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', `data:text/csv;charset=utf-8,${encodedUri}`);
+      link.setAttribute('download', `Laporan_Kerja_${userName}_${new Date().getTime()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
   }
 
   exportJSON() {
     this.isExportOpen = false;
     if (!this.reports || this.reports.length === 0) return;
-    const data = this.reports.map(report => ({
-      ...report,
-      status_pengisian: this.reportFillingLabel(report),
-      catatan_review_alasan_penolakan: this.reviewOrRejectionNote(report)
-    }));
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "laporan_kerja.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    this.withExportReports(reports => {
+      if (reports.length === 0) return;
+      const data = reports.map(report => canonicalWorkReportExportRecord(report, {
+        judul_tugas: canonicalWorkReportTitle(report),
+        status_pengisian: this.reportFillingLabel(report),
+        status_validasi: this.validationStatusLabel(report),
+        catatan_review_alasan_penolakan: this.reviewOrRejectionNote(report)
+      }));
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "laporan_kerja.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    });
   }
 
   exportPDF() {
     this.isExportOpen = false;
     if (!this.reports || this.reports.length === 0) return;
-    const report = this.buildPrintableReport();
-    void this.reportExport.downloadPdf(`laporan-kerja-harian-${this.reportDate()}.pdf`, 'Laporan Kerja Harian Karyawan', this.reportDate(), report.headers, report.rows);
+    this.withExportReports(reports => {
+      if (reports.length === 0) return;
+      const report = this.buildPrintableReport(reports);
+      void this.reportExport.downloadPdf(`laporan-kerja-harian-${this.reportDate()}.pdf`, 'Laporan Kerja Harian', this.reportDate(), report.headers, report.rows);
+    });
   }
 
   printReport() {
     this.isExportOpen = false;
     if (!this.reports || this.reports.length === 0) return;
-    const report = this.buildPrintableReport();
-    this.reportExport.printReport('Laporan Kerja Harian Karyawan', this.reportDate(), report.headers, report.rows);
+    this.withExportReports(reports => {
+      if (reports.length === 0) return;
+      const report = this.buildPrintableReport(reports);
+      this.reportExport.printReport('Laporan Kerja Harian', this.reportDate(), report.headers, report.rows);
+    });
   }
 
-  private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
-    return { headers: this.exportHeaders(), rows: this.exportRows() };
+  private buildPrintableReport(reports = this.reports): { headers: string[]; rows: unknown[][] } {
+    return { headers: this.exportHeaders(), rows: this.exportRows(reports) };
   }
 
   private exportHeaders(): string[] {
-    return ['No', 'Hari/Tanggal', 'Divisi', 'Tugas', 'Judul Golan Nusantara/Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan (Capaian Target, %)', 'Kendala (Jika Ada)', 'Rencana Minggu Depan', 'Link Artikel', 'Screenshot/Bukti Pengisian', 'Status Pengisian', 'Catatan Tambahan', 'Status Validasi', 'Catatan Review/Alasan Penolakan', ...this.columns.map(column => column.nama_kolom)];
+    return ['No', 'Hari/Tanggal', 'Divisi', 'Judul Tugas', 'Deskripsi Kegiatan', 'Realisasi Kegiatan (Capaian Target, %)', 'Kendala (Jika Ada)', 'Rencana Minggu Depan', 'Link Artikel', 'Screenshot/Bukti Pengisian', 'Status Pengisian', 'Catatan Tambahan', 'Status Validasi', 'Catatan Review/Alasan Penolakan', ...this.columns.map(column => column.nama_kolom)];
   }
 
-  private exportRows(): unknown[][] {
-    return this.reports.map((report, index) => [
+  private exportRows(reports = this.reports): unknown[][] {
+    return reports.map((report, index) => [
       index + 1,
       this.formatReportDate(report.tanggal),
       this.userDivisi || '-',
-      report.tugas || '-',
-      report.judul || '-',
+      canonicalWorkReportTitle(report) || '-',
       report.deskripsi_kegiatan || '-',
       report.realisasi_kegiatan || '-',
       report.kendala || '-',
@@ -639,19 +698,39 @@ export class WorkReportComponent implements OnInit {
       (report.attachments || []).map(image => image.file_url).filter(Boolean).join(' | ') || '-',
       this.reportFillingLabel(report),
       report.catatan_tambahan || '-',
-      report.status_sesuai || 'Menunggu',
+      this.validationStatusLabel(report),
       this.reviewOrRejectionNote(report),
       ...this.columns.map(column => this.customFieldValue(report, column))
     ]);
   }
 
+  private withExportReports(done: (reports: WorkReport[]) => void): void {
+    if (!this.serverPaginated) {
+      done(this.allReports.length ? this.allReports : this.reports);
+      return;
+    }
+    const range = monthRange(this.selectedMonth);
+    this.workReportService.getWorkReports(undefined, range.start, range.end).subscribe({
+      next: response => {
+        const payload = response as WorkReport[] | PaginatedWorkReports;
+        const reports: WorkReport[] = Array.isArray(payload) ? payload : (payload.data || []);
+        const seen = new Set<string>();
+        done(reports.filter(report => {
+          const id = report.ID;
+          if (id === undefined || id === null) return true;
+          const key = String(id);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }));
+      },
+      error: () => done(this.reports)
+    });
+  }
+
   private reportDate(): string { return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()); }
   rejectionReason(report: WorkReport): string {
-    const validationStatus = String(report.status_sesuai || '').trim().toLowerCase();
-    const fillingStatus = String(report.status_laporan || '').trim().toLowerCase();
-    const isRejected = validationStatus === 'tidak sesuai'
-      || validationStatus === 'ditolak'
-      || fillingStatus === 'rejected';
+    const isRejected = normalizeWorkReportContract(report).status === 'rejected';
     const reason = String(report.rejection_reason || report.RejectionReason || '').trim();
     return isRejected && reason ? reason : '-';
   }

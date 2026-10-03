@@ -168,26 +168,32 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 		belumAbsenHariIni = 0
 	}
 
-	var totalMagang, magangAktif, logbookPending int64
+	var totalMagang, magangAktif, workReportsPending int64
 	config.DB.Model(&models.User{}).Where("role = ?", models.RoleMagang).Count(&totalMagang)
 	config.DB.Model(&models.User{}).Where("role = ? AND internship_end_date >= ?", models.RoleMagang, today).Count(&magangAktif)
-	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ?", models.RoleMagang, "submitted", "draft").Count(&logbookPending)
+	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ?", models.RoleMagang).Where(workReportPendingCondition("work_reports.")).Count(&workReportsPending)
 	sertifikatTerbit := getSertifikatTerbitCount()
 	var employeeIDs []uint
 	config.DB.Model(&models.Employee{}).Pluck("id", &employeeIDs)
-	missingReports := missingWorkReportRows(employeeIDs, now)
+	missingReports, missingEmployeeCount := missingWorkReportRowsAndEmployeeCount(employeeIDs, now)
 
 	return c.JSON(fiber.Map{
-		"total_karyawan":            totalKaryawan,
-		"hadir_hari_ini":            hadirHariIni,
-		"belum_absen_hari_ini":      belumAbsenHariIni,
-		"izin_cuti_hari_ini":        izinCutiHariIni,
-		"total_magang":              totalMagang,
-		"magang_aktif":              magangAktif,
-		"logbook_pending":           logbookPending,
-		"sertifikat_terbit":         sertifikatTerbit,
-		"missing_work_reports":      missingReports,
-		"missing_work_report_count": len(missingReports),
+		"total_karyawan":       totalKaryawan,
+		"hadir_hari_ini":       hadirHariIni,
+		"belum_absen_hari_ini": belumAbsenHariIni,
+		"izin_cuti_hari_ini":   izinCutiHariIni,
+		"total_magang":         totalMagang,
+		"magang_aktif":         magangAktif,
+		"work_reports_pending": workReportsPending,
+		// Compatibility alias for clients that predate the work-report cutover.
+		"logbook_pending":      workReportsPending,
+		"sertifikat_terbit":    sertifikatTerbit,
+		"missing_work_reports": missingReports,
+		// The warning list intentionally contains only the newest actionable
+		// row, while this count represents distinct employees without a report.
+		"missing_work_report_employee_count": missingEmployeeCount,
+		// Compatibility alias retained for existing dashboard clients.
+		"missing_work_report_count": missingEmployeeCount,
 	})
 }
 

@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
 import { FilePreviewComponent } from './file-preview.component';
 
 describe('FilePreviewComponent', () => {
@@ -6,7 +8,7 @@ describe('FilePreviewComponent', () => {
   let component: FilePreviewComponent;
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [FilePreviewComponent] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [FilePreviewComponent], providers: [provideHttpClient(), provideRouter([])] }).compileComponents();
     fixture = TestBed.createComponent(FilePreviewComponent);
     component = fixture.componentInstance;
     component.accept = 'image/png,application/pdf';

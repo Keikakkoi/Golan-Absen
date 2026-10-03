@@ -24,8 +24,7 @@ import (
 )
 
 func SetupWorkReportRoutes(api fiber.Router) {
-	reportGroup := api.Group("/work-reports")
-	reportGroup.Use(middleware.Protected())
+	reportGroup := api.Group("/work-reports", middleware.Protected(), middleware.RequireRoles(models.RoleKaryawan, models.RoleManajer, models.RoleMagang, models.RoleHRD))
 
 	reportGroup.Get("/columns", GetWorkReportColumns)
 
@@ -87,6 +86,31 @@ func GetWorkReports(c *fiber.Ctx) error {
 		if projectID := c.Query("project_id"); projectID != "" {
 			query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON users.id = employees.user_id WHERE users.project_id = ?)", projectID)
 		}
+		if userIDFilter := strings.TrimSpace(c.Query("user_id")); userIDFilter != "" {
+			parsedUserID, parseErr := strconv.ParseUint(userIDFilter, 10, 64)
+			if parseErr != nil {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid user_id"})
+			}
+			query = query.Where("employee_id IN (SELECT id FROM employees WHERE user_id = ?)", parsedUserID)
+		}
+		if roleFilter := strings.TrimSpace(c.Query("role")); roleFilter != "" {
+			role := models.Role(roleFilter)
+			if !models.IsValidRole(role) {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid role"})
+			}
+			query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON users.id = employees.user_id WHERE users.role = ?)", role)
+		}
+		if status := strings.ToLower(strings.TrimSpace(c.Query("status"))); status != "" {
+			if status == "draft" {
+				// Admin validation inbox intentionally excludes drafts. Keep the
+				// response empty instead of allowing drafts into this read model.
+				query = query.Where("1 = 0")
+			} else if !isValidAdminWorkReportStatus(status) || status == "draft" {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid work report status"})
+			} else {
+				query = applyWorkReportAdminStatusFilter(query, status)
+			}
+		}
 	}
 
 	startDate := strings.TrimSpace(c.Query("start_date"))
@@ -133,7 +157,11 @@ func CreateWorkReport(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	statusLaporan := normalizeWorkReportStatus(input.StatusLaporan)
+	statusInput := input.StatusLaporan
+	if strings.TrimSpace(statusInput) == "" {
+		statusInput = input.Status
+	}
+	statusLaporan := normalizeWorkReportStatus(statusInput)
 	if err := validateWorkReportCompleteness(input, emp.Division.NamaDivisi, statusLaporan == "submitted"); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -153,11 +181,20 @@ func CreateWorkReport(c *fiber.Ctx) error {
 	}
 
 	var existing models.WorkReport
-	if config.DB.Where("employee_id = ? AND tanggal = ?", emp.ID, t).First(&existing).Error == nil {
-		wasSubmitted := normalizeWorkReportStatus(existing.StatusLaporan) == "submitted"
+	if config.DB.Preload("Employee.User").Where("employee_id = ? AND tanggal = ?", emp.ID, t).First(&existing).Error == nil {
+		if models.IsWorkReportNoReport(existing) {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Status no_report tidak memiliki aksi edit atau submit"})
+		}
+		actorRole := ""
+		if emp.User != nil {
+			actorRole = string(emp.User.Role)
+		}
+		recoveringLegacyDraft := isRecoverableLegacyDraft(existing, actorRole, true)
+		if existing.ReportKind == models.WorkReportKindLegacyLogbook && !recoveringLegacyDraft {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Riwayat logbook lama sudah diajukan. Gunakan endpoint kompatibilitas untuk melihat detailnya."})
+		}
+		wasSubmitted := !isWorkReportDraft(existing)
 		updates := map[string]interface{}{
-			"tugas":                input.Tugas,
-			"judul":                input.Judul,
 			"deskripsi_kegiatan":   input.DeskripsiKegiatan,
 			"realisasi_kegiatan":   input.RealisasiKegiatan,
 			"kendala":              input.Kendala,
@@ -166,11 +203,17 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			"catatan_tambahan":     input.CatatanTambahan,
 			"custom_fields":        input.CustomFields,
 			"status_laporan":       statusLaporan,
+			"report_kind":          models.WorkReportKindCanonical,
+			"is_late_submission":   existing.IsLateSubmission || isLateWorkReportSubmission(emp.ID, t),
+		}
+		if !recoveringLegacyDraft {
 			// Regular work reports are not internship logbooks. Keep the
 			// separate logbook status Submitted so the shared Draft rule does
 			// not classify a normal report as an internship Draft.
-			"status_logbook":     "submitted",
-			"is_late_submission": existing.IsLateSubmission || isLateWorkReportSubmission(emp.ID, t),
+			updates["status_logbook"] = "submitted"
+		}
+		for key, value := range workReportTitleUpdates(input) {
+			updates[key] = value
 		}
 		if existing.StatusSesuai == "tidak membuat laporan kerja" {
 			updates["status_sesuai"] = ""
@@ -182,6 +225,11 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			saveWorkReportAttachments(existing.ID, emp.NIK, files)
 		}
 		config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").First(&existing, existing.ID)
+		message := "Laporan kerja disimpan melalui endpoint canonical"
+		if recoveringLegacyDraft {
+			message = "Draft legacy_logbook dipulihkan menjadi work_report melalui endpoint canonical"
+		}
+		_ = utils.LogAction(userID, "UPDATE", "WorkReport", existing.ID, message)
 		if statusLaporan == "submitted" && !wasSubmitted {
 			WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
 			var hrdUsers []models.User
@@ -194,15 +242,18 @@ func CreateWorkReport(c *fiber.Ctx) error {
 					utils.CreateNotification(config.DB, user.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", name, existing.Tanggal.Format("02-01-2006")))
 				}
 			}
+			if emp.User != nil && emp.User.Role == models.RoleMagang {
+				notifyWorkReportManagers(emp, existing)
+			}
 		}
 		return c.JSON(existing)
 	}
 
 	report := models.WorkReport{
+		ReportKind:         models.WorkReportKindCanonical,
 		EmployeeID:         &emp.ID,
 		Tanggal:            t,
-		Tugas:              input.Tugas,
-		Judul:              input.Judul,
+		JudulTugas:         input.JudulTugas,
 		DeskripsiKegiatan:  input.DeskripsiKegiatan,
 		RealisasiKegiatan:  input.RealisasiKegiatan,
 		Kendala:            input.Kendala,
@@ -222,6 +273,7 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 	config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").First(&report, report.ID)
+	_ = utils.LogAction(userID, "CREATE", "WorkReport", report.ID, "Laporan kerja dibuat melalui endpoint canonical")
 	if statusLaporan == "submitted" {
 		WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
 	}
@@ -238,6 +290,9 @@ func CreateWorkReport(c *fiber.Ctx) error {
 				utils.CreateNotification(config.DB, u.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", nama, report.Tanggal.Format("02-01-2006")))
 			}
 		}
+		if emp.User != nil && emp.User.Role == models.RoleMagang {
+			notifyWorkReportManagers(emp, report)
+		}
 	}
 
 	return c.JSON(report)
@@ -249,20 +304,33 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	if err := config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").First(&report, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Work report not found"})
 	}
+	if models.IsWorkReportNoReport(report) {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Status no_report tidak memiliki aksi edit atau submit"})
+	}
 
 	userRole := string(c.Locals("role").(models.Role))
 	userID := c.Locals("user_id").(uint)
+	recoveringLegacyDraft := false
+	if userRole == string(models.RoleHRD) && report.ReportKind == models.WorkReportKindLegacyLogbook {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Record legacy_logbook hanya dapat dibaca melalui endpoint compatibility"})
+	}
 
 	if userRole != string(models.RoleHRD) {
 		var emp models.Employee
-		if err := config.DB.Where("user_id = ?", userID).First(&emp).Error; err == nil {
-			if report.EmployeeID == nil || *report.EmployeeID != emp.ID {
-				return c.Status(403).JSON(fiber.Map{"error": "Not your report"})
-			}
+		if err := config.DB.Where("user_id = ?", userID).First(&emp).Error; err != nil {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Report ownership could not be verified"})
 		}
-		if isWorkReportLocked(report.StatusSesuai) {
+		ownsReport := ownsWorkReport(report.EmployeeID, emp.ID)
+		if !ownsReport {
+			return c.Status(403).JSON(fiber.Map{"error": "Not your report"})
+		}
+		if !canUseCanonicalWorkReportMutation(report, userRole, ownsReport) {
+			if report.ReportKind == models.WorkReportKindLegacyLogbook {
+				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Riwayat logbook lama hanya dapat dipulihkan jika masih Draft dan belum memiliki riwayat review"})
+			}
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Laporan dengan status Sesuai atau Tidak membuat laporan kerja tidak dapat diubah"})
 		}
+		recoveringLegacyDraft = isRecoverableLegacyDraft(report, userRole, ownsReport)
 	}
 
 	input, files, err := parseWorkReportInput(c)
@@ -272,9 +340,17 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	if err := deleteRequestedWorkReportAttachments(c, report.ID); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	statusLaporan := normalizeWorkReportStatus(input.StatusLaporan)
+	statusInput := input.StatusLaporan
+	if strings.TrimSpace(statusInput) == "" {
+		statusInput = input.Status
+	}
+	statusLaporan := normalizeWorkReportStatus(statusInput)
 	if input.StatusLaporan == "" && input.Status == "" {
-		statusLaporan = normalizeWorkReportStatus(report.StatusLaporan)
+		if recoveringLegacyDraft {
+			statusLaporan = "draft"
+		} else {
+			statusLaporan = normalizeWorkReportStatus(report.StatusLaporan)
+		}
 	}
 	if userRole != string(models.RoleHRD) {
 		if err := validateWorkReportCompleteness(input, report.Employee.Division.NamaDivisi, statusLaporan == "submitted"); err != nil {
@@ -308,8 +384,9 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	if strings.HasPrefix(strings.ToLower(c.Get("Content-Type")), "multipart/form-data") && userRole != string(models.RoleHRD) {
 		// FormData represents the complete employee form, so empty values must
 		// also be persisted when a draft is edited and a field is cleared.
-		updates["tugas"] = input.Tugas
-		updates["judul"] = input.Judul
+		for key, value := range workReportTitleUpdates(input) {
+			updates[key] = value
+		}
 		updates["deskripsi_kegiatan"] = input.DeskripsiKegiatan
 		updates["realisasi_kegiatan"] = input.RealisasiKegiatan
 		updates["kendala"] = input.Kendala
@@ -318,10 +395,17 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		updates["catatan_tambahan"] = input.CatatanTambahan
 		updates["custom_fields"] = input.CustomFields
 		updates["status_laporan"] = statusLaporan
-		updates["status_logbook"] = "submitted"
-	} else if input.StatusLaporan != "" && userRole != string(models.RoleHRD) {
+		if !recoveringLegacyDraft {
+			updates["status_logbook"] = "submitted"
+		}
+	} else if statusInput != "" && userRole != string(models.RoleHRD) {
 		updates["status_laporan"] = statusLaporan
-		updates["status_logbook"] = "submitted"
+		if !recoveringLegacyDraft {
+			updates["status_logbook"] = "submitted"
+		}
+	}
+	if recoveringLegacyDraft {
+		updates["report_kind"] = models.WorkReportKindCanonical
 	}
 
 	var statusChanged bool
@@ -371,6 +455,11 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		}
 	}
 	config.DB.Preload("Attachments").First(&report, report.ID)
+	message := "Laporan kerja diperbarui"
+	if recoveringLegacyDraft {
+		message = "Draft legacy_logbook dipulihkan menjadi work_report melalui endpoint canonical"
+	}
+	_ = utils.LogAction(userID, "UPDATE", "WorkReport", report.ID, message)
 	if userRole != string(models.RoleHRD) && statusLaporan == "submitted" && !wasSubmitted {
 		WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
 		var hrdUsers []models.User
@@ -386,6 +475,9 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 				utils.CreateNotification(config.DB, user.ID, models.RoleHRD, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", name, report.Tanggal.Format("02-01-2006")))
 			}
 		}
+		if report.Employee.User != nil && report.Employee.User.Role == models.RoleMagang {
+			notifyWorkReportManagers(report.Employee, report)
+		}
 	}
 
 	// Notify the employee if HRD updated their report
@@ -394,7 +486,12 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		if input.StatusSesuai == "Tidak Sesuai" {
 			message += ". Alasan penolakan: " + strings.TrimSpace(input.RejectionReason)
 		}
-		utils.CreateNotification(config.DB, report.Employee.UserID, models.RoleKaryawan, "Laporan Kerja", "Status Laporan Diperbarui", message)
+		recipientRole := models.RoleKaryawan
+		if report.Employee.User != nil && models.IsValidRole(report.Employee.User.Role) {
+			recipientRole = report.Employee.User.Role
+		}
+		utils.CreateNotification(config.DB, report.Employee.UserID, recipientRole, "Laporan Kerja", "Status Laporan Diperbarui", message)
+		WsHub.Broadcast <- fiber.Map{"event": "work_report_status_updated", "user_id": report.Employee.UserID}
 	}
 
 	return c.JSON(report)
@@ -403,16 +500,26 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 func DeleteWorkReport(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var report models.WorkReport
-	if err := config.DB.First(&report, id).Error; err != nil {
+	if err := config.DB.Preload("Employee.User").First(&report, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Report not found"})
 	}
+	if models.IsWorkReportNoReport(report) {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Status no_report tidak memiliki aksi hapus"})
+	}
 	role := string(c.Locals("role").(models.Role))
+	if role == string(models.RoleHRD) && report.ReportKind == models.WorkReportKindLegacyLogbook {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Record legacy_logbook hanya dapat dibaca melalui endpoint compatibility"})
+	}
 	if role != string(models.RoleHRD) {
 		var employee models.Employee
-		if err := config.DB.Where("user_id = ?", c.Locals("user_id").(uint)).First(&employee).Error; err != nil || report.EmployeeID == nil || *report.EmployeeID != employee.ID {
+		if err := config.DB.Where("user_id = ?", c.Locals("user_id").(uint)).First(&employee).Error; err != nil || !ownsWorkReport(report.EmployeeID, employee.ID) {
 			return c.Status(403).JSON(fiber.Map{"error": "Not your report"})
 		}
-		if isWorkReportLocked(report.StatusSesuai) {
+		ownsReport := ownsWorkReport(report.EmployeeID, employee.ID)
+		if !canUseCanonicalWorkReportMutation(report, role, ownsReport) {
+			if report.ReportKind == models.WorkReportKindLegacyLogbook {
+				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Riwayat logbook lama hanya dapat dipulihkan jika masih Draft dan belum memiliki riwayat review"})
+			}
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Laporan dengan status Sesuai atau Tidak membuat laporan kerja tidak dapat dihapus"})
 		}
 	}
@@ -434,6 +541,7 @@ func DeleteWorkReport(c *fiber.Ctx) error {
 			log.Printf("work report attachment storage cleanup failed: report_id=%d storage_key=%q: %v", report.ID, attachment.StorageKey, err)
 		}
 	}
+	_ = utils.LogAction(c.Locals("user_id").(uint), "DELETE", "WorkReport", report.ID, "Laporan kerja dihapus")
 	return c.JSON(fiber.Map{"message": "Report deleted successfully"})
 }
 
@@ -442,14 +550,99 @@ func isWorkReportLocked(status string) bool {
 	return normalized == "sesuai" || normalized == "tidak membuat laporan kerja"
 }
 
+func ownsWorkReport(reportEmployeeID *uint, employeeID uint) bool {
+	return reportEmployeeID != nil && employeeID != 0 && *reportEmployeeID == employeeID
+}
+
+// isRecoverableLegacyDraft is intentionally narrow. It permits only an owner
+// with the MAGANG role to repair a legacy row that is still a real Draft and
+// has no review/rejection history. The repair is performed on the next
+// canonical write, not by a mass migration.
+func isRecoverableLegacyDraft(report models.WorkReport, actorRole string, ownsReport bool) bool {
+	if models.IsWorkReportNoReport(report) {
+		return false
+	}
+	if actorRole != string(models.RoleMagang) || !ownsReport || report.ReportKind != models.WorkReportKindLegacyLogbook {
+		return false
+	}
+	if !canModifyInternshipLogbook(report.StatusLogbook) || report.ValidasiOlehHR {
+		return false
+	}
+	if report.ReviewedBy != nil || report.ReviewedAt != nil || strings.TrimSpace(report.ReviewNotes) != "" {
+		return false
+	}
+	if strings.TrimSpace(report.StatusSesuai) != "" || report.RejectedBy != nil || report.RejectedAt != nil || strings.TrimSpace(report.RejectionReason) != "" || strings.TrimSpace(report.RejectionSource) != "" {
+		return false
+	}
+	return true
+}
+
+func canUseCanonicalWorkReportMutation(report models.WorkReport, actorRole string, ownsReport bool) bool {
+	if models.IsWorkReportNoReport(report) {
+		return false
+	}
+	if report.ReportKind == models.WorkReportKindLegacyLogbook {
+		return isRecoverableLegacyDraft(report, actorRole, ownsReport)
+	}
+	if actorRole == string(models.RoleHRD) {
+		return true
+	}
+	if !ownsReport || isWorkReportLocked(report.StatusSesuai) {
+		return false
+	}
+	return true
+}
+
+func isWorkReportDraft(report models.WorkReport) bool {
+	return models.CanonicalWorkReportStatus(report) == models.WorkReportStatusDraft
+}
+
+func isValidAdminWorkReportStatus(status string) bool {
+	return status == "draft" || status == "submitted" || status == "approved" || status == "rejected"
+}
+
+func applyWorkReportAdminStatusFilter(query *gorm.DB, status string) *gorm.DB {
+	legacyKind := "COALESCE(NULLIF(BTRIM(work_reports.report_kind), ''), 'work_report') = 'legacy_logbook'"
+	legacyStatus := "LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted'))"
+	validation := "LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_sesuai), ''), ''))"
+	switch status {
+	case "approved":
+		return query.Where("NOT "+workReportNoReportCondition("work_reports.")).Where("("+validation+" = ? OR ("+legacyKind+" AND "+legacyStatus+" = ?))", "sesuai", "approved")
+	case "rejected":
+		return query.Where("NOT "+workReportNoReportCondition("work_reports.")).Where("("+validation+" IN ? OR ("+legacyKind+" AND "+legacyStatus+" = ?))", []string{"tidak sesuai", "minta perbaikan", "minta_perbaikan"}, "rejected")
+	case "submitted":
+		return query.Where("NOT "+workReportNoReportCondition("work_reports.")).Where("("+validation+" NOT IN ? AND (("+legacyKind+" AND "+legacyStatus+" = ?) OR NOT ("+legacyKind+")))", []string{"sesuai", "tidak sesuai", "minta perbaikan", "minta_perbaikan"}, "submitted")
+	default:
+		return query
+	}
+}
+
+// workReportPendingCondition is shared by admin badges and dashboards. It
+// reads the canonical filling/review fields while retaining the legacy
+// logbook mapping for rows that predate report_kind.
+func workReportPendingCondition(prefix string) string {
+	legacyKind := "COALESCE(NULLIF(BTRIM(" + prefix + "report_kind), ''), 'work_report') = 'legacy_logbook'"
+	canonicalKind := "COALESCE(NULLIF(BTRIM(" + prefix + "report_kind), ''), 'work_report') <> 'legacy_logbook'"
+	legacyStatus := "LOWER(COALESCE(NULLIF(BTRIM(" + prefix + "status_logbook), ''), 'submitted'))"
+	fillingStatus := "LOWER(COALESCE(NULLIF(BTRIM(" + prefix + "status_laporan), ''), 'submitted'))"
+	validation := "LOWER(COALESCE(NULLIF(BTRIM(" + prefix + "status_sesuai), ''), ''))"
+	reviewed := "('sesuai', 'tidak sesuai', 'ditolak', 'minta perbaikan', 'minta_perbaikan')"
+	return "(NOT (" + workReportNoReportCondition(prefix) + ") AND ((" + legacyKind + " AND " + legacyStatus + " = 'submitted') OR (" + canonicalKind + " AND " + fillingStatus + " = 'submitted' AND " + validation + " NOT IN " + reviewed + ")))"
+}
+
+// workReportNoReportCondition mirrors the persisted signals consumed by the
+// model-level mapper. It keeps aggregate queries from treating generated
+// empty/marker rows as pending reports.
+func workReportNoReportCondition(prefix string) string {
+	marker := "LOWER(BTRIM(COALESCE(" + prefix + "status_sesuai, ''))) = '" + models.WorkReportNoReportMarker + "'"
+	empty := "BTRIM(COALESCE(" + prefix + "judul_tugas, '')) = '' AND BTRIM(COALESCE(" + prefix + "judul, '')) = '' AND BTRIM(COALESCE(" + prefix + "tugas, '')) = '' AND BTRIM(COALESCE(" + prefix + "deskripsi_kegiatan, '')) = '' AND BTRIM(COALESCE(" + prefix + "realisasi_kegiatan, '')) = '' AND BTRIM(COALESCE(" + prefix + "kendala, '')) = '' AND BTRIM(COALESCE(" + prefix + "rencana_minggu_depan, '')) = '' AND BTRIM(COALESCE(" + prefix + "link_artikel, '')) = '' AND BTRIM(COALESCE(" + prefix + "catatan_tambahan, '')) = '' AND BTRIM(COALESCE(" + prefix + "custom_fields, '')) IN ('', '{}', '[]', 'null') AND NOT EXISTS (SELECT 1 FROM work_report_attachments WHERE work_report_id = " + prefix + "id)"
+	return "(" + marker + " OR (" + empty + "))"
+}
+
 // normalizeAdminValidationStatus removes the retired HRD workflow state. The
 // Manager logbook workflow uses status_logbook and is intentionally unaffected.
 func normalizeAdminValidationStatus(status string) string {
-	normalized := strings.ToLower(strings.TrimSpace(status))
-	if normalized == "minta perbaikan" || normalized == "minta_perbaikan" {
-		return "Tidak Sesuai"
-	}
-	return status
+	return models.NormalizeLegacyValidationStatus(status)
 }
 
 // deleteWorkReportData removes the dependent rows before the report row. The
@@ -568,7 +761,7 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 			IsAttended: false,
 		})
 		if results[len(results)-1].Status == "" {
-			results[len(results)-1].Status = "missing"
+			results[len(results)-1].Status = string(models.WorkReportStatusNoReport)
 		}
 	}
 
@@ -578,14 +771,7 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 func workReportStatusMap(reports []models.WorkReport) map[string]bool {
 	status := make(map[string]bool)
 	for _, report := range reports {
-		// The rules job creates an empty marker row for a missed deadline.
-		// That marker is evidence of a missing report, not a submitted report.
-		if strings.EqualFold(strings.TrimSpace(report.StatusSesuai), "tidak membuat laporan kerja") {
-			continue
-		}
-		// Drafts are intentionally absent from compliance. Empty status values
-		// are treated as legacy submitted rows for backward compatibility.
-		if strings.EqualFold(strings.TrimSpace(report.StatusLaporan), "draft") || strings.EqualFold(strings.TrimSpace(report.StatusLogbook), "draft") {
+		if models.CanonicalWorkReportStatus(report) == models.WorkReportStatusNoReport || isWorkReportDraft(report) {
 			continue
 		}
 		if report.EmployeeID != nil {
@@ -597,22 +783,28 @@ func workReportStatusMap(reports []models.WorkReport) map[string]bool {
 
 func workReportComplianceStatusMap(reports []models.WorkReport) map[string]string {
 	status := make(map[string]string)
-	priority := map[string]int{"missing": 0, "draft": 1, "submitted": 2, "needs_improvement": 3, "validated": 4}
+	priority := map[string]int{string(models.WorkReportStatusNoReport): 5, "draft": 1, "submitted": 2, "needs_improvement": 3, "validated": 4}
 	for _, report := range reports {
 		if report.EmployeeID == nil {
 			continue
 		}
 		key := fmt.Sprintf("%d_%s", *report.EmployeeID, report.Tanggal.Format("2006-01-02"))
+		canonicalStatus := models.CanonicalWorkReportStatus(report)
 		current := "submitted"
-		if strings.EqualFold(strings.TrimSpace(report.StatusSesuai), "tidak membuat laporan kerja") {
-			current = "missing"
-		} else if strings.EqualFold(strings.TrimSpace(report.StatusLaporan), "draft") || strings.EqualFold(strings.TrimSpace(report.StatusLogbook), "draft") {
+		switch canonicalStatus {
+		case models.WorkReportStatusNoReport:
+			current = string(models.WorkReportStatusNoReport)
+		case models.WorkReportStatusDraft:
 			current = "draft"
-		} else {
+		case models.WorkReportStatusApproved:
+			current = "validated"
+		case models.WorkReportStatusRejected:
+			current = "needs_improvement"
+		default:
 			switch strings.ToLower(strings.TrimSpace(report.StatusSesuai)) {
 			case "sesuai":
 				current = "validated"
-			case "tidak sesuai", "minta perbaikan":
+			case "tidak sesuai", "ditolak", "minta perbaikan", "minta_perbaikan":
 				current = "needs_improvement"
 			}
 		}
@@ -624,22 +816,25 @@ func workReportComplianceStatusMap(reports []models.WorkReport) map[string]strin
 }
 
 type workReportInput struct {
-	Tanggal            string  `json:"tanggal"`
-	Tugas              string  `json:"tugas"`
-	Judul              string  `json:"judul"`
-	DeskripsiKegiatan  string  `json:"deskripsi_kegiatan"`
-	RealisasiKegiatan  string  `json:"realisasi_kegiatan"`
-	Kendala            string  `json:"kendala"`
-	RencanaMingguDepan string  `json:"rencana_minggu_depan"`
-	LinkArtikel        string  `json:"link_artikel"`
-	CatatanTambahan    string  `json:"catatan_tambahan"`
-	CustomFields       string  `json:"custom_fields"`
-	StatusSesuai       string  `json:"status_sesuai"`
-	StatusLaporan      string  `json:"status_laporan"`
-	Status             string  `json:"status"`
-	StatusLogbook      string  `json:"status_logbook"`
-	RejectionReason    string  `json:"rejection_reason"`
-	AdminNotes         *string `json:"admin_notes"`
+	Tanggal                   string  `json:"tanggal"`
+	Tugas                     string  `json:"tugas"`
+	Judul                     string  `json:"judul"`
+	JudulTugas                string  `json:"judul_tugas"`
+	DeskripsiKegiatan         string  `json:"deskripsi_kegiatan"`
+	RealisasiKegiatan         string  `json:"realisasi_kegiatan"`
+	Kendala                   string  `json:"kendala"`
+	RencanaMingguDepan        string  `json:"rencana_minggu_depan"`
+	LinkArtikel               string  `json:"link_artikel"`
+	CatatanTambahan           string  `json:"catatan_tambahan"`
+	CustomFields              string  `json:"custom_fields"`
+	StatusSesuai              string  `json:"status_sesuai"`
+	StatusLaporan             string  `json:"status_laporan"`
+	Status                    string  `json:"status"`
+	StatusLogbook             string  `json:"status_logbook"`
+	RejectionReason           string  `json:"rejection_reason"`
+	AdminNotes                *string `json:"admin_notes"`
+	CanonicalTitleProvided    bool    `json:"-"`
+	LegacyTitleFieldsProvided bool    `json:"-"`
 }
 
 const realisasiKegiatanError = "Realisasi kegiatan harus berupa angka persentase antara 0% sampai 100%, contoh: 20%, 50%, atau 100%."
@@ -669,21 +864,53 @@ func validateWorkReportCompleteness(input workReportInput, division string, subm
 	if !submitted {
 		return nil
 	}
-	if strings.TrimSpace(input.Tugas) == "" || strings.TrimSpace(input.DeskripsiKegiatan) == "" {
-		return fmt.Errorf("tugas dan deskripsi kegiatan wajib diisi saat laporan dikirim")
-	}
-	if requiresWorkReportTitle(division) && strings.TrimSpace(input.Judul) == "" {
-		return fmt.Errorf("judul wajib diisi untuk divisi Golan Nusantara dan Golan Education")
+	if strings.TrimSpace(input.JudulTugas) == "" || strings.TrimSpace(input.DeskripsiKegiatan) == "" {
+		return fmt.Errorf("judul tugas dan deskripsi kegiatan wajib diisi saat laporan dikirim")
 	}
 	return nil
 }
 
 func normalizeWorkReportStatus(value string) string {
-	status := strings.ToLower(strings.TrimSpace(value))
-	if status == "draft" {
-		return "draft"
+	return string(models.NormalizeWorkReportFillingStatus(value))
+}
+
+// workReportTitleUpdates keeps old clients writable while ensuring the active
+// canonical form only writes the additive field. Raw legacy columns are never
+// touched by a canonical request.
+func workReportTitleUpdates(input workReportInput) map[string]interface{} {
+	if input.CanonicalTitleProvided {
+		return map[string]interface{}{"judul_tugas": input.JudulTugas}
 	}
-	return "submitted"
+	if !input.LegacyTitleFieldsProvided {
+		return nil
+	}
+	return map[string]interface{}{
+		"tugas":       input.Tugas,
+		"judul":       input.Judul,
+		"judul_tugas": input.JudulTugas,
+	}
+}
+
+func notifyWorkReportManagers(employee models.Employee, report models.WorkReport) {
+	if employee.User == nil {
+		return
+	}
+	query := config.DB.Where("role = ? AND status = ?", models.RoleManajer, "aktif")
+	if employee.User.ManagerID != nil {
+		query = query.Where("id = ?", *employee.User.ManagerID)
+	} else if strings.TrimSpace(employee.User.TeamID) != "" {
+		query = query.Where("team_id = ?", employee.User.TeamID)
+	} else {
+		return
+	}
+	var managers []models.User
+	if err := query.Find(&managers).Error; err != nil {
+		return
+	}
+	name := employee.User.Nama
+	for _, manager := range managers {
+		_ = utils.CreateNotification(config.DB, manager.ID, models.RoleManajer, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", name, report.Tanggal.Format("02-01-2006")))
+	}
 }
 
 func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeader, error) {
@@ -693,6 +920,7 @@ func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeade
 		input.Tanggal = c.FormValue("tanggal")
 		input.Tugas = c.FormValue("tugas")
 		input.Judul = c.FormValue("judul")
+		input.JudulTugas = c.FormValue("judul_tugas")
 		input.DeskripsiKegiatan = c.FormValue("deskripsi_kegiatan")
 		input.RealisasiKegiatan = c.FormValue("realisasi_kegiatan")
 		input.Kendala = c.FormValue("kendala")
@@ -704,10 +932,18 @@ func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeade
 		input.RejectionReason = c.FormValue("rejection_reason")
 		input.StatusLaporan = c.FormValue("status_laporan")
 		input.Status = c.FormValue("status")
+		input.StatusLogbook = c.FormValue("status_logbook")
+		if input.Status == "" {
+			input.Status = input.StatusLogbook
+		}
 		form, err := c.MultipartForm()
 		if err != nil {
 			return input, nil, err
 		}
+		_, input.CanonicalTitleProvided = form.Value["judul_tugas"]
+		_, tugasProvided := form.Value["tugas"]
+		_, judulProvided := form.Value["judul"]
+		input.LegacyTitleFieldsProvided = tugasProvided || judulProvided
 		if values, ok := form.Value["admin_notes"]; ok {
 			notes := ""
 			if len(values) > 0 {
@@ -730,10 +966,26 @@ func parseWorkReportInput(c *fiber.Ctx) (workReportInput, []*multipart.FileHeade
 				return input, nil, fmt.Errorf("screenshot hanya boleh JPG, PNG, atau WEBP")
 			}
 		}
+		if strings.TrimSpace(input.JudulTugas) == "" {
+			input.JudulTugas = models.CombineWorkReportTitleTask(input.Judul, input.Tugas)
+		}
 		return input, files, nil
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return input, nil, err
+	}
+	var bodyFields map[string]json.RawMessage
+	if err := json.Unmarshal(c.Body(), &bodyFields); err == nil {
+		_, input.CanonicalTitleProvided = bodyFields["judul_tugas"]
+		_, tugasProvided := bodyFields["tugas"]
+		_, judulProvided := bodyFields["judul"]
+		input.LegacyTitleFieldsProvided = tugasProvided || judulProvided
+	}
+	if input.Status == "" {
+		input.Status = input.StatusLogbook
+	}
+	if strings.TrimSpace(input.JudulTugas) == "" {
+		input.JudulTugas = models.CombineWorkReportTitleTask(input.Judul, input.Tugas)
 	}
 	return input, nil, nil
 }

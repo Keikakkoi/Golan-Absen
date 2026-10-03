@@ -98,8 +98,10 @@
       <a routerLink="/employee/manager" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#user"></use></svg> Info Manajer
       </a>
-      <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()">
-        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi
+      <a class="notification-nav-link" routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
+        <span>Notifikasi</span>
+        <span class="sidebar-notification-badge" *ngIf="unreadCount > 0" [attr.aria-label]="unreadCount + ' notifikasi belum dibaca'">{{ unreadCount }}</span>
       </a>
       <a routerLink="/employee/profile" [class.active]="isEmployeeProfileActive()" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya
@@ -114,12 +116,12 @@
       <a routerLink="/intern/dashboard" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#dashboard"></use></svg> Dashboard</a>
       <a routerLink="/employee/checkin" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#time"></use></svg> Check-in / Out</a>
       <a routerLink="/employee/history" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#calendar"></use></svg> Riwayat Absensi</a>
-      <a routerLink="/intern/logbooks" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Logbook Harian</a>
+      <a routerLink="/employee/work-report" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Laporan Kerja</a>
       <a routerLink="/intern/statistics" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#chart"></use></svg> Statistik Kehadiran</a>
       <a routerLink="/employee/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#mail"></use></svg> Pengajuan Izin</a>
       <a routerLink="/intern/mentor" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Info Manajer</a>
       <a routerLink="/intern/certificate" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#save"></use></svg> Sertifikat Magang</a>
-      <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi</a>
+      <a class="notification-nav-link" routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg><span>Notifikasi</span><span class="sidebar-notification-badge" *ngIf="unreadCount > 0" [attr.aria-label]="unreadCount + ' notifikasi belum dibaca'">{{ unreadCount }}</span></a>
       <a routerLink="/employee/profile" [class.active]="isEmployeeProfileActive()" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya</a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ</a>
     </ng-container>
@@ -136,7 +138,7 @@
       <a routerLink="/manager/team/statistics" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#chart"></use></svg> Statistik Kehadiran Tim</a>
       <a routerLink="/employee/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#mail"></use></svg> Pengajuan Izin</a>
       <a routerLink="/manager/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#check"></use></svg> Persetujuan Izin</a>
-      <a routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi</a>
+      <a class="notification-nav-link" routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg><span>Notifikasi</span><span class="sidebar-notification-badge" *ngIf="unreadCount > 0" [attr.aria-label]="unreadCount + ' notifikasi belum dibaca'">{{ unreadCount }}</span></a>
       <a routerLink="/employee/profile" [class.active]="isEmployeeProfileActive()" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya</a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ</a>
     </ng-container>
@@ -176,8 +178,10 @@
       </a>
       <a routerLink="/admin/schedules" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clock"></use></svg> Jadwal / Shift</a>
       <a routerLink="/admin/home-locations" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#pin"></use></svg> Lokasi Rumah WFH</a>
-      <a routerLink="/admin/notifications" [class.active]="isAdminNotificationsActive()" (click)="closeDrawer()">
-        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg> Notifikasi
+      <a class="notification-nav-link" routerLink="/admin/notifications" [class.active]="isAdminNotificationsActive()" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#bell"></use></svg>
+        <span>Notifikasi</span>
+        <span class="sidebar-notification-badge" *ngIf="unreadCount > 0" [attr.aria-label]="unreadCount + ' notifikasi belum dibaca'">{{ unreadCount }}</span>
       </a>
       <a routerLink="/admin/backup" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#save"></use></svg> Backup Data

@@ -20,11 +20,13 @@ func SetupManagerRoutes(api fiber.Router) {
 	manager.Get("/dashboard", GetManagerDashboard)
 	manager.Get("/team/attendance", GetManagerTeamAttendance)
 	manager.Get("/team/reports", GetManagerTeamReports)
+	manager.Put("/team/reports/:id/review", ReviewManagerWorkReport)
 	manager.Get("/team/statistics", GetManagerTeamStatistics)
 	manager.Get("/leaves", GetManagerLeaveRequests)
 	manager.Put("/leaves/:id/approve", ApproveManagerLeaveRequest)
 	manager.Put("/leaves/:id/note", SaveManagerLeaveNote)
-	manager.Put("/team/logbooks/:id/review", ReviewManagerLogbook)
+	// Legacy alias retained for historical logbook records.
+	manager.Put("/team/logbooks/:id/review", ReviewManagerWorkReport)
 }
 
 // hasManagerOperationsAccess is the backend authorization rule for the
@@ -261,6 +263,8 @@ func GetManagerTeamReports(c *fiber.Ctx) error {
 	}
 	// Set the model explicitly. Find can infer it from the destination slice,
 	// but pagination calls Count before Find and GORM cannot infer a model there.
+	// Exclude drafts from both canonical filling status and the legacy status
+	// column so historical rows remain visible without becoming review work.
 	query := config.DB.Model(&models.WorkReport{}).Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").Where("employee_id IN ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) <> ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ?", ids, "draft", "draft").Order("tanggal desc").Order("work_reports.id desc")
 	if employeeID := c.Query("employee_id"); employeeID != "" {
 		id, parseErr := strconv.Atoi(employeeID)
@@ -445,9 +449,9 @@ func SaveManagerLeaveNote(c *fiber.Ctx) error {
 	return c.JSON(request)
 }
 
-func ReviewManagerLogbook(c *fiber.Ctx) error {
+func ReviewManagerWorkReport(c *fiber.Ctx) error {
 	if c.Locals("role").(models.Role) != models.RoleManajer {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Review logbook hanya dapat dilakukan oleh Manager"})
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Review laporan kerja hanya dapat dilakukan oleh Manager"})
 	}
 	managerID := c.Locals("user_id").(uint)
 	ids, err := managerTeamIDs(managerID)
@@ -456,16 +460,20 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 	}
 	var report models.WorkReport
 	if err := config.DB.Preload("Employee.User").Where("id = ?", c.Params("id")).First(&report).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Logbook not found"})
+		return c.Status(404).JSON(fiber.Map{"error": "Laporan kerja not found"})
 	}
 	if report.EmployeeID == nil || !containsUint(ids, *report.EmployeeID) {
-		return c.Status(403).JSON(fiber.Map{"error": "Logbook is outside your team"})
+		return c.Status(403).JSON(fiber.Map{"error": "Laporan kerja is outside your team"})
 	}
-	// The same team inbox also contains regular work reports. Only internship
-	// rows may enter the logbook review workflow; regular reports keep using
-	// status_sesuai and are never changed by this endpoint.
+	// The same team inbox also contains regular work reports. This endpoint
+	// accepts the canonical MAGANG workflow and the legacy logbook workflow;
+	// regular employee/manager reports remain under the established HRD review
+	// contract and cannot be changed here.
 	if report.Employee.User == nil || report.Employee.User.Role != models.RoleMagang {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Review logbook hanya berlaku untuk peserta magang"})
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Review laporan pada endpoint ini hanya berlaku untuk peserta magang"})
+	}
+	if models.CanonicalWorkReportStatus(report) == models.WorkReportStatusNoReport {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Status no_report tidak memiliki aksi approve atau reject"})
 	}
 	var input struct {
 		Status          string `json:"status"`
@@ -492,32 +500,55 @@ func ReviewManagerLogbook(c *fiber.Ctx) error {
 		reviewNotes = input.Notes
 	}
 	now := time.Now()
-	updates := map[string]interface{}{"status_logbook": input.Status, "reviewed_by": managerID, "reviewed_at": now, "review_notes": reviewNotes}
+	legacyWorkflow := report.ReportKind == models.WorkReportKindLegacyLogbook
+	updates := map[string]interface{}{"reviewed_by": managerID, "reviewed_at": now, "review_notes": reviewNotes}
+	if legacyWorkflow {
+		updates["status_logbook"] = input.Status
+	} else if input.Status == "approved" {
+		updates["status_sesuai"] = "Sesuai"
+	} else {
+		updates["status_sesuai"] = "Tidak Sesuai"
+	}
 	if input.Status == "rejected" {
 		updates["rejection_reason"] = rejectionReason
 		updates["rejected_by"] = managerID
 		updates["rejected_at"] = now
 		updates["rejection_source"] = "manager"
 	}
-	result := config.DB.Model(&models.WorkReport{}).Where("id = ? AND employee_id = ? AND status_logbook = ?", report.ID, report.EmployeeID, "submitted").Updates(updates)
+	query := config.DB.Model(&models.WorkReport{}).Where("id = ? AND employee_id = ?", report.ID, report.EmployeeID)
+	if legacyWorkflow {
+		query = query.Where("status_logbook = ?", "submitted")
+	} else {
+		query = query.Where("LOWER(COALESCE(NULLIF(BTRIM(status_laporan), ''), 'submitted')) <> ? AND LOWER(COALESCE(NULLIF(BTRIM(status_sesuai), ''), '')) NOT IN ?", "draft", []string{"sesuai", "tidak sesuai", "minta perbaikan", "minta_perbaikan"})
+	}
+	result := query.Updates(updates)
 	if result.Error != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to review logbook"})
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to review work report"})
 	}
 	if result.RowsAffected == 0 {
-		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Logbook sudah diproses atau tidak lagi berstatus Submitted"})
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Laporan kerja sudah diproses atau tidak lagi berstatus Submitted"})
 	}
-	WsHub.Broadcast <- fiber.Map{"event": "logbook_status_updated"}
+	WsHub.Broadcast <- fiber.Map{"event": map[bool]string{true: "logbook_status_updated", false: "work_report_status_updated"}[legacyWorkflow]}
 	if report.Employee.User != nil {
-		message := "Logbook harian Anda telah diperbarui menjadi " + input.Status
+		title := "Laporan Kerja"
+		notificationTitle := "Status Laporan Diperbarui"
+		message := "Laporan kerja Anda telah diperbarui menjadi " + input.Status
+		if legacyWorkflow {
+			title = "Logbook Magang"
+			notificationTitle = "Status Logbook Diperbarui"
+			message = "Logbook harian Anda telah diperbarui menjadi " + input.Status
+		}
 		if input.Status == "rejected" {
 			message += ". Alasan penolakan: " + rejectionReason
 		}
-		_ = utils.CreateNotification(config.DB, report.Employee.UserID, report.Employee.User.Role, "Logbook Magang", "Status Logbook Diperbarui", message)
+		_ = utils.CreateNotification(config.DB, report.Employee.UserID, report.Employee.User.Role, title, notificationTitle, message)
 	}
+	_ = utils.LogAction(managerID, "UPDATE", "WorkReport", report.ID, "Review manager laporan magang: "+input.Status)
 	return c.JSON(fiber.Map{
-		"message":          "Logbook reviewed",
+		"message":          map[bool]string{true: "Logbook reviewed", false: "Work report reviewed"}[legacyWorkflow],
 		"status":           input.Status,
-		"status_logbook":   input.Status,
+		"status_logbook":   map[bool]string{true: input.Status, false: report.StatusLogbook}[legacyWorkflow],
+		"status_sesuai":    map[bool]string{true: report.StatusSesuai, false: map[bool]string{true: "Sesuai", false: "Tidak Sesuai"}[input.Status == "approved"]}[legacyWorkflow],
 		"notes":            reviewNotes,
 		"review_notes":     reviewNotes,
 		"rejection_reason": rejectionReason,

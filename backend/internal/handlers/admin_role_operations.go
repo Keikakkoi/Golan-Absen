@@ -25,8 +25,8 @@ const maxInternshipCertificateSize int64 = 10 * 1024 * 1024
 func SetupAdminRoleOperationRoutes(api fiber.Router) {
 	admin := api.Group("/admin/internship", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Get("/dashboard", GetAdminInternshipDashboard)
-	admin.Get("/logbooks", GetAdminInternshipLogbooks)
-	admin.Delete("/logbooks/:id", DeleteAdminInternshipLogbook)
+	admin.Get("/logbooks", markLegacyWorkReportRoute, GetAdminInternshipLogbooks)
+	admin.Delete("/logbooks/:id", markLegacyWorkReportRoute, DeleteAdminInternshipLogbook)
 	admin.Get("/certificates", GetAdminInternshipCertificates)
 	admin.Get("/certificates/:userID/download", DownloadAdminInternshipCertificate)
 	admin.Post("/certificates/:userID/upload", UploadAdminInternshipCertificate)
@@ -63,14 +63,14 @@ func GetAdminInternshipDashboard(c *fiber.Ctx) error {
 	var total, active, pending int64
 	config.DB.Model(&models.User{}).Where("role = ?", models.RoleMagang).Count(&total)
 	config.DB.Model(&models.User{}).Where("role = ? AND internship_end_date >= ?", models.RoleMagang, today).Count(&active)
-	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ?", models.RoleMagang, "submitted", "draft").Count(&pending)
+	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ?", models.RoleMagang).Where(workReportPendingCondition("work_reports.")).Count(&pending)
 	completed := getSertifikatTerbitCount()
-	return c.JSON(fiber.Map{"total_magang": total, "magang_aktif": active, "logbook_pending": pending, "sertifikat_terbit": completed})
+	return c.JSON(fiber.Map{"total_magang": total, "magang_aktif": active, "work_reports_pending": pending, "logbook_pending": pending, "sertifikat_terbit": completed})
 }
 
 func GetAdminInternshipLogbooks(c *fiber.Ctx) error {
 	EnsureDailyWorkReportsAutoCreated(config.DB, attendanceNow())
-	query := config.DB.Preload("Attachments").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Where("users.role = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) <> ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ?", models.RoleMagang, "draft", "draft").Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Order("work_reports.tanggal desc")
+	query := config.DB.Preload("Attachments").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Where("users.role = ? AND COALESCE(NULLIF(BTRIM(work_reports.report_kind), ''), 'legacy_logbook') = ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_logbook), ''), 'submitted')) <> ? AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.status_laporan), ''), 'submitted')) <> ?", models.RoleMagang, models.WorkReportKindLegacyLogbook, "draft", "draft").Where("NOT " + workReportNoReportCondition("work_reports.")).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Order("work_reports.tanggal desc")
 	if status := c.Query("status"); status != "" {
 		if status != "draft" && status != "submitted" && status != "approved" && status != "rejected" {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid logbook status"})

@@ -7,14 +7,20 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 import { ReportExportService } from '../../../core/services/report-export.service';
 
 type SavedScrollPosition = { left: number; top: number };
+// Compatibility-only screen for historical bookmarks and legacy records.
+// The active MAGANG entry point is features/employee/work-report.
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 import { AlertService } from '../../../core/services/alert.service';
 import Swal from 'sweetalert2';
 import { requiresReportTitle as resolveRequiresReportTitle } from '../../../core/utils/report-completeness';
+import { canonicalWorkReportTitle } from '../../../core/utils/work-report-title';
+import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
+import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
 
 @Component({ selector: 'app-intern-logbook', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent, FilePreviewComponent], templateUrl: './intern-logbook.component.html', styleUrls: ['./intern-logbook.component.scss'] })
 export class InternLogbookComponent implements OnInit {
+  readonly canonicalWorkReportTitle = canonicalWorkReportTitle;
   @ViewChild('editLogbookForm') editLogbookForm?: ElementRef<HTMLElement>;
   private editScrollTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -27,7 +33,7 @@ export class InternLogbookComponent implements OnInit {
   columns: any[] = [];
   divisionName = localStorage.getItem('divisi') || '-';
   form = {
-    tanggal: new Date().toISOString().slice(0, 10), tugas: '', judul: '',
+    tanggal: new Date().toISOString().slice(0, 10), judul_tugas: '',
     deskripsi_kegiatan: '', realisasi_kegiatan: '', kendala: '',
     rencana_minggu_depan: '', link_artikel: '', catatan_tambahan: '',
     custom_fields: {} as Record<string, string>, status: 'draft'
@@ -51,15 +57,13 @@ export class InternLogbookComponent implements OnInit {
     return this.logbooks.some(item => String(item.tanggal || item.Tanggal || '').slice(0, 10) === this.form.tanggal);
   }
   logbookStatus(item: any): string {
-    const rawStatus = [item?.status_logbook, item?.StatusLogbook]
-      .find(value => String(value ?? '').trim() !== '');
-    return String(rawStatus ?? 'draft').trim().toLowerCase();
+    return normalizeWorkReportContract(item).status;
   }
   canEdit(item: any): boolean { return this.logbookStatus(item) === 'draft'; }
   canDelete(item: any): boolean { return this.logbookStatus(item) === 'draft'; }
   requiresReportTitle(): boolean { return resolveRequiresReportTitle(this.divisionName); }
   logbookStatusClass(item: any): string {
-    return `status-${this.logbookStatus(item) === 'approved' ? 'success' : this.logbookStatus(item) === 'rejected' ? 'danger' : this.logbookStatus(item) === 'submitted' ? 'warning' : 'pending'}`;
+    return `status-${this.logbookStatus(item) === 'approved' ? 'success' : this.logbookStatus(item) === 'rejected' ? 'danger' : this.logbookStatus(item) === 'submitted' ? 'warning' : this.logbookStatus(item) === 'no_report' ? 'neutral' : 'pending'}`;
   }
   pageChanged(page: number): void { this.page = page; }
   pageSizeChanged(size: number): void { this.pageSize = size; this.page = 1; }
@@ -79,12 +83,8 @@ export class InternLogbookComponent implements OnInit {
       this.showSaveError('Logbook untuk tanggal tersebut sudah dibuat. Jika statusnya masih Draft, silakan gunakan tombol Edit pada riwayat logbook.');
       return;
     }
-    if (!this.form.tanggal || !this.form.tugas.trim() || !this.form.deskripsi_kegiatan.trim() || !this.form.realisasi_kegiatan.trim()) {
-      this.showSaveError(this.form.realisasi_kegiatan.trim() ? 'Tanggal, tugas, dan deskripsi kegiatan wajib diisi.' : 'Realisasi kegiatan harus berupa angka persentase antara 0% sampai 100%, contoh: 20%, 50%, atau 100%.');
-      return;
-    }
-    if (targetStatus === 'submitted' && this.requiresReportTitle() && !this.form.judul.trim()) {
-      this.showSaveError('Peserta dari divisi Golan Nusantara dan Golan Education wajib mengisi Judul logbook.');
+    if (!this.form.tanggal || !this.form.judul_tugas.trim() || !this.form.deskripsi_kegiatan.trim() || !this.form.realisasi_kegiatan.trim()) {
+      this.showSaveError(this.form.realisasi_kegiatan.trim() ? 'Tanggal, Judul Tugas, dan deskripsi kegiatan wajib diisi.' : 'Realisasi kegiatan harus berupa angka persentase antara 0% sampai 100%, contoh: 20%, 50%, atau 100%.');
       return;
     }
     if (!/^(100|[1-9]?\d)%$/.test(this.form.realisasi_kegiatan.trim())) {
@@ -184,8 +184,7 @@ export class InternLogbookComponent implements OnInit {
     this.removedScreenshotIds = [];
     this.form = {
       tanggal: String(item.tanggal || item.Tanggal || '').slice(0, 10),
-      tugas: item.tugas || item.Tugas || '',
-      judul: item.judul || item.Judul || '',
+      judul_tugas: canonicalWorkReportTitle(item),
       deskripsi_kegiatan: item.deskripsi_kegiatan || item.DeskripsiKegiatan || '',
       realisasi_kegiatan: item.realisasi_kegiatan || item.RealisasiKegiatan || '',
       kendala: item.kendala || item.Kendala || '',
@@ -229,18 +228,17 @@ export class InternLogbookComponent implements OnInit {
   toggleExportDropdown(): void { this.isExportOpen = !this.isExportOpen; }
   exportCSV(): void { this.isExportOpen = false; this.reportExport.downloadCsv('logbook-harian.csv', this.exportHeaders(), this.exportRows()); }
   exportExcel(): void { this.isExportOpen = false; this.reportExport.downloadExcel('logbook-harian.xls', this.exportHeaders(), this.exportRows()); }
-  exportJSON(): void { this.isExportOpen = false; this.reportExport.downloadJson('logbook-harian.json', this.logbooks.map(item => ({ ...item, status_validasi: this.validationStatusLabel(item), rejection_reason: this.rejectionReason(item) === '-' ? '' : this.rejectionReason(item) }))); }
+  exportJSON(): void { this.isExportOpen = false; this.reportExport.downloadJson('logbook-harian.json', this.logbooks.map(item => canonicalWorkReportExportRecord(item, { judul_tugas: canonicalWorkReportTitle(item), status_pengisian: this.logbookStatusLabel(item), status_validasi: this.validationStatusLabel(item), rejection_reason: this.rejectionReason(item) === '-' ? '' : this.rejectionReason(item) }))); }
   exportPDF(): void { this.isExportOpen = false; this.reportExport.downloadPdf('logbook-harian.pdf', 'Riwayat Logbook Harian', this.reportDate(), this.exportHeaders(), this.exportRows()); }
   printReport(): void { this.isExportOpen = false; this.reportExport.printReport('Riwayat Logbook Harian', this.reportDate(), this.exportHeaders(), this.exportRows()); }
-  private exportHeaders(): string[] { return ['No', 'Hari/Tanggal', 'Divisi', 'Tugas', 'Judul Golan Nusantara/Golan Education', 'Deskripsi Kegiatan', 'Realisasi Kegiatan (Capaian Target, %)', 'Kendala (Jika Ada)', 'Rencana Minggu Depan', 'Link Artikel', 'Screenshot/Bukti Pengisian', 'Catatan Tambahan', 'Status Logbook', 'Status Validasi', 'Catatan Review Manager', 'Alasan Penolakan', ...this.columns.map(column => column.nama_kolom)]; }
+  private exportHeaders(): string[] { return ['No', 'Hari/Tanggal', 'Divisi', 'Judul Tugas', 'Deskripsi Kegiatan', 'Realisasi Kegiatan (Capaian Target, %)', 'Kendala (Jika Ada)', 'Rencana Minggu Depan', 'Link Artikel', 'Screenshot/Bukti Pengisian', 'Catatan Tambahan', 'Status Logbook', 'Status Validasi', 'Catatan Review Manager', 'Alasan Penolakan', ...this.columns.map(column => column.nama_kolom)]; }
   private exportRows(): unknown[][] {
     const division = localStorage.getItem('divisi') || '-';
     return this.logbooks.map((item, index) => [
       index + 1,
       this.formatDate(item.tanggal || item.Tanggal || item.CreatedAt),
       division,
-      item.tugas || item.Tugas || '-',
-      item.judul || item.Judul || '-',
+      canonicalWorkReportTitle(item) || '-',
       item.deskripsi_kegiatan || item.DeskripsiKegiatan || item.kegiatan || item.Kegiatan || '-',
       item.realisasi_kegiatan || item.RealisasiKegiatan || '-',
       item.kendala || item.Kendala || '-',
@@ -255,15 +253,17 @@ export class InternLogbookComponent implements OnInit {
       ...this.columns.map(column => this.customFieldValue(item, column.nama_kolom))
     ]);
   }
-  logbookStatusLabel(item: any): string { const status = this.logbookStatus(item); return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Draft'; }
+  logbookStatusLabel(item: any): string { const status = this.logbookStatus(item); return status === 'no_report' ? WORK_REPORT_NO_REPORT_LABEL : status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Draft'; }
   validationStatusLabel(item: any): string {
-    const fillingStatus = String(item?.status_laporan || item?.StatusLaporan || '').trim().toLowerCase();
-    const logbookStatus = this.logbookStatus(item);
+    const contract = normalizeWorkReportContract(item);
+    const fillingStatus = contract.filling_status;
+    const logbookStatus = contract.status;
     const status = this.validationStatusValue(item);
+    if (logbookStatus === 'no_report') return WORK_REPORT_NO_REPORT_LABEL;
     if (fillingStatus === 'draft' || logbookStatus === 'draft' || status === 'draft') return 'Draft';
     if (status === 'sesuai' || status === 'validasi laporan') return 'Validasi laporan';
     if (status === 'tidak sesuai' || status === 'tolak laporan' || status === 'minta perbaikan' || status === 'minta_perbaikan') return 'Tolak laporan';
-    if (status === 'tidak perlu validasi' || status === 'tidak membuat laporan kerja') return 'Tidak perlu validasi';
+    if (status === 'tidak perlu validasi' || status === 'tidak membuat laporan kerja') return WORK_REPORT_NO_REPORT_LABEL;
     if (status) return status.charAt(0).toUpperCase() + status.slice(1);
     return logbookStatus === 'submitted' ? 'Menunggu validasi' : '-';
   }
@@ -273,6 +273,7 @@ export class InternLogbookComponent implements OnInit {
       case 'Tolak laporan': return 'validation-status-rejected';
       case 'Menunggu validasi': return 'validation-status-pending';
       case 'Draft':
+      case 'Belum Membuat Laporan Kerja':
       case 'Tidak perlu validasi':
       case '-':
       default: return 'validation-status-none';
@@ -287,7 +288,7 @@ export class InternLogbookComponent implements OnInit {
   getOptions(opsi: string): string[] { try { return JSON.parse(opsi || '[]') || []; } catch { return []; } }
   customFieldValue(item: any, key: string): string { return this.parseCustomFields(item)[key] ?? '-'; }
   private parseCustomFields(item: any): Record<string, string> { const raw = item?.custom_fields || item?.CustomFields; if (!raw) return {}; try { const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; return parsed && typeof parsed === 'object' ? parsed : {}; } catch { return {}; } }
-  private emptyForm() { return { tanggal: new Date().toISOString().slice(0, 10), tugas: '', judul: '', deskripsi_kegiatan: '', realisasi_kegiatan: '', kendala: '', rencana_minggu_depan: '', link_artikel: '', catatan_tambahan: '', custom_fields: {} as Record<string, string>, status: 'draft' }; }
+  private emptyForm() { return { tanggal: new Date().toISOString().slice(0, 10), judul_tugas: '', deskripsi_kegiatan: '', realisasi_kegiatan: '', kendala: '', rencana_minggu_depan: '', link_artikel: '', catatan_tambahan: '', custom_fields: {} as Record<string, string>, status: 'draft' }; }
   private attachmentLabel(item: any): string { const attachments = item.attachments || item.Attachments || []; return Array.isArray(attachments) && attachments.length ? `${attachments.length} screenshot` : '-'; }
   private formatDate(value: string | Date): string { const date = new Date(value); return Number.isNaN(date.getTime()) ? String(value || '-') : new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }).format(date); }
   private reportDate(): string { return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()); }

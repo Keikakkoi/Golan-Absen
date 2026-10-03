@@ -9,8 +9,8 @@
       <div class="team-filter-layout">
         <div class="report-toolbar team-attendance-toolbar">
           <label>Nama/NIK<input class="golan-input" [(ngModel)]="search"></label>
-          <label>Dari tanggal<input type="date" lang="id" class="golan-input" [(ngModel)]="startDate" [max]="endDate || null" aria-label="Dari tanggal"></label>
-          <label>Sampai tanggal<input type="date" lang="id" class="golan-input" [(ngModel)]="endDate" [min]="startDate || null" aria-label="Sampai tanggal"></label>
+          <label>Dari tanggal<input type="date" name="team_attendance_start_date" lang="id" class="golan-input" [(ngModel)]="startDate" [max]="endDate || null" aria-label="Dari tanggal"></label>
+          <label>Sampai tanggal<input type="date" name="team_attendance_end_date" lang="id" class="golan-input" [(ngModel)]="endDate" [min]="startDate || null" aria-label="Sampai tanggal"></label>
           <label>Status<select class="golan-input" [(ngModel)]="status"><option value="">Semua status</option><option>Hadir</option><option>Terlambat</option><option value="Tidak hadir">Alpha</option></select></label>
           <button type="button" class="btn-primary report-filter-action" (click)="load()" [disabled]="isLoading">{{ isLoading ? 'Memuat...' : 'Filter' }}</button>
           <div class="export-dropdown">

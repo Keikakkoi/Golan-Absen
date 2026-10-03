@@ -41,7 +41,7 @@ Jalan Manyar II RT.002 RW.011, Tegal Alur, Kalideres, Jakarta Barat, DKI Jakarta
 | HRD | Role yang mengelola administrasi karyawan, konfigurasi, persetujuan, rekap, laporan, audit, backup, dan pengaturan sistem yang tersedia. |
 | MANAJER | Role yang memantau kehadiran tim, melihat statistik/laporan tim, memproses persetujuan yang menjadi kewenangannya, dan dapat melakukan absensi. |
 | Karyawan | Role pengguna karyawan dengan akses ke absensi pribadi, riwayat, pengajuan izin/cuti, statistik pribadi, notifikasi, profil, dan laporan kerja. |
-| MAGANG | Role peserta magang dengan akses ke absensi pribadi, pengajuan izin/cuti, statistik, profil, notifikasi, serta modul logbook dan fitur magang yang tersedia. |
+| MAGANG | Role peserta magang dengan akses ke absensi pribadi, pengajuan izin/cuti, statistik, profil, notifikasi, serta laporan kerja dan fitur magang yang tersedia. |
 | Check-in | Proses pencatatan waktu mulai bekerja dengan tipe kerja, lokasi, dan bukti foto selfie sesuai validasi sistem. |
 | Check-out | Proses pencatatan waktu selesai bekerja dengan lokasi dan bukti foto selfie sesuai validasi sistem. |
 | WFO | Work From Office, tipe kerja yang menggunakan lokasi kantor sebagai acuan absensi. |
@@ -56,7 +56,7 @@ Jalan Manyar II RT.002 RW.011, Tegal Alur, Kalideres, Jakarta Barat, DKI Jakarta
 | Dashboard | Halaman ringkasan yang menampilkan indikator, statistik, atau status kehadiran sesuai cakupan role. |
 | Rekap Absensi | Ringkasan data absensi berdasarkan periode, termasuk periode harian, mingguan, atau bulanan sesuai fitur yang tersedia. |
 | Audit Log | Catatan aktivitas pengguna atau perubahan data penting yang digunakan untuk penelusuran dan akuntabilitas. |
-| Logbook | Catatan kegiatan harian peserta magang yang dikelola melalui modul logbook magang. |
+| Laporan Kerja | Catatan kegiatan kerja yang dibuat, disimpan, diajukan, dan ditinjau sesuai alur laporan kerja. |
 
 ## 3. Tujuan dan Ruang Lingkup Pengujian
 
@@ -69,7 +69,7 @@ Pengujian UAT ini bertujuan untuk:
 - Memastikan data absensi, status kehadiran, riwayat, dan statistik tetap konsisten.
 - Memastikan alur pengajuan izin/cuti dan persetujuannya berjalan sesuai kewenangan HRD, MANAJER, Karyawan, dan MAGANG.
 - Memastikan dashboard, riwayat, statistik, rekap, dan laporan menampilkan data sesuai cakupan pengguna dan periode yang dipilih.
-- Memastikan fitur manajemen data, jadwal, lokasi, laporan kerja, logbook magang, notifikasi, audit log, backup, dan pengaturan yang tersedia dapat digunakan sesuai perannya.
+- Memastikan fitur manajemen data, jadwal, lokasi, laporan kerja magang, notifikasi, audit log, backup, dan pengaturan yang tersedia dapat digunakan sesuai perannya.
 - Menyediakan bukti pengujian terdokumentasi sebagai dasar proses serah terima sistem.
 
 ### 3.2 Termasuk dalam Pengujian
@@ -84,7 +84,7 @@ Ruang lingkup pengujian mencakup fitur yang ditemukan pada route dan source code
 - Pengajuan izin/cuti, kuota cuti, serta persetujuan oleh MANAJER dan/atau HRD sesuai alur yang diterapkan.
 - Manajemen data karyawan, organisasi/divisi/jabatan, jadwal/shift, hari libur, dan lokasi rumah karyawan oleh HRD.
 - Laporan kerja karyawan/manajer dan laporan kerja yang dikelola HRD.
-- Modul logbook, statistik, mentor, dan sertifikat untuk MAGANG sesuai fitur yang tersedia.
+- Modul laporan kerja, statistik, mentor, dan sertifikat untuk MAGANG sesuai fitur yang tersedia.
 - Notifikasi, event perusahaan, audit log, backup, pengaturan sistem, dan pengaturan notifikasi yang tersedia untuk HRD.
 - Ekspor atau pencetakan laporan yang tersedia pada modul terkait.
 - Pengujian dilakukan sebagai pengujian fungsional berbasis perilaku aplikasi; data uji, identitas penguji, periode, dan jumlah skenario ditetapkan pada tahap pengujian berikutnya.
@@ -116,7 +116,7 @@ Ruang lingkup pengujian mencakup fitur yang ditemukan pada route dan source code
 | HRD | [Nama Penguji HRD] | Dashboard HRD; manajemen data karyawan; organisasi; jadwal/shift; lokasi rumah; kuota cuti; event; tipe kerja; persetujuan izin/cuti; laporan dan rekap absensi; laporan kerja; operasi role dan data magang; pengaturan; notifikasi; backup; audit log. Tidak terdapat route check-in/check-out khusus HRD pada `app.routes.ts`. |
 | MANAJER | [Nama Penguji MANAJER] | Dashboard manajer; absensi check-in/check-out; riwayat absensi; pengajuan izin/cuti; statistik; notifikasi; profil; laporan kerja; pemantauan absensi, laporan, dan statistik tim; persetujuan izin/cuti pada modul manajer. |
 | Karyawan | [Nama Penguji Karyawan] | Dashboard karyawan; check-in/check-out; riwayat absensi; pengajuan izin/cuti; statistik; notifikasi; profil; informasi/pengelolaan relasi manajer yang tersedia; laporan kerja. Tidak memiliki akses route administrasi HRD atau persetujuan izin/cuti tim. |
-| MAGANG | [Nama Penguji MAGANG] | Dashboard magang; check-in/check-out; riwayat absensi; pengajuan izin/cuti; statistik; notifikasi; profil; logbook; informasi mentor; sertifikat. Tidak memiliki route laporan kerja karyawan dan tidak memiliki route administrasi HRD. |
+| MAGANG | [Nama Penguji MAGANG] | Dashboard magang; check-in/check-out; riwayat absensi; pengajuan izin/cuti; statistik; notifikasi; profil; laporan kerja; informasi mentor; sertifikat. Tidak memiliki route administrasi HRD. |
 
 > **Catatan dokumen:** bagian berikut mendefinisikan skenario UAT dan lokasi bukti untuk
 > autentikasi serta administrasi HRD yang menjadi prioritas pertama. Nilai `Belum Diuji`
@@ -344,7 +344,7 @@ Persentase kelulusan dihitung dari seluruh skenario yang tercantum dalam dokumen
 - Bukti pengujian ditampilkan melalui screenshot yang menyertai skenario pada dokumen hasil UAT.
 - Informasi lingkungan uji, periode data, tanggal pelaksanaan, baseline aplikasi, dan nama penguji masih perlu dilengkapi pada bagian informasi dokumen sebelum dokumen disahkan sepenuhnya.
 - Pengujian ini belum mencakup seluruh role dan modul sistem. Karyawan, Magang, MANAJER,
-  absensi GPS/selfie, pengajuan izin/cuti, laporan kerja, logbook, rekap/export, audit log,
+  absensi GPS/selfie, pengajuan izin/cuti, laporan kerja, rekap/export, audit log,
   dan backup belum masuk dalam ringkasan hasil ini.
 
 ### 6.2 Kesimpulan

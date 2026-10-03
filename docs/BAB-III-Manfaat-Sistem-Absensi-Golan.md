@@ -62,19 +62,19 @@ Pengguna dapat mengetahui status pending, approved, rejected, atau cancelled bes
 Notifikasi membantu pengaju dan reviewer mengetahui adanya pengajuan baru, perubahan status, permintaan perbaikan, maupun hasil persetujuan.
 
 **20. Pengelolaan peserta magang lebih terintegrasi:**  
-Peserta magang dapat mengelola absensi, laporan kerja, logbook, dokumen, informasi mentor, statistik, dan sertifikat melalui sistem yang sama.
+Peserta magang dapat mengelola absensi, laporan kerja, dokumen, informasi mentor, statistik, dan sertifikat melalui sistem yang sama.
 
 **21. Pemantauan progres magang lebih mudah:**  
-Data logbook dan statistik membantu peserta, mentor, Manajer, serta HRD melihat perkembangan kegiatan selama periode magang.
+Data laporan kerja dan statistik membantu peserta, mentor, Manajer, serta HRD melihat perkembangan kegiatan selama periode magang.
 
-**22. Review logbook lebih terdokumentasi:**  
-Mentor atau Manajer dapat menyetujui logbook maupun memberikan catatan perbaikan secara terstruktur. Riwayat kegiatan magang dapat dipertahankan sebagai dokumentasi evaluasi.
+**22. Review laporan kerja lebih terdokumentasi:**
+Mentor atau Manajer dapat menyetujui laporan kerja maupun memberikan catatan perbaikan secara terstruktur. Riwayat kegiatan magang dapat dipertahankan sebagai dokumentasi evaluasi.
 
 **23. Pengendalian yang lebih baik:**  
 Proses approval, kuota cuti, pembatasan akses, dan scope data mengikuti role, relasi tim, divisi, serta kewenangan masing-masing pengguna.
 
 **24. Pemantauan kinerja operasional lebih efektif:**  
-Dashboard dan rekap keterlambatan, alpha, kehadiran tim, izin/cuti, laporan kerja, logbook, dan kepatuhan pelaporan membantu Manajer serta HRD melakukan pemantauan secara berkala.
+Dashboard dan rekap keterlambatan, alpha, kehadiran tim, izin/cuti, laporan kerja, dan kepatuhan pelaporan membantu Manajer serta HRD melakukan pemantauan secara berkala.
 
 **25. Dasar pengambilan keputusan lebih kuat:**  
 Data sistem dapat digunakan untuk mengevaluasi kebutuhan koordinasi, pembagian pekerjaan, jadwal, beban kerja, kebijakan kehadiran, dan tindak lanjut operasional.

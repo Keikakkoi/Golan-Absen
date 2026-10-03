@@ -82,7 +82,7 @@
             <label>Dari Tanggal</label>
             <div class="input-wrapper">
               <i class="fas fa-calendar icon-left"></i>
-              <input type="date" class="filter-input has-icon" [(ngModel)]="filters.start_date" (change)="onFilterChange()">
+              <input type="date" name="attendance_recap_start_date" class="filter-input has-icon" [(ngModel)]="filters.start_date" (change)="onFilterChange()">
             </div>
           </div>
 
@@ -90,7 +90,7 @@
             <label>Sampai Tanggal</label>
             <div class="input-wrapper">
               <i class="fas fa-calendar icon-left"></i>
-              <input type="date" class="filter-input has-icon" [(ngModel)]="filters.end_date" (change)="onFilterChange()">
+              <input type="date" name="attendance_recap_end_date" class="filter-input has-icon" [(ngModel)]="filters.end_date" (change)="onFilterChange()">
             </div>
           </div>
 

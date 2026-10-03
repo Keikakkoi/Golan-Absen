@@ -55,13 +55,13 @@
         <h4>Magang Aktif</h4>
         <div class="value">{{ stats.magang_aktif }} <span class="unit">Peserta</span></div>
       </section>
-      <section class="golan-card stat-card admin-stat" aria-label="Logbook pending">
-        <h4>Logbook Pending</h4>
-        <div class="value warning-value">{{ stats.logbook_pending }} <span class="unit">Logbook</span></div>
+      <section class="golan-card stat-card admin-stat" aria-label="Laporan kerja pending">
+        <h4>Laporan Kerja Pending</h4>
+        <div class="value warning-value">{{ stats.work_reports_pending }} <span class="unit">Laporan</span></div>
       </section>
-      <section class="golan-card stat-card admin-stat" aria-label="Karyawan belum isi laporan">
-        <h4>Belum Isi Laporan</h4>
-        <div class="value warning-value">{{ stats.missing_work_report_count || 0 }} <span class="unit">Karyawan</span></div>
+      <section class="golan-card stat-card admin-stat" aria-label="Karyawan Belum Membuat Laporan Kerja">
+        <h4>Belum Membuat Laporan Kerja</h4>
+        <div class="value warning-value">{{ stats.missing_work_report_employee_count || 0 }} <span class="unit">Karyawan</span></div>
       </section>
     </div>
 
@@ -85,7 +85,7 @@
       </div>
       <div class="golan-card action-card">
         <h3>Operasional Role Baru</h3>
-        <p>Review logbook, sertifikat magang, absensi, laporan, statistik, dan izin tim.</p>
+        <p>Kelola sertifikat magang, absensi, laporan, statistik, dan izin tim.</p>
         <button class="btn-primary mt-2" routerLink="/admin/role-operations">Buka Operasional</button>
       </div>
     </div>

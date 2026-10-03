@@ -81,7 +81,7 @@ describe('InternLogbookComponent edit flow', () => {
     component.edit({
       id: 7,
       tanggal: '2026-09-17T00:00:00Z',
-      tugas: 'Implementasi fitur',
+      judul_tugas: 'Implementasi fitur',
       deskripsi_kegiatan: 'Mengerjakan form logbook',
       kendala: 'Tidak ada',
       status_logbook: 'draft'
@@ -90,8 +90,7 @@ describe('InternLogbookComponent edit flow', () => {
 
     expect(component.form).toEqual({
       tanggal: '2026-09-17',
-      tugas: 'Implementasi fitur',
-      judul: '',
+      judul_tugas: 'Implementasi fitur',
       deskripsi_kegiatan: 'Mengerjakan form logbook',
       realisasi_kegiatan: '',
       kendala: 'Tidak ada',

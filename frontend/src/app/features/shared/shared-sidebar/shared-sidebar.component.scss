@@ -182,6 +182,27 @@
         stroke-linejoin: round;
       }
 
+      &.notification-nav-link {
+        .sidebar-notification-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 5px;
+          margin-left: auto;
+          box-sizing: border-box;
+          border-radius: 999px;
+          background: var(--absent);
+          color: #fff;
+          font-size: 0.68rem;
+          font-weight: 700;
+          line-height: 1;
+          text-align: center;
+          white-space: nowrap;
+        }
+      }
+
       &:hover {
         background-color: var(--mint-1);
         color: var(--green-deep);

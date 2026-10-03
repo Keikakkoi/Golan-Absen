@@ -3,14 +3,14 @@
   <main class="main-content team-reports-page">
     <div class="header">
       <h2>Laporan Tim</h2>
-      <p>Lihat laporan kerja dan logbook anggota tim yang berada di bawah Anda serta berikan catatan review.</p>
+      <p>Lihat laporan kerja anggota tim yang berada di bawah Anda serta berikan catatan review.</p>
     </div>
     <section class="golan-card team-report-card">
       <div class="team-filter-layout">
         <div class="report-toolbar team-reports-toolbar">
         <label>Nama/NIK<input class="golan-input" [(ngModel)]="search" placeholder="Cari nama atau NIK..."></label>
-        <label>Dari Tanggal<input type="date" class="golan-input" [(ngModel)]="start" aria-label="Dari Tanggal" title="Format: dd/mm/yyyy"></label>
-        <label>Sampai Tanggal<input type="date" class="golan-input" [(ngModel)]="end" aria-label="Sampai Tanggal" title="Format: dd/mm/yyyy"></label>
+        <label>Dari Tanggal<input type="date" name="team_report_start_date" class="golan-input" [(ngModel)]="start" aria-label="Dari Tanggal" title="Format: dd/mm/yyyy"></label>
+        <label>Sampai Tanggal<input type="date" name="team_report_end_date" class="golan-input" [(ngModel)]="end" aria-label="Sampai Tanggal" title="Format: dd/mm/yyyy"></label>
         <button type="button" class="btn-primary report-filter-action" (click)="applyFilters()" [disabled]="isLoading || isRefreshing">Filter</button>
         <button type="button" class="btn-outline-primary report-refresh-action" (click)="refreshReports()" [disabled]="isLoading || isRefreshing" [attr.aria-busy]="isRefreshing">
           <i class="fas fa-sync-alt" [class.fa-spin]="isRefreshing" aria-hidden="true"></i>
@@ -67,8 +67,7 @@
               <th>Anggota</th>
               <th>Divisi</th>
               <th>Jabatan</th>
-              <th>Tugas</th>
-              <th>Judul</th>
+               <th>Judul Tugas</th>
               <th>Deskripsi Kegiatan</th>
               <th>Realisasi Kegiatan</th>
               <th>Kendala</th>
@@ -76,7 +75,7 @@
               <th>Link Artikel</th>
               <th>Catatan Tambahan</th>
               <th>Screenshot</th>
-              <th>Status Logbook/Laporan</th>
+              <th>Status Laporan Kerja</th>
               <th>Status Pengisian</th>
               <th>Status Waktu</th>
               <th>Catatan Review</th>
@@ -103,8 +102,7 @@
               </td>
               <td>{{ row.Employee?.Division?.NamaDivisi || '-' }}</td>
               <td>{{ row.Employee?.Position?.NamaJabatan || '-' }}</td>
-              <td>{{ row.tugas || row.Tugas || '-' }}</td>
-              <td>{{ row.judul || row.Judul || '-' }}</td>
+              <td>{{ canonicalWorkReportTitle(row) || '-' }}</td>
               <td class="text-cell" [title]="row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-'">{{ row.deskripsi_kegiatan || row.DeskripsiKegiatan || '-' }}</td>
               <td>{{ row.realisasi_kegiatan || row.RealisasiKegiatan || '-' }}</td>
               <td class="text-cell" [title]="row.kendala || row.Kendala || '-'">{{ row.kendala || row.Kendala || '-' }}</td>
@@ -120,7 +118,7 @@
                 <span *ngIf="!(row.attachments?.length || row.Attachments?.length)">-</span>
               </td>
               <td>
-                <span class="status-pill" [ngClass]="logbookStatusClass(row)">
+                <span class="status-pill" [ngClass]="reportStatusClass(row)">
                   {{ statusLabel(row) }}
                 </span>
               </td>
@@ -155,10 +153,10 @@
               <td *ngFor="let column of columns">{{ customFieldValue(row, column.nama_kolom) }}</td>
               <td>
                 <div class="report-action-buttons">
-                  <button *ngIf="canReview(row)" type="button" class="icon-button approve" (click)="reviewLogbook(row.id || row.ID, 'approved')" aria-label="Setujui logbook" title="Setujui logbook">
+                  <button *ngIf="canReview(row)" type="button" class="icon-button approve" (click)="reviewReport(row.id || row.ID, 'approved')" aria-label="Setujui laporan kerja" title="Setujui laporan kerja">
                     <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
                   </button>
-                  <button *ngIf="canReview(row)" type="button" class="icon-button reject" (click)="reviewLogbook(row.id || row.ID, 'rejected')" aria-label="Tolak logbook" title="Tolak logbook">
+                  <button *ngIf="canReview(row)" type="button" class="icon-button reject" (click)="reviewReport(row.id || row.ID, 'rejected')" aria-label="Tolak laporan kerja" title="Tolak laporan kerja">
                     <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#x"></use></svg>
                   </button>
                 </div>

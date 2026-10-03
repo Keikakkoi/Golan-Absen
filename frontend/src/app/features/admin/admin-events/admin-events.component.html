@@ -100,13 +100,13 @@
           <div class="filter-group">
             <label>Dari Tanggal</label>
             <div class="input-wrapper">
-              <input type="date" class="golan-input" [(ngModel)]="tableFilters.start_date" (change)="onTableFilterChange()">
+              <input type="date" name="event_start_date" class="golan-input" [(ngModel)]="tableFilters.start_date" (change)="onTableFilterChange()">
             </div>
           </div>
           <div class="filter-group">
             <label>Sampai Tanggal</label>
             <div class="input-wrapper">
-              <input type="date" class="golan-input" [(ngModel)]="tableFilters.end_date" (change)="onTableFilterChange()">
+              <input type="date" name="event_end_date" class="golan-input" [(ngModel)]="tableFilters.end_date" (change)="onTableFilterChange()">
             </div>
           </div>
           <div class="event-filter-summary">

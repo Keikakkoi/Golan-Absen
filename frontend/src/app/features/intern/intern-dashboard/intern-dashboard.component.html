@@ -2,7 +2,7 @@
   <app-shared-sidebar></app-shared-sidebar>
   <main class="main-content intern-dashboard-page">
     <div class="header">
-      <div><h2>Halo, {{ userName }}!</h2><p>Ringkasan periode magang dan logbook harian Anda.</p></div>
+      <div><h2>Halo, {{ userName }}!</h2><p>Ringkasan periode magang dan laporan kerja harian Anda.</p></div>
     </div>
 
     <div class="stats-grid">
@@ -20,12 +20,12 @@
         <div class="progress-track"><div class="progress-value" [style.width.%]="stats.progress_percent"></div></div>
       </section>
       <section class="golan-card stat-card">
-        <h4>Logbook Submitted</h4>
-        <div class="value">{{ stats.logbooks_submitted }} <span class="unit">hari</span></div>
+        <h4>Laporan Kerja Diajukan</h4>
+        <div class="value">{{ stats.work_reports_submitted }} <span class="unit">hari</span></div>
       </section>
       <section class="golan-card stat-card">
-        <h4>Logbook Approved</h4>
-        <div class="value">{{ stats.logbooks_approved }} <span class="unit">hari</span></div>
+        <h4>Laporan Kerja Disetujui</h4>
+        <div class="value">{{ stats.work_reports_approved }} <span class="unit">hari</span></div>
       </section>
     </div>
 
@@ -120,9 +120,9 @@
     </div>
 
     <section class="golan-card callout" style="margin-top: 24px;">
-      <h3>Logbook wajib diisi setiap hari</h3>
+      <h3>Laporan kerja wajib diisi setiap hari</h3>
       <p>Catat kegiatan sebelum hari kerja berakhir dan kirim untuk ditinjau manajer.</p>
-      <a class="btn-primary" routerLink="/intern/logbooks">Buka Logbook Harian</a>
+      <a class="btn-primary" routerLink="/employee/work-report">Buka Laporan Kerja</a>
     </section>
   </main>
 </div>

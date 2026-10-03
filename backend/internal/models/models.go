@@ -517,45 +517,53 @@ type HelpdeskContact struct {
 
 type WorkReport struct {
 	Model
-	EmployeeID           *uint                  `gorm:"index" json:"EmployeeID"`
-	EmployeeNameSnapshot string                 `gorm:"size:100" json:"employee_name_snapshot"`
-	EmployeeCodeSnapshot string                 `gorm:"size:40" json:"employee_code_snapshot"`
-	Employee             Employee               `json:"Employee"`
-	Tanggal              time.Time              `gorm:"type:date;not null" json:"tanggal"`
-	Tugas                string                 `gorm:"size:255" json:"tugas"`
-	Judul                string                 `gorm:"size:255" json:"judul"` // Judul Golan Nusantara/ Golan Education
-	DeskripsiKegiatan    string                 `gorm:"type:text" json:"deskripsi_kegiatan"`
-	RealisasiKegiatan    string                 `gorm:"type:text" json:"realisasi_kegiatan"` // Capaian Target, %
-	Kendala              string                 `gorm:"type:text" json:"kendala"`
-	RencanaMingguDepan   string                 `gorm:"type:text" json:"rencana_minggu_depan"`
-	LinkArtikel          string                 `gorm:"type:text" json:"link_artikel"` // Draft/ Pending/ Publish
-	CatatanTambahan      string                 `gorm:"type:text" json:"catatan_tambahan"`
-	StatusSesuai         string                 `gorm:"size:50" json:"status_sesuai"` // Sesuai/Tidak Sesuai
-	ValidasiOlehHR       bool                   `gorm:"default:false" json:"validasi_oleh_hr"`
-	StatusLaporan        string                 `gorm:"size:20;not null;default:'submitted';index" json:"status_laporan"` // draft/submitted
-	StatusLogbook        string                 `gorm:"size:20;default:'draft'" json:"status_logbook"`                    // draft/submitted/approved/rejected
-	ReviewedBy           *uint                  `gorm:"index" json:"reviewed_by"`
-	ReviewedAt           *time.Time             `gorm:"type:timestamp" json:"reviewed_at"`
-	ReviewNotes          string                 `gorm:"type:text" json:"review_notes"`
-	AdminNotes           string                 `gorm:"type:text" json:"admin_notes"`
-	AdminNoteBy          *uint                  `gorm:"index" json:"admin_note_by,omitempty"`
-	AdminNoteAt          *time.Time             `gorm:"type:timestamp" json:"admin_note_at,omitempty"`
-	RejectionReason      string                 `gorm:"type:text" json:"rejection_reason"`
-	RejectedBy           *uint                  `gorm:"index" json:"rejected_by"`
-	RejectedAt           *time.Time             `gorm:"type:timestamp" json:"rejected_at"`
-	RejectionSource      string                 `gorm:"size:20" json:"rejection_source"` // manager/admin
-	ManagerReviewNote    string                 `gorm:"-" json:"manager_review_note,omitempty"`
-	ManagerReviewedAt    *time.Time             `gorm:"-" json:"manager_reviewed_at,omitempty"`
-	ManagerReviewedBy    *uint                  `gorm:"-" json:"manager_reviewed_by,omitempty"`
-	CustomFields         string                 `gorm:"type:text" json:"custom_fields"` // JSON representation of custom headers
-	IsLateSubmission     bool                   `gorm:"default:false;index" json:"is_late_submission"`
-	Attachments          []WorkReportAttachment `gorm:"foreignKey:WorkReportID" json:"attachments,omitempty"`
+	ReportKind           WorkReportKind             `gorm:"size:30;index" json:"report_kind"`
+	EmployeeID           *uint                      `gorm:"index" json:"EmployeeID"`
+	EmployeeNameSnapshot string                     `gorm:"size:100" json:"employee_name_snapshot"`
+	EmployeeCodeSnapshot string                     `gorm:"size:40" json:"employee_code_snapshot"`
+	Employee             Employee                   `json:"Employee"`
+	Tanggal              time.Time                  `gorm:"type:date;not null" json:"tanggal"`
+	Tugas                string                     `gorm:"size:255" json:"tugas"`
+	Judul                string                     `gorm:"size:255" json:"judul"` // Judul Golan Nusantara/ Golan Education
+	JudulTugas           string                     `gorm:"size:513" json:"judul_tugas"`
+	DeskripsiKegiatan    string                     `gorm:"type:text" json:"deskripsi_kegiatan"`
+	RealisasiKegiatan    string                     `gorm:"type:text" json:"realisasi_kegiatan"` // Capaian Target, %
+	Kendala              string                     `gorm:"type:text" json:"kendala"`
+	RencanaMingguDepan   string                     `gorm:"type:text" json:"rencana_minggu_depan"`
+	LinkArtikel          string                     `gorm:"type:text" json:"link_artikel"` // Draft/ Pending/ Publish
+	CatatanTambahan      string                     `gorm:"type:text" json:"catatan_tambahan"`
+	StatusSesuai         string                     `gorm:"size:50" json:"status_sesuai"` // Sesuai/Tidak Sesuai
+	ValidasiOlehHR       bool                       `gorm:"default:false" json:"validasi_oleh_hr"`
+	StatusLaporan        string                     `gorm:"size:20;not null;default:'submitted';index" json:"status_laporan"` // draft/submitted
+	StatusLogbook        string                     `gorm:"size:20;default:'draft'" json:"status_logbook"`                    // draft/submitted/approved/rejected
+	ReviewedBy           *uint                      `gorm:"index" json:"reviewed_by"`
+	ReviewedAt           *time.Time                 `gorm:"type:timestamp" json:"reviewed_at"`
+	ReviewNotes          string                     `gorm:"type:text" json:"review_notes"`
+	AdminNotes           string                     `gorm:"type:text" json:"admin_notes"`
+	AdminNoteBy          *uint                      `gorm:"index" json:"admin_note_by,omitempty"`
+	AdminNoteAt          *time.Time                 `gorm:"type:timestamp" json:"admin_note_at,omitempty"`
+	RejectionReason      string                     `gorm:"type:text" json:"rejection_reason"`
+	RejectedBy           *uint                      `gorm:"index" json:"rejected_by"`
+	RejectedAt           *time.Time                 `gorm:"type:timestamp" json:"rejected_at"`
+	RejectionSource      string                     `gorm:"size:20" json:"rejection_source"` // manager/admin
+	ManagerReviewNote    string                     `gorm:"-" json:"manager_review_note,omitempty"`
+	ManagerReviewedAt    *time.Time                 `gorm:"-" json:"manager_reviewed_at,omitempty"`
+	ManagerReviewedBy    *uint                      `gorm:"-" json:"manager_reviewed_by,omitempty"`
+	CustomFields         string                     `gorm:"type:text" json:"custom_fields"` // JSON representation of custom headers
+	IsLateSubmission     bool                       `gorm:"default:false;index" json:"is_late_submission"`
+	Attachments          []WorkReportAttachment     `gorm:"foreignKey:WorkReportID" json:"attachments,omitempty"`
+	Status               WorkReportWorkflowStatus   `gorm:"-" json:"status"`
+	FillingStatus        WorkReportFillingStatus    `gorm:"-" json:"filling_status"`
+	ReviewStatus         WorkReportReviewStatus     `gorm:"-" json:"review_status"`
+	SubmissionTiming     WorkReportSubmissionTiming `gorm:"-" json:"submission_timing"`
+	LegacyStatusLogbook  string                     `gorm:"-" json:"legacy_status_logbook,omitempty"`
 }
 
 func (w *WorkReport) AfterFind(tx *gorm.DB) error {
 	w.ManagerReviewNote = w.ReviewNotes
 	w.ManagerReviewedAt = w.ReviewedAt
 	w.ManagerReviewedBy = w.ReviewedBy
+	w.NormalizeContract()
 	return nil
 }
 

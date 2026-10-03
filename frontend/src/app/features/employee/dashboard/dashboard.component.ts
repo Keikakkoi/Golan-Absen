@@ -67,6 +67,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   holidays: HolidayItem[] = [];
   private refreshTimer?: ReturnType<typeof setInterval>;
   private disconnectRealtime?: () => void;
+  private notificationsSubscription?: Subscription;
   private userSubscription?: Subscription;
   private initialized = false;
 
@@ -75,6 +76,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.generateCalendar();
     this.loadHolidays(true);
+    this.notificationsSubscription = this.notificationService.notifications$.subscribe(notifications => {
+      this.notifications = notifications;
+    });
 
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       if (user) {
@@ -97,6 +101,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.refreshTimer = undefined;
     this.disconnectRealtime?.();
     this.disconnectRealtime = undefined;
+    this.notificationsSubscription?.unsubscribe();
+    this.notificationsSubscription = undefined;
     this.userSubscription?.unsubscribe();
     this.initialized = false;
   }

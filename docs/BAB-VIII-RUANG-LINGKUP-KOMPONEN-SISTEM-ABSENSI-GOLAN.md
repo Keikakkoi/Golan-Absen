@@ -10,12 +10,16 @@ Dokumen ini menyesuaikan referensi komponen sistem ke konteks Absensi Golan. Mod
 keuangan seperti invoice, pajak, anggaran, jurnal double-entry, dan Approval Matrix
 transaksi tidak termasuk dalam ruang lingkup sistem ini.
 
+Catatan terminologi: alur aktif peserta magang kini menggunakan modul **Laporan Kerja**.
+Referensi `logbook` yang masih muncul di bagian kompatibilitas atau riwayat dokumen hanya
+menjelaskan data lama dan bukan menu atau workflow aktif.
+
 ## 8.1 Role dan scope akses
 
 | Role | Fokus utama | Scope data |
 | --- | --- | --- |
 | Karyawan | Absensi, riwayat, izin/cuti, laporan kerja, profil, dan notifikasi | Data pribadi dan pengajuan sendiri |
-| Magang | Absensi, izin yang diizinkan, logbook, mentor, statistik, dokumen, dan sertifikat | Data pribadi dan logbook sendiri |
+| Magang | Absensi, izin yang diizinkan, laporan kerja, mentor, statistik, dokumen, dan sertifikat | Data pribadi dan laporan kerja sendiri |
 | Manajer | Dashboard, kehadiran tim, laporan tim, statistik, approval, dan review sesuai kewenangan | Tim yang menjadi tanggung jawabnya |
 | HRD/Admin | Master data, konfigurasi, approval, rekap, laporan, audit, backup, dan operasional | Seluruh organisasi sesuai kewenangan |
 
@@ -67,7 +71,7 @@ serta data proses yang menjadi haknya.
 ### 8.2.4 Notifikasi dan pembaruan status
 
 Sistem menyediakan notifikasi in-app untuk aktivitas penting, seperti check-in, check-out,
-pengajuan izin/cuti, perubahan status approval, laporan kerja, logbook, dan proses
+pengajuan izin/cuti, perubahan status approval, laporan kerja, dan proses
 administrasi. Status notifikasi dapat ditandai telah dibaca. Jika koneksi realtime
 tersedia, pembaruan dikirim melalui WebSocket; halaman tetap menyediakan pemuatan ulang
 data apabila koneksi realtime tidak tersedia.
@@ -135,17 +139,17 @@ kehadiran sesuai jadwal serta tipe kerja yang dikonfigurasi. Peserta Magang dapa
 jenis izin yang diizinkan kebijakan perusahaan. Peserta Magang tidak diperbolehkan
 mengajukan Cuti pada alur cuti tahunan.
 
-### 8.4.2 Logbook magang
+### 8.4.2 Laporan kerja peserta magang
 
 Peserta Magang dapat:
 
-- membuat logbook berdasarkan tanggal atau kegiatan;
-- menyimpan logbook sebagai draft;
-- mengirim logbook untuk direview;
+- membuat laporan kerja berdasarkan tanggal atau kegiatan;
+- menyimpan laporan kerja sebagai draft;
+- mengirim laporan kerja untuk direview;
 - melihat status dan catatan review; dan
-- memperbaiki atau mengirim ulang logbook sesuai alur yang berlaku.
+- memperbaiki atau mengirim ulang laporan kerja sesuai alur yang berlaku.
 
-Status utama logbook adalah `DRAFT`, `SUBMITTED`, `APPROVED`, dan `REJECTED`. Reviewer
+Status utama laporan kerja adalah `DRAFT`, `SUBMITTED`, `APPROVED`, dan `REJECTED`. Reviewer
 melakukan pemeriksaan berdasarkan relasi mentor atau Manajer serta scope peserta yang
 menjadi tanggung jawabnya.
 
@@ -174,12 +178,12 @@ Manajer dapat melihat:
 Manajer tidak dapat membuka data anggota tim lain di luar scope, meskipun parameter URL
 atau permintaan API diubah secara langsung.
 
-### 8.5.2 Laporan kerja dan logbook
+### 8.5.2 Review laporan kerja tim
 
 Manajer dapat membuka laporan kerja anggota tim, melihat isi dan lampiran yang berwenang,
 memberikan catatan review, serta menyetujui atau meminta perbaikan sesuai status dan alur
 yang berlaku. Untuk peserta Magang yang berada dalam scope-nya, Manajer atau mentor dapat
-melakukan review logbook dan menyimpan catatan hasil review.
+melakukan review laporan kerja dan menyimpan catatan hasil review.
 
 ### 8.5.3 Approval izin/cuti
 
@@ -270,7 +274,7 @@ otomatis mengubah kuota yang sudah tersimpan.
 ### 8.6.6 Approval dan operasional magang
 
 HRD/Admin dapat mengelola proses administrasi yang terkait dengan role dan kegiatan magang,
-termasuk penempatan mentor atau Manajer, pemantauan logbook, dokumen internship, serta
+    termasuk penempatan mentor atau Manajer, pemantauan laporan kerja, dokumen internship, serta
 sertifikat sesuai fitur dan kewenangan yang tersedia. HRD/Admin juga dapat melihat proses
 yang perlu ditindaklanjuti oleh Manajer atau reviewer lain.
 
@@ -322,7 +326,6 @@ memiliki kewenangan.
 | Absensi | Belum absen, Hadir, Terlambat, Izin, Cuti, Alpha, Belum check-out | Status ditentukan dari absensi, jadwal, hari libur, dan pengajuan yang berlaku. |
 | Pengajuan izin/cuti | Pending, Approved, Rejected, Cancelled | Status berubah melalui validasi dan tindakan reviewer yang berwenang. |
 | Laporan kerja | Draft, Submitted, Approved, Rejected, Tidak membuat laporan kerja | Status mencerminkan proses pengiriman dan review laporan. |
-| Logbook Magang | Draft, Submitted, Approved, Rejected | Status mencerminkan proses pengiriman dan review logbook. |
 | Lokasi WFH | Pending, Approved, Rejected, Aktif | Status mencerminkan permintaan dan lokasi yang dapat digunakan. |
 
 ### 8.7.2 Aturan tanggal dan waktu

@@ -11,7 +11,9 @@ export interface ChartValue { label: string; value: number; }
 export interface ChartPoint { date: string; hadir: number; terlambat: number; izin: number; alfa: number; belum_absen: number; }
 export interface DashboardChartData {
   attendance_trend: ChartPoint[]; today_status: ChartValue[]; comparison: ChartValue[];
-  report_status: ChartValue[]; logbook_status: ChartValue[];
+  report_status: ChartValue[];
+  // Backend alias retained for historical dashboard payloads; active charts use report_status.
+  logbook_status: ChartValue[];
   internship: { progress_percent: number; days_remaining: number };
 }
 
@@ -58,7 +60,6 @@ export class DashboardChartsComponent implements OnInit, OnDestroy {
   get maxTrend(): number { return Math.max(1, ...this.data.attendance_trend.map(item => this.totalPoint(item))); }
   get maxComparison(): number { return Math.max(1, ...this.data.comparison.map(item => item.value)); }
   get maxReports(): number { return Math.max(1, ...this.data.report_status.map(item => item.value)); }
-  get maxLogbooks(): number { return Math.max(1, ...this.data.logbook_status.map(item => item.value)); }
   get trendTotal(): number { return this.data.attendance_trend.reduce((sum, item) => sum + this.totalPoint(item), 0); }
   get trendSummary(): Array<{ label: string; key: keyof ChartPoint; value: number; rate: number }> {
     const total = this.trendTotal;
@@ -80,7 +81,7 @@ export class DashboardChartsComponent implements OnInit, OnDestroy {
     return this.listDescription(this.isAdmin ? 'Kehadiran antar departemen' : 'Kehadiran per anggota tim', this.data.comparison);
   }
   get reportStatusDescription(): string {
-    return this.listDescription(this.isIntern ? 'Status logbook' : 'Status laporan kerja', this.isIntern ? this.data.logbook_status : this.data.report_status);
+    return this.listDescription('Status laporan kerja', this.data.report_status);
   }
   totalPoint(item: ChartPoint): number { return Number(item.hadir || 0) + Number(item.terlambat || 0) + Number(item.izin || 0) + Number(item.alfa || 0) + Number(item.belum_absen || 0); }
   private trendValue(key: keyof ChartPoint): number { return this.data.attendance_trend.reduce((sum, item) => sum + Number(item[key] || 0), 0); }
@@ -89,7 +90,7 @@ export class DashboardChartsComponent implements OnInit, OnDestroy {
   get donutStyle(): string { const values = this.data.today_status; const total = values.reduce((sum, item) => sum + Number(item.value || 0), 0); if (!total) return '#cbd5e1 0 100%'; let offset = 0; return `conic-gradient(${values.map(item => { const next = offset + Number(item.value || 0) / total * 100; const segment = `${this.color(item.label)} ${offset}% ${next}%`; offset = next; return segment; }).join(',')})`; }
   barHeight(value: number, max: number): number { return max ? Math.max(3, value / max * 100) : 0; }
   dateLabel(value: string): string { return value ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'short' }).format(new Date(`${value}T00:00:00`)) : '-'; }
-  color(label: string): string { const key = label.toLowerCase(); if (key.includes('hadir') || key.includes('approved') || key.includes('selesai')) return this.chartTheme.status.hadir; if (key.includes('submitted')) return this.chartTheme.status.terlambat; if (key.includes('izin') || key.includes('cuti')) return this.chartTheme.status.izin; if (key.includes('terlambat') || key.includes('late')) return this.chartTheme.status.terlambat; if (key.includes('alfa') || key.includes('reject') || key.includes('ditolak')) return this.chartTheme.status.alfa; if (key.includes('pending')) return this.chartTheme.status.pending; return this.chartTheme.status.neutral; }
+  color(label: string): string { const key = label.toLowerCase(); if (key.includes('belum membuat') || key.includes('no_report') || key.includes('missing')) return this.chartTheme.status.neutral; if (key.includes('hadir') || key.includes('approved') || key.includes('selesai') || key.includes('disetujui')) return this.chartTheme.status.hadir; if (key.includes('submitted')) return this.chartTheme.status.terlambat; if (key.includes('izin') || key.includes('cuti')) return this.chartTheme.status.izin; if (key.includes('terlambat') || key.includes('late')) return this.chartTheme.status.terlambat; if (key.includes('alfa') || key.includes('reject') || key.includes('ditolak')) return this.chartTheme.status.alfa; if (key.includes('pending') || key.includes('menunggu')) return this.chartTheme.status.pending; return this.chartTheme.status.neutral; }
   track(_: number, item: ChartValue): string { return item.label; }
   private listDescription(title: string, values: ChartValue[]): string {
     const items = values.filter(item => Number.isFinite(Number(item.value)));
