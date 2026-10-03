@@ -253,6 +253,7 @@ func GetLeaveRequestDetail(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Leave request is outside your team"})
 		}
 	}
+	normalizeLeaveAttachmentURL(&request)
 	return c.JSON(request)
 }
 
@@ -402,6 +403,7 @@ func GetMyLeaveRequests(c *fiber.Ctx) error {
 	if err := config.DB.Preload("AssignedApprover").Where("employee_id = ?", employee.ID).Order("created_at desc").Find(&requests).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch leave requests"})
 	}
+	normalizeLeaveAttachmentURLs(requests)
 
 	return c.JSON(requests)
 }
@@ -436,8 +438,24 @@ func GetAllLeaveRequests(c *fiber.Ctx) error {
 	if err := query.Find(&requests).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch leave requests"})
 	}
+	normalizeLeaveAttachmentURLs(requests)
 
 	return c.JSON(requests)
+}
+
+// normalizeLeaveAttachmentURL keeps legacy database values unchanged while
+// returning a browser-facing URL for the attachment links in leave history.
+func normalizeLeaveAttachmentURL(request *models.LeaveRequest) {
+	if request == nil {
+		return
+	}
+	request.LampiranURL = minio.RewriteObjectURL(request.LampiranURL)
+}
+
+func normalizeLeaveAttachmentURLs(requests []models.LeaveRequest) {
+	for index := range requests {
+		normalizeLeaveAttachmentURL(&requests[index])
+	}
 }
 
 func ApproveRejectLeaveRequest(c *fiber.Ctx) error {
@@ -726,6 +744,7 @@ func SaveAdminLeaveNote(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan catatan admin"})
 	}
 	request.AdminNotes, request.AdminNoteBy, request.AdminNoteAt = notes, &adminID, &now
+	normalizeLeaveAttachmentURL(&request)
 	WsHub.Broadcast <- fiber.Map{"event": "leave_note_updated"}
 	return c.JSON(request)
 }

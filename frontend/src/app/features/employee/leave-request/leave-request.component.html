@@ -139,7 +139,7 @@
                   <td data-label="Alasan Penolakan">{{ rejectionReason(req) }}</td>
                   <td data-label="Catatan" class="leave-note-cell" [title]="note(req)">{{ note(req) }}</td>
                   <td data-label="Lampiran">
-                    <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="icon-button view" aria-label="Lihat lampiran" title="Lihat lampiran">
+                    <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" rel="noopener noreferrer" class="icon-button view" aria-label="Lihat lampiran" title="Lihat lampiran">
                       <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
                     </a>
                     <span *ngIf="!req.LampiranURL" class="text-muted">-</span>
@@ -214,7 +214,7 @@
       </div>
       <div *ngIf="selectedLeave.LampiranURL" class="detail-block">
         <span>Dokumen Lampiran</span>
-        <a [href]="selectedLeave.LampiranURL" target="_blank" class="link-action btn-view-detail compact">Unduh Lampiran</a>
+        <a [href]="selectedLeave.LampiranURL" target="_blank" rel="noopener noreferrer" download class="link-action btn-view-detail compact">Unduh Lampiran</a>
       </div>
     </div>
   </div>

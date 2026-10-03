@@ -96,7 +96,7 @@
               </td>
               <td class="leave-note-cell"><div class="note-source" [title]="displayManagerNote(req)">{{ displayManagerNote(req) }}</div></td>
               <td class="leave-attachment-cell">
-                <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" class="btn-view-detail compact">Lihat Dokumen</a>
+                <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" rel="noopener noreferrer" class="btn-view-detail compact">Lihat Dokumen</a>
                 <span *ngIf="!req.LampiranURL" class="leave-muted-text">Tidak ada</span>
               </td>
               <td class="leave-status-cell">
@@ -252,7 +252,7 @@
               <span class="attachment-sub">Klik tombol untuk melihat file dokumen</span>
             </div>
           </div>
-          <a [href]="selectedRequest.LampiranURL" target="_blank" class="btn-attachment-action">
+          <a [href]="selectedRequest.LampiranURL" target="_blank" rel="noopener noreferrer" download class="btn-attachment-action">
             Buka File
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 4px; vertical-align: middle;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
