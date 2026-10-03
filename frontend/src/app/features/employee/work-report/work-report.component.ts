@@ -50,6 +50,7 @@ export class WorkReportComponent implements OnInit {
   userDivisi: string = '';
   selectedScreenshots: File[] = [];
   existingScreenshots: any[] = [];
+  failedAttachmentURLs: Record<string, boolean> = {};
   selectedReportDetail: WorkReport | null = null;
   removedScreenshotIds: number[] = [];
   deadlineInfo: WorkReportDeadline | null = null;
@@ -337,10 +338,16 @@ export class WorkReportComponent implements OnInit {
 
   viewReportDetail(report: WorkReport): void {
     this.selectedReportDetail = report;
+    this.failedAttachmentURLs = {};
   }
 
   closeReportDetail(): void {
     this.selectedReportDetail = null;
+    this.failedAttachmentURLs = {};
+  }
+
+  onAttachmentError(url: string): void {
+    this.failedAttachmentURLs[url] = true;
   }
 
   requiresReportTitle(): boolean {

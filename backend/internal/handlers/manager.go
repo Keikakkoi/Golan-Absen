@@ -314,7 +314,9 @@ func GetManagerTeamReports(c *fiber.Ctx) error {
 	}
 	reports := make([]models.WorkReport, 0)
 	if hasPaginationQuery(c) {
-		if err := paginatedQuery(c, query, &reports); err != nil {
+		if err := paginatedQuery(c, query, &reports, func() {
+			normalizeWorkReportAttachmentURLs(reports)
+		}); err != nil {
 			log.Printf("manager team reports pagination failed: manager_id=%d start_date=%q end_date=%q search=%q: %v", managerID, start, end, c.Query("search"), err)
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to paginate team reports"})
 		}
@@ -324,6 +326,7 @@ func GetManagerTeamReports(c *fiber.Ctx) error {
 		log.Printf("manager team reports query failed: manager_id=%d start_date=%q end_date=%q search=%q: %v", managerID, start, end, c.Query("search"), err)
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to load team reports"})
 	}
+	normalizeWorkReportAttachmentURLs(reports)
 	return c.JSON(reports)
 }
 

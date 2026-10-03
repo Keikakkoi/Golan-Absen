@@ -52,7 +52,7 @@ func parsePositiveQuery(value string, fallback int) int {
 
 // paginatedQuery executes a GORM query and writes the common pagination
 // envelope. The destination must be a pointer to a slice.
-func paginatedQuery(c *fiber.Ctx, query *gorm.DB, destination any) error {
+func paginatedQuery(c *fiber.Ctx, query *gorm.DB, destination any, afterFind ...func()) error {
 	p := readPagination(c)
 
 	var total int64
@@ -70,6 +70,9 @@ func paginatedQuery(c *fiber.Ctx, query *gorm.DB, destination any) error {
 	}
 	if err := query.Offset(p.Offset).Limit(p.Limit).Find(destination).Error; err != nil {
 		return err
+	}
+	if len(afterFind) > 0 && afterFind[0] != nil {
+		afterFind[0]()
 	}
 
 	return c.JSON(fiber.Map{

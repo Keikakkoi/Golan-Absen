@@ -443,7 +443,9 @@ func GetInternshipLogbooks(c *fiber.Ctx) error {
 		query = query.Where("status_logbook = ?", status)
 	}
 	if c.Context().QueryArgs().Has("page") || c.Context().QueryArgs().Has("limit") || c.Context().QueryArgs().Has("per_page") {
-		if err := paginatedQuery(c, query, &reports); err != nil {
+		if err := paginatedQuery(c, query, &reports, func() {
+			normalizeWorkReportAttachmentURLs(reports)
+		}); err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to paginate logbooks"})
 		}
 		return nil
@@ -451,6 +453,7 @@ func GetInternshipLogbooks(c *fiber.Ctx) error {
 	if err := query.Find(&reports).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch logbooks"})
 	}
+	normalizeWorkReportAttachmentURLs(reports)
 	return c.JSON(reports)
 }
 

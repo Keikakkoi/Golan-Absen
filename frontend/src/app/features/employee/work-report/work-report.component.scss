@@ -571,6 +571,15 @@
   min-width: 170px;
 }
 
+.report-history-table .report-image-fallback {
+  display: inline-block;
+  max-width: 120px;
+  color: #b42318;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  white-space: normal;
+}
+
 .report-history-table th:last-child,
 .report-history-table td:last-child {
   width: 130px;

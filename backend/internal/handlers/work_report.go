@@ -132,7 +132,9 @@ func GetWorkReports(c *fiber.Ctx) error {
 	}
 
 	if hasPaginationQuery(c) {
-		if err := paginatedQuery(c, query, &reports); err != nil {
+		if err := paginatedQuery(c, query, &reports, func() {
+			normalizeWorkReportAttachmentURLs(reports)
+		}); err != nil {
 			log.Printf("work reports pagination failed: user_id=%d role=%s start_date=%q end_date=%q employee_id=%q: %v", userID, userRole, startDate, endDate, c.Query("employee_id"), err)
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to paginate reports"})
 		}
@@ -142,8 +144,21 @@ func GetWorkReports(c *fiber.Ctx) error {
 		log.Printf("work reports query failed: user_id=%d role=%s start_date=%q end_date=%q employee_id=%q: %v", userID, userRole, startDate, endDate, c.Query("employee_id"), err)
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch reports"})
 	}
+	normalizeWorkReportAttachmentURLs(reports)
 
 	return c.JSON(reports)
+}
+
+// normalizeWorkReportAttachmentURLs keeps legacy database values unchanged
+// while returning URLs that a browser can actually request in production.
+func normalizeWorkReportAttachmentURLs(reports []models.WorkReport) {
+	for reportIndex := range reports {
+		for attachmentIndex := range reports[reportIndex].Attachments {
+			reports[reportIndex].Attachments[attachmentIndex].FileURL = minio.RewriteObjectURL(
+				reports[reportIndex].Attachments[attachmentIndex].FileURL,
+			)
+		}
+	}
 }
 
 func CreateWorkReport(c *fiber.Ctx) error {

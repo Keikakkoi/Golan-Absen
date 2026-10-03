@@ -112,7 +112,14 @@
                   <span *ngIf="!r.link_artikel">-</span>
                 </td>
                 <td data-label="Screenshot/Bukti Pengisian" class="report-screenshot-cell">
-                  <span *ngFor="let image of r.attachments" class="report-thumb"><a [href]="image.file_url" target="_blank"><img [src]="image.file_url" [alt]="image.file_name"></a></span>
+                  <ng-container *ngFor="let image of r.attachments">
+                    <span class="report-thumb">
+                      <a *ngIf="!failedAttachmentURLs[image.file_url]" [href]="image.file_url" target="_blank" rel="noopener noreferrer">
+                        <img [src]="image.file_url" [alt]="image.file_name" (error)="onAttachmentError(image.file_url)">
+                      </a>
+                      <span *ngIf="failedAttachmentURLs[image.file_url]" class="report-image-fallback" role="status">Gagal memuat gambar</span>
+                    </span>
+                  </ng-container>
                   <span *ngIf="!r.attachments?.length">-</span>
                 </td>
                 <td data-label="Status Pengisian">
