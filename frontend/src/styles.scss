@@ -5176,3 +5176,24 @@ app-admin-role-operations .modal-backdrop > .modal-card .screenshot-preview-grid
   max-width: 100%;
   overflow: hidden;
 }
+
+/* Slightly reduce the admin attendance recap View dialog while keeping its
+   content and map readable and scrollable inside the popup. */
+@media (min-width: 901px) and (max-width: 1439px) {
+  app-admin-reports > .attendance-detail-backdrop > .attendance-detail-modal {
+    width: min(100%, 680px) !important;
+    max-width: 680px !important;
+    max-height: calc(100dvh - 32px) !important;
+  }
+}
+
+@media (min-width: 1440px) {
+  app-admin-reports > .attendance-detail-backdrop > .attendance-detail-modal {
+    --admin-attendance-detail-popup-scale: 1.25;
+    width: min(100%, 680px) !important;
+    max-width: 680px !important;
+    max-height: calc((100vh - 40px) / var(--admin-attendance-detail-popup-scale)) !important;
+    transform: scale(var(--admin-attendance-detail-popup-scale)) !important;
+    transform-origin: center center;
+  }
+}
