@@ -13,7 +13,7 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
-import { dateOnly, isSameJakartaDate, localDateString, monthRange, reportDayStatus } from './work-report-date.utils';
+import { dateOnly, isSameJakartaDate, jakartaDateString, monthRange, reportDayStatus } from './work-report-date.utils';
 import { isValidRealisasiKegiatan, REALISASI_KEGIATAN_ERROR } from './work-report-validation';
 import { requiresReportTitle as resolveRequiresReportTitle } from '../../../core/utils/report-completeness';
 import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
@@ -60,10 +60,10 @@ export class WorkReportComponent implements OnDestroy, OnInit {
   pageSize = 25;
   totalReports = 0;
   pageSizeOptions = [10, 25, 50, 100];
-  selectedMonth = localDateString().slice(0, 7);
+  selectedMonth = jakartaDateString().slice(0, 7);
   availableMonths: Array<{ value: string; label: string }> = [];
   complianceError = '';
-  readonly monthLabelFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' });
+  readonly monthLabelFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
   private disconnectRealtime?: () => void;
 
   constructor(
@@ -93,10 +93,10 @@ export class WorkReportComponent implements OnDestroy, OnInit {
   }
 
   private buildAvailableMonths(): void {
-    const now = new Date();
+    const [year, month] = jakartaDateString().split('-').map(Number);
     this.availableMonths = Array.from({ length: 25 }, (_, index) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
-      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const date = new Date(Date.UTC(year, month - 1 - index, 1, 12));
+      const value = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
       return { value, label: this.monthLabelFormatter.format(date) };
     });
   }
@@ -211,7 +211,7 @@ export class WorkReportComponent implements OnDestroy, OnInit {
 
   onMonthChange(): void {
     if (!this.availableMonths.some(month => month.value === this.selectedMonth)) {
-      this.selectedMonth = this.availableMonths[0]?.value || localDateString().slice(0, 7);
+      this.selectedMonth = this.availableMonths[0]?.value || jakartaDateString().slice(0, 7);
     }
     this.currentPage = 1;
     this.loadInitialData();
@@ -219,14 +219,19 @@ export class WorkReportComponent implements OnDestroy, OnInit {
 
   get selectedMonthLabel(): string {
     const [year, month] = this.selectedMonth.split('-').map(Number);
-    return this.monthLabelFormatter.format(new Date(year, month - 1, 1));
+    return this.monthLabelFormatter.format(new Date(Date.UTC(year, month - 1, 1, 12)));
   }
 
-  getDayStatus(c: ComplianceResult): 'reported' | 'no_report' | 'future' | 'draft' | 'needs-review' {
+  getDayStatus(c: ComplianceResult, today = jakartaDateString()): 'reported' | 'no_report' | 'future' | 'draft' | 'needs-review' {
+    // A future date is always neutral. The API marks every empty calendar
+    // cell as `no_report`, so checking the date first prevents future days
+    // from being rendered red.
+    const dayStatus = reportDayStatus(c.tanggal, c.has_report, today);
+    if (dayStatus === 'future') return 'future';
+    if (dayStatus === 'reported') return 'reported';
     if (c.status === 'no_report' || c.status === 'missing' || c.has_report === false) return 'no_report';
     if (c.status === 'draft') return 'draft';
     if (c.status === 'needs_improvement') return 'needs-review';
-    const dayStatus = reportDayStatus(c.tanggal, c.has_report);
     return dayStatus === 'missing' ? 'no_report' : dayStatus;
   }
 
@@ -235,7 +240,7 @@ export class WorkReportComponent implements OnDestroy, OnInit {
   }
 
   isSelectedMonthCurrent(): boolean {
-    return this.selectedMonth === localDateString().slice(0, 7);
+    return this.selectedMonth === jakartaDateString().slice(0, 7);
   }
 
   buildCustomFieldsForm() {
@@ -262,7 +267,7 @@ export class WorkReportComponent implements OnDestroy, OnInit {
     this.clearScreenshots();
     this.existingScreenshots = [];
     this.removedScreenshotIds = [];
-    const workDate = date || localDateString();
+    const workDate = date || jakartaDateString();
     this.reportForm.patchValue({ tanggal: workDate });
     this.loadDeadline(workDate);
   }

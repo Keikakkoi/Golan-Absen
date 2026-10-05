@@ -38,14 +38,17 @@ export function isSameJakartaDate(reportDate: string | Date, now = new Date()): 
 
 export function monthRange(month: string): ReportMonthRange {
   const [year, monthNumber] = month.split('-').map(Number);
-  const lastDay = new Date(year, monthNumber, 0).getDate();
+  // Use UTC only for month arithmetic. The values returned by this helper
+  // are date-only strings, so they must not depend on the browser's local
+  // timezone (or on a DST transition).
+  const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
   return {
     start: `${year}-${String(monthNumber).padStart(2, '0')}-01`,
     end: `${year}-${String(monthNumber).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
   };
 }
 
-export function reportDayStatus(date: string, hasReport: boolean, today = localDateString()): 'reported' | 'missing' | 'future' {
+export function reportDayStatus(date: string, hasReport: boolean, today = jakartaDateString()): 'reported' | 'missing' | 'future' {
   if (hasReport) return 'reported';
   return date > today ? 'future' : 'missing';
 }

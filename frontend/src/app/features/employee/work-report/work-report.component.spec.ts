@@ -65,4 +65,13 @@ describe('WorkReportComponent canonical contract', () => {
     expect(component.reportFillingLabel(missing)).toBe('Belum Membuat Laporan Kerja');
     expect(component.canModifyReport(missing)).toBeFalse();
   });
+
+  it('keeps future calendar dates neutral even when the API marks them no_report', () => {
+    const component = createComponent();
+
+    expect(component.getDayStatus({ tanggal: '2026-10-06', has_report: false, status: 'no_report' }, '2026-10-05')).toBe('future');
+    expect(component.getDayStatus({ tanggal: '2026-10-05', has_report: false, status: 'no_report' }, '2026-10-05')).toBe('no_report');
+    expect(component.getDayStatus({ tanggal: '2026-10-04', has_report: false, status: 'no_report' }, '2026-10-05')).toBe('no_report');
+    expect(component.getDayStatus({ tanggal: '2026-10-06', has_report: true, status: 'submitted' }, '2026-10-05')).toBe('reported');
+  });
 });

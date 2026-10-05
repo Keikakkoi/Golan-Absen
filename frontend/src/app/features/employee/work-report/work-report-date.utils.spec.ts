@@ -18,6 +18,9 @@ describe('work report date helpers', () => {
     expect(reportDayStatus('2025-01-05', true, '2025-01-10')).toBe('reported');
     expect(reportDayStatus('2025-01-05', false, '2025-01-10')).toBe('missing');
     expect(reportDayStatus('2025-01-11', false, '2025-01-10')).toBe('future');
+    expect(reportDayStatus('2026-10-06', false, '2026-10-05')).toBe('future');
+    expect(reportDayStatus('2026-11-01', false, '2026-10-31')).toBe('future');
+    expect(reportDayStatus('2027-01-01', false, '2026-12-31')).toBe('future');
   });
 
   it('compares revision dates in Asia/Jakarta', () => {

@@ -730,15 +730,15 @@ func GetWorkReportCompliance(c *fiber.Ctx) error {
 	endDate := c.Query("end_date")
 
 	if startDate == "" || endDate == "" {
-		now := time.Now()
-		startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local).Format("2006-01-02")
-		endDate = time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, time.Local).Format("2006-01-02")
+		now := time.Now().In(jakartaLocation)
+		startDate = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, jakartaLocation).Format("2006-01-02")
+		endDate = time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, jakartaLocation).Format("2006-01-02")
 	}
-	start, err := time.Parse("2006-01-02", startDate)
+	start, err := time.ParseInLocation("2006-01-02", startDate, jakartaLocation)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid start_date; expected YYYY-MM-DD"})
 	}
-	end, err := time.Parse("2006-01-02", endDate)
+	end, err := time.ParseInLocation("2006-01-02", endDate, jakartaLocation)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid end_date; expected YYYY-MM-DD"})
 	}
