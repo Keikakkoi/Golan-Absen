@@ -5197,3 +5197,50 @@ app-admin-role-operations .modal-backdrop > .modal-card .screenshot-preview-grid
     transform-origin: center center;
   }
 }
+
+/* The Magang work-report page was missing from the desktop density rules,
+   which made it appear much smaller than the other Magang dashboard pages. */
+@media (min-width: 1440px) {
+  body.role-magang app-work-report .dashboard-container {
+    --intern-dashboard-scale: 1.5;
+    zoom: var(--intern-dashboard-scale);
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
+  body.role-magang app-work-report app-shared-sidebar {
+    height: calc(100dvh / var(--intern-dashboard-scale)) !important;
+    max-height: calc(100dvh / var(--intern-dashboard-scale)) !important;
+  }
+}
+
+@media (min-width: 2400px) {
+  body.role-magang app-work-report .dashboard-container {
+    --intern-dashboard-scale: 2;
+  }
+}
+
+@media (min-width: 2760px) {
+  body.role-magang app-work-report .dashboard-container {
+    --intern-dashboard-scale: 2.25;
+  }
+}
+
+@media (min-width: 3120px) {
+  body.role-magang app-work-report .dashboard-container {
+    --intern-dashboard-scale: 2.5;
+  }
+}
+
+@media (min-width: 3300px) {
+  body.role-magang app-work-report .dashboard-container {
+    --intern-dashboard-scale: 2.6875;
+  }
+}
+
+@media (min-width: 3700px) {
+  body.role-magang app-work-report .dashboard-container {
+    --intern-dashboard-scale: 3;
+  }
+}
