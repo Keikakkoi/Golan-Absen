@@ -119,18 +119,18 @@
               <p class="text-dark-lo" style="font-size: 0.9rem; margin-bottom: 12px;">
                 Jadwal di bawah ini adalah acuan jam absensi yang ditetapkan admin.
               </p>
-              <div *ngIf="profileData.WorkSchedules?.length; else noWorkSchedule" class="golan-table-responsive">
+              <div *ngIf="weeklyShiftRows.length; else noWorkSchedule" class="golan-table-responsive">
                 <table class="golan-table">
                   <thead>
                     <tr><th>Tanggal</th><th>Nama Shift</th><th>Hari kerja</th><th>Jam Check-in</th><th>Jam Check-out</th></tr>
                   </thead>
                   <tbody>
-                    <tr *ngFor="let shift of profileData.WorkSchedules">
-                      <td>{{ shift.Tanggal ? (shift.Tanggal | date:'dd MMM yyyy') : 'Shift Aktif' }}</td>
-                      <td><strong>{{ shift.NamaShift }}</strong></td>
-                      <td>{{ getWorkDaysLabel(shift.HariKerja || shift.hari_kerja) }}</td>
-                      <td>{{ shift.JamMulai ? (shift.JamMulai | slice:0:5) : '-' }}</td>
-                      <td>{{ shift.JamSelesai ? (shift.JamSelesai | slice:0:5) : '-' }}</td>
+                    <tr *ngFor="let shift of weeklyShiftRows">
+                      <td>{{ shift.tanggal }}</td>
+                      <td><strong>{{ shift.namaShift }}</strong></td>
+                      <td>{{ shift.hariKerja }}</td>
+                      <td>{{ shift.jamMulai }}</td>
+                      <td>{{ shift.jamSelesai }}</td>
                     </tr>
                   </tbody>
                 </table>

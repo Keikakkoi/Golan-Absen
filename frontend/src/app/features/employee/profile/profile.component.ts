@@ -14,6 +14,14 @@ import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil, timeout } from 'rxjs/operators';
 
+interface WeeklyShiftRow {
+  tanggal: string;
+  namaShift: string;
+  hariKerja: string;
+  jamMulai: string;
+  jamSelesai: string;
+}
+
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -23,7 +31,9 @@ import { finalize, takeUntil, timeout } from 'rxjs/operators';
 })
 export class ProfileComponent implements OnInit, OnDestroy {
   readonly workDayLabels: {[key: string]: string} = { '1':'Senin', '2':'Selasa', '3':'Rabu', '4':'Kamis', '5':'Jumat', '6':'Sabtu', '7':'Minggu' };
+  readonly weeklyDayNumbers = [1, 2, 3, 4, 5, 6, 7];
   profileData: any = null;
+  weeklyShiftRows: WeeklyShiftRow[] = [];
   isLoading = true;
   activeTab = 'profile'; // 'profile' | 'settings' | 'email' | 'security'
 
@@ -139,6 +149,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
           return;
         }
         this.profileData = profile;
+        this.weeklyShiftRows = this.buildWeeklyShiftRows(profile.WorkSchedules);
         this.updateForm.nama = profile.Nama || profile.nama || '';
         this.updateForm.email = profile.Email || profile.email || '';
         const employee = profile.Employee || profile.employee || {};
@@ -389,6 +400,62 @@ export class ProfileComponent implements OnInit, OnDestroy {
     let days: any[] = [];
     try { days = Array.isArray(value) ? value : JSON.parse(value || '[1,2,3,4,5,6]'); } catch { days = [1,2,3,4,5,6]; }
     return (days.length ? days : [1,2,3,4,5,6]).map(day => this.workDayLabels[String(day)]).filter(Boolean).join(', ');
+  }
+
+  private buildWeeklyShiftRows(schedules: any[]): WeeklyShiftRow[] {
+    const scheduleByDay = new Map<number, any>();
+    for (const schedule of Array.isArray(schedules) ? schedules : []) {
+      for (const day of this.parseWorkDays(schedule?.HariKerja ?? schedule?.hari_kerja)) {
+        // The API normally sends one row per day. Keeping the first row also
+        // makes this work with older responses that still contain a combined
+        // Monday-Saturday schedule.
+        if (!scheduleByDay.has(day)) scheduleByDay.set(day, schedule);
+      }
+    }
+
+    return this.weeklyDayNumbers.map((day, index) => {
+      const schedule = scheduleByDay.get(day);
+      const date = this.weekDate(index);
+      return {
+        tanggal: this.formatIndonesianDate(date),
+        namaShift: schedule ? (schedule.NamaShift || schedule.nama_shift || '-') : '-',
+        hariKerja: this.workDayLabels[String(day)],
+        jamMulai: schedule?.JamMulai || schedule?.jam_mulai ? this.formatScheduleTime(schedule.JamMulai ?? schedule.jam_mulai) : '-',
+        jamSelesai: schedule?.JamSelesai || schedule?.jam_selesai ? this.formatScheduleTime(schedule.JamSelesai ?? schedule.jam_selesai) : '-'
+      };
+    });
+  }
+
+  private parseWorkDays(value: any): number[] {
+    let parsed: any = value;
+    if (typeof value === 'string') {
+      if (!value.trim()) return [1, 2, 3, 4, 5, 6];
+      try { parsed = JSON.parse(value); } catch { return [1, 2, 3, 4, 5, 6]; }
+    }
+    if (!Array.isArray(parsed)) return [1, 2, 3, 4, 5, 6];
+    return parsed.map(day => Number(day)).filter(day => this.weeklyDayNumbers.includes(day));
+  }
+
+  private weekDate(dayOffset: number): Date {
+    const todayParts = new Intl.DateTimeFormat('en-CA', {
+      day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Jakarta'
+    }).formatToParts(new Date());
+    const part = (type: Intl.DateTimeFormatPartTypes) => Number(todayParts.find(item => item.type === type)?.value);
+    const today = new Date(Date.UTC(part('year'), part('month') - 1, part('day')));
+    const isoWeekday = today.getUTCDay() || 7;
+    today.setUTCDate(today.getUTCDate() - isoWeekday + 1 + dayOffset);
+    return today;
+  }
+
+  private formatIndonesianDate(date: Date): string {
+    return new Intl.DateTimeFormat('id-ID', {
+      day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta'
+    }).format(date);
+  }
+
+  private formatScheduleTime(value: any): string {
+    const time = String(value ?? '');
+    return time ? time.slice(0, 5) : '-';
   }
 
   initHomeMap(): void {

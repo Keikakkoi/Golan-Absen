@@ -310,6 +310,26 @@
   margin: -0.5rem 0 1.5rem;
 }
 
+/* The weekly shift view intentionally keeps all seven days in one ordered
+   table. On phones the shared table viewport provides horizontal scrolling so
+   long Indonesian dates do not compress or clip the other columns. */
+.shift-profile-section {
+  .golan-table {
+    min-width: 820px;
+  }
+
+  .golan-table th:nth-child(1),
+  .golan-table td:nth-child(1) { width: 170px; }
+  .golan-table th:nth-child(2),
+  .golan-table td:nth-child(2) { width: 220px; }
+  .golan-table th:nth-child(3),
+  .golan-table td:nth-child(3) { width: 120px; }
+  .golan-table th:nth-child(4),
+  .golan-table td:nth-child(4),
+  .golan-table th:nth-child(5),
+  .golan-table td:nth-child(5) { width: 145px; }
+}
+
 .form-group-row {
   display: flex;
   gap: 1.5rem;
