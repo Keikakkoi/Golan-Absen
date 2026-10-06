@@ -15,6 +15,7 @@ const (
 	defaultMinimumMasaKerjaCutiBulan        = 3
 	defaultCutiQuotaHari                    = 12
 	defaultBatasLaporanSetelahCheckoutMenit = 60
+	defaultToleransiAbsenAwalMenit          = 0
 )
 
 func getGeneralSetting() models.GeneralSetting {
@@ -26,6 +27,7 @@ func getGeneralSettingFrom(db *gorm.DB) models.GeneralSetting {
 		MinimumMasaKerjaCutiBulan:        defaultMinimumMasaKerjaCutiBulan,
 		DefaultCutiQuotaHari:             defaultCutiQuotaHari,
 		BatasLaporanSetelahCheckoutMenit: defaultBatasLaporanSetelahCheckoutMenit,
+		ToleransiAbsenAwalMenit:          defaultToleransiAbsenAwalMenit,
 	}
 	if db == nil || db.First(&setting).Error != nil {
 		return setting
@@ -42,6 +44,9 @@ func getGeneralSettingFrom(db *gorm.DB) models.GeneralSetting {
 	}
 	if setting.BatasLaporanSetelahCheckoutMenit < 0 {
 		setting.BatasLaporanSetelahCheckoutMenit = defaultBatasLaporanSetelahCheckoutMenit
+	}
+	if setting.ToleransiAbsenAwalMenit < 0 {
+		setting.ToleransiAbsenAwalMenit = defaultToleransiAbsenAwalMenit
 	}
 	return setting
 }

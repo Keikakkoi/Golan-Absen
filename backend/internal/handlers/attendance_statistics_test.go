@@ -74,6 +74,21 @@ func TestAttendanceStatisticsReturnsZeroWhenThereAreNoWorkingDays(t *testing.T) 
 	}
 }
 
+func TestAttendanceStatisticsExcludesNonWorkingDayFromAlpha(t *testing.T) {
+	tuesday := time.Date(2026, 9, 15, 0, 0, 0, 0, jakartaLocation)
+	id := uint(8)
+	employee := models.Employee{Model: models.Model{ID: id}, TanggalBergabung: tuesday}
+	in := attendanceStatisticsInput{records: map[string]models.AttendanceRecord{}, leaves: map[string]models.AttendanceStatus{}, holidays: map[string]bool{}}
+	nonWorking := resolveRegularForTest(models.RegularWorkSchedule{
+		DayOfWeek: 2, IsWorkingDay: false, StartTime: "09:00", EndTime: "17:00",
+	}, tuesday)
+
+	status, working := attendanceDayStatusWithSchedule(employee, tuesday, tuesday.Add(24*time.Hour), in, nonWorking)
+	if working || status != "" {
+		t.Fatalf("non-working Tuesday must be excluded, got status=%q working=%v", status, working)
+	}
+}
+
 func TestAttendanceDaySummaryAggregatesTeamByMemberAndWorkingDay(t *testing.T) {
 	day := time.Date(2026, 9, 18, 0, 0, 0, 0, jakartaLocation) // Friday
 	now := time.Date(2026, 9, 18, 18, 0, 0, 0, jakartaLocation)

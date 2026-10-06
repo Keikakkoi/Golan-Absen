@@ -40,6 +40,9 @@ func TestAttendanceWindowUsesNineTenGraceAndSixPmDeadline(t *testing.T) {
 	if got := deadline.Format("15:04"); got != "18:00" {
 		t.Fatalf("checkout deadline: got %s, want 18:00", got)
 	}
+	if got, want := deadline.Format(time.RFC3339), "2026-07-23T18:00:00+07:00"; got != want {
+		t.Fatalf("regular checkout deadline date: got %s, want %s", got, want)
+	}
 }
 
 func TestAttendanceWindowUsesConfiguredStartAndSupportsOvernightEnd(t *testing.T) {
@@ -64,6 +67,68 @@ func TestAttendanceWindowUsesConfiguredStartAndSupportsOvernightEnd(t *testing.T
 	}
 	if !deadline.After(overnightEnd) {
 		t.Fatal("overnight checkout deadline must be after shift end")
+	}
+	if got, want := deadline.Format(time.RFC3339), "2026-07-28T07:00:00+07:00"; got != want {
+		t.Fatalf("overnight checkout deadline: got %s, want %s", got, want)
+	}
+}
+
+func TestAttendanceMessagePrioritizesNonWorkingDay(t *testing.T) {
+	now := time.Date(2026, 9, 15, 23, 30, 0, 0, jakartaLocation)
+	message := attendanceMessage(
+		now,
+		"Belum Absen",
+		time.Date(2026, 9, 15, 18, 23, 0, 0, jakartaLocation),
+		time.Date(2026, 9, 15, 23, 0, 0, 0, jakartaLocation),
+		time.Date(2026, 9, 16, 0, 0, 0, 0, jakartaLocation),
+		false,
+	)
+	if message != "Hari ini bukan hari kerja untuk shift Anda." {
+		t.Fatalf("non-working day message: got %q", message)
+	}
+}
+
+func TestAttendanceWindowUsesNextDayDeadlineForLateEveningShift(t *testing.T) {
+	schedule := models.WorkSchedule{JamMulai: "18:23", JamSelesai: "23:00"}
+	date := time.Date(2026, 9, 15, 0, 0, 0, 0, jakartaLocation)
+	_, start, _, end, deadline := attendanceWindow(date.Add(12*time.Hour), schedule)
+
+	if got, want := start.Format(time.RFC3339), "2026-09-15T18:23:00+07:00"; got != want {
+		t.Fatalf("start: got %s, want %s", got, want)
+	}
+	if got, want := end.Format(time.RFC3339), "2026-09-15T23:00:00+07:00"; got != want {
+		t.Fatalf("end: got %s, want %s", got, want)
+	}
+	if got, want := deadline.Format(time.RFC3339), "2026-09-16T00:00:00+07:00"; got != want {
+		t.Fatalf("deadline: got %s, want %s", got, want)
+	}
+}
+
+func TestScheduleCheckinStartUsesEarlyToleranceWithoutChangingOfficialStart(t *testing.T) {
+	early := 60
+	schedule := models.WorkSchedule{
+		JamMulai:                "08:00:00",
+		JamSelesai:              "17:00:00",
+		ToleransiTerlambatMenit: 10,
+		ToleransiAbsenAwalMenit: &early,
+	}
+	date := time.Date(2026, 7, 23, 0, 0, 0, 0, jakartaLocation)
+	open := scheduleCheckinStart(schedule, date)
+	if got := open.Format("15:04"); got != "07:00" {
+		t.Fatalf("early check-in boundary: got %s, want 07:00", got)
+	}
+	_, official, lateAt, _, _ := attendanceWindow(time.Date(2026, 7, 23, 9, 0, 0, 0, jakartaLocation), schedule)
+	if official.Format("15:04") != "08:00" || lateAt.Format("15:04") != "08:10" {
+		t.Fatalf("early tolerance must not change official/late times: official=%s late=%s", official, lateAt)
+	}
+}
+
+func TestScheduleCheckinStartTreatsZeroAsExplicitShiftValue(t *testing.T) {
+	early := 0
+	schedule := models.WorkSchedule{JamMulai: "08:00", ToleransiAbsenAwalMenit: &early}
+	date := time.Date(2026, 7, 23, 0, 0, 0, 0, jakartaLocation)
+	if got := scheduleCheckinStart(schedule, date).Format("15:04"); got != "08:00" {
+		t.Fatalf("explicit zero must disable early check-in: got %s", got)
 	}
 }
 

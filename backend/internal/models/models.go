@@ -324,6 +324,9 @@ type WorkSchedule struct {
 	JamMulai                string     `gorm:"type:varchar(10);not null"` // e.g., 09:00:00
 	JamSelesai              string     `gorm:"type:varchar(10);not null"` // e.g., 17:00:00
 	ToleransiTerlambatMenit int        `gorm:"not null;default:10"`
+	// Nilai nil berarti menggunakan toleransi absen awal dari GeneralSetting.
+	// Pointer diperlukan agar nilai 0 dapat dibedakan dari pengaturan yang kosong.
+	ToleransiAbsenAwalMenit *int `gorm:"default:null" json:"ToleransiAbsenAwalMenit"`
 	// HariKerja stores ISO-like weekday numbers as JSON: 1=Senin ... 7=Minggu.
 	// An empty value is treated as the legacy default Senin-Sabtu.
 	HariKerja string `gorm:"type:text;not null;default:'[1,2,3,4,5,6]'" json:"hari_kerja"`
@@ -333,12 +336,13 @@ type WorkSchedule struct {
 // schedule. WorkSchedule remains reserved for dated employee/custom shifts.
 type RegularWorkSchedule struct {
 	Model
-	DayOfWeek            int    `gorm:"not null;uniqueIndex:idx_regular_schedule_day" json:"day_of_week"`
-	DayName              string `gorm:"size:20;not null" json:"day_name"`
-	IsWorkingDay         bool   `gorm:"not null;default:true" json:"is_working_day"`
-	StartTime            string `gorm:"size:8" json:"start_time"`
-	EndTime              string `gorm:"size:8" json:"end_time"`
-	LateToleranceMinutes int    `gorm:"not null;default:10" json:"late_tolerance_minutes"`
+	DayOfWeek             int    `gorm:"not null;uniqueIndex:idx_regular_schedule_day" json:"day_of_week"`
+	DayName               string `gorm:"size:20;not null" json:"day_name"`
+	IsWorkingDay          bool   `gorm:"not null;default:true" json:"is_working_day"`
+	StartTime             string `gorm:"size:8" json:"start_time"`
+	EndTime               string `gorm:"size:8" json:"end_time"`
+	LateToleranceMinutes  int    `gorm:"not null;default:10" json:"late_tolerance_minutes"`
+	EarlyToleranceMinutes *int   `gorm:"default:null" json:"early_tolerance_minutes"`
 }
 
 type LeaveStatus string
@@ -428,6 +432,7 @@ type GeneralSetting struct {
 	MinimumMasaKerjaCutiBulan        int `gorm:"not null;default:3"`
 	DefaultCutiQuotaHari             int `gorm:"not null;default:12" json:"default_cuti_quota_hari"`
 	BatasLaporanSetelahCheckoutMenit int `gorm:"not null;default:60"`
+	ToleransiAbsenAwalMenit          int `gorm:"not null;default:0" json:"toleransi_absen_awal_menit"`
 	// Deprecated: retained while existing installations are migrated to minutes.
 	BatasLaporanSetelahCheckoutJam int `gorm:"not null;default:1"`
 }

@@ -58,8 +58,9 @@ func CheckIn(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Hari ini bukan hari kerja untuk shift Anda."})
 	}
 	_, startTime, lateTime, endTime, checkoutDeadline := attendanceWindow(now, schedule)
-	if now.Before(startTime) {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-in baru dapat dilakukan mulai pukul " + startTime.Format("15:04") + "."})
+	checkinStart := scheduleCheckinStart(schedule, workDate)
+	if now.Before(checkinStart) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Check-in baru dapat dilakukan mulai pukul " + checkinStart.Format("15:04") + "."})
 	}
 	if !now.Before(endTime) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas check-in hari ini adalah pukul " + endTime.Format("15:04") + "."})
@@ -529,6 +530,21 @@ func attendanceWindow(now time.Time, schedule models.WorkSchedule) (time.Time, t
 	end := scheduleEndTime(schedule, workDate)
 	checkoutDeadline := end.Add(time.Hour)
 	return workDate, start, lateAt, end, checkoutDeadline
+}
+
+// scheduleCheckinStart is the earliest allowed check-in time. It is kept
+// separate from the official shift start so early attendance never changes
+// the lateness calculation or the scheduled work hours.
+func scheduleCheckinStart(schedule models.WorkSchedule, date time.Time) time.Time {
+	start := scheduleMoment(date, schedule.JamMulai, defaultStartTime)
+	earlyMinutes := getGeneralSetting().ToleransiAbsenAwalMenit
+	if schedule.ToleransiAbsenAwalMenit != nil {
+		earlyMinutes = *schedule.ToleransiAbsenAwalMenit
+	}
+	if earlyMinutes < 0 {
+		earlyMinutes = 0
+	}
+	return start.Add(-time.Duration(earlyMinutes) * time.Minute)
 }
 
 func scheduleCheckoutDeadline(schedule models.WorkSchedule, date time.Time) time.Time {

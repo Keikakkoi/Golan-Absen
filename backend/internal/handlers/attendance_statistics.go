@@ -103,12 +103,16 @@ func approvedLeaveStatuses() []models.LeaveStatus {
 }
 
 func attendanceDayStatus(employee models.Employee, day, now time.Time, in attendanceStatisticsInput) (string, bool) {
+	schedule := ResolveEffectiveSchedule(employee.ID, day)
+	return attendanceDayStatusWithSchedule(employee, day, now, in, schedule)
+}
+
+func attendanceDayStatusWithSchedule(employee models.Employee, day, now time.Time, in attendanceStatisticsInput, schedule EffectiveSchedule) (string, bool) {
 	day = normalizeAttendanceDate(day)
 	joined := normalizeAttendanceDate(employee.TanggalBergabung)
 	if !joined.IsZero() && day.Before(joined) || in.holidays[day.Format("2006-01-02")] {
 		return "", false
 	}
-	schedule := ResolveEffectiveSchedule(employee.ID, day)
 	if !schedule.IsWorkingDay {
 		return "", false
 	}

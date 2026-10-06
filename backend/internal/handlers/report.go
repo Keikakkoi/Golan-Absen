@@ -43,11 +43,14 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 	// Current month boundaries
 	now := attendanceNow()
 	workDate := attendanceBusinessDate(now)
-	schedule := getAttendanceSchedule(employee.ID, workDate)
+	resolvedSchedule := ResolveEffectiveSchedule(employee.ID, workDate)
+	schedule := resolvedSchedule.Schedule
+	isWorkingDay := resolvedSchedule.IsWorkingDay
 	_ = closeExpiredAttendanceRecords(now)
 	_, startTime, _, endTime, checkoutDeadline := attendanceWindow(now, schedule)
-	canCheckIn := !now.Before(startTime) && now.Before(endTime)
-	canCheckOut := !now.Before(endTime) && !now.After(checkoutDeadline)
+	checkinStart := scheduleCheckinStart(schedule, workDate)
+	canCheckIn := isWorkingDay && !now.Before(checkinStart) && now.Before(endTime)
+	canCheckOut := isWorkingDay && !now.Before(endTime) && !now.After(checkoutDeadline)
 	startOfMonth := time.Date(workDate.Year(), workDate.Month(), 1, 0, 0, 0, 0, jakartaLocation)
 	endOfMonth := startOfMonth.AddDate(0, 1, -1)
 
@@ -105,20 +108,30 @@ func GetEmployeeDashboardStats(c *fiber.Ctx) error {
 		"today_check_out":    todayCheckOutTime,
 		"can_check_in":       canCheckIn && todayStatus == "Belum Absen",
 		"can_check_out":      canCheckOut && todayStatus == "Hadir",
-		"attendance_message": attendanceMessage(now, todayStatus, startTime, endTime, checkoutDeadline),
-		"todayMessage":       attendanceMessage(now, todayStatus, startTime, endTime, checkoutDeadline),
+		"is_working_day":     isWorkingDay,
+		"attendance_message": attendanceMessage(now, todayStatus, checkinStart, endTime, checkoutDeadline, isWorkingDay),
+		"todayMessage":       attendanceMessage(now, todayStatus, checkinStart, endTime, checkoutDeadline, isWorkingDay),
 		"schedule": fiber.Map{
-			"name":      schedule.NamaShift,
-			"start":     schedule.JamMulai,
-			"end":       schedule.JamSelesai,
-			"deadline":  checkoutDeadline.Format("15:04"),
-			"overnight": endTime.Format("2006-01-02") != startTime.Format("2006-01-02"),
+			"name":             schedule.NamaShift,
+			"start":            schedule.JamMulai,
+			"checkin_start":    checkinStart.Format("15:04:05"),
+			"end":              schedule.JamSelesai,
+			"deadline":         checkoutDeadline.Format("15:04"),
+			"start_at":         startTime.Format(time.RFC3339),
+			"checkin_start_at": checkinStart.Format(time.RFC3339),
+			"end_at":           endTime.Format(time.RFC3339),
+			"deadline_at":      checkoutDeadline.Format(time.RFC3339),
+			"is_working_day":   isWorkingDay,
+			"overnight":        endTime.Format("2006-01-02") != startTime.Format("2006-01-02"),
 		},
 		"missing_work_reports": missingWorkReportRowsForEmployee(employee.ID, now),
 	})
 }
 
-func attendanceMessage(now time.Time, status string, checkinStart, checkoutStart, checkoutDeadline time.Time) string {
+func attendanceMessage(now time.Time, status string, checkinStart, checkoutStart, checkoutDeadline time.Time, isWorkingDay bool) string {
+	if !isWorkingDay {
+		return "Hari ini bukan hari kerja untuk shift Anda."
+	}
 	if now.Before(checkinStart) {
 		return "Check-in dibuka pukul " + checkinStart.Format("15:04") + "."
 	}
@@ -469,6 +482,9 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 			if !ok {
 				continue
 			}
+			if holidayDates[record.Tanggal.Format("2006-01-02")] || !getAttendanceSchedule(summary.ID, record.Tanggal).IsWorkingDay(record.Tanggal) {
+				continue
+			}
 			item := ensureSummary(summary)
 			item.Total++
 			item.Details = append(item.Details, AlphaDetail{Tanggal: record.Tanggal, Keterangan: "Status Alpha tercatat"})
@@ -581,6 +597,9 @@ func ExportAlphaReportsCSV(c *fiber.Ctx) error {
 		}
 		for _, employee := range employees {
 			if employee.ID != *record.EmployeeID {
+				continue
+			}
+			if holidayDates[record.Tanggal.Format("2006-01-02")] || !getAttendanceSchedule(employee.ID, record.Tanggal).IsWorkingDay(record.Tanggal) {
 				continue
 			}
 			name := ""

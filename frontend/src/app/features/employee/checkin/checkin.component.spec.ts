@@ -27,4 +27,38 @@ describe('CheckinComponent', () => {
     expect(component.tipeKerja).toBe('Dinas Luar');
     expect(component.workTypes.some(type => type.Nama === 'Dinas Luar')).toBeTrue();
   });
+
+  it('does not evaluate time or show a late-deadline state on a non-working day', () => {
+    component.isScheduleLoaded = true;
+    component.isWorkingDay = false;
+    component.hasLeaveToday = true;
+    component.attendanceClosed = true;
+    component.todayDashboardMessage = 'Batas absensi hari ini telah lewat.';
+
+    (component as any).updateAttendanceWindow();
+
+    expect(component.canPunchBySchedule).toBeFalse();
+    expect(component.attendanceClosed).toBeFalse();
+    expect(component.scheduleMessage).toBe('Hari ini bukan hari kerja untuk shift Anda.');
+  });
+
+  it('uses complete datetimes for a late-evening checkout deadline', () => {
+    component.isScheduleLoaded = true;
+    component.currentTime = new Date('2026-09-15T23:30:00+07:00');
+    component.hasCheckedIn = false;
+    component.isCheckoutPage = false;
+    (component as any).scheduleStartAt = new Date('2026-09-15T18:23:00+07:00');
+    (component as any).scheduleCheckinStartAt = new Date('2026-09-15T18:23:00+07:00');
+    (component as any).scheduleEndAt = new Date('2026-09-15T23:00:00+07:00');
+    (component as any).scheduleDeadlineAt = new Date('2026-09-16T00:00:00+07:00');
+
+    (component as any).updateAttendanceWindow();
+
+    expect(component.attendanceClosed).toBeFalse();
+    expect(component.scheduleMessage).not.toContain('Batas absensi hari ini telah lewat');
+
+    component.currentTime = new Date('2026-09-16T00:01:00+07:00');
+    (component as any).updateAttendanceWindow();
+    expect(component.attendanceClosed).toBeTrue();
+  });
 });

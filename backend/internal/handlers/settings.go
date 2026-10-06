@@ -145,6 +145,9 @@ func UpdateRegularSchedule(c *fiber.Ctx) error {
 		if row.LateToleranceMinutes < 0 {
 			return c.Status(400).JSON(fiber.Map{"error": "Toleransi keterlambatan tidak boleh negatif"})
 		}
+		if row.EarlyToleranceMinutes != nil && (*row.EarlyToleranceMinutes < 0 || *row.EarlyToleranceMinutes > 24*60) {
+			return c.Status(400).JSON(fiber.Map{"error": "Toleransi absen awal harus antara 0 dan 1.440 menit"})
+		}
 		if row.IsWorkingDay && (strings.TrimSpace(row.StartTime) == "" || strings.TrimSpace(row.EndTime) == "") {
 			return c.Status(400).JSON(fiber.Map{"error": "Jam masuk dan jam pulang wajib diisi untuk hari kerja"})
 		}
@@ -164,7 +167,7 @@ func UpdateRegularSchedule(c *fiber.Ctx) error {
 		if tx.Where("day_of_week = ?", row.DayOfWeek).First(&existing).Error != nil {
 			existing.DayOfWeek = row.DayOfWeek
 		}
-		existing.DayName, existing.IsWorkingDay, existing.StartTime, existing.EndTime, existing.LateToleranceMinutes = row.DayName, row.IsWorkingDay, row.StartTime, row.EndTime, row.LateToleranceMinutes
+		existing.DayName, existing.IsWorkingDay, existing.StartTime, existing.EndTime, existing.LateToleranceMinutes, existing.EarlyToleranceMinutes = row.DayName, row.IsWorkingDay, row.StartTime, row.EndTime, row.LateToleranceMinutes, row.EarlyToleranceMinutes
 		if err := tx.Save(&existing).Error; err != nil {
 			tx.Rollback()
 			return c.Status(500).JSON(fiber.Map{"error": "Gagal menyimpan Jadwal Reguler"})
@@ -194,6 +197,7 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 		MinimumMasaKerjaCutiBulan        int  `json:"minimum_masa_kerja_cuti_bulan"`
 		DefaultCutiQuotaHari             *int `json:"default_cuti_quota_hari"`
 		BatasLaporanSetelahCheckoutMenit int  `json:"batas_laporan_setelah_checkout_menit"`
+		ToleransiAbsenAwalMenit          *int `json:"toleransi_absen_awal_menit"`
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
@@ -207,6 +211,9 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 	if input.BatasLaporanSetelahCheckoutMenit < 0 || input.BatasLaporanSetelahCheckoutMenit > 24*60 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Toleransi laporan harus antara 0 dan 1.440 menit"})
 	}
+	if input.ToleransiAbsenAwalMenit != nil && (*input.ToleransiAbsenAwalMenit < 0 || *input.ToleransiAbsenAwalMenit > 24*60) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Toleransi absen awal harus antara 0 dan 1.440 menit"})
+	}
 	var setting models.GeneralSetting
 	if err := config.DB.First(&setting).Error; err != nil {
 		setting = models.GeneralSetting{}
@@ -217,6 +224,9 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 	}
 	setting.BatasLaporanSetelahCheckoutMenit = input.BatasLaporanSetelahCheckoutMenit
 	setting.BatasLaporanSetelahCheckoutJam = input.BatasLaporanSetelahCheckoutMenit / 60
+	if input.ToleransiAbsenAwalMenit != nil {
+		setting.ToleransiAbsenAwalMenit = *input.ToleransiAbsenAwalMenit
+	}
 	if err := config.DB.Save(&setting).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update general settings"})
 	}
@@ -286,6 +296,7 @@ type scheduleInput struct {
 	JamMulai                string     `json:"JamMulai"`
 	JamSelesai              string     `json:"JamSelesai"`
 	ToleransiTerlambatMenit int        `json:"ToleransiTerlambatMenit"`
+	ToleransiAbsenAwalMenit *int       `json:"ToleransiAbsenAwalMenit"`
 	HariKerja               []int      `json:"HariKerja"`
 }
 
@@ -333,6 +344,9 @@ func CreateSchedule(c *fiber.Ctx) error {
 	if isRegularShiftName(input.NamaShift) {
 		return c.Status(400).JSON(fiber.Map{"error": "Jadwal Reguler harus diatur dari Pengaturan Umum"})
 	}
+	if input.ToleransiTerlambatMenit < 0 || (input.ToleransiAbsenAwalMenit != nil && (*input.ToleransiAbsenAwalMenit < 0 || *input.ToleransiAbsenAwalMenit > 24*60)) {
+		return c.Status(400).JSON(fiber.Map{"error": "Nilai toleransi tidak valid"})
+	}
 	workDays, err := normalizedScheduleDays(input.HariKerja)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
@@ -359,7 +373,7 @@ func CreateSchedule(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memulai penyimpanan shift"})
 	}
 	createSchedule := func(employeeID *uint) models.WorkSchedule {
-		return models.WorkSchedule{EmployeeID: employeeID, Tanggal: input.Tanggal, NamaShift: input.NamaShift, JamMulai: input.JamMulai, JamSelesai: input.JamSelesai, ToleransiTerlambatMenit: input.ToleransiTerlambatMenit, HariKerja: workDays}
+		return models.WorkSchedule{EmployeeID: employeeID, Tanggal: input.Tanggal, NamaShift: input.NamaShift, JamMulai: input.JamMulai, JamSelesai: input.JamSelesai, ToleransiTerlambatMenit: input.ToleransiTerlambatMenit, ToleransiAbsenAwalMenit: input.ToleransiAbsenAwalMenit, HariKerja: workDays}
 	}
 	created := make([]models.WorkSchedule, 0, len(employeeIDs))
 	if len(employeeIDs) == 0 {
@@ -408,6 +422,9 @@ func UpdateSchedule(c *fiber.Ctx) error {
 	if isRegularShiftName(input.NamaShift) {
 		return c.Status(400).JSON(fiber.Map{"error": "Jadwal Reguler harus diatur dari Pengaturan Umum"})
 	}
+	if input.ToleransiTerlambatMenit < 0 || (input.ToleransiAbsenAwalMenit != nil && (*input.ToleransiAbsenAwalMenit < 0 || *input.ToleransiAbsenAwalMenit > 24*60)) {
+		return c.Status(400).JSON(fiber.Map{"error": "Nilai toleransi tidak valid"})
+	}
 	workDays, err := normalizedScheduleDays(input.HariKerja)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
@@ -437,6 +454,7 @@ func UpdateSchedule(c *fiber.Ctx) error {
 	schedule.JamMulai = input.JamMulai
 	schedule.JamSelesai = input.JamSelesai
 	schedule.ToleransiTerlambatMenit = input.ToleransiTerlambatMenit
+	schedule.ToleransiAbsenAwalMenit = input.ToleransiAbsenAwalMenit
 	schedule.HariKerja = workDays
 
 	if err := config.DB.Save(&schedule).Error; err != nil {
@@ -511,7 +529,15 @@ func notifyScheduleChange(schedule models.WorkSchedule, previous *models.WorkSch
 		verb = "dihapus"
 	}
 
-	message := fmt.Sprintf("Shift %s pada %s %s: %s–%s. Check-in hanya dapat dilakukan mulai jam shift dan check-out mengikuti batas shift.", schedule.NamaShift, dateLabel, verb, schedule.JamMulai, schedule.JamSelesai)
+	checkinStart := schedule.JamMulai
+	earlyTolerance := getGeneralSetting().ToleransiAbsenAwalMenit
+	if schedule.ToleransiAbsenAwalMenit != nil {
+		earlyTolerance = *schedule.ToleransiAbsenAwalMenit
+	}
+	if earlyTolerance > 0 {
+		checkinStart = fmt.Sprintf("%s (%d menit lebih awal)", schedule.JamMulai, earlyTolerance)
+	}
+	message := fmt.Sprintf("Shift %s pada %s %s: %s–%s. Check-in dibuka mulai %s; jam masuk resmi tetap %s. Check-out mengikuti batas shift.", schedule.NamaShift, dateLabel, verb, schedule.JamMulai, schedule.JamSelesai, checkinStart, schedule.JamMulai)
 	if deleted {
 		message = fmt.Sprintf("Shift %s pada %s telah dihapus oleh admin. Silakan cek jadwal terbaru di profil Anda.", schedule.NamaShift, dateLabel)
 	}
@@ -1644,7 +1670,7 @@ func UpdateWorkSchedule(c *fiber.Ctx) error {
 	// Compatibility endpoint: update the regular weekly defaults together;
 	// new clients must use /regular-schedule for per-day values.
 	var input models.WorkSchedule
-	if err := c.BodyParser(&input); err != nil || !validScheduleClock(input.JamMulai) || !validScheduleClock(input.JamSelesai) || input.ToleransiTerlambatMenit < 0 {
+	if err := c.BodyParser(&input); err != nil || !validScheduleClock(input.JamMulai) || !validScheduleClock(input.JamSelesai) || input.ToleransiTerlambatMenit < 0 || (input.ToleransiAbsenAwalMenit != nil && (*input.ToleransiAbsenAwalMenit < 0 || *input.ToleransiAbsenAwalMenit > 24*60)) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Input jadwal tidak valid"})
 	}
 	var rows []models.RegularWorkSchedule
@@ -1654,7 +1680,7 @@ func UpdateWorkSchedule(c *fiber.Ctx) error {
 	tx := config.DB.Begin()
 	for _, row := range rows {
 		if row.IsWorkingDay {
-			row.StartTime, row.EndTime, row.LateToleranceMinutes = input.JamMulai, input.JamSelesai, input.ToleransiTerlambatMenit
+			row.StartTime, row.EndTime, row.LateToleranceMinutes, row.EarlyToleranceMinutes = input.JamMulai, input.JamSelesai, input.ToleransiTerlambatMenit, input.ToleransiAbsenAwalMenit
 			if err := tx.Save(&row).Error; err != nil {
 				tx.Rollback()
 				return c.Status(500).JSON(fiber.Map{"error": "Gagal memperbarui jadwal"})

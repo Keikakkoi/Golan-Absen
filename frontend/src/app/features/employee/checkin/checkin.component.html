@@ -6,19 +6,20 @@
     <div class="checkin-container">
       <div class="header">
         <div class="checkin-header-content">
-          <h2 *ngIf="hasLeaveToday">Status {{ leaveStatus }} Hari Ini</h2>
-          <h2 *ngIf="!hasLeaveToday && !hasCheckedIn && !isCheckoutPage">Check-in Harian</h2>
-          <h2 *ngIf="!hasLeaveToday && !hasCheckedIn && isCheckoutPage">Check-out Harian</h2>
-          <h2 *ngIf="!hasLeaveToday && hasCheckedIn && !hasCheckedOut">Check-out Harian</h2>
-          <h2 *ngIf="!hasLeaveToday && attendanceClosed && !hasCheckedOut">Absensi Ditutup</h2>
-          <h2 *ngIf="!hasLeaveToday && hasCheckedOut">Absensi Selesai</h2>
+          <h2 *ngIf="!isWorkingDay">Hari Ini Bukan Hari Kerja</h2>
+          <h2 *ngIf="isWorkingDay && hasLeaveToday">Status {{ leaveStatus }} Hari Ini</h2>
+          <h2 *ngIf="isWorkingDay && !hasLeaveToday && !hasCheckedIn && !isCheckoutPage">Check-in Harian</h2>
+          <h2 *ngIf="isWorkingDay && !hasLeaveToday && !hasCheckedIn && isCheckoutPage">Check-out Harian</h2>
+          <h2 *ngIf="isWorkingDay && !hasLeaveToday && hasCheckedIn && !hasCheckedOut">Check-out Harian</h2>
+          <h2 *ngIf="isWorkingDay && !hasLeaveToday && attendanceClosed && !hasCheckedOut">Absensi Ditutup</h2>
+          <h2 *ngIf="isWorkingDay && !hasLeaveToday && hasCheckedOut">Absensi Selesai</h2>
           <p class="subtitle text-dark-lo">Silakan verifikasi lokasi dan bukti foto Anda untuk memulai absensi.</p>
         </div>
         <app-notification-bell class="checkin-page-notification-bell"></app-notification-bell>
       </div>
 
       <!-- MAIN FOCUS: Large Circular Punch Button (15.4 PRD) -->
-      <div class="punch-focus-section golan-card" *ngIf="!hasCheckedOut && !hasLeaveToday">
+      <div class="punch-focus-section golan-card" *ngIf="isWorkingDay && !hasCheckedOut && !hasLeaveToday">
         <div class="punch-button-container">
           <button 
             class="punch-btn-large" 
@@ -35,7 +36,7 @@
         </p>
       </div>
 
-      <div class="content-grid" *ngIf="!hasCheckedOut && !hasLeaveToday">
+      <div class="content-grid" *ngIf="isWorkingDay && !hasCheckedOut && !hasLeaveToday">
         <!-- Geofencing Map Card -->
         <div class="golan-card map-card">
           <div class="card-header-flex">
@@ -112,21 +113,27 @@
       </div>
       
       <!-- Completed Screen -->
-      <div class="golan-card completed-card checkout-complete" *ngIf="hasCheckedOut">
+      <div class="golan-card completed-card checkout-complete" *ngIf="isWorkingDay && hasCheckedOut">
         <div class="completion-mark" aria-hidden="true">&#10003;</div>
         <h3 class="mt-4">Terima Kasih!</h3>
         <p class="text-dark-lo">Anda sudah menyelesaikan seluruh kewajiban absensi untuk hari ini.</p>
         <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>
       </div>
 
-      <div class="golan-card completed-card" *ngIf="hasLeaveToday">
+      <div class="golan-card completed-card" *ngIf="!isWorkingDay">
+        <h3 class="mt-4">Hari Ini Bukan Hari Kerja</h3>
+        <p class="text-dark-lo">Hari ini bukan hari kerja untuk shift Anda.</p>
+        <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>
+      </div>
+
+      <div class="golan-card completed-card" *ngIf="isWorkingDay && hasLeaveToday">
         <div class="completion-mark" aria-hidden="true">&#10003;</div>
         <h3 class="mt-4">Status {{ leaveStatus }} Tercatat</h3>
         <p class="text-dark-lo">Anda tidak perlu melakukan check-in karena status {{ leaveStatus }} sudah disetujui untuk hari ini.</p>
         <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>
       </div>
 
-      <div class="golan-card completed-card" *ngIf="attendanceClosed && !hasCheckedOut">
+      <div class="golan-card completed-card" *ngIf="isWorkingDay && attendanceClosed && !hasCheckedOut">
         <h3 class="mt-4">Absensi Hari Ini Ditutup</h3>
         <p class="text-dark-lo">Batas check-in/check-out hari ini sudah berakhir. Absensi berikutnya dapat dimulai kembali pukul 07:00.</p>
         <button class="btn-primary mt-3" routerLink="/employee/dashboard">Kembali ke Dashboard</button>

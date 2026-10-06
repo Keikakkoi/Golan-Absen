@@ -8,14 +8,15 @@ import (
 )
 
 type EffectiveSchedule struct {
-	ShiftName            string              `json:"shift_name"`
-	Source               string              `json:"source"`
-	StartTime            string              `json:"start_time"`
-	EndTime              string              `json:"end_time"`
-	LateToleranceMinutes int                 `json:"late_tolerance_minutes"`
-	IsWorkingDay         bool                `json:"is_working_day"`
-	IsOvernight          bool                `json:"is_overnight"`
-	Schedule             models.WorkSchedule `json:"-"`
+	ShiftName             string              `json:"shift_name"`
+	Source                string              `json:"source"`
+	StartTime             string              `json:"start_time"`
+	EndTime               string              `json:"end_time"`
+	LateToleranceMinutes  int                 `json:"late_tolerance_minutes"`
+	EarlyToleranceMinutes int                 `json:"early_tolerance_minutes"`
+	IsWorkingDay          bool                `json:"is_working_day"`
+	IsOvernight           bool                `json:"is_overnight"`
+	Schedule              models.WorkSchedule `json:"-"`
 }
 
 var regularDayNames = []string{"", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"}
@@ -30,7 +31,7 @@ func weekdayJakarta(date time.Time) int {
 
 func scheduleFromRegular(day models.RegularWorkSchedule) models.WorkSchedule {
 	working := day.IsWorkingDay && strings.TrimSpace(day.StartTime) != "" && strings.TrimSpace(day.EndTime) != ""
-	return models.WorkSchedule{NamaShift: "Reguler", JamMulai: day.StartTime, JamSelesai: day.EndTime, ToleransiTerlambatMenit: day.LateToleranceMinutes, HariKerja: func() string {
+	return models.WorkSchedule{NamaShift: "Reguler", JamMulai: day.StartTime, JamSelesai: day.EndTime, ToleransiTerlambatMenit: day.LateToleranceMinutes, ToleransiAbsenAwalMenit: day.EarlyToleranceMinutes, HariKerja: func() string {
 		if working {
 			return "[" + itoa(day.DayOfWeek) + "]"
 		}
@@ -84,13 +85,19 @@ func resolveRegularForTest(day models.RegularWorkSchedule, date time.Time) Effec
 }
 
 func effectiveFromWorkSchedule(s models.WorkSchedule, source string, date time.Time) EffectiveSchedule {
+	// A shift-specific value wins, including an explicit zero. Only a nil
+	// value falls back to the general setting.
+	if s.ToleransiAbsenAwalMenit == nil {
+		fallback := getGeneralSetting().ToleransiAbsenAwalMenit
+		s.ToleransiAbsenAwalMenit = &fallback
+	}
 	working := s.IsWorkingDay(date)
 	if source == "regular_default" {
 		working = s.HariKerja != "[]"
 	}
 	start, _ := time.Parse("15:04:05", normalizeScheduleClock(s.JamMulai))
 	end, _ := time.Parse("15:04:05", normalizeScheduleClock(s.JamSelesai))
-	return EffectiveSchedule{ShiftName: s.NamaShift, Source: source, StartTime: s.JamMulai, EndTime: s.JamSelesai, LateToleranceMinutes: s.ToleransiTerlambatMenit, IsWorkingDay: working, IsOvernight: !end.After(start), Schedule: s}
+	return EffectiveSchedule{ShiftName: s.NamaShift, Source: source, StartTime: s.JamMulai, EndTime: s.JamSelesai, LateToleranceMinutes: s.ToleransiTerlambatMenit, EarlyToleranceMinutes: *s.ToleransiAbsenAwalMenit, IsWorkingDay: working, IsOvernight: !end.After(start), Schedule: s}
 }
 
 func normalizeScheduleClock(v string) string {

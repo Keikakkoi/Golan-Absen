@@ -117,6 +117,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   canPunchBySchedule = false;
   attendanceClosed = false;
   scheduleMessage = '';
+  isWorkingDay = true;
 
   // Clock state for the attendance screen.
   currentTime = new Date();
@@ -149,7 +150,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private tryInitHardware(): void {
     if (this.isHardwareInitialized || !this.isViewInitialized || !this.isScheduleLoaded) return;
-    if (this.hasCheckedOut || this.hasLeaveToday || this.attendanceClosed) return;
+    if (this.hasCheckedOut || this.hasLeaveToday || !this.isWorkingDay || this.attendanceClosed) return;
 
     // Use setTimeout to ensure Angular has rendered the *ngIf blocks
     setTimeout(() => {
@@ -167,10 +168,15 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   shiftStartTime: number = 9 * 3600;
+  shiftOpenTime: number = 9 * 3600;
   shiftCheckoutTime: number = 17 * 3600;
   shiftCloseTime: number = 18 * 3600;
   shiftOvernight = false;
   todayDashboardMessage: string = '';
+  private scheduleStartAt: Date | null = null;
+  private scheduleCheckinStartAt: Date | null = null;
+  private scheduleEndAt: Date | null = null;
+  private scheduleDeadlineAt: Date | null = null;
 
   private checkTodayAttendance(): void {
     this.attendanceService.getHistory().subscribe({
@@ -198,9 +204,17 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
                 const parts = timeStr.split(':');
                 return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60;
               };
+              this.scheduleStartAt = this.parseScheduleDateTime(stats.schedule.start_at);
+              this.scheduleCheckinStartAt = this.parseScheduleDateTime(stats.schedule.checkin_start_at);
+              this.scheduleEndAt = this.parseScheduleDateTime(stats.schedule.end_at);
+              this.scheduleDeadlineAt = this.parseScheduleDateTime(stats.schedule.deadline_at);
+              this.isWorkingDay = stats.is_working_day !== false && stats.schedule.is_working_day !== false;
               if (stats.schedule.start) {
                 this.shiftStartTime = parseTime(stats.schedule.start);
               }
+              this.shiftOpenTime = stats.schedule.checkin_start
+                ? parseTime(stats.schedule.checkin_start)
+                : this.shiftStartTime;
               if (stats.schedule.end) {
                 this.shiftCheckoutTime = parseTime(stats.schedule.end);
               }
@@ -244,6 +258,12 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
+  private parseScheduleDateTime(value: unknown): Date | null {
+    if (typeof value !== 'string' || !value.trim()) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
   private updateAttendanceWindow(): void {
     if (!this.isScheduleLoaded) {
       // Don't evaluate window if schedule is not loaded yet to prevent early 'Absensi Ditutup' flash
@@ -253,21 +273,33 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    if (!this.isWorkingDay) {
+      this.canPunchBySchedule = false;
+      this.attendanceClosed = false;
+      this.scheduleMessage = 'Hari ini bukan hari kerja untuk shift Anda.';
+      return;
+    }
+
     if (this.hasLeaveToday) {
       this.canPunchBySchedule = false;
       this.attendanceClosed = true;
       this.scheduleMessage = this.todayDashboardMessage || `Status ${this.leaveStatus} sudah tercatat untuk hari ini.`;
       return;
     }
+
+    if (this.scheduleStartAt && this.scheduleCheckinStartAt && this.scheduleEndAt && this.scheduleDeadlineAt) {
+      this.updateAttendanceWindowFromDateTimes();
+      return;
+    }
     let seconds = this.currentTime.getHours() * 3600 + this.currentTime.getMinutes() * 60 + this.currentTime.getSeconds();
-    if (this.shiftOvernight && seconds < this.shiftStartTime) {
+    if (this.shiftOvernight && seconds < this.shiftOpenTime) {
       seconds += 24 * 3600;
     }
 
-    if (seconds < this.shiftStartTime) {
+    if (seconds < this.shiftOpenTime) {
       this.canPunchBySchedule = false;
       this.attendanceClosed = false;
-      this.scheduleMessage = this.todayDashboardMessage || `Absensi dibuka pukul ${this.formatSeconds(this.shiftStartTime)}.`;
+      this.scheduleMessage = this.todayDashboardMessage || `Absensi dibuka pukul ${this.formatSeconds(this.shiftOpenTime)}.`;
       return;
     }
 
@@ -291,6 +323,45 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       this.canPunchBySchedule = false;
       this.scheduleMessage = '';
     }
+  }
+
+  private updateAttendanceWindowFromDateTimes(): void {
+    const now = this.currentTime.getTime();
+    const checkinStart = this.scheduleCheckinStartAt!.getTime();
+    const checkoutStart = this.scheduleEndAt!.getTime();
+    const deadline = this.scheduleDeadlineAt!.getTime();
+
+    if (now < checkinStart) {
+      this.canPunchBySchedule = false;
+      this.attendanceClosed = false;
+      this.scheduleMessage = this.todayDashboardMessage || `Absensi dibuka pukul ${this.formatDateTime(this.scheduleCheckinStartAt!)}`;
+      return;
+    }
+
+    if (now > deadline) {
+      this.canPunchBySchedule = false;
+      this.attendanceClosed = true;
+      this.scheduleMessage = this.todayDashboardMessage || 'Batas absensi hari ini telah lewat. Check-out otomatis diterapkan.';
+      return;
+    }
+
+    this.attendanceClosed = false;
+    if (this.hasCheckedIn && !this.hasCheckedOut) {
+      this.canPunchBySchedule = now >= checkoutStart && now <= deadline;
+      this.scheduleMessage = this.canPunchBySchedule ? '' : (this.todayDashboardMessage || 'Check-out belum dapat dilakukan.');
+    } else if (!this.hasCheckedIn) {
+      this.canPunchBySchedule = !this.isCheckoutPage && now < checkoutStart;
+      this.scheduleMessage = this.isCheckoutPage
+        ? 'Belum ada check-in untuk hari ini.'
+        : (this.canPunchBySchedule ? '' : (this.todayDashboardMessage || 'Batas check-in hari ini sudah lewat.'));
+    } else {
+      this.canPunchBySchedule = false;
+      this.scheduleMessage = '';
+    }
+  }
+
+  private formatDateTime(value: Date): string {
+    return value.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
   private formatSeconds(totalSeconds: number): string {
