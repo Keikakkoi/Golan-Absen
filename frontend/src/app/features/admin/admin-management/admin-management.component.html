@@ -13,7 +13,7 @@
           <div>
             <p class="eyebrow">PENGATURAN JAM KERJA</p>
             <h3>Atur jadwal kerja tim</h3>
-            <p>Kelola jam masuk, jam pulang, toleransi keterlambatan, dan hari kerja dalam satu tempat.</p>
+            <p>Kelola jam masuk, jam pulang, toleransi absen awal, toleransi keterlambatan, dan hari kerja dalam satu tempat.</p>
           </div>
         </div>
         <div class="schedule-summary" aria-label="Ringkasan jadwal">
@@ -118,8 +118,17 @@
               </div>
             </div>
 
+            <label class="schedule-field" for="schedule-early-tolerance">
+              <span>Toleransi Absen Awal (menit)</span>
+              <div class="schedule-input-suffix">
+                <input id="schedule-early-tolerance" type="number" class="golan-input" [(ngModel)]="scheduleForm.ToleransiAbsenAwalMenit" name="EarlyTolerance" min="0" max="1440" placeholder="Default umum">
+                <span>menit</span>
+              </div>
+              <small>Kosongkan untuk memakai Pengaturan Umum.</small>
+            </label>
+
             <label class="schedule-field" for="schedule-tolerance">
-              <span>Toleransi terlambat</span>
+              <span>Toleransi Keterlambatan (menit)</span>
               <div class="schedule-input-suffix">
                 <input id="schedule-tolerance" type="number" class="golan-input" [(ngModel)]="scheduleForm.ToleransiTerlambatMenit" name="Toleransi" min="0" required>
                 <span>menit</span>
@@ -181,7 +190,7 @@
 
           <div class="table-container schedule-table-container" *ngIf="!isLoading && schedules.length > 0">
             <table class="golan-table schedule-table">
-              <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Jam kerja</th><th>Hari kerja</th><th>Toleransi</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Jam kerja</th><th>Hari kerja</th><th>Toleransi Absen Awal</th><th>Toleransi Keterlambatan</th><th>Aksi</th></tr></thead>
               <tbody>
                 <tr *ngFor="let schedule of displayedSchedules">
                   <td>
@@ -200,6 +209,7 @@
                   <td><span class="schedule-division">{{ schedule.EmployeeID ? (schedule.Employee?.Division?.NamaDivisi || '-') : 'Semua Divisi' }}</span></td>
                   <td><span class="schedule-hours" *ngIf="scheduleTime(schedule, 'start') && scheduleTime(schedule, 'end')">{{ scheduleTime(schedule, 'start') }} <small>–</small> {{ scheduleTime(schedule, 'end') }}</span><span class="schedule-hours" *ngIf="!scheduleTime(schedule, 'start') || !scheduleTime(schedule, 'end')">{{ scheduleStatus(schedule) || 'Tidak ada jam kerja' }}</span></td>
                   <td><span class="schedule-days">{{ getWorkDaysLabel(schedule.HariKerja || schedule.hari_kerja) }}</span></td>
+                  <td><span class="tolerance-pill">{{ schedule.ToleransiAbsenAwalMenit == null ? 'Default umum' : schedule.ToleransiAbsenAwalMenit + ' menit' }}</span></td>
                   <td><span class="tolerance-pill">{{ schedule.ToleransiTerlambatMenit }} menit</span></td>
                   <td class="schedule-actions"><button *ngIf="schedule.NamaShift?.toLowerCase() !== 'reguler'" class="icon-button edit" type="button" (click)="editSchedule(schedule)" aria-label="Edit shift" title="Edit shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button><button *ngIf="schedule.NamaShift?.toLowerCase() !== 'reguler'" class="icon-button delete" type="button" (click)="deleteSchedule(schedule.ID)" aria-label="Hapus shift" title="Hapus shift"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button><span *ngIf="schedule.NamaShift?.toLowerCase() === 'reguler'" class="muted">Dikelola di Pengaturan Umum</span></td>
                 </tr>

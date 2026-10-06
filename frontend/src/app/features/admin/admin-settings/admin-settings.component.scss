@@ -304,8 +304,8 @@
   }
 }
 .regular-schedule-scroll { width: 100%; overflow-x: auto; overflow-y: visible; padding-bottom: 4px; }
-.regular-schedule-table { display: grid; gap: 8px; min-width: 560px; }
-.regular-schedule-row { display: grid; grid-template-columns: 100px 90px repeat(2, minmax(105px, 1fr)) 130px; gap: 10px; align-items: center; min-width: 560px; }
+.regular-schedule-table { display: grid; gap: 8px; min-width: 1020px; }
+.regular-schedule-row { display: grid; grid-template-columns: 100px 90px 170px 170px 220px 220px; gap: 10px; align-items: center; min-width: 1020px; }
 .regular-schedule-head { color: var(--text-dark-lo); font-size: .78rem; font-weight: 700; }
 .schedule-day-checkbox { width: 24px; height: 24px; margin: 0; accent-color: var(--green); }
 
@@ -313,8 +313,9 @@
    controls beside it instead of dominating the schedule row. */
 @media (min-width: 901px) and (max-width: 1600px) {
   .regular-schedule-row {
-    grid-template-columns: 92px 64px repeat(2, minmax(105px, 1fr)) 118px;
+    grid-template-columns: 92px 64px 160px 160px 210px 210px;
     gap: 8px;
+    min-width: 1020px;
   }
 
   .schedule-day-checkbox {

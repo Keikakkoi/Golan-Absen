@@ -212,6 +212,10 @@ export class AdminManagementComponent implements OnInit {
 
   async saveSchedule(): Promise<void> {
     if (!this.scheduleForm.HariKerja?.length) { this.alert.error('Hari kerja belum dipilih', 'Pilih minimal satu hari kerja.'); return; }
+    const earlyTolerance = this.scheduleForm.ToleransiAbsenAwalMenit;
+    if (Number(this.scheduleForm.ToleransiTerlambatMenit) < 0 || (earlyTolerance !== '' && earlyTolerance != null && (Number(earlyTolerance) < 0 || Number(earlyTolerance) > 1440))) {
+      this.alert.error('Nilai toleransi tidak valid', 'Toleransi harus bernilai 0 sampai 1.440 menit.'); return;
+    }
     if (String(this.scheduleForm.NamaShift || '').trim().toLowerCase().startsWith('reguler')) {
       this.alert.error('Shift Reguler dikelola otomatis', 'Gunakan Pengaturan Umum. Shift Reguler tidak dapat dibuat atau diduplikasi dari daftar ini.');
       return;
@@ -241,7 +245,10 @@ export class AdminManagementComponent implements OnInit {
       Tanggal: formattedDate, 
       JamMulai: startTime.length === 5 ? `${startTime}:00` : startTime,
       JamSelesai: endTime.length === 5 ? `${endTime}:00` : endTime,
-      ToleransiTerlambatMenit: Number(this.scheduleForm.ToleransiTerlambatMenit) 
+      ToleransiTerlambatMenit: Number(this.scheduleForm.ToleransiTerlambatMenit),
+      ToleransiAbsenAwalMenit: this.scheduleForm.ToleransiAbsenAwalMenit === '' || this.scheduleForm.ToleransiAbsenAwalMenit == null
+        ? null
+        : Number(this.scheduleForm.ToleransiAbsenAwalMenit)
       ,HariKerja: this.scheduleForm.HariKerja.map((day: string) => Number(day))
     };
     const request = this.editingScheduleId ? this.http.put(`${this.api}/admin/schedules/${this.editingScheduleId}`, body, { headers: this.headers() }) : this.http.post(`${this.api}/admin/schedules`, body, { headers: this.headers() });
@@ -427,6 +434,6 @@ export class AdminManagementComponent implements OnInit {
     if (Array.isArray(value)) return value.map(v => String(v));
     try { const parsed = JSON.parse(value || '[1,2,3,4,5,6]'); return Array.isArray(parsed) && parsed.length ? parsed.map((v: any) => String(v)) : ['1','2','3','4','5','6']; } catch { return ['1','2','3','4','5','6']; }
   }
-  private emptySchedule(): any { return { EmployeeID: '', EmployeeIDs: [], Tanggal: new Date().toISOString().substring(0, 10), NamaShift: 'Reguler', JamMulai: '', JamSelesai: '', ToleransiTerlambatMenit: 10, HariKerja: ['1','2','3','4','5','6'] }; }
+  private emptySchedule(): any { return { EmployeeID: '', EmployeeIDs: [], Tanggal: new Date().toISOString().substring(0, 10), NamaShift: 'Reguler', JamMulai: '', JamSelesai: '', ToleransiAbsenAwalMenit: null, ToleransiTerlambatMenit: 10, HariKerja: ['1','2','3','4','5','6'] }; }
   private fail(err: any): void { this.isLoading = false; this.errorMessage = err?.error?.error || 'Gagal memuat data.'; }
 }

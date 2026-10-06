@@ -35,7 +35,7 @@ export class AdminSettingsComponent implements OnInit {
   };
   regularSchedules: any[] = [];
   readonly regularDayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-  general: any = { MinimumMasaKerjaCutiBulan: 3, BatasLaporanSetelahCheckoutMenit: 60 };
+  general: any = { MinimumMasaKerjaCutiBulan: 3, BatasLaporanSetelahCheckoutMenit: 60, ToleransiAbsenAwalMenit: 0 };
 
   isLoadingOffice = true;
   isLoadingSchedule = true;
@@ -120,7 +120,8 @@ export class AdminSettingsComponent implements OnInit {
             day_name: row.day_name || this.regularDayNames[i],
             start_time: (row.start_time || '').substring(0, 5),
             end_time: (row.end_time || '').substring(0, 5),
-            late_tolerance_minutes: Number(row.late_tolerance_minutes ?? 10)
+            late_tolerance_minutes: Number(row.late_tolerance_minutes ?? 10),
+            early_tolerance_minutes: row.early_tolerance_minutes == null ? null : Number(row.early_tolerance_minutes)
           }));
           this.isLoadingSchedule = false;
         },
@@ -144,7 +145,8 @@ export class AdminSettingsComponent implements OnInit {
       ...data,
       MinimumMasaKerjaCutiBulan: data?.MinimumMasaKerjaCutiBulan ?? data?.minimum_masa_kerja_cuti_bulan ?? 3,
       DefaultCutiQuotaHari: data?.DefaultCutiQuotaHari ?? data?.default_cuti_quota_hari ?? 12,
-      BatasLaporanSetelahCheckoutMenit: minutes ?? (legacyHours != null ? Number(legacyHours) * 60 : 60)
+      BatasLaporanSetelahCheckoutMenit: minutes ?? (legacyHours != null ? Number(legacyHours) * 60 : 60),
+      ToleransiAbsenAwalMenit: Number(data?.ToleransiAbsenAwalMenit ?? data?.toleransi_absen_awal_menit ?? 0)
     };
   }
 
@@ -154,7 +156,8 @@ export class AdminSettingsComponent implements OnInit {
     const body = {
       minimum_masa_kerja_cuti_bulan: Number(this.general.MinimumMasaKerjaCutiBulan),
       default_cuti_quota_hari: Number(this.general.DefaultCutiQuotaHari),
-      batas_laporan_setelah_checkout_menit: Number(this.general.BatasLaporanSetelahCheckoutMenit)
+      batas_laporan_setelah_checkout_menit: Number(this.general.BatasLaporanSetelahCheckoutMenit),
+      toleransi_absen_awal_menit: Number(this.general.ToleransiAbsenAwalMenit)
     };
     this.http.put(`${this.baseUrl}/settings/general`, body, { headers: this.getHeaders() }).subscribe({
       next: data => { this.general = this.normalizeGeneral(data); this.isSavingGeneral = false; this.alert.success('Aturan umum berhasil disimpan'); },
@@ -203,10 +206,10 @@ export class AdminSettingsComponent implements OnInit {
     )
       return;
     this.isSavingSchedule = true;
-    if (this.regularSchedules.some(r => r.is_working_day && (!r.start_time || !r.end_time || Number(r.late_tolerance_minutes) < 0))) {
-      this.alert.error('Jadwal belum lengkap', 'Jam masuk/pulang wajib diisi dan toleransi tidak boleh negatif.'); return;
+    if (this.regularSchedules.some(r => r.is_working_day && (!r.start_time || !r.end_time || Number(r.late_tolerance_minutes) < 0 || (r.early_tolerance_minutes != null && Number(r.early_tolerance_minutes) < 0)))) {
+      this.alert.error('Jadwal belum lengkap', 'Jam masuk/pulang wajib diisi dan nilai toleransi tidak boleh negatif.'); return;
     }
-    const body = { schedules: this.regularSchedules.map(r => ({ ...r, start_time: r.start_time ? `${r.start_time}:00` : '', end_time: r.end_time ? `${r.end_time}:00` : '', late_tolerance_minutes: Number(r.late_tolerance_minutes) })) };
+    const body = { schedules: this.regularSchedules.map(r => ({ ...r, start_time: r.start_time ? `${r.start_time}:00` : '', end_time: r.end_time ? `${r.end_time}:00` : '', late_tolerance_minutes: Number(r.late_tolerance_minutes), early_tolerance_minutes: r.early_tolerance_minutes == null || r.early_tolerance_minutes === '' ? null : Number(r.early_tolerance_minutes) })) };
 
     this.http
       .put(`${this.baseUrl}/settings/regular-schedule`, body, {
