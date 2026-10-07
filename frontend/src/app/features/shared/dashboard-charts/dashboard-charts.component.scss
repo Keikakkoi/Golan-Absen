@@ -13,6 +13,8 @@
   --chart-border: #e2e8f0;
   --chart-track: #f1f5f9;
   margin-top: 24px;
+  min-width: 0;
+  box-sizing: border-box;
   color: var(--chart-text);
 }
 
@@ -41,12 +43,12 @@
   background: transparent !important;
 }
 
-.charts-heading { display:flex; justify-content:space-between; align-items:end; margin-bottom:14px; }
+.charts-heading { display:flex; justify-content:space-between; align-items:end; gap:12px; margin-bottom:14px; min-width:0; }
 .charts-heading h3 { margin:3px 0 0; color:var(--chart-text); }
 .eyebrow,.chart-period { font-size:.75rem; color:var(--chart-text-muted); }
 .chart-period { background:var(--chart-track); padding:6px 10px; border-radius:999px; }
-.chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
-.chart-card { background:var(--chart-card-bg); border:1px solid var(--chart-border); border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(15,23,42,.12); min-width:0; }
+.chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; min-width:0; }
+.chart-card { background:var(--chart-card-bg); border:1px solid var(--chart-border); border-radius:12px; padding:18px; box-shadow:0 2px 8px rgba(15,23,42,.12); min-width:0; box-sizing:border-box; overflow:hidden; }
 .chart-card h4 { margin:0; color:var(--chart-text); }
 .chart-subtitle { font-size:.8rem; color:var(--chart-text-secondary); margin:6px 0 14px; }
 .trend-summary { border:1px solid var(--chart-border); border-radius:9px; padding:10px 12px; background:var(--chart-track); }
@@ -59,7 +61,7 @@
 .trend-summary-item small { color:var(--chart-text-muted); }
 .trend-reading-hint { margin:8px 0 4px; color:var(--chart-text-muted); font-size:.68rem; }
 .line-chart { height:190px; position:relative; }
-.line-chart svg { height:150px; width:100%; overflow:visible; background:repeating-linear-gradient(to bottom,transparent 0 36px,var(--chart-grid) 37px); }
+.line-chart svg { display:block; height:150px; width:100%; min-width:0; overflow:visible; background:repeating-linear-gradient(to bottom,transparent 0 36px,var(--chart-grid) 37px); }
 .line-chart line { stroke:var(--chart-grid); }
 .line-chart polyline { stroke-width:2; vector-effect:non-scaling-stroke; }
 .line-hadir { stroke:#15803d; }.line-terlambat { stroke:#b26b00; }.line-izin { stroke:#1d4ed8; }.line-alfa { stroke:#b91c1c; }
@@ -73,7 +75,7 @@
 .legend-list { display:grid; gap:8px; font-size:.78rem; }
 .legend-list span { color:var(--chart-text-secondary); }.legend-list strong { color:var(--chart-text); margin-left:5px; }.legend-list .zero { opacity:.65; }
 .bars { display:grid; gap:12px; margin-top:18px; }
-.bar-item { display:grid; grid-template-columns:minmax(90px,1fr) 2fr 30px; gap:8px; align-items:center; font-size:.78rem; }
+.bar-item { display:grid; grid-template-columns:minmax(90px,1fr) minmax(0,2fr) 30px; gap:8px; align-items:center; min-width:0; font-size:.78rem; }
 .bar-label { display:flex; align-items:center; gap:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--chart-text-secondary); }
 .bar-status-dot { width:8px; height:8px; flex:0 0 8px; margin-right:8px; border-radius:50%; }
 .bar-track { height:12px; background:var(--chart-track); border:1px solid var(--chart-border); border-radius:999px; overflow:hidden; }

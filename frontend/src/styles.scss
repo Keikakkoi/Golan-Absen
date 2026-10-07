@@ -3804,7 +3804,7 @@ body.dark-theme .filter-date-year-option:hover, body.dark-theme .filter-date-yea
    correct coordinate system.
    ================================================================ */
 :root {
-  --compact-sidebar-width: 238px;
+  --compact-sidebar-width: 192px;
   --compact-content-padding: 24px 28px;
   --compact-section-gap: 16px;
 }
@@ -3937,14 +3937,14 @@ body.dark-theme .filter-date-year-option:hover, body.dark-theme .filter-date-yea
    density consistent across every route. */
 @media (min-width: 901px) {
   app-shared-sidebar .sidebar {
-    width: 238px !important;
+    width: var(--compact-sidebar-width) !important;
     padding: 18px 14px !important;
   }
 
   .dashboard-container > .main-content,
   .admin-theme > .main-content,
   .main-content {
-    margin-left: 238px !important;
+    margin-left: var(--compact-sidebar-width) !important;
     width: auto !important;
     max-width: none !important;
     padding: 24px 28px !important;
@@ -3962,7 +3962,7 @@ body.dark-theme .filter-date-year-option:hover, body.dark-theme .filter-date-yea
   }
 
   .admin-dashboard-page .stats-grid {
-    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 
   .main-content h1,
@@ -3983,7 +3983,7 @@ body.dark-theme .filter-date-year-option:hover, body.dark-theme .filter-date-yea
   html { font-size: 10.72px !important; }
 
   app-shared-sidebar .sidebar {
-    width: 238px !important;
+    width: var(--compact-sidebar-width) !important;
     padding: 12px 10px !important;
   }
 
@@ -4019,7 +4019,7 @@ body.dark-theme .filter-date-year-option:hover, body.dark-theme .filter-date-yea
   .dashboard-container > .main-content,
   .admin-theme > .main-content,
   .main-content {
-    margin-left: 238px !important;
+    margin-left: var(--compact-sidebar-width) !important;
     width: auto !important;
     padding: 24px 28px !important;
   }
@@ -4038,7 +4038,7 @@ body.dark-theme .filter-date-year-option:hover, body.dark-theme .filter-date-yea
   }
 
   .admin-dashboard-page .stats-grid {
-    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 
   .main-content .golan-card,
@@ -4709,7 +4709,7 @@ body.role-manajer app-team-reports .dashboard-container.team-reports-shell > .ma
   .dashboard-container > .main-content,
   .admin-theme > .main-content,
   .main-content {
-    margin-left: 238px !important;
+    margin-left: var(--compact-sidebar-width) !important;
     width: auto !important;
     max-width: none !important;
     min-width: 0 !important;
@@ -4895,7 +4895,7 @@ body.role-manajer app-team-reports .dashboard-container.team-reports-shell > .ma
     position: fixed;
     inset: 0 auto 0 0;
     display: block;
-    width: 238px;
+    width: var(--compact-sidebar-width);
     height: 100dvh;
     max-height: 100dvh;
     min-height: 0;
@@ -4924,9 +4924,9 @@ body.role-manajer app-team-reports .dashboard-container.team-reports-shell > .ma
   }
 }
 
-/* The large-screen dashboard wrappers use CSS zoom. Counterbalance that
-   zoom on the fixed sidebar height so Full HD and larger viewports still get
-   a real viewport-sized scroll area instead of a clipped 100vh panel. */
+/* Keep the fixed sidebar background flush with the viewport. The sidebar has
+   its own scroll container, so it must not inherit the dashboard zoom scale
+   when calculating its height. */
 @media (min-width: 1440px) {
   .admin-theme app-shared-sidebar,
   body.role-manajer app-manager-dashboard app-shared-sidebar,
@@ -4961,8 +4961,8 @@ body.role-manajer app-team-reports .dashboard-container.team-reports-shell > .ma
   body.role-magang app-statistics app-shared-sidebar,
   body.role-magang app-notifications app-shared-sidebar,
   body.role-magang app-profile app-shared-sidebar {
-    height: calc(100dvh / var(--dashboard-screen-scale, var(--manager-dashboard-scale, var(--employee-dashboard-scale, var(--intern-dashboard-scale, 1))))) !important;
-    max-height: calc(100dvh / var(--dashboard-screen-scale, var(--manager-dashboard-scale, var(--employee-dashboard-scale, var(--intern-dashboard-scale, 1))))) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
   }
 }
 
@@ -5210,8 +5210,8 @@ app-admin-role-operations .modal-backdrop > .modal-card .screenshot-preview-grid
   }
 
   body.role-magang app-work-report app-shared-sidebar {
-    height: calc(100dvh / var(--intern-dashboard-scale)) !important;
-    max-height: calc(100dvh / var(--intern-dashboard-scale)) !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
   }
 }
 
