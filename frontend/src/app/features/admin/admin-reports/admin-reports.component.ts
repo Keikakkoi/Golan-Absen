@@ -47,7 +47,7 @@ export class AdminReportsComponent implements OnInit {
     periode: 'Kustom',
     search: '',
     role: '',
-    sort_order: 'desc'
+    sort_order: 'date_desc'
   };
 
   private baseReportUrl = 'http://localhost:8080/api/v1/admin/reports';
@@ -195,10 +195,10 @@ export class AdminReportsComponent implements OnInit {
       temp = temp.filter(r => r.Employee?.Position?.NamaJabatan === this.filters.role);
     }
 
-    if (this.filters.sort_order === 'desc') {
-      temp.sort((a, b) => new Date(b.Tanggal).getTime() - new Date(a.Tanggal).getTime());
-    } else if (this.filters.sort_order === 'asc') {
-      temp.sort((a, b) => new Date(a.Tanggal).getTime() - new Date(b.Tanggal).getTime());
+    if (this.filters.sort_order === 'date_desc') {
+      temp.sort((a, b) => this.attendanceDateValue(b.Tanggal) - this.attendanceDateValue(a.Tanggal));
+    } else if (this.filters.sort_order === 'date_asc') {
+      temp.sort((a, b) => this.attendanceDateValue(a.Tanggal) - this.attendanceDateValue(b.Tanggal));
     } else if (this.filters.sort_order === 'name_asc') {
       temp.sort((a, b) => (a.Employee?.User?.Nama || '').localeCompare(b.Employee?.User?.Nama || ''));
     } else if (this.filters.sort_order === 'name_desc') {
@@ -328,6 +328,13 @@ export class AdminReportsComponent implements OnInit {
   private coordinate(value: unknown): number | null {
     const number = typeof value === 'number' ? value : Number(value);
     return Number.isFinite(number) && number !== 0 ? number : null;
+  }
+
+  private attendanceDateValue(value: unknown): number {
+    const timestamp = value instanceof Date
+      ? value.getTime()
+      : new Date(String(value ?? '')).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
   }
 
   toggleExportDropdown(): void {

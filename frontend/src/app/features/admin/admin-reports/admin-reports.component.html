@@ -135,9 +135,9 @@
           <div class="filter-group">
             <label>Urutkan</label>
             <div class="input-wrapper select-wrapper">
-              <select class="filter-input" [(ngModel)]="filters.sort_order" (change)="onLocalFilterChange()">
-                <option value="desc">Terbaru (Descending)</option>
-                <option value="asc">Terlama (Ascending)</option>
+              <select class="filter-input" [(ngModel)]="filters.sort_order" (ngModelChange)="onLocalFilterChange()">
+                <option value="date_desc">Terbaru</option>
+                <option value="date_asc">Terlama</option>
                 <option value="name_asc">Nama (A-Z)</option>
                 <option value="name_desc">Nama (Z-A)</option>
               </select>

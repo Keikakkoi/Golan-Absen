@@ -1,0 +1,62 @@
+import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
+import { DomSanitizer } from '@angular/platform-browser';
+
+import { AuthService } from '../../../core/services/auth.service';
+import { ReportExportService } from '../../../core/services/report-export.service';
+import { AdminReportsComponent } from './admin-reports.component';
+
+describe('AdminReportsComponent sorting', () => {
+  let component: AdminReportsComponent;
+
+  beforeEach(() => {
+    component = new AdminReportsComponent(
+      {} as HttpClient,
+      { getToken: () => null } as AuthService,
+      { snapshot: { data: {} } } as ActivatedRoute,
+      {} as DomSanitizer,
+      {} as ReportExportService
+    );
+    component.allReports = [
+      { Tanggal: '2026-10-01', Employee: { User: { Nama: 'Citra' } } },
+      { Tanggal: '2026-10-07', Employee: { User: { Nama: 'Andi' } } },
+      { Tanggal: '2026-10-03', Employee: { User: { Nama: 'Budi' } } }
+    ];
+  });
+
+  it('uses the explicit newest date sort as the default', () => {
+    expect(component.filters.sort_order).toBe('date_desc');
+  });
+
+  it('sorts attendance dates newest first and oldest first', () => {
+    component.filters.sort_order = 'date_desc';
+    component.applyFilters();
+    expect(component.reports.map(report => report.Tanggal)).toEqual([
+      '2026-10-07', '2026-10-03', '2026-10-01'
+    ]);
+
+    component.filters.sort_order = 'date_asc';
+    component.applyFilters();
+    expect(component.reports.map(report => report.Tanggal)).toEqual([
+      '2026-10-01', '2026-10-03', '2026-10-07'
+    ]);
+  });
+
+  it('keeps both name sort directions unchanged', () => {
+    component.filters.sort_order = 'name_asc';
+    component.applyFilters();
+    expect(component.reports.map(report => report.Employee.User.Nama)).toEqual(['Andi', 'Budi', 'Citra']);
+
+    component.filters.sort_order = 'name_desc';
+    component.applyFilters();
+    expect(component.reports.map(report => report.Employee.User.Nama)).toEqual(['Citra', 'Budi', 'Andi']);
+  });
+
+  it('applies a changed date filter immediately without reloading reports', () => {
+    component.filters.sort_order = 'date_asc';
+    component.onLocalFilterChange();
+
+    expect(component.reports[0].Tanggal).toBe('2026-10-01');
+    expect(component.reports[2].Tanggal).toBe('2026-10-07');
+  });
+});
