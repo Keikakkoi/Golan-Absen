@@ -52,9 +52,25 @@ WHERE wr.employee_id = e.id
         AND (m.id = u.manager_id OR (u.manager_id IS NULL AND BTRIM(COALESCE(u.team_id, '')) <> '' AND m.team_id = u.team_id))
   );
 
+-- Karyawan reports always enter the Manager queue. A missing Manager is left
+-- pending (and therefore cannot be validated by HRD/Admin) until the
+-- organization assigns one; historical final decisions remain untouched.
+UPDATE work_reports wr
+SET manager_review_status = 'pending',
+    admin_validation_status = 'not_required'
+FROM employees e
+JOIN users u ON u.id = e.user_id
+WHERE wr.employee_id = e.id
+  AND u.role = 'Karyawan'
+  AND COALESCE(NULLIF(BTRIM(wr.report_kind), ''), 'work_report') = 'work_report'
+  AND LOWER(COALESCE(NULLIF(BTRIM(wr.status_laporan), ''), 'submitted')) = 'submitted'
+  AND LOWER(BTRIM(COALESCE(wr.status_sesuai, ''))) NOT IN ('sesuai', 'tidak sesuai', 'ditolak', 'minta perbaikan', 'minta_perbaikan')
+;
+
 UPDATE work_reports
 SET admin_validation_status = 'pending'
 WHERE admin_validation_status = 'not_required'
+  AND manager_review_status <> 'pending'
   AND LOWER(COALESCE(NULLIF(BTRIM(status_laporan), ''), 'submitted')) = 'submitted'
   AND LOWER(BTRIM(COALESCE(status_sesuai, ''))) NOT IN ('sesuai', 'tidak sesuai', 'ditolak', 'minta perbaikan', 'minta_perbaikan', 'tidak membuat laporan kerja');
 

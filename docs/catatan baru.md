@@ -394,3 +394,94 @@ Jangan mengulang migrasi data atau menghapus compatibility route. Kerjakan tahap
 > - UAT akun nyata belum selesai atau belum dinyatakan blocked secara resmi.
 
 **Kriteria selesai:** seluruh status konsisten, automated test lulus, UAT tersedia, dan laporan akhir dapat diaudit.
+
+---
+
+# Prompt Perbaikan Tampilan Desktop 1440×900 dan 1536×864
+
+> Perbaiki layout web agar tampil rapi, proporsional, dan konsisten pada viewport desktop **1440×900** serta **1536×864**. Fokus utama adalah sidebar yang saat ini terlihat aneh/terpotong dan jarak antara sidebar dengan konten utama yang tidak konsisten seperti pada screenshot referensi.
+
+## Konteks masalah
+
+> Screenshot menunjukkan dashboard HRD dengan sidebar kiri, header, kartu statistik, dan grid chart. Audit awal menemukan aturan layout yang berpotensi konflik: komponen sidebar desktop memakai lebar sekitar `238px`, sedangkan beberapa `.main-content` masih memakai `margin-left: 300px` atau `width: calc(100% - 300px)`. Aturan global, style komponen sidebar, dashboard admin, dan media query desktop harus diperiksa sebagai satu sistem.
+
+## Instruksi audit sebelum mengubah kode
+
+> Jangan langsung menambal CSS secara acak. Cari dan petakan semua pemakai `.sidebar`, `.admin-sidebar`, `app-shared-sidebar`, `app-admin-sidebar`, `.main-content`, `.dashboard-container`, `.admin-theme`, `.topbar-header`, serta semua media query yang memengaruhi layout desktop. Periksa juga template Angular yang menjadi parent-child komponen tersebut.
+>
+> Identifikasi aturan yang saling menimpa, terutama perbedaan antara lebar sidebar aktual dan ruang yang dicadangkan oleh konten utama. Pastikan dahulu apakah halaman HRD pada screenshot menggunakan `shared-sidebar` atau `admin-sidebar`, lalu terapkan solusi pada komponen dan shell yang benar tanpa merusak halaman role lain.
+
+## Target layout desktop
+
+> Gunakan satu sumber nilai layout bersama, misalnya CSS custom property pada shell/global style:
+>
+> - `--desktop-sidebar-width`: lebar sidebar desktop yang benar-benar dipakai;
+> - `--desktop-content-gap`: jarak aman antara sidebar dan konten;
+> - `--desktop-content-padding`: padding konten utama.
+>
+> Nilai tersebut harus digunakan konsisten untuk `width`, `margin-left`, `padding`, dan kalkulasi area konten. Jangan menyisakan kombinasi angka `238px` dan `300px` yang membuat ruang kosong besar, konten bergeser, atau sebagian layout terpotong.
+>
+> Pada lebar 1440px dan 1536px:
+>
+> - sidebar tetap berada di kiri, memiliki tinggi viewport, tidak menimpa konten, dan tidak terpotong secara horizontal;
+> - lebar sidebar stabil dan seluruh label menu tetap terbaca;
+> - konten utama dimulai tepat setelah sidebar dan padding yang ditentukan;
+> - tidak ada horizontal scrollbar pada `html`, `body`, shell dashboard, atau konten utama;
+> - header, kartu statistik, dan chart tidak melebar keluar viewport;
+> - sisa ruang pada baris grid dimanfaatkan secara seimbang, bukan menghasilkan kolom kosong yang janggal;
+> - halaman boleh melakukan scroll vertikal secara normal jika isi lebih tinggi dari viewport;
+> - sidebar boleh memiliki scroll internal jika menu lebih panjang dari tinggi layar, tetapi scrollbar tidak boleh membuat lebar layout berubah-ubah;
+> - gunakan `box-sizing: border-box`, `min-width: 0`, dan `overflow-wrap` pada elemen flex/grid yang diperlukan.
+
+## Perbaikan sidebar
+
+> Rapikan sidebar agar proporsinya sesuai dashboard pada screenshot:
+>
+> - tetapkan satu lebar desktop yang realistis dan gunakan nilai yang sama pada sidebar serta offset konten;
+> - jangan mengandalkan `width: 100vw` pada elemen yang berada di dalam shell desktop;
+> - pastikan `position: fixed`, `top`, `bottom`, `height`, `overflow-y`, `z-index`, border, dan box sizing tidak menyebabkan sidebar keluar frame;
+> - atur padding, jarak antar menu, tinggi item, ukuran icon, ukuran teks, badge notifikasi, role badge, dan tombol mode gelap agar tidak bertabrakan;
+> - label menu panjang harus tetap terbaca atau dipotong dengan cara yang disengaja, bukan keluar dari sidebar;
+> - state aktif harus memiliki indikator yang konsisten tanpa menambah lebar elemen secara tak terduga;
+> - pastikan sidebar tidak ikut memakai aturan mobile drawer pada viewport 1440×900 atau 1536×864;
+> - pertahankan perilaku drawer/hamburger pada breakpoint mobile yang sudah ada.
+
+## Perbaikan konten dashboard
+
+> Sesuaikan shell dan dashboard tanpa mengubah fungsi, data, route, permission, atau API:
+>
+> - hapus aturan duplikat atau konflik pada `.main-content`, terutama `margin-left` dan `width` lama;
+> - gunakan `flex: 1` dengan `min-width: 0` setelah offset sidebar ditetapkan;
+> - pastikan padding konten cukup tetapi tidak menghabiskan lebar efektif pada 1440px;
+> - kartu statistik menggunakan grid yang responsif terhadap lebar konten, dengan minimum width yang tidak memaksa overflow;
+> - grid chart menggunakan `minmax(0, 1fr)` dan setiap card memiliki `min-width: 0`;
+> - judul halaman, notifikasi, filter, legenda, tabel, dan tombol tidak saling bertumpuk;
+> - komponen chart harus resize mengikuti parent dan tidak menentukan lebar berdasarkan viewport penuh;
+> - jangan menggunakan `transform: scale()` sebagai solusi layout;
+> - jangan menyembunyikan elemen penting hanya untuk menghilangkan overflow.
+
+## Kriteria visual
+
+> Hasil akhir harus mempertahankan identitas visual aplikasi, tetapi terasa lebih seimbang: sidebar tidak terlalu lebar atau menyisakan ruang kosong, konten dashboard memenuhi area yang tersedia, kartu memiliki ukuran konsisten, dan jarak antar-section seragam. Perbaiki akar masalah layout, bukan hanya menambahkan margin negatif atau `overflow: hidden`.
+
+## Verifikasi wajib
+
+> Setelah perubahan:
+>
+> 1. Jalankan build, lint/type-check, dan test frontend yang relevan.
+> 2. Buka dashboard HRD pada viewport tepat **1440×900**.
+> 3. Buka dashboard HRD pada viewport tepat **1536×864**.
+> 4. Uji zoom browser 100% dan pastikan hasilnya tidak bergantung pada zoom tertentu.
+> 5. Periksa tidak ada horizontal scrollbar dan tidak ada elemen yang terpotong.
+> 6. Uji sidebar ketika menu aktif, badge notifikasi tampil, mode gelap aktif, dan daftar menu lebih tinggi dari viewport.
+> 7. Uji navigasi ke halaman lain yang memakai sidebar bersama untuk memastikan offset konten tetap benar.
+> 8. Uji viewport mobile yang sudah didukung agar drawer/hamburger tidak rusak.
+> 9. Jika tersedia, ambil screenshot kedua viewport dan bandingkan dengan screenshot referensi.
+
+## Output yang wajib dilaporkan
+
+> Laporkan file yang diubah, aturan CSS yang menjadi sumber konflik, nilai akhir lebar sidebar/padding/breakpoint, hasil build/test, serta hasil pemeriksaan viewport 1440×900 dan 1536×864. Jangan menyatakan selesai jika masih ada horizontal overflow, sidebar terpotong, konten tertutup sidebar, atau perbedaan offset antarhalaman.
+
+## Batasan
+
+> Perubahan pada tahap ini hanya untuk layout dan visual responsif desktop. Jangan mengubah endpoint, model, database, alur absensi, permission, isi data, atau fitur bisnis lain. Jika ditemukan perbedaan antara screenshot dan implementasi aktual, jelaskan temuan tersebut sebelum mengambil keputusan yang memengaruhi struktur komponen.

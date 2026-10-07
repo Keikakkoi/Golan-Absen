@@ -343,6 +343,18 @@ export class WorkReportComponent implements OnDestroy, OnInit {
   }
 
   validationStatusLabel(report: WorkReport): string {
+    const managerStatus = String(report.manager_review_status || report.ManagerReviewStatus || '').trim().toLowerCase();
+    const adminStatus = String(report.admin_validation_status || report.AdminValidationStatus || '').trim().toLowerCase();
+    if (managerStatus || adminStatus) {
+      const contract = normalizeWorkReportContract(report);
+      if (contract.status === 'no_report') return WORK_REPORT_NO_REPORT_LABEL;
+      if (contract.filling_status === 'draft') return 'Draft';
+      if (managerStatus === 'pending') return 'Menunggu Persetujuan Manajer';
+      if (managerStatus === 'rejected') return 'Ditolak Manajer';
+      if (adminStatus === 'rejected') return 'Ditolak HRD/Admin';
+      if (adminStatus === 'approved') return 'Tervalidasi HRD/Admin';
+      if (managerStatus === 'approved' && adminStatus === 'pending') return 'Disetujui Manajer / Menunggu Validasi HRD';
+    }
     switch (this.validationStatus(report)) {
       case 'approved': return 'Disetujui';
       case 'rejected': return 'Ditolak';
@@ -768,10 +780,16 @@ export class WorkReportComponent implements OnDestroy, OnInit {
     return isRejected && reason ? reason : '-';
   }
   reviewOrRejectionNote(report: WorkReport): string {
-    const reviewNotes = String(report.review_notes || report.ReviewNotes || '').trim();
+    const managerNotes = String(report.manager_review_notes || report.ManagerReviewNotes || report.review_notes || report.ReviewNotes || '').trim();
+    const adminNotes = String(report.admin_notes || report.AdminNotes || '').trim();
+    const managerReason = String(report.manager_rejection_reason || report.ManagerRejectionReason || '').trim();
+    const adminReason = String(report.admin_rejection_reason || report.AdminRejectionReason || '').trim();
     const rejectionReason = this.rejectionReason(report);
     const notes: string[] = [];
-    if (reviewNotes) notes.push(`Catatan Review: ${reviewNotes}`);
+    if (managerNotes) notes.push(`Catatan Manager: ${managerNotes}`);
+    if (adminNotes) notes.push(`Catatan HRD/Admin: ${adminNotes}`);
+    if (managerReason) notes.push(`Alasan Manager: ${managerReason}`);
+    if (adminReason) notes.push(`Alasan HRD/Admin: ${adminReason}`);
     if (rejectionReason !== '-') notes.push(`Alasan Penolakan: ${rejectionReason}`);
     return notes.join('\n') || '-';
   }

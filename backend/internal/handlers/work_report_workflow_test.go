@@ -24,6 +24,46 @@ func TestWorkReportDecisionStagesStayIndependent(t *testing.T) {
 	}
 }
 
+func TestAdminValidationRequiresManagerApprovalForKaryawan(t *testing.T) {
+	employee := models.User{Role: models.RoleKaryawan}
+	report := models.WorkReport{
+		Employee:              models.Employee{User: &employee},
+		ManagerReviewStatus:   models.WorkReportDecisionPending,
+		AdminValidationStatus: models.WorkReportDecisionNotRequired,
+	}
+	if adminValidationReady(report) {
+		t.Fatal("HRD/Admin must not validate a Karyawan report before Manager approval")
+	}
+
+	report.ManagerReviewStatus = models.WorkReportDecisionApproved
+	if !adminValidationReady(report) {
+		t.Fatal("HRD/Admin should validate a Karyawan report after Manager approval")
+	}
+}
+
+func TestRejectedCanonicalReportCanEnterEmployeeRevisionCycle(t *testing.T) {
+	report := models.WorkReport{
+		ReportKind:          models.WorkReportKindCanonical,
+		StatusLaporan:       "submitted",
+		ManagerReviewStatus: models.WorkReportDecisionRejected,
+		RejectionSource:     "manager",
+		StatusSesuai:        "",
+		DeskripsiKegiatan:   "Isi laporan",
+		RealisasiKegiatan:   "100%",
+	}
+	if !canUseCanonicalWorkReportMutation(report, string(models.RoleKaryawan), true) {
+		t.Fatal("a Manager-rejected report should be editable by its owner")
+	}
+
+	report.ManagerReviewStatus = models.WorkReportDecisionApproved
+	report.AdminValidationStatus = models.WorkReportDecisionRejected
+	report.RejectionSource = "admin"
+	report.StatusSesuai = "Tidak Sesuai"
+	if !canUseCanonicalWorkReportMutation(report, string(models.RoleKaryawan), true) {
+		t.Fatal("an HRD/Admin-rejected report should be editable by its owner")
+	}
+}
+
 func TestWorkReportReviewEligibilityDoesNotDependOnReportKind(t *testing.T) {
 	for _, kind := range []models.WorkReportKind{models.WorkReportKindCanonical, models.WorkReportKindLegacyLogbook} {
 		report := models.WorkReport{

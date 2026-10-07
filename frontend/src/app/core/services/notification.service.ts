@@ -118,8 +118,7 @@ export class NotificationService {
         // Notification events are user-scoped. Ignore broadcasts for other
         // users so a role only refreshes data it is allowed to read.
         if (eventName === 'notification_created' && Number(payload?.user_id) !== Number(localStorage.getItem('user_id'))) return;
-        // Legacy logbook events remain accepted only for historical adapters.
-        if (['notification_created', 'new_checkin', 'new_checkout', 'new_work_report', 'work_report_status_updated', 'new_logbook', 'logbook_updated', 'logbook_deleted', 'logbook_status_updated', 'new_leave', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.realtimeCallbacks.forEach(callback => callback(eventName));
+        if (['notification_created', 'new_checkin', 'new_checkout', 'new_work_report', 'work_report_status_updated', 'new_leave', 'leave_request_created', 'leave_status_updated', 'leave_note_updated'].includes(eventName)) this.realtimeCallbacks.forEach(callback => callback(eventName));
       } catch { /* Ignore malformed broadcast messages. */ }
     };
     socket.onclose = () => {

@@ -476,10 +476,17 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
   canValidate(report: WorkReport): boolean {
     if (this.isNoReport(report) || this.isDraft(report)) return false;
     const contract = normalizeWorkReportContract(report);
-    const managerLabel = this.managerReviewLabel(report);
+    const managerReviewLabel = this.managerReviewLabel(report);
+    const managerStatus = String(
+      report.manager_review_status
+      || report.ManagerReviewStatus
+      || contract.manager_review_status
+      || (managerReviewLabel === 'Menunggu Persetujuan Manajer' ? 'pending' : '')
+      || (managerReviewLabel === 'Ditolak Manajer' ? 'rejected' : '')
+    ).trim().toLowerCase();
     const validationStatus = this.normalizedValidationStatus(report);
-    return managerLabel !== 'Menunggu Review Manajer'
-      && managerLabel !== 'Ditolak Manajer'
+    return managerStatus !== 'pending'
+      && managerStatus !== 'rejected'
       && validationStatus !== 'sesuai'
       && validationStatus !== 'validasi laporan'
       && validationStatus !== 'tidak sesuai'
@@ -916,10 +923,11 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
     const status = this.normalizedValidationStatus(report);
     const contract = normalizeWorkReportContract(report);
     if (contract.status === 'no_report' || contract.status === 'draft' || status === 'tidak perlu validasi') return 'Tidak perlu validasi';
-    if (contract.manager_review_status === 'pending' || contract.manager_review_status === 'rejected') return 'Belum dapat divalidasi';
+    if (contract.manager_review_status === 'pending') return 'Menunggu Persetujuan Manajer';
+    if (contract.manager_review_status === 'rejected') return 'Ditolak Manajer';
     if (contract.manager_review_status === 'not_required' && contract.admin_validation_status === 'pending') return 'Menunggu Validasi HRD/Admin';
     if (contract.manager_review_status === 'approved' && contract.admin_validation_status === 'pending') return 'Menunggu Validasi HRD/Admin';
-    if (contract.admin_validation_status === 'approved') return 'Disetujui';
+    if (contract.admin_validation_status === 'approved') return 'Tervalidasi HRD/Admin';
     if (contract.admin_validation_status === 'rejected') return 'Ditolak HRD/Admin';
     if (contract.status === 'approved') return 'Validasi laporan';
     if (contract.status === 'rejected') return 'Tolak laporan';
@@ -933,7 +941,7 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
     const explicit = String(report.manager_review_status || report.ManagerReviewStatus || '').trim().toLowerCase();
     const legacy = String((report as any).status_logbook || (report as any).StatusLogbook || '').trim().toLowerCase();
     const status = explicit || (legacy === 'submitted' ? 'pending' : legacy === 'approved' || legacy === 'rejected' ? legacy : 'not_required');
-    if (status === 'pending') return 'Menunggu Review Manajer';
+    if (status === 'pending') return 'Menunggu Persetujuan Manajer';
     if (status === 'approved') return 'Disetujui Manajer';
     if (status === 'rejected') return 'Ditolak Manajer';
     return 'Tidak Perlu Review Manajer';

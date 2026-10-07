@@ -65,7 +65,7 @@ func GetAdminInternshipDashboard(c *fiber.Ctx) error {
 	config.DB.Model(&models.User{}).Where("role = ? AND internship_end_date >= ?", models.RoleMagang, today).Count(&active)
 	config.DB.Model(&models.WorkReport{}).Joins("JOIN employees ON employees.id = work_reports.employee_id").Joins("JOIN users ON users.id = employees.user_id").Where("users.role = ?", models.RoleMagang).Where(workReportPendingCondition("work_reports.")).Count(&pending)
 	completed := getSertifikatTerbitCount()
-	return c.JSON(fiber.Map{"total_magang": total, "magang_aktif": active, "work_reports_pending": pending, "logbook_pending": pending, "sertifikat_terbit": completed})
+	return c.JSON(fiber.Map{"total_magang": total, "magang_aktif": active, "work_reports_pending": pending, "sertifikat_terbit": completed})
 }
 
 func GetAdminInternshipLogbooks(c *fiber.Ctx) error {

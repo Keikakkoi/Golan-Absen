@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"strings"
 
 	"absensi-golan-backend/config"
@@ -54,6 +55,9 @@ func workReportSubmissionWorkflow(employee models.Employee, rejectedBy string) (
 	if err != nil {
 		return "", "", err
 	}
+	if employee.User != nil && employee.User.Role == models.RoleKaryawan && !hasManager {
+		return "", "", fmt.Errorf("Karyawan belum memiliki Manager aktif")
+	}
 	if !hasManager {
 		return models.WorkReportDecisionNotRequired, models.WorkReportDecisionPending, nil
 	}
@@ -103,5 +107,17 @@ func managerReviewPendingCondition(prefix string) string {
 
 func adminValidationReady(report models.WorkReport) bool {
 	status := effectiveManagerReviewStatus(report)
-	return status == models.WorkReportDecisionApproved || status == models.WorkReportDecisionNotRequired
+	if status == models.WorkReportDecisionApproved {
+		return true
+	}
+	// A Karyawan report always has the Manager stage. Keep the historical
+	// not_required fallback only for Manager/Magang compatibility rows that
+	// predate explicit routing; it must never open a new Karyawan report to HRD.
+	if status != models.WorkReportDecisionNotRequired {
+		return false
+	}
+	if report.Employee.User != nil && report.Employee.User.Role == models.RoleKaryawan {
+		return false
+	}
+	return true
 }

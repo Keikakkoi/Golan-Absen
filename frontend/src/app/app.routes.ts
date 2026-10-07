@@ -34,9 +34,6 @@ export const routes: Routes = [
   { path: 'employee/profile', loadComponent: () => import('./features/employee/profile/profile.component').then(m => m.ProfileComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan', 'MAGANG', 'MANAJER'] } },
   { path: 'employee/manager', loadComponent: () => import('./features/employee/manager/manager.component').then(m => m.ManagerComponent), canActivate: [authGuard, roleGuard], data: { roles: ['Karyawan'] } },
   { path: 'intern/dashboard', loadComponent: () => import('./features/intern/intern-dashboard/intern-dashboard.component').then(m => m.InternDashboardComponent), canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
-  // Compatibility redirect for historical bookmarks. Legacy API routes remain
-  // available to adapters, while all browser users enter the canonical report UI.
-  { path: 'intern/logbooks', redirectTo: 'employee/work-report', pathMatch: 'full' },
   { path: 'intern/statistics', loadComponent: () => import('./features/intern/intern-statistics/intern-statistics.component').then(m => m.InternStatisticsComponent), canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
   { path: 'intern/mentor', loadComponent: () => import('./features/intern/intern-mentor/intern-mentor.component').then(m => m.InternMentorComponent), canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },
   { path: 'intern/certificate', loadComponent: () => import('./features/intern/intern-certificate/intern-certificate.component').then(m => m.InternCertificateComponent), canActivate: [authGuard, roleGuard], data: { roles: ['MAGANG'] } },

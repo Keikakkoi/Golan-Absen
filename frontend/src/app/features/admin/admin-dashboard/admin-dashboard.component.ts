@@ -77,8 +77,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.stats = {
           ...data,
-          // `logbook_pending` is a backend compatibility alias for old clients.
-          work_reports_pending: Number(data?.work_reports_pending ?? data?.logbook_pending) || 0,
+          work_reports_pending: Number(data?.work_reports_pending) || 0,
           missing_work_report_employee_count: Number(data?.missing_work_report_employee_count ?? data?.missing_work_report_count) || 0
         };
         this.lastUpdated = new Date().toLocaleTimeString('id-ID');

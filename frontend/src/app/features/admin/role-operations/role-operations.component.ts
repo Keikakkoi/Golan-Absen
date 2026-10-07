@@ -123,8 +123,10 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
 
   loadInternship(): void {
     const headers = this.headers();
-    this.http.get<any>(`${this.api}/admin/internship/dashboard`, { headers }).subscribe({ next: data => this.internshipStats = { ...data, // `logbook_pending` is a compatibility alias only.
-      work_reports_pending: Number(data?.work_reports_pending ?? data?.logbook_pending) || 0 }, error: e => this.fail(e) });
+    this.http.get<any>(`${this.api}/admin/internship/dashboard`, { headers }).subscribe({ next: data => this.internshipStats = {
+      ...data,
+      work_reports_pending: Number(data?.work_reports_pending) || 0
+    }, error: e => this.fail(e) });
     this.certificateCurrentPage = 1;
     let certificateParams = new HttpParams();
     if (this.certificateStatus) certificateParams = certificateParams.set('status', this.certificateStatus);

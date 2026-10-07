@@ -198,8 +198,6 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 		"total_magang":         totalMagang,
 		"magang_aktif":         magangAktif,
 		"work_reports_pending": workReportsPending,
-		// Compatibility alias for clients that predate the work-report cutover.
-		"logbook_pending":      workReportsPending,
 		"sertifikat_terbit":    sertifikatTerbit,
 		"missing_work_reports": missingReports,
 		// The warning list intentionally contains only the newest actionable

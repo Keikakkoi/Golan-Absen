@@ -57,6 +57,32 @@ describe('WorkReportComponent canonical contract', () => {
     expect(component.reviewOrRejectionNote(rejected)).toContain('Alasan Penolakan: Deskripsi perlu dilengkapi');
   });
 
+  it('shows the two-stage approval status and review notes', () => {
+    const component = createComponent();
+    const pending = report({
+      status_laporan: 'submitted',
+      manager_review_status: 'pending',
+      admin_validation_status: 'not_required'
+    });
+    expect(component.validationStatusLabel(pending)).toBe('Menunggu Persetujuan Manajer');
+
+    const managerApproved = report({
+      status_laporan: 'submitted',
+      manager_review_status: 'approved',
+      admin_validation_status: 'pending',
+      manager_review_notes: 'Target sudah sesuai.'
+    });
+    expect(component.validationStatusLabel(managerApproved)).toBe('Disetujui Manajer / Menunggu Validasi HRD');
+    expect(component.reviewOrRejectionNote(managerApproved)).toContain('Catatan Manager: Target sudah sesuai.');
+
+    const final = report({
+      status_laporan: 'submitted',
+      manager_review_status: 'approved',
+      admin_validation_status: 'approved'
+    });
+    expect(component.validationStatusLabel(final)).toBe('Tervalidasi HRD/Admin');
+  });
+
   it('treats no_report as a neutral state without workflow actions', () => {
     const component = createComponent();
     const missing = report({ status_laporan: 'submitted', status_sesuai: 'tidak membuat laporan kerja', judul: '', tugas: '', deskripsi_kegiatan: '' });
@@ -69,9 +95,9 @@ describe('WorkReportComponent canonical contract', () => {
   it('keeps future calendar dates neutral even when the API marks them no_report', () => {
     const component = createComponent();
 
-    expect(component.getDayStatus({ tanggal: '2026-10-06', has_report: false, status: 'no_report' }, '2026-10-05')).toBe('future');
-    expect(component.getDayStatus({ tanggal: '2026-10-05', has_report: false, status: 'no_report' }, '2026-10-05')).toBe('no_report');
-    expect(component.getDayStatus({ tanggal: '2026-10-04', has_report: false, status: 'no_report' }, '2026-10-05')).toBe('no_report');
-    expect(component.getDayStatus({ tanggal: '2026-10-06', has_report: true, status: 'submitted' }, '2026-10-05')).toBe('reported');
+    expect(component.getDayStatus({ employee_id: 0, tanggal: '2026-10-06', has_report: false, status: 'no_report' }, '2026-10-05')).toBe('future');
+    expect(component.getDayStatus({ employee_id: 0, tanggal: '2026-10-05', has_report: false, status: 'no_report' }, '2026-10-05')).toBe('no_report');
+    expect(component.getDayStatus({ employee_id: 0, tanggal: '2026-10-04', has_report: false, status: 'no_report' }, '2026-10-05')).toBe('no_report');
+    expect(component.getDayStatus({ employee_id: 0, tanggal: '2026-10-06', has_report: true, status: 'submitted' }, '2026-10-05')).toBe('reported');
   });
 });

@@ -630,6 +630,9 @@ func DeleteWorkReport(c *fiber.Ctx) error {
 
 func isWorkReportLocked(status string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(status))
+	// A rejected report is intentionally editable for the employee revision
+	// cycle. Only the final HRD/Admin approval and the generated no-report
+	// marker are immutable.
 	return normalized == "sesuai" || normalized == "tidak membuat laporan kerja"
 }
 
@@ -670,10 +673,29 @@ func canUseCanonicalWorkReportMutation(report models.WorkReport, actorRole strin
 	if actorRole == string(models.RoleHRD) {
 		return true
 	}
-	if !ownsReport || isWorkReportLocked(report.StatusSesuai) {
+	if !ownsReport {
 		return false
 	}
-	return true
+	// A submitted report is immutable while it is in either approval queue.
+	// The employee may edit it only as a Draft or after an explicit Manager or
+	// HRD/Admin rejection, which is the same repair cycle used by logbooks.
+	if isWorkReportDraft(report) {
+		return true
+	}
+	if isWorkReportLocked(report.StatusSesuai) {
+		return false
+	}
+	return isWorkReportRejectedState(report)
+}
+
+func isWorkReportRejectedState(report models.WorkReport) bool {
+	if effectiveManagerReviewStatus(report) == models.WorkReportDecisionRejected {
+		return true
+	}
+	if effectiveAdminValidationStatus(report) == models.WorkReportDecisionRejected {
+		return true
+	}
+	return false
 }
 
 func isWorkReportDraft(report models.WorkReport) bool {

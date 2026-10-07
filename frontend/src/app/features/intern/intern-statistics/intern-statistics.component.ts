@@ -71,9 +71,8 @@ export class InternStatisticsComponent implements OnInit {
       next: data => {
         this.stats = data || {};
         this.stats.work_type_stats = this.stats.work_type_stats || { wfo: 0, wfh: 0, remote: 0 };
-        // Legacy statistics aliases are read only while old dashboard payloads exist.
-        this.stats.work_reports_submitted = Number(this.stats.work_reports_submitted ?? this.stats.logbooks_submitted) || 0;
-        this.stats.work_reports_approved = Number(this.stats.work_reports_approved ?? this.stats.logbooks_approved) || 0;
+        this.stats.work_reports_submitted = Number(this.stats.work_reports_submitted) || 0;
+        this.stats.work_reports_approved = Number(this.stats.work_reports_approved) || 0;
         this.processDailyTrend(this.stats.daily_trend || []);
         this.isLoading = false;
       },

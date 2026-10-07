@@ -46,11 +46,13 @@ export interface WorkReport extends Partial<WorkReportContract> {
   manager_review_notes?: string;
   ManagerReviewNotes?: string;
   manager_rejection_reason?: string;
+  ManagerRejectionReason?: string;
   admin_validation_status?: string;
   AdminValidationStatus?: string;
   admin_validated_by?: number;
   admin_validated_at?: string;
   admin_rejection_reason?: string;
+  AdminRejectionReason?: string;
   admin_notes?: string;
   AdminNotes?: string;
   admin_note_by?: number;

@@ -12,8 +12,6 @@ export interface ChartPoint { date: string; hadir: number; terlambat: number; iz
 export interface DashboardChartData {
   attendance_trend: ChartPoint[]; today_status: ChartValue[]; comparison: ChartValue[];
   report_status: ChartValue[];
-  // Backend alias retained for historical dashboard payloads; active charts use report_status.
-  logbook_status: ChartValue[];
   internship: { progress_percent: number; days_remaining: number };
 }
 
@@ -97,8 +95,8 @@ export class DashboardChartsComponent implements OnInit, OnDestroy {
     if (!items.length) return `${title}: belum ada data.`;
     return `${title}: ${items.map(item => `${item.label} ${item.value}`).join(', ')}.`;
   }
-  private normalize(value: DashboardChartData | null): DashboardChartData { const safe = value || this.emptyData(); return { attendance_trend: (safe.attendance_trend || []).map(item => ({ ...item, belum_absen: Number(item.belum_absen || 0) })), today_status: safe.today_status || [], comparison: safe.comparison || [], report_status: safe.report_status || [], logbook_status: safe.logbook_status || [], internship: safe.internship || { progress_percent: 0, days_remaining: 0 } }; }
-  private emptyData(): DashboardChartData { return { attendance_trend: [], today_status: [], comparison: [], report_status: [], logbook_status: [], internship: { progress_percent: 0, days_remaining: 0 } }; }
+  private normalize(value: DashboardChartData | null): DashboardChartData { const safe = value || this.emptyData(); return { attendance_trend: (safe.attendance_trend || []).map(item => ({ ...item, belum_absen: Number(item.belum_absen || 0) })), today_status: safe.today_status || [], comparison: safe.comparison || [], report_status: safe.report_status || [], internship: safe.internship || { progress_percent: 0, days_remaining: 0 } }; }
+  private emptyData(): DashboardChartData { return { attendance_trend: [], today_status: [], comparison: [], report_status: [], internship: { progress_percent: 0, days_remaining: 0 } }; }
   private dateKey(date: Date): string { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }
 }

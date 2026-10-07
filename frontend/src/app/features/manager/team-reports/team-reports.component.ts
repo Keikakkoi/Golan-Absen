@@ -230,8 +230,13 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
       next: (res: any) => {
         const latestStatus = this.normalizeStatus(res?.status || status);
         if (found) {
-          found.status_sesuai = res?.status_sesuai ?? (latestStatus === 'approved' ? 'Sesuai' : 'Tidak Sesuai');
-          found.StatusSesuai = found.status_sesuai;
+          // Manager approval must not populate the HRD/Admin validation field.
+          // Keep the two decisions independent; the explicit stage fields below
+          // drive the status label and the next available action.
+          if (res?.status_sesuai !== undefined) {
+            found.status_sesuai = res.status_sesuai;
+            found.StatusSesuai = res.status_sesuai;
+          }
           found.review_notes = res?.review_notes ?? noteText;
           found.ReviewNotes = res?.review_notes ?? noteText;
           found.rejection_reason = res?.rejection_reason ?? rejectionReason;
@@ -323,7 +328,11 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
   reviewNote(row: any): string {
     const id = row?.id || row?.ID;
     const draftNote = id ? this.notes[id] : undefined;
-    return String(draftNote !== undefined ? draftNote : (row?.manager_review_notes || row?.ManagerReviewNotes || row?.review_notes || row?.ReviewNotes || '')).trim();
+    const managerNote = String(draftNote !== undefined ? draftNote : (row?.manager_review_notes || row?.ManagerReviewNotes || row?.review_notes || row?.ReviewNotes || '')).trim();
+    const adminNote = String(row?.admin_notes || row?.AdminNotes || '').trim();
+    return managerNote
+      ? managerNote + (adminNote ? `\nCatatan HRD/Admin: ${adminNote}` : '')
+      : adminNote ? `Catatan HRD/Admin: ${adminNote}` : '';
   }
 
   isInternshipReport(row: any): boolean {
@@ -358,14 +367,14 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
     const adminStatus = this.adminValidationStatus(row);
     if (contract.status === 'no_report') return WORK_REPORT_NO_REPORT_LABEL;
     if (contract.filling_status === 'draft') return 'Draft';
-    if (managerStatus === 'pending') return 'Menunggu Review Manajer';
+    if (managerStatus === 'pending') return 'Menunggu Persetujuan Manajer';
     if (managerStatus === 'rejected') return 'Ditolak Manajer';
-    if (managerStatus === 'not_required' && adminStatus === 'pending') return 'Tidak Perlu Review Manajer · Menunggu Validasi HRD';
-    if (managerStatus === 'approved' && adminStatus === 'pending') return 'Disetujui Manajer · Menunggu Validasi HRD';
-    if (adminStatus === 'approved') return 'Disetujui';
+    if (managerStatus === 'not_required' && adminStatus === 'pending') return 'Disetujui Manajer / Menunggu Validasi HRD';
+    if (managerStatus === 'approved' && adminStatus === 'pending') return 'Disetujui Manajer / Menunggu Validasi HRD';
+    if (adminStatus === 'approved') return 'Tervalidasi HRD/Admin';
     if (adminStatus === 'rejected') return 'Ditolak HRD/Admin';
     const status = this.reportStatus(row);
-    return status === 'approved' ? 'Disetujui' : status === 'rejected' ? 'Ditolak' : status === 'draft' ? 'Draft' : status === 'no_report' ? WORK_REPORT_NO_REPORT_LABEL : 'Menunggu';
+    return status === 'approved' ? 'Tervalidasi HRD/Admin' : status === 'rejected' ? 'Ditolak HRD/Admin' : status === 'draft' ? 'Draft' : status === 'no_report' ? WORK_REPORT_NO_REPORT_LABEL : 'Menunggu Persetujuan Manajer';
   }
 
   rejectionReason(row: any): string {

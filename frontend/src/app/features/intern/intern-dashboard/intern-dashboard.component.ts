@@ -128,8 +128,8 @@ export class InternDashboardComponent implements OnInit, OnDestroy {
       ...data,
       days_remaining: Math.max(0, Number(data?.days_remaining) || 0),
       progress_percent: Math.min(100, Math.max(0, Number(data?.progress_percent) || 0)),
-      work_reports_submitted: Math.max(0, Number(data?.work_reports_submitted ?? data?.logbooks_submitted) || 0),
-      work_reports_approved: Math.max(0, Number(data?.work_reports_approved ?? data?.logbooks_approved) || 0)
+      work_reports_submitted: Math.max(0, Number(data?.work_reports_submitted) || 0),
+      work_reports_approved: Math.max(0, Number(data?.work_reports_approved) || 0)
     };
     this.statsLoading = false;
     this.statsError = '';

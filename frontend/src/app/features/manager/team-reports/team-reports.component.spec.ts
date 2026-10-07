@@ -118,6 +118,22 @@ describe('TeamReportsComponent work report review', () => {
     expect(component.canReview(row)).toBeFalse();
   });
 
+  it('does not turn Manager approval into HRD/Admin validation', async () => {
+    const { component, http } = createComponent({
+      status: 'approved',
+      manager_review_status: 'approved',
+      admin_validation_status: 'pending'
+    });
+    const row = { ID: 101, Employee: { User: { Role: 'Karyawan' } }, report_kind: 'work_report', status_laporan: 'submitted', deskripsi_kegiatan: 'Isi laporan' };
+    component.reports = [row];
+
+    await component.reviewReport(101, 'approved');
+
+    expect(http.put).toHaveBeenCalledTimes(1);
+    expect((row as any).status_sesuai).toBeUndefined();
+    expect(component.statusLabel(row)).toBe('Disetujui Manajer / Menunggu Validasi HRD');
+  });
+
   it('uses the rejected status returned by the backend and removes actions', async () => {
     const { component } = createComponent({ status: 'rejected', status_sesuai: 'Tidak Sesuai' });
     const row = { ID: 2, Employee: { User: { Role: 'MAGANG' } }, report_kind: 'work_report', status_laporan: 'submitted', status_sesuai: '', deskripsi_kegiatan: 'Isi laporan' };

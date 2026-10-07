@@ -138,8 +138,15 @@ func ConnectDB(cfg *Config) {
 			  AND COALESCE(NULLIF(BTRIM(wr.report_kind), ''), 'work_report') = 'legacy_logbook'
 			  AND LOWER(COALESCE(NULLIF(BTRIM(wr.status_logbook), ''), 'submitted')) = 'submitted'
 			  AND NOT EXISTS (SELECT 1 FROM users m WHERE m.role = 'MANAJER' AND m.status = 'aktif' AND (m.id = u.manager_id OR (u.manager_id IS NULL AND BTRIM(COALESCE(u.team_id, '')) <> '' AND m.team_id = u.team_id)))`,
+		`UPDATE work_reports wr SET manager_review_status = 'pending', admin_validation_status = 'not_required'
+			FROM employees e JOIN users u ON u.id = e.user_id
+			WHERE wr.employee_id = e.id AND u.role = 'Karyawan'
+			  AND COALESCE(NULLIF(BTRIM(wr.report_kind), ''), 'work_report') = 'work_report'
+			  AND LOWER(COALESCE(NULLIF(BTRIM(wr.status_laporan), ''), 'submitted')) = 'submitted'
+			  AND LOWER(BTRIM(COALESCE(wr.status_sesuai, ''))) NOT IN ('sesuai', 'tidak sesuai', 'ditolak', 'minta perbaikan', 'minta_perbaikan')`,
 		`UPDATE work_reports SET admin_validation_status = 'pending'
 			WHERE admin_validation_status = 'not_required'
+			  AND manager_review_status <> 'pending'
 			  AND LOWER(COALESCE(NULLIF(BTRIM(status_laporan), ''), 'submitted')) = 'submitted'
 			  AND LOWER(BTRIM(COALESCE(status_sesuai, ''))) NOT IN ('sesuai', 'tidak sesuai', 'ditolak', 'minta perbaikan', 'minta_perbaikan', 'tidak membuat laporan kerja')`,
 		`UPDATE work_reports SET manager_reviewed_by = COALESCE(manager_reviewed_by, reviewed_by), manager_reviewed_at = COALESCE(manager_reviewed_at, reviewed_at), manager_review_notes = COALESCE(NULLIF(manager_review_notes, ''), review_notes), manager_rejection_reason = CASE WHEN rejection_source = 'manager' THEN COALESCE(NULLIF(manager_rejection_reason, ''), rejection_reason) ELSE manager_rejection_reason END

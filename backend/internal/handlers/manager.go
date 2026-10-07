@@ -37,6 +37,10 @@ func hasManagerOperationsAccess(role models.Role) bool {
 	return role == models.RoleManajer || role == models.RoleHRD
 }
 
+func canReviewManagerWorkReport(role models.Role) bool {
+	return role == models.RoleManajer
+}
+
 func managerTeamEmployees(managerID uint) ([]models.Employee, error) {
 	var manager models.User
 	if err := config.DB.Where("id = ? AND status = ? AND role IN ?", managerID, "aktif", []models.Role{models.RoleManajer, models.RoleHRD}).First(&manager).Error; err != nil {
@@ -51,7 +55,10 @@ func managerTeamEmployees(managerID uint) ([]models.Employee, error) {
 	condition := "users.manager_id = ?"
 	args := []interface{}{managerID}
 	if manager.TeamID != "" {
-		condition += " OR (users.team_id = ? AND users.id <> ?)"
+		// A direct ManagerID is authoritative. TeamID is only the legacy
+		// fallback for employees who have not been assigned a direct Manager;
+		// otherwise a Manager could see a report belonging to another team lead.
+		condition += " OR (users.manager_id IS NULL AND users.team_id = ? AND users.id <> ?)"
 		args = append(args, manager.TeamID, managerID)
 	}
 	var employees []models.Employee
@@ -453,7 +460,7 @@ func SaveManagerLeaveNote(c *fiber.Ctx) error {
 }
 
 func ReviewManagerWorkReport(c *fiber.Ctx) error {
-	if c.Locals("role").(models.Role) != models.RoleManajer {
+	if !canReviewManagerWorkReport(c.Locals("role").(models.Role)) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Review laporan kerja hanya dapat dilakukan oleh Manager"})
 	}
 	managerID := c.Locals("user_id").(uint)

@@ -87,25 +87,12 @@ func GetInternshipDashboard(c *fiber.Ctx) error {
 		}
 	}
 
-	// A logbook represents a day. Count distinct dates so legacy duplicate rows
-	// cannot inflate the dashboard totals.
-	var submitted, approved int64
-	config.DB.Model(&models.WorkReport{}).
-		Where("employee_id = ? AND status_logbook IN ?", user.Employee.ID, []string{"submitted", "approved", "rejected"}).
-		Where("NOT " + workReportNoReportCondition("work_reports.")).
-		Distinct("tanggal").Count(&submitted)
-	config.DB.Model(&models.WorkReport{}).
-		Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "approved").
-		Where("NOT " + workReportNoReportCondition("work_reports.")).
-		Distinct("tanggal").Count(&approved)
 	workReportsSubmitted, workReportsApproved := internshipWorkReportCounts(user.Employee.ID, "", "")
 	return c.JSON(fiber.Map{
 		"internship_start_date":  user.InternshipStartDate,
 		"internship_end_date":    user.InternshipEndDate,
 		"days_remaining":         remaining,
 		"progress_percent":       progress,
-		"logbooks_submitted":     submitted,
-		"logbooks_approved":      approved,
 		"work_reports_submitted": workReportsSubmitted,
 		"work_reports_approved":  workReportsApproved,
 		"missing_work_reports":   missingWorkReportRowsForEmployee(user.Employee.ID, attendanceNow()),
@@ -238,9 +225,6 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 	}
 	leaveQuery.Count(&leaveCount)
 
-	var logbooksSubmitted, logbooksApproved int64
-	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook IN ?", user.Employee.ID, []string{"submitted", "approved", "rejected"}).Where("NOT " + workReportNoReportCondition("work_reports.")).Distinct("tanggal").Count(&logbooksSubmitted)
-	config.DB.Model(&models.WorkReport{}).Where("employee_id = ? AND status_logbook = ?", user.Employee.ID, "approved").Where("NOT " + workReportNoReportCondition("work_reports.")).Distinct("tanggal").Count(&logbooksApproved)
 	workReportsSubmitted, workReportsApproved := internshipWorkReportCounts(user.Employee.ID, start, end)
 
 	totalDays := int64(len(records)) + leaveCount
@@ -329,8 +313,6 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 			"wfh":    wfhCount,
 			"remote": remoteCount,
 		},
-		"logbooks_submitted":     logbooksSubmitted,
-		"logbooks_approved":      logbooksApproved,
 		"work_reports_submitted": workReportsSubmitted,
 		"work_reports_approved":  workReportsApproved,
 		"daily_trend":            dailyTrend,
@@ -339,9 +321,9 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 	})
 }
 
-// internshipWorkReportCounts is the canonical dashboard read model. Legacy
-// logbooks remain countable, but canonical reports use status_laporan and
-// status_sesuai so a submitted canonical report is not lost or counted twice.
+// internshipWorkReportCounts is the canonical dashboard read model. Historical
+// rows are mapped into the same report status contract so a submitted report is
+// not lost or counted twice.
 func internshipWorkReportCounts(employeeID uint, startDate string, endDate string) (submitted int64, approved int64) {
 	base := config.DB.Model(&models.WorkReport{}).Where("employee_id = ?", employeeID)
 	if startDate != "" && endDate != "" {
