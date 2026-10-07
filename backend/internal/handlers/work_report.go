@@ -219,6 +219,7 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		}
 		wasSubmitted := !isWorkReportDraft(existing)
 		isRevisionSubmission := isWorkReportRevisionSubmission(existing, statusLaporan)
+		revisionSource := existing.RejectionSource
 		updates := map[string]interface{}{
 			"deskripsi_kegiatan":   input.DeskripsiKegiatan,
 			"realisasi_kegiatan":   input.RealisasiKegiatan,
@@ -249,6 +250,24 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			updates["status_sesuai"] = ""
 			updates["validasi_oleh_hr"] = false
 		}
+		if statusLaporan == "submitted" && (isRevisionSubmission || !wasSubmitted) {
+			rejectedBy := ""
+			if isRevisionSubmission {
+				rejectedBy = existing.RejectionSource
+			}
+			managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(emp, rejectedBy)
+			if workflowErr != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to resolve report approval workflow"})
+			}
+			updates["manager_review_status"] = managerStatus
+			updates["admin_validation_status"] = adminStatus
+			updates["admin_validated_by"] = nil
+			updates["admin_validated_at"] = nil
+		}
+		if statusLaporan == "draft" {
+			updates["manager_review_status"] = models.WorkReportDecisionNotRequired
+			updates["admin_validation_status"] = models.WorkReportDecisionNotRequired
+		}
 		if err := config.DB.Model(&existing).Updates(updates).Error; err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Failed to update work report"})
 		}
@@ -264,11 +283,16 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		if statusLaporan == "submitted" && (isRevisionSubmission || !wasSubmitted) {
 			WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
 			if isRevisionSubmission {
-				notifyWorkReportRevision(existing)
-			} else {
-				notifyNewWorkReport(emp, existing)
-				if emp.User != nil && emp.User.Role == models.RoleMagang {
+				if strings.EqualFold(strings.TrimSpace(revisionSource), "manager") {
 					notifyWorkReportManagers(emp, existing)
+				} else {
+					notifyWorkReportRevision(existing)
+				}
+			} else {
+				if managerIDs, _ := workReportManagerIDs(emp); len(managerIDs) > 0 {
+					notifyWorkReportManagers(emp, existing)
+				} else {
+					notifyNewWorkReport(emp, existing)
 				}
 			}
 		}
@@ -291,6 +315,17 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		StatusLogbook:      "submitted",
 		IsLateSubmission:   isLateWorkReportSubmission(emp.ID, t),
 	}
+	if statusLaporan == "submitted" {
+		managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(emp, "")
+		if workflowErr != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to resolve report approval workflow"})
+		}
+		report.ManagerReviewStatus = managerStatus
+		report.AdminValidationStatus = adminStatus
+	} else {
+		report.ManagerReviewStatus = models.WorkReportDecisionNotRequired
+		report.AdminValidationStatus = models.WorkReportDecisionNotRequired
+	}
 
 	if err := config.DB.Create(&report).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create work report"})
@@ -306,9 +341,10 @@ func CreateWorkReport(c *fiber.Ctx) error {
 
 	// Drafts do not enter HR validation or trigger a new-report notification.
 	if statusLaporan == "submitted" {
-		notifyNewWorkReport(emp, report)
-		if emp.User != nil && emp.User.Role == models.RoleMagang {
+		if managerIDs, _ := workReportManagerIDs(emp); len(managerIDs) > 0 {
 			notifyWorkReportManagers(emp, report)
+		} else {
+			notifyNewWorkReport(emp, report)
 		}
 	}
 
@@ -431,11 +467,33 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	var statusChanged bool
 	wasSubmitted := normalizeWorkReportStatus(report.StatusLaporan) == "submitted"
 	isRevisionSubmission := userRole != string(models.RoleHRD) && isWorkReportRevisionSubmission(report, statusLaporan)
+	revisionSource := report.RejectionSource
+	if userRole != string(models.RoleHRD) && statusLaporan == "submitted" && (isRevisionSubmission || !wasSubmitted) {
+		rejectedBy := ""
+		if isRevisionSubmission {
+			rejectedBy = report.RejectionSource
+		}
+		managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(report.Employee, rejectedBy)
+		if workflowErr != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to resolve report approval workflow"})
+		}
+		updates["manager_review_status"] = managerStatus
+		updates["admin_validation_status"] = adminStatus
+		updates["admin_validated_by"] = nil
+		updates["admin_validated_at"] = nil
+	}
+	if userRole != string(models.RoleHRD) && statusLaporan == "draft" {
+		updates["manager_review_status"] = models.WorkReportDecisionNotRequired
+		updates["admin_validation_status"] = models.WorkReportDecisionNotRequired
+	}
 	if userRole == string(models.RoleHRD) {
 		rawValidationStatus := strings.TrimSpace(input.StatusSesuai)
 		input.StatusSesuai = normalizeAdminValidationStatus(rawValidationStatus)
 		if rawValidationStatus != "" && input.StatusSesuai == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Status validasi harus Sesuai atau Tidak Sesuai"})
+		}
+		if (input.StatusSesuai != "" || input.AdminNotes != nil) && !adminValidationReady(report) {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Laporan masih menunggu review Manager"})
 		}
 		if (input.StatusSesuai != "" || input.AdminNotes != nil) &&
 			(normalizeWorkReportStatus(report.StatusLaporan) == "draft" || strings.ToLower(strings.TrimSpace(report.StatusLogbook)) == "draft") {
@@ -458,12 +516,16 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 			now := time.Now()
 			updates["rejected_at"] = now
 			updates["rejection_source"] = "admin"
+			updates["admin_rejection_reason"] = reason
+		} else if input.StatusSesuai == "Sesuai" {
+			updates["admin_rejection_reason"] = ""
 		}
 		if input.StatusSesuai != "" {
 			for key, value := range adminValidationStatusUpdates(report, input.StatusSesuai) {
 				updates[key] = value
 			}
-			statusChanged = input.StatusSesuai != report.StatusSesuai
+			updates["admin_validated_by"] = userID
+			statusChanged = input.StatusSesuai != report.StatusSesuai || effectiveAdminValidationStatus(report) != map[string]models.WorkReportReviewDecision{"Sesuai": models.WorkReportDecisionApproved, "Tidak Sesuai": models.WorkReportDecisionRejected}[input.StatusSesuai]
 		}
 	}
 	if userRole != string(models.RoleHRD) && isRevisionSubmission {
@@ -488,7 +550,11 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 	if userRole != string(models.RoleHRD) && statusLaporan == "submitted" && (isRevisionSubmission || !wasSubmitted) {
 		WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
 		if isRevisionSubmission {
-			notifyWorkReportRevision(report)
+			if strings.EqualFold(strings.TrimSpace(revisionSource), "manager") {
+				notifyWorkReportManagers(report.Employee, report)
+			} else {
+				notifyWorkReportRevision(report)
+			}
 		} else {
 			notifyNewWorkReport(report.Employee, report)
 			if report.Employee.User != nil && report.Employee.User.Role == models.RoleMagang {
@@ -628,7 +694,7 @@ func applyWorkReportAdminStatusFilter(query *gorm.DB, status string) *gorm.DB {
 	case "rejected":
 		return query.Where("NOT "+workReportNoReportCondition("work_reports.")).Where("("+validation+" IN ? OR ("+legacyKind+" AND "+legacyStatus+" = ?))", []string{"tidak sesuai", "minta perbaikan", "minta_perbaikan"}, "rejected")
 	case "submitted":
-		return query.Where("NOT "+workReportNoReportCondition("work_reports.")).Where("("+validation+" NOT IN ? AND (("+legacyKind+" AND "+legacyStatus+" = ?) OR NOT ("+legacyKind+")))", []string{"sesuai", "tidak sesuai", "minta perbaikan", "minta_perbaikan"}, "submitted")
+		return query.Where("NOT "+workReportNoReportCondition("work_reports.")).Where("LOWER(COALESCE(NULLIF(BTRIM(work_reports.admin_validation_status), ''), 'pending')) = 'pending' AND LOWER(COALESCE(NULLIF(BTRIM(work_reports.manager_review_status), ''), 'not_required')) <> 'pending' AND ("+validation+" NOT IN ? AND (("+legacyKind+" AND "+legacyStatus+" = ?) OR NOT ("+legacyKind+")))", []string{"sesuai", "tidak sesuai", "minta perbaikan", "minta_perbaikan"}, "submitted")
 	default:
 		return query
 	}
@@ -644,7 +710,12 @@ func workReportPendingCondition(prefix string) string {
 	fillingStatus := "LOWER(COALESCE(NULLIF(BTRIM(" + prefix + "status_laporan), ''), 'submitted'))"
 	validation := "LOWER(COALESCE(NULLIF(BTRIM(" + prefix + "status_sesuai), ''), ''))"
 	reviewed := "('sesuai', 'tidak sesuai', 'ditolak', 'minta perbaikan', 'minta_perbaikan')"
-	return "(NOT (" + workReportNoReportCondition(prefix) + ") AND ((" + legacyKind + " AND " + legacyStatus + " = 'submitted') OR (" + canonicalKind + " AND " + fillingStatus + " = 'submitted' AND " + validation + " NOT IN " + reviewed + ")))"
+	managerReview := "LOWER(COALESCE(NULLIF(BTRIM(" + prefix + "manager_review_status), ''), 'not_required'))"
+	adminValidation := "LOWER(COALESCE(NULLIF(BTRIM(" + prefix + "admin_validation_status), ''), ''))"
+	return "(NOT (" + workReportNoReportCondition(prefix) + ") AND (" +
+		"(" + adminValidation + " = 'pending' AND " + managerReview + " <> 'pending') OR " +
+		"(" + adminValidation + " = '' AND " + managerReview + " <> 'pending' AND ((" + legacyKind + " AND " + legacyStatus + " = 'submitted') OR (" + canonicalKind + " AND " + fillingStatus + " = 'submitted' AND " + validation + " NOT IN " + reviewed + ")))" +
+		"))"
 }
 
 // workReportNoReportCondition mirrors the persisted signals consumed by the
@@ -673,11 +744,22 @@ func normalizeAdminValidationStatus(status string) string {
 // decision. Legacy internship screens read status_logbook while canonical
 // employee/manager screens read status_sesuai, so both must move together.
 func adminValidationStatusUpdates(report models.WorkReport, status string) map[string]interface{} {
-	updates := map[string]interface{}{
-		"status_sesuai":    status,
-		"validasi_oleh_hr": true,
+	decision := models.WorkReportDecisionApproved
+	if status == "Tidak Sesuai" {
+		decision = models.WorkReportDecisionRejected
 	}
-	if report.ReportKind == models.WorkReportKindLegacyLogbook {
+	now := time.Now()
+	updates := map[string]interface{}{
+		"status_sesuai":           status,
+		"validasi_oleh_hr":        true,
+		"admin_validation_status": decision,
+		"admin_validated_at":      now,
+	}
+	// The legacy field is kept in sync only for rows that have not yet been
+	// migrated to the explicit two-stage contract. Once the new Manager status
+	// exists, status_logbook remains the Manager decision and must not be
+	// overwritten by HRD/Admin validation.
+	if report.ReportKind == models.WorkReportKindLegacyLogbook && report.ManagerReviewStatus == "" {
 		updates["status_logbook"] = map[string]string{
 			"Sesuai":       "approved",
 			"Tidak Sesuai": "rejected",
@@ -929,7 +1011,10 @@ func isAdminRejectedWorkReport(report models.WorkReport) bool {
 }
 
 func isWorkReportRevisionSubmission(report models.WorkReport, targetStatus string) bool {
-	return targetStatus == "submitted" && isAdminRejectedWorkReport(report)
+	if targetStatus != "submitted" {
+		return false
+	}
+	return isAdminRejectedWorkReport(report) || strings.EqualFold(strings.TrimSpace(report.RejectionSource), "manager") || effectiveManagerReviewStatus(report) == models.WorkReportDecisionRejected
 }
 
 // isWorkReportRevisionDateAllowed deliberately compares date-only values in
@@ -1000,21 +1085,13 @@ func notifyWorkReportManagers(employee models.Employee, report models.WorkReport
 	if employee.User == nil {
 		return
 	}
-	query := config.DB.Where("role = ? AND status = ?", models.RoleManajer, "aktif")
-	if employee.User.ManagerID != nil {
-		query = query.Where("id = ?", *employee.User.ManagerID)
-	} else if strings.TrimSpace(employee.User.TeamID) != "" {
-		query = query.Where("team_id = ?", employee.User.TeamID)
-	} else {
-		return
-	}
-	var managers []models.User
-	if err := query.Find(&managers).Error; err != nil {
+	managerIDs, err := workReportManagerIDs(employee)
+	if err != nil {
 		return
 	}
 	name := employee.User.Nama
-	for _, manager := range managers {
-		_ = utils.CreateNotification(config.DB, manager.ID, models.RoleManajer, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan kerja baru dari %s pada tanggal %s", name, report.Tanggal.Format("02-01-2006")))
+	for _, managerID := range managerIDs {
+		_ = utils.CreateNotification(config.DB, managerID, models.RoleManajer, "Laporan Kerja", "Laporan Kerja Baru", fmt.Sprintf("Ada laporan baru dari %s pada tanggal %s", name, report.Tanggal.Format("02-01-2006")))
 	}
 }
 

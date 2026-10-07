@@ -4,6 +4,7 @@ export type WorkReportKind = 'work_report' | 'legacy_logbook';
 export type WorkReportStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'no_report';
 export type WorkReportFillingStatus = 'draft' | 'submitted' | 'no_report';
 export type WorkReportReviewStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'no_report';
+export type WorkReportDecisionStatus = 'pending' | 'approved' | 'rejected' | 'not_required';
 export type WorkReportSubmissionTiming = 'on_time' | 'late';
 
 export const WORK_REPORT_NO_REPORT_STATUS: WorkReportStatus = 'no_report';
@@ -14,6 +15,8 @@ export interface WorkReportContract {
   status: WorkReportStatus;
   filling_status: WorkReportFillingStatus;
   review_status: WorkReportReviewStatus;
+  manager_review_status?: WorkReportDecisionStatus | string;
+  admin_validation_status?: WorkReportDecisionStatus | string;
   submission_timing: WorkReportSubmissionTiming;
   // Raw legacy status is preserved only so historical rows remain readable.
   legacy_status_logbook?: string;
@@ -94,6 +97,26 @@ export function normalizeWorkReportContract(row: any): WorkReportContract {
     };
   }
 
+  const role = normalized(row?.Employee?.User?.Role ?? row?.Employee?.User?.role);
+  const rawManagerStatus = normalized(row?.manager_review_status ?? row?.ManagerReviewStatus);
+  const rawAdminStatus = normalized(row?.admin_validation_status ?? row?.AdminValidationStatus);
+  const legacyValidation = normalized(row?.status_sesuai ?? row?.StatusSesuai);
+  const legacyLogbook = normalized(row?.status_logbook ?? row?.StatusLogbook);
+  // Explicit fields are authoritative. The fallback keeps old API payloads
+  // readable until every client receives the additive workflow columns.
+  const managerStatus = rawManagerStatus || (
+    legacyLogbook === 'approved' ? 'approved' : legacyLogbook === 'rejected' ? 'rejected' :
+      (role === 'karyawan' || role === 'magang') && normalized(row?.status_laporan) !== 'draft' ? 'pending' : 'not_required'
+  );
+  const adminStatus = rawAdminStatus || (
+    legacyValidation === 'sesuai' ? 'approved' :
+      ['tidak sesuai', 'ditolak', 'minta perbaikan', 'minta_perbaikan'].includes(legacyValidation) ? 'rejected' :
+        managerStatus === 'approved' || managerStatus === 'not_required' ? 'pending' : 'not_required'
+  );
+  const workflowFields = (status: string, admin: string): Partial<WorkReportContract> => rawManagerStatus || rawAdminStatus
+    ? { manager_review_status: status, admin_validation_status: admin }
+    : {};
+
   if (kind === 'legacy_logbook') {
     const raw = String(row?.status_logbook ?? row?.StatusLogbook ?? '').trim().toLowerCase();
     const fillingStatus: WorkReportFillingStatus = raw === 'draft' ? 'draft' : 'submitted';
@@ -108,11 +131,20 @@ export function normalizeWorkReportContract(row: any): WorkReportContract {
       reviewStatus = 'rejected';
     }
 
+    if (adminStatus === 'approved') {
+      status = 'approved';
+      reviewStatus = 'approved';
+    } else if (adminStatus === 'rejected' || managerStatus === 'rejected') {
+      status = 'rejected';
+      reviewStatus = 'rejected';
+    }
+
     return {
       report_kind: kind,
       status,
       filling_status: fillingStatus,
       review_status: reviewStatus,
+      ...workflowFields(managerStatus, adminStatus),
       submission_timing: late ? 'late' : 'on_time',
       legacy_status_logbook: row?.legacy_status_logbook ?? row?.status_logbook ?? row?.StatusLogbook,
     };
@@ -132,11 +164,20 @@ export function normalizeWorkReportContract(row: any): WorkReportContract {
     reviewStatus = 'rejected';
   }
 
+  if (adminStatus === 'approved') {
+    status = 'approved';
+    reviewStatus = 'approved';
+  } else if (adminStatus === 'rejected' || managerStatus === 'rejected') {
+    status = 'rejected';
+    reviewStatus = 'rejected';
+  }
+
   return {
     report_kind: kind,
     status,
     filling_status: fillingStatus,
     review_status: reviewStatus,
+    ...workflowFields(managerStatus, adminStatus),
     submission_timing: late ? 'late' : 'on_time',
   };
 }

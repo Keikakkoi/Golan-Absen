@@ -123,13 +123,35 @@ Aturan penting:
 
 ## 5. Alur laporan kerja
 
-### 5.1 Laporan kerja karyawan/manajer
+### 5.1 Workflow dua tahap laporan kerja
+
+Karyawan dan MAGANG menggunakan alur laporan kerja yang sama. Backend menyimpan dua
+keputusan terpisah: `manager_review_status` (`pending`, `approved`, `rejected`,
+`not_required`) dan `admin_validation_status` dengan vocabulary yang sama.
 
 1. Sistem membuat kewajiban laporan harian secara otomatis melalui proses background.
-2. User mengisi kolom laporan dan mengunggah lampiran bila diperlukan.
-3. User menyimpan sebagai draft atau mengirim laporan.
-4. HRD melihat daftar laporan, status validasi, dan kepatuhan harian.
-5. Jika melewati batas waktu tanpa laporan, sistem menandai **Tidak membuat laporan kerja** dan memasukkannya ke tindak lanjut dashboard.
+2. User mengisi laporan dan mengunggah lampiran bila diperlukan, lalu dapat menyimpan draft.
+3. Saat dikirim, user yang memiliki Manajer masuk ke **Menunggu Review Manajer**.
+4. Manajer hanya dapat mereview anggota dalam scope `ManagerID` atau fallback `TeamID`.
+5. Setelah disetujui Manajer, laporan masuk ke **Menunggu Validasi HRD/Admin**.
+6. User tanpa Manajer melewati tahap Manajer dan langsung masuk ke validasi HRD/Admin.
+7. HRD/Admin tidak dapat memvalidasi laporan yang masih menunggu Manajer.
+8. Penolakan pada salah satu tahap menyimpan alasan dan mengirim notifikasi kepada pemilik laporan.
+9. Revisi dan pengiriman ulang mengembalikan laporan ke tahap yang sesuai dengan sumber penolakan.
+10. Perubahan status dan catatan review dikirim melalui notifikasi/realtime serta dicatat dalam audit.
+
+Ringkasan jalur:
+
+| Kondisi user | Jalur |
+| --- | --- |
+| Karyawan dengan Manajer | Isi → Submit → Review Manajer → Validasi HRD/Admin → Selesai |
+| Karyawan tanpa Manajer | Isi → Submit → Validasi HRD/Admin → Selesai |
+| MAGANG dengan Manajer | Isi → Submit → Review Manajer → Validasi HRD/Admin → Selesai |
+| MAGANG tanpa Manajer | Isi → Submit → Validasi HRD/Admin → Selesai |
+
+Status **Belum Membuat Laporan Kerja** (`no_report`) dan draft tidak memiliki aksi
+review/validasi. `legacy_logbook` tetap dapat dibaca dan direview selama statusnya
+submitted/pending; data historis dan kolom kompatibilitas tidak dihapus.
 
 Status minimal: `DRAFT`, `SUBMITTED`, `APPROVED`, `REJECTED`, dan `TIDAK_MEMBUAT_LAPORAN`.
 
@@ -137,9 +159,9 @@ Status minimal: `DRAFT`, `SUBMITTED`, `APPROVED`, `REJECTED`, dan `TIDAK_MEMBUAT
 
 1. Peserta magang membuat atau mengedit laporan kerja miliknya.
 2. Laporan kerja dapat disimpan sebagai draft atau dikirim untuk review.
-3. Manajer pembimbing melakukan review laporan kerja dan mengisi catatan review.
-4. Manajer mengubah hasil menjadi disetujui atau ditolak.
-5. HRD memantau hasil review dan kepatuhan melalui Manajemen Laporan Kerja.
+3. Manajer pembimbing melakukan review laporan kerja dan mengisi catatan review jika user memiliki Manajer.
+4. Setelah review Manajer disetujui, HRD/Admin melakukan validasi administratif secara terpisah.
+5. HRD memantau riwayat keputusan Manajer, keputusan HRD/Admin, dan sumber alasan penolakan melalui Manajemen Laporan Kerja.
 6. Setelah periode magang berakhir, HRD dapat mengunggah atau menerbitkan sertifikat sesuai kewenangan.
 
 ## 6. Alur operasional HRD/Admin
@@ -173,8 +195,8 @@ Event utama:
 
 `attendance.created`, `attendance.updated`, `leave.created`, `leave.updated`, `work_report.created`, `work_report.updated`, `notification.created`, dan `dashboard.refresh`.
 
-Event `logbook.*` hanya dipertahankan pada adapter kompatibilitas untuk data historis;
-event tersebut bukan bagian dari alur laporan kerja aktif.
+Seluruh event laporan pengguna menggunakan namespace `work_report.*`; tidak ada event
+terpisah untuk pencatatan harian peserta magang.
 
 Event harus difilter backend berdasarkan user, role, divisi, dan team. Data dari team lain tidak boleh dikirim ke browser.
 

@@ -185,7 +185,8 @@
                 <th class="th-yellow">Status Laporan</th>
                 <th class="th-yellow">Bukti Pengisian</th>
                 <th class="th-yellow">Status Waktu</th>
-                <th class="th-yellow">Status Validasi</th>
+                <th class="th-yellow">Status Review Manajer</th>
+                <th class="th-yellow">Status Validasi HRD/Admin</th>
                 <th class="th-yellow">Catatan Manager/Admin</th>
                 <th class="th-yellow rejection-reason-header">Alasan Penolakan</th>
                 <th class="th-yellow action-validation-header">Aksi & Validasi</th>
@@ -223,6 +224,7 @@
                   <span *ngIf="!isNoReport(r)" class="status-pill" [class.status-warning]="shouldShowLateStatus(r)" [class.status-success]="!shouldShowLateStatus(r)">{{ statusTimeLabel(r) }}</span>
                   <span *ngIf="isNoReport(r)">-</span>
                 </td>
+                <td><span class="status-pill" [ngClass]="validationStatusClass(r)">{{ managerReviewLabel(r) }}</span></td>
                 <td><span class="status-pill" [ngClass]="validationStatusClass(r)">{{ validationLabel(r) }}</span></td>
                 <td data-label="Catatan Manager/Admin" class="text-cell manager-admin-note-cell">
                   <div class="manager-admin-note">
@@ -263,7 +265,7 @@
                     <select class="form-control no-print" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.85rem; font-weight: 500; border-radius: 4px;"
                             [value]="validationSelection(r)"
                             (change)="updateValidation(r, $event)"
-                            [disabled]="isNoReport(r) || isDraft(r) || isValidationUpdating(r)"
+                            [disabled]="!canValidate(r) || isValidationUpdating(r)"
                             [ngStyle]="{
                               'background-color': validationSelection(r) === 'Sesuai' ? '#d4edda' : (validationSelection(r) === 'Tidak Sesuai' ? '#f8d7da' : (isNoReport(r) ? '#f8d7da' : '')),
                               'color': validationSelection(r) === 'Sesuai' ? '#155724' : (validationSelection(r) === 'Tidak Sesuai' ? '#721c24' : (isNoReport(r) ? '#721c24' : '#333')),
@@ -305,6 +307,7 @@
             <span>Tim: {{ reporterTeam(detail) }}</span>
             <span>Divisi: {{ detail.Employee?.Division?.NamaDivisi || '-' }}</span>
             <span class="status-pill" [ngClass]="reportFillingClass(detail)">{{ reportFillingLabel(detail) }}</span>
+            <span class="status-pill" [ngClass]="validationStatusClass(detail)">{{ managerReviewLabel(detail) }}</span>
             <span class="status-pill" [ngClass]="validationStatusClass(detail)">{{ validationLabel(detail) }}</span>
           </div>
           <dl class="admin-report-detail-grid">

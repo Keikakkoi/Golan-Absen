@@ -39,6 +39,18 @@ export interface WorkReport extends Partial<WorkReportContract> {
   StatusLogbook?: 'draft' | 'submitted' | 'approved' | 'rejected' | string;
   review_notes?: string;
   ReviewNotes?: string;
+  manager_review_status?: string;
+  ManagerReviewStatus?: string;
+  manager_reviewed_by?: number;
+  manager_reviewed_at?: string;
+  manager_review_notes?: string;
+  ManagerReviewNotes?: string;
+  manager_rejection_reason?: string;
+  admin_validation_status?: string;
+  AdminValidationStatus?: string;
+  admin_validated_by?: number;
+  admin_validated_at?: string;
+  admin_rejection_reason?: string;
   admin_notes?: string;
   AdminNotes?: string;
   admin_note_by?: number;

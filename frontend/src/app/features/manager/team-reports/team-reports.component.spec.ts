@@ -27,6 +27,54 @@ describe('TeamReportsComponent work report review', () => {
     expect(component.canReview({ ...base, ID: 3, status_sesuai: 'Tidak Sesuai' })).toBeFalse();
   });
 
+  it('keeps a detail action available for rows that cannot be reviewed', () => {
+    const { component } = createComponent();
+    const row = { ID: 20, Employee: { User: { Nama: 'Budi', Role: 'Karyawan' } }, status_laporan: 'submitted', status_sesuai: 'Sesuai' };
+
+    component.viewReportDetail(row);
+    expect(component.selectedReportDetail).toBe(row);
+    expect(component.employeeName(row)).toBe('Budi');
+    expect(component.canReview(row)).toBeFalse();
+
+    component.closeReportDetail();
+    expect(component.selectedReportDetail).toBeNull();
+  });
+
+  it('allows both Karyawan and MAGANG rows with an explicit pending Manager stage', () => {
+    const { component } = createComponent();
+    const base = {
+      report_kind: 'work_report',
+      status_laporan: 'submitted',
+      manager_review_status: 'pending',
+      admin_validation_status: 'not_required',
+      deskripsi_kegiatan: 'Isi laporan'
+    };
+    expect(component.canReview({ ...base, ID: 10, Employee: { User: { Role: 'Karyawan' } } })).toBeTrue();
+    expect(component.canReview({ ...base, ID: 11, Employee: { User: { Role: 'MAGANG' } } })).toBeTrue();
+  });
+
+  it('keeps legacy_logbook submissions reviewable and hides actions after approval', () => {
+    const { component } = createComponent();
+    const row = {
+      ID: 12,
+      report_kind: 'legacy_logbook',
+      status_logbook: 'submitted',
+      status_laporan: 'submitted',
+      Employee: { User: { Role: 'MAGANG' } },
+      deskripsi_kegiatan: 'Isi lama'
+    };
+    expect(component.canReview(row)).toBeTrue();
+    row.status_logbook = 'approved';
+    expect(component.canReview(row)).toBeFalse();
+  });
+
+  it('does not allow a draft or no-report row to be reviewed', () => {
+    const { component } = createComponent();
+    const common = { ID: 13, Employee: { User: { Role: 'Karyawan' } }, manager_review_status: 'pending', admin_validation_status: 'not_required' };
+    expect(component.canReview({ ...common, status_laporan: 'draft', deskripsi_kegiatan: 'Draft' })).toBeFalse();
+    expect(component.canReview({ ...common, status_laporan: 'submitted', status_sesuai: 'tidak membuat laporan kerja' })).toBeFalse();
+  });
+
   it('keeps no_report outside the manager review workflow', () => {
     const { component } = createComponent();
     const row = {

@@ -242,7 +242,7 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
       if (this.filterOptions.status === 'Submitted') {
         temp = temp.filter(r => this.reportFillingLabel(r) === this.filterOptions.status);
       } else if (this.filterOptions.status === 'Menunggu') {
-        temp = temp.filter(r => (!r.status_sesuai || r.status_sesuai === 'Menunggu') && !this.isNoReport(r));
+        temp = temp.filter(r => this.normalizedValidationStatus(r) === 'pending' && this.canValidate(r));
       } else if (this.reportStatusFilters.includes(this.filterOptions.status)) {
         temp = temp.filter(r => this.reportStatusLabel(r) === this.filterOptions.status);
       } else {
@@ -413,7 +413,7 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
 
   // HR Validation
   async updateValidation(report: WorkReport, event: any): Promise<void> {
-    if (this.isNoReport(report) || this.isDraft(report)) return;
+    if (this.isNoReport(report) || this.isDraft(report) || !this.canValidate(report)) return;
     const select = event.target as HTMLSelectElement;
     const previousValue = this.validationSelection(report);
     const newVal = select.value;
@@ -444,6 +444,10 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
         report.rejection_reason = res.rejection_reason || rejectionReason;
         this.applyAdminNoteResponse(report, res);
         report.validasi_oleh_hr = true;
+        report.admin_validation_status = res.admin_validation_status || (newVal === 'Sesuai' ? 'approved' : 'rejected');
+        report.admin_validated_by = res.admin_validated_by;
+        report.admin_validated_at = res.admin_validated_at;
+        report.admin_rejection_reason = res.admin_rejection_reason || (newVal === 'Tidak Sesuai' ? rejectionReason : '');
         this.validationUpdating.delete(id);
         this.alertService.success('Status validasi berhasil diupdate');
       },
@@ -469,6 +473,23 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
     return '';
   }
 
+  canValidate(report: WorkReport): boolean {
+    if (this.isNoReport(report) || this.isDraft(report)) return false;
+    const contract = normalizeWorkReportContract(report);
+    const managerLabel = this.managerReviewLabel(report);
+    const validationStatus = this.normalizedValidationStatus(report);
+    return managerLabel !== 'Menunggu Review Manajer'
+      && managerLabel !== 'Ditolak Manajer'
+      && validationStatus !== 'sesuai'
+      && validationStatus !== 'validasi laporan'
+      && validationStatus !== 'tidak sesuai'
+      && validationStatus !== 'tolak laporan'
+      && contract.admin_validation_status !== 'approved'
+      && contract.admin_validation_status !== 'rejected'
+      && String(report.admin_validation_status || report.AdminValidationStatus || '').trim().toLowerCase() !== 'approved'
+      && String(report.admin_validation_status || report.AdminValidationStatus || '').trim().toLowerCase() !== 'rejected';
+  }
+
   private initializeAdminNotes(reports: WorkReport[]): void {
     reports.forEach(report => {
       const id = Number(report.ID || 0);
@@ -485,7 +506,7 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
   }
 
   managerNote(report: WorkReport): string {
-    return String(report.review_notes || report.ReviewNotes || '').trim();
+    return String(report.manager_review_notes || report.ManagerReviewNotes || report.review_notes || report.ReviewNotes || '').trim();
   }
 
   adminNote(report: WorkReport): string {
@@ -506,7 +527,7 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
 
   canEditAdminNote(report: WorkReport): boolean {
     const id = Number(report.ID || 0);
-    return !this.isDraft(report) && !this.isNoReport(report) && !this.adminNoteReadOnly.has(id);
+    return this.canValidate(report) && !this.adminNoteReadOnly.has(id);
   }
 
   adminNoteDirty(report: WorkReport): boolean {
@@ -895,11 +916,27 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
     const status = this.normalizedValidationStatus(report);
     const contract = normalizeWorkReportContract(report);
     if (contract.status === 'no_report' || contract.status === 'draft' || status === 'tidak perlu validasi') return 'Tidak perlu validasi';
+    if (contract.manager_review_status === 'pending' || contract.manager_review_status === 'rejected') return 'Belum dapat divalidasi';
+    if (contract.manager_review_status === 'not_required' && contract.admin_validation_status === 'pending') return 'Menunggu Validasi HRD/Admin';
+    if (contract.manager_review_status === 'approved' && contract.admin_validation_status === 'pending') return 'Menunggu Validasi HRD/Admin';
+    if (contract.admin_validation_status === 'approved') return 'Disetujui';
+    if (contract.admin_validation_status === 'rejected') return 'Ditolak HRD/Admin';
     if (contract.status === 'approved') return 'Validasi laporan';
     if (contract.status === 'rejected') return 'Tolak laporan';
     if (status === 'sesuai' || status === 'validasi laporan') return 'Validasi laporan';
     if (status === 'tidak sesuai' || status === 'tolak laporan') return 'Tolak laporan';
     return 'Menunggu validasi';
+  }
+
+  managerReviewLabel(report: WorkReport): string {
+    if (this.isNoReport(report) || this.isDraft(report)) return 'Tidak perlu review';
+    const explicit = String(report.manager_review_status || report.ManagerReviewStatus || '').trim().toLowerCase();
+    const legacy = String((report as any).status_logbook || (report as any).StatusLogbook || '').trim().toLowerCase();
+    const status = explicit || (legacy === 'submitted' ? 'pending' : legacy === 'approved' || legacy === 'rejected' ? legacy : 'not_required');
+    if (status === 'pending') return 'Menunggu Review Manajer';
+    if (status === 'approved') return 'Disetujui Manajer';
+    if (status === 'rejected') return 'Ditolak Manajer';
+    return 'Tidak Perlu Review Manajer';
   }
 
   private exportValidationLabel(report: WorkReport): string {
@@ -908,6 +945,8 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
 
   validationStatusClass(report: WorkReport): string {
     const status = this.normalizedValidationStatus(report);
+    const managerStatus = String(report.manager_review_status || report.ManagerReviewStatus || '').trim().toLowerCase();
+    if (managerStatus === 'rejected') return 'validation-status-rejected';
     if (this.isNoReport(report) || this.isDraft(report) || status === 'tidak perlu validasi') {
       return 'validation-status-none';
     }
@@ -917,11 +956,20 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
   }
 
   private normalizedValidationStatus(report: WorkReport): string {
+    const explicit = String(report?.admin_validation_status || report?.AdminValidationStatus || '').trim().toLowerCase();
+    if (explicit === 'approved') return 'sesuai';
+    if (explicit === 'rejected') return 'tidak sesuai';
+    if (explicit === 'not_required') return 'tidak perlu validasi';
+    if (explicit) return explicit;
+    const legacyStatus = String((report as any)?.status_logbook || (report as any)?.StatusLogbook || '').trim().toLowerCase();
+    if (legacyStatus === 'approved') return 'sesuai';
+    if (legacyStatus === 'rejected') return 'tidak sesuai';
     const raw = this.normalizedValidationStatusValue(report?.status_sesuai || '');
     if (raw) return raw;
     const contract = normalizeWorkReportContract(report);
-    if (contract.status === 'approved') return 'sesuai';
-    if (contract.status === 'rejected') return 'tidak sesuai';
+    if (contract.admin_validation_status === 'approved') return 'sesuai';
+    if (contract.admin_validation_status === 'rejected') return 'tidak sesuai';
+    if (contract.admin_validation_status === 'pending') return 'pending';
     return '';
   }
 
@@ -958,7 +1006,7 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
     if (rejectionSource === 'manager' || (legacyStatus === 'rejected' && validationStatus !== 'tidak sesuai')) {
       return `Alasan Manager: ${rejectionReason}`;
     }
-    if (rejectionSource === 'admin' || rejectionSource === 'hrd' || validationStatus === 'tidak sesuai') {
+    if (rejectionSource === 'admin' || rejectionSource === 'hrd' || validationStatus === 'tidak sesuai' || validationStatus === 'rejected') {
       return `Alasan Admin: ${rejectionReason}`;
     }
     if (legacyStatus === 'rejected') return `Alasan Manager: ${rejectionReason}`;

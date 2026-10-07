@@ -1,8 +1,7 @@
 # DOKUMEN ALUR SISTEM INFORMASI ABSENSI GOLAN
 
-> **Catatan terminologi Stage 7:** alur aktif peserta magang menggunakan **Laporan Kerja**.
-> Penyebutan `logbook` di dokumen kerangka ini dipertahankan hanya sebagai istilah historis
-> atau kompatibilitas, bukan sebagai menu, endpoint, atau workflow aktif.
+> **Catatan terminologi terbaru:** seluruh alur peserta magang menggunakan **Laporan Kerja**.
+> Tidak ada menu atau workflow aktif terpisah untuk pencatatan harian.
 
 Dokumen ini disusun sebagai acuan awal dalam pengembangan, pengujian, dan pemeliharaan Sistem Informasi Absensi Golan Digital Kreatif. Dokumen menjelaskan konsep alur sistem dan kerangka dokumen yang akan digunakan untuk mendokumentasikan aturan bisnis, proses pengguna, hak akses, status data, serta kebutuhan teknis sistem.
 
@@ -79,7 +78,7 @@ Implementasi Sistem Informasi Absensi Golan Digital Kreatif diharapkan memberika
 
 7. **Meningkatkan transparansi proses approval.** Status pending, approved, rejected, atau cancelled serta alasan penolakan dan catatan reviewer dapat terdokumentasi sehingga pengaju mengetahui tindak lanjut yang diperlukan.
 
-8. **Mendukung pengelolaan peserta magang secara terintegrasi.** Peserta Magang dapat mengelola logbook, melihat mentor, memantau progres, mengakses dokumen yang menjadi haknya, dan memperoleh informasi sertifikat sesuai ketentuan. Mentor, Manajer, dan HRD dapat melakukan review sesuai scope kewenangan.
+8. **Mendukung pengelolaan peserta magang secara terintegrasi.** Peserta Magang dapat mengelola Laporan Kerja, melihat mentor, memantau progres, mengakses dokumen yang menjadi haknya, dan memperoleh informasi sertifikat sesuai ketentuan. Mentor, Manajer, dan HRD dapat melakukan review sesuai scope kewenangan.
 
 9. **Memperkuat pengawasan dan pengambilan keputusan manajerial.** Dashboard, statistik, rekap harian/mingguan/bulanan, serta laporan keterlambatan, alpha, belum check-out, izin/cuti, dan kepatuhan laporan kerja memberikan dasar informasi untuk tindak lanjut operasional dan evaluasi kebijakan kerja.
 
@@ -91,7 +90,7 @@ Implementasi Sistem Informasi Absensi Golan Digital Kreatif diharapkan memberika
 
 13. **Meningkatkan pengalaman pengguna.** Antarmuka responsif, status proses yang jelas, notifikasi, pesan kesalahan yang mudah dipahami, dan dukungan desktop maupun perangkat mobile membantu pengguna menyelesaikan tugas dengan lebih mudah.
 
-14. **Menyediakan satu sumber data terpusat dan berkelanjutan.** Data absensi, izin/cuti, laporan kerja, logbook, pengguna, jadwal, lokasi, dan konfigurasi tersimpan secara terhubung. Data historis tetap dipertahankan ketika akun, tipe kerja, atau konfigurasi dinonaktifkan.
+14. **Menyediakan satu sumber data terpusat dan berkelanjutan.** Data absensi, izin/cuti, laporan kerja, pengguna, jadwal, lokasi, dan konfigurasi tersimpan secara terhubung. Data historis tetap dipertahankan ketika akun, tipe kerja, atau konfigurasi dinonaktifkan.
 
 15. **Mendukung peningkatan proses secara berkelanjutan.** Rekap keterlambatan, pengajuan izin/cuti, kepatuhan laporan, hasil review, dan catatan audit dapat digunakan untuk menemukan kendala berulang serta menentukan perbaikan prosedur, konfigurasi, pelatihan pengguna, atau pengembangan fitur berikutnya.
 
@@ -135,7 +134,7 @@ Ruang lingkup utama yang perlu didokumentasikan meliputi:
 - dashboard statistik dan laporan;
 - manajemen karyawan, organisasi, role, dan konfigurasi;
 - laporan kerja dan alur review manajer;
-- fitur magang, yaitu logbook, mentor, statistik, dokumen, dan sertifikat;
+- fitur magang, yaitu Laporan Kerja, mentor, statistik, dokumen, dan sertifikat;
 - notifikasi, event realtime, backup, dan audit.
 
 Fitur yang belum disepakati atau tidak dibangun pada fase ini harus dicatat secara eksplisit sebagai di luar ruang lingkup atau **PENDING**.
@@ -147,8 +146,8 @@ Berisi role, fokus penggunaan, cakupan data, kewenangan, dan batasan masing-masi
 | Jenis Pengguna | Fokus Penggunaan | Cakupan Data |
 |---|---|---|
 | Karyawan | Absensi, riwayat, izin/cuti, laporan kerja, profil, dan notifikasi | Data pribadi serta proses yang diajukan sendiri |
-| Magang | Absensi, izin yang tersedia, laporan kerja, logbook, mentor, statistik, dokumen, dan sertifikat | Data pribadi, logbook, dan dokumen magang sendiri |
-| Manajer | Dashboard, pemantauan absensi tim, laporan tim, approval izin, serta review logbook | Data anggota tim yang menjadi tanggung jawabnya |
+| Magang | Absensi, izin yang tersedia, laporan kerja, mentor, statistik, dokumen, dan sertifikat | Data pribadi, laporan kerja, dan dokumen magang sendiri |
+| Manajer | Dashboard, pemantauan absensi tim, laporan tim, approval izin, serta review Laporan Kerja | Data anggota tim yang menjadi tanggung jawabnya |
 | HRD/Admin | Master data, konfigurasi, approval, rekap, audit, backup, dan operasional sistem | Seluruh data organisasi sesuai kewenangan administratif |
 
 Detail permission per menu dan pembatasan endpoint backend akan dijabarkan dalam dokumen bagian 3.
@@ -168,7 +167,7 @@ Topik aturan bisnis yang perlu dirinci:
 - pembatasan pengajuan berdasarkan status atau masa kerja;
 - pembagian approval antara Manajer dan HRD/Admin;
 - kewajiban laporan kerja serta batas waktu pengumpulan;
-- status dan review logbook peserta magang;
+- status dan review Laporan Kerja peserta magang;
 - pengiriman notifikasi dan pencatatan aktivitas.
 
 ### 2.6 Sitemap dan Struktur Navigasi — Kategori Produk
@@ -197,7 +196,7 @@ Area Manajer
 ├── Absensi tim
 ├── Laporan tim
 ├── Approval izin
-└── Review logbook
+└── Review Laporan Kerja
 
 Area HRD/Admin
 ├── Dashboard administrasi
@@ -212,7 +211,7 @@ Area HRD/Admin
 
 Area Magang
 ├── Dashboard magang
-├── Logbook
+├── Laporan Kerja
 ├── Mentor
 ├── Statistik magang
 ├── Dokumen magang
@@ -307,7 +306,7 @@ Proses yang perlu ditentukan SLA-nya:
 
 - review dan approval izin/cuti;
 - review laporan kerja;
-- review logbook peserta magang;
+- review Laporan Kerja peserta magang;
 - pemutakhiran master data karyawan;
 - penanganan koreksi absensi;
 - pemantauan notifikasi dan event gagal;
@@ -333,8 +332,8 @@ Dokumen ini menjadi acuan untuk:
 | Aktor | Peran Utama |
 |---|---|
 | Karyawan | Melakukan check-in/check-out, melihat riwayat dan statistik pribadi, mengajukan izin/cuti, mengisi laporan kerja, melihat notifikasi, dan mengelola profil. |
-| Magang | Melakukan absensi, melihat riwayat dan statistik pribadi, mengajukan proses yang tersedia, mengisi logbook, melihat mentor, mengelola dokumen, dan mengakses sertifikat magang. |
-| Manajer | Memantau kehadiran tim, melihat statistik dan laporan tim, memproses approval izin/cuti sesuai kewenangan, serta melakukan review logbook atau laporan anggota tim. |
+| Magang | Melakukan absensi, melihat riwayat dan statistik pribadi, mengajukan proses yang tersedia, mengisi Laporan Kerja, melihat mentor, mengelola dokumen, dan mengakses sertifikat magang. |
+| Manajer | Memantau kehadiran tim, melihat statistik dan laporan tim, memproses approval izin/cuti sesuai kewenangan, serta melakukan review Laporan Kerja atau laporan anggota tim. |
 | HRD/Admin | Mengelola data karyawan, organisasi, role, tipe kerja, jadwal, shift, hari libur, lokasi, kuota, approval, rekap, laporan, audit, notifikasi, backup, dan konfigurasi sistem. |
 | Sistem | Memvalidasi autentikasi, role, GPS, geofence, selfie, jadwal, status, kuota, scope data, mengubah status, mengirim notifikasi, dan mencatat aktivitas penting. |
 
@@ -348,7 +347,7 @@ Semua endpoint yang memuat atau mengubah data wajib memvalidasi JWT dan role/sco
 4. Jika autentikasi berhasil, sistem menerbitkan token JWT dan memuat role, identitas, organisasi, serta permission pengguna.
 5. Sistem mengarahkan pengguna ke dashboard sesuai role.
 6. Menu yang ditampilkan disesuaikan dengan role dan scope data pengguna.
-7. Pengguna menjalankan proses yang tersedia, seperti absensi, pengajuan izin, laporan kerja, logbook, approval, atau administrasi.
+7. Pengguna menjalankan proses yang tersedia, seperti absensi, pengajuan izin, laporan kerja, approval, atau administrasi.
 8. Backend memvalidasi permission, data wajib, tanggal, status proses, scope pengguna, dan aturan bisnis terkait.
 9. Jika proses valid, data disimpan dan status proses diperbarui.
 10. Sistem memperbarui dashboard, riwayat, rekap, atau laporan yang terkait.
@@ -478,27 +477,25 @@ flowchart LR
 
 ### 3.7 Alur Laporan Kerja dan Review Manajer
 
-1. Karyawan atau pengguna yang diwajibkan membuka modul laporan kerja.
-2. Pengguna memilih tanggal/periode dan mengisi isi laporan, proyek, kegiatan, atau informasi yang diwajibkan.
-3. Sistem memvalidasi batas waktu, duplikasi laporan, kelengkapan isi, dan status hari kerja.
-4. Laporan disimpan sebagai draft atau langsung dikirim sesuai alur fitur.
-5. Setelah dikirim, laporan berstatus menunggu review.
-6. Manajer melihat laporan anggota tim yang berada dalam scope-nya.
-7. Manajer menyetujui atau mengembalikan laporan dengan catatan perbaikan.
-8. Laporan yang disetujui tersedia bagi pengguna dan HRD pada rekap yang berwenang.
-9. Laporan yang terlambat atau tidak dibuat dapat ditandai sebagai perlu ditindaklanjuti sesuai aturan sistem.
-10. Perubahan status dan catatan review dikirim melalui notifikasi serta dicatat dalam audit.
+1. Karyawan dan MAGANG mengisi modul laporan kerja dengan kontrak dan validasi yang sama.
+2. Sistem memvalidasi batas waktu, duplikasi laporan, kelengkapan isi, dan status hari kerja.
+3. Setelah dikirim, user dengan Manajer masuk ke `manager_review_status=pending`; user tanpa Manajer masuk ke `manager_review_status=not_required` dan `admin_validation_status=pending`.
+4. Manajer hanya melihat serta memproses laporan anggota dalam scope `ManagerID` atau `TeamID` yang sama.
+5. Persetujuan Manajer mengubah status Admin menjadi `pending`; penolakan menyimpan alasan Manager dan mengirim notifikasi kepada pemilik.
+6. HRD/Admin hanya dapat memvalidasi saat review Manajer sudah `approved` atau `not_required`.
+7. `admin_validation_status` dan `manager_review_status` ditampilkan terpisah, termasuk sumber alasan penolakan.
+8. Draft dan `no_report` tidak memiliki aksi review/validasi; perubahan status dikirim melalui realtime dan audit.
 
 ### 3.8 Alur Modul Magang
 
-#### 3.8.1 Logbook
+#### 3.8.1 Laporan Kerja
 
-1. Peserta Magang membuka modul logbook.
+1. Peserta Magang membuka modul Laporan Kerja.
 2. Peserta mengisi tanggal, kegiatan, hasil, kendala, dan lampiran bila tersedia.
 3. Sistem memvalidasi periode magang, tanggal, kelengkapan, dan duplikasi entri.
 4. Entri disimpan sebagai draft atau dikirim untuk review.
-5. Mentor/Manajer meninjau logbook sesuai scope peserta.
-6. Logbook dapat disetujui atau dikembalikan dengan catatan.
+5. Mentor/Manajer meninjau Laporan Kerja sesuai scope peserta.
+6. Laporan Kerja dapat disetujui atau dikembalikan dengan catatan.
 7. Status dan catatan review terlihat oleh peserta, mentor/manajer, dan HRD sesuai kewenangan.
 
 #### 3.8.2 Dokumen, Mentor, Statistik, dan Sertifikat
@@ -524,7 +521,7 @@ flowchart LR
 
 1. Pengguna memilih dashboard, jenis laporan, periode, dan filter yang tersedia.
 2. Backend menentukan scope berdasarkan role dan relasi tim/divisi.
-3. Sistem mengambil data absensi, izin/cuti, laporan kerja, logbook, atau statistik sesuai filter.
+3. Sistem mengambil data absensi, izin/cuti, laporan kerja, atau statistik sesuai filter.
 4. Sistem menghitung ringkasan hadir, terlambat, izin, cuti, alpha, belum check-out, dan indikator lain yang relevan.
 5. Data ditampilkan dalam kartu statistik, grafik, tabel, atau detail.
 6. Pengguna yang memiliki permission dapat mencetak atau mengekspor laporan.
@@ -558,7 +555,7 @@ Apabila validasi gagal, sistem menolak permintaan dan menampilkan alasan yang da
 - pengguna belum check-in tetapi mencoba check-out;
 - pengguna sedang memiliki izin/cuti pada tanggal absensi;
 - tanggal, kuota, kategori, lampiran, masa kerja, atau periode pengajuan tidak valid;
-- laporan kerja atau logbook melewati batas waktu atau memiliki data wajib yang belum lengkap;
+- laporan kerja atau Laporan Kerja melewati batas waktu atau memiliki data wajib yang belum lengkap;
 - status data tidak memungkinkan operasi yang diminta;
 - relasi karyawan, manajer, divisi, lokasi rumah, jadwal, atau tipe kerja tidak tersedia;
 - file terlalu besar, format/MIME type tidak diizinkan, atau file tidak dapat diproses;

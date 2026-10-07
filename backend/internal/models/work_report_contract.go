@@ -69,6 +69,18 @@ const (
 	WorkReportReviewNoReport WorkReportReviewStatus = "no_report"
 )
 
+// WorkReportReviewDecision is persisted independently for the Manager and
+// HRD/Admin stages. The old reviewed_by/status_sesuai fields remain available
+// as compatibility data for older clients and historical rows.
+type WorkReportReviewDecision string
+
+const (
+	WorkReportDecisionPending     WorkReportReviewDecision = "pending"
+	WorkReportDecisionApproved    WorkReportReviewDecision = "approved"
+	WorkReportDecisionRejected    WorkReportReviewDecision = "rejected"
+	WorkReportDecisionNotRequired WorkReportReviewDecision = "not_required"
+)
+
 type WorkReportSubmissionTiming string
 
 const (
@@ -283,5 +295,48 @@ func (w *WorkReport) NormalizeContract() {
 		w.SubmissionTiming = WorkReportSubmittedLate
 	} else {
 		w.SubmissionTiming = WorkReportSubmittedOnTime
+	}
+}
+
+// NormalizeWorkflowContract fills additive workflow fields for rows created
+// before the two-stage workflow existed. It never writes to the database and
+// only uses the old columns as a read compatibility fallback.
+func (w *WorkReport) NormalizeWorkflowContract() {
+	if w.ManagerReviewStatus == "" {
+		w.ManagerReviewStatus = WorkReportDecisionNotRequired
+		if w.Employee.User != nil && w.Employee.User.ManagerID != nil {
+			w.ManagerReviewStatus = WorkReportDecisionPending
+		}
+		if w.ReportKind == WorkReportKindLegacyLogbook {
+			switch strings.ToLower(strings.TrimSpace(w.StatusLogbook)) {
+			case "approved":
+				w.ManagerReviewStatus = WorkReportDecisionApproved
+			case "rejected":
+				w.ManagerReviewStatus = WorkReportDecisionRejected
+			case "submitted":
+				w.ManagerReviewStatus = WorkReportDecisionPending
+			}
+		}
+	}
+	if w.AdminValidationStatus == "" {
+		w.AdminValidationStatus = WorkReportDecisionNotRequired
+		switch strings.ToLower(strings.TrimSpace(w.StatusSesuai)) {
+		case "sesuai":
+			w.AdminValidationStatus = WorkReportDecisionApproved
+		case "tidak sesuai", "ditolak", "minta perbaikan", "minta_perbaikan":
+			w.AdminValidationStatus = WorkReportDecisionRejected
+		case "":
+			if w.ManagerReviewStatus == WorkReportDecisionApproved || w.ManagerReviewStatus == WorkReportDecisionNotRequired {
+				if !IsWorkReportNoReport(*w) && !strings.EqualFold(strings.TrimSpace(w.StatusLaporan), string(WorkReportStatusDraft)) {
+					w.AdminValidationStatus = WorkReportDecisionPending
+				}
+			}
+		}
+	}
+	if w.ManagerReviewNotes == "" && w.RejectionSource == "manager" {
+		w.ManagerReviewNotes = w.ReviewNotes
+	}
+	if w.ManagerRejectionReason == "" && w.RejectionSource == "manager" {
+		w.ManagerRejectionReason = w.RejectionReason
 	}
 }

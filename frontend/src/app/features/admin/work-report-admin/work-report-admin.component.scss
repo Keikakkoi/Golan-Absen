@@ -659,6 +659,8 @@
       color: #486a91 !important;
       border-top: 1px solid #cfe0f4 !important;
       border-bottom: 2px solid #cfe0f4 !important;
+      border-inline: 0 !important;
+      box-shadow: none !important;
       font-size: .82rem;
       font-weight: 800;
       line-height: 1.25;
@@ -667,6 +669,16 @@
       vertical-align: middle;
       white-space: normal !important;
       overflow-wrap: anywhere;
+    }
+
+    /* Keep the incoming-report header consistent with the dark palette. The
+       rule is scoped to this table so other dark-mode tables are unchanged. */
+    :host-context(body.dark-theme) .work-report-table thead th {
+      background: var(--surface-muted) !important;
+      color: var(--text-dark) !important;
+      border-top-color: var(--border-strong) !important;
+      border-bottom-color: var(--border-strong) !important;
+      border-inline-color: transparent !important;
     }
 
     .work-report-table tbody td {

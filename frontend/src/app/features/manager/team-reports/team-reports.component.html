@@ -153,6 +153,9 @@
               <td *ngFor="let column of columns">{{ customFieldValue(row, column.nama_kolom) }}</td>
               <td>
                 <div class="report-action-buttons">
+                  <button type="button" class="icon-button view" (click)="viewReportDetail(row)" aria-label="Lihat detail laporan kerja" title="Lihat detail laporan kerja">
+                    <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+                  </button>
                   <button *ngIf="canReview(row)" type="button" class="icon-button approve" (click)="reviewReport(row.id || row.ID, 'approved')" aria-label="Setujui laporan kerja" title="Setujui laporan kerja">
                     <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
                   </button>
@@ -170,5 +173,50 @@
       </div>
       <app-pagination [totalItems]="totalItems" [currentPage]="page" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions" [loading]="isLoading || isRefreshing" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
     </section>
+
+    <ng-container *ngIf="selectedReportDetail as detail">
+      <div class="team-report-detail-backdrop" (click)="closeReportDetail()" role="presentation">
+        <section class="team-report-detail-modal golan-card" role="dialog" aria-modal="true" aria-labelledby="team-report-detail-title" (click)="$event.stopPropagation()">
+          <div class="team-report-detail-header">
+            <div>
+              <span class="eyebrow">Detail Laporan Kerja</span>
+              <h3 id="team-report-detail-title">{{ employeeName(detail) }} · {{ (detail.tanggal || detail.Tanggal) | date:'EEEE, dd MMM yyyy' }}</h3>
+            </div>
+            <button type="button" class="icon-button" (click)="closeReportDetail()" title="Tutup detail laporan kerja" aria-label="Tutup detail laporan kerja">
+              <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#x"></use></svg>
+            </button>
+          </div>
+
+          <div class="team-report-detail-meta">
+            <span>Role: {{ employeeRole(detail) }}</span>
+            <span>Divisi: {{ detail.Employee?.Division?.NamaDivisi || '-' }}</span>
+            <span class="status-pill" [ngClass]="fillingStatusClass(detail)">{{ fillingStatus(detail) }}</span>
+            <span class="status-pill" [ngClass]="reportStatusClass(detail)">{{ statusLabel(detail) }}</span>
+            <span class="status-pill" [ngClass]="statusTimeLabel(detail) === 'Terlambat' ? 'status-warning' : 'status-success'">{{ statusTimeLabel(detail) }}</span>
+          </div>
+
+          <dl class="team-report-detail-grid">
+            <div><dt>Judul Tugas</dt><dd>{{ canonicalWorkReportTitle(detail) || '-' }}</dd></div>
+            <div><dt>Realisasi Kegiatan</dt><dd>{{ detail.realisasi_kegiatan || detail.RealisasiKegiatan || '-' }}</dd></div>
+            <div class="wide"><dt>Deskripsi Kegiatan</dt><dd>{{ detail.deskripsi_kegiatan || detail.DeskripsiKegiatan || '-' }}</dd></div>
+            <div><dt>Kendala</dt><dd>{{ detail.kendala || detail.Kendala || '-' }}</dd></div>
+            <div><dt>Rencana Minggu Depan</dt><dd>{{ detail.rencana_minggu_depan || detail.RencanaMingguDepan || '-' }}</dd></div>
+            <div><dt>Link Artikel</dt><dd><a *ngIf="detail.link_artikel || detail.LinkArtikel" [href]="detail.link_artikel || detail.LinkArtikel" target="_blank" rel="noopener">Buka tautan</a><span *ngIf="!(detail.link_artikel || detail.LinkArtikel)">-</span></dd></div>
+            <div><dt>Catatan Tambahan</dt><dd>{{ detail.catatan_tambahan || detail.CatatanTambahan || '-' }}</dd></div>
+            <div class="wide"><dt>Catatan Review</dt><dd>{{ reviewNote(detail) || '-' }}</dd></div>
+            <div class="wide"><dt>Alasan Penolakan</dt><dd>{{ rejectionReason(detail) }}</dd></div>
+          </dl>
+
+          <div class="team-report-detail-attachments" *ngIf="(detail.attachments || detail.Attachments)?.length">
+            <h4>Lampiran</h4>
+            <div class="report-thumb-grid">
+              <a *ngFor="let attachment of (detail.attachments || detail.Attachments)" [href]="attachment.file_url || attachment.FileURL" target="_blank" rel="noopener">
+                <img [src]="attachment.file_url || attachment.FileURL" [alt]="attachment.file_name || attachment.FileName || 'Lampiran laporan kerja'">
+              </a>
+            </div>
+          </div>
+        </section>
+      </div>
+    </ng-container>
   </main>
 </div>

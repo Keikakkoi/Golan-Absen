@@ -38,6 +38,7 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
   totalItems = 0;
   pageSizeOptions = [10, 25, 50, 100];
   isExportOpen = false;
+  selectedReportDetail: any | null = null;
   notes: { [id: number]: string } = {};
   private reviewingIds = new Set<number>();
   private confirmingIds = new Set<number>();
@@ -55,7 +56,7 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
     this.loadColumns();
     this.load();
     this.disconnectRealtime = this.notificationService?.connectRealtime(eventName => {
-      if (eventName === 'work_report_status_updated' || eventName === 'logbook_status_updated') {
+      if (eventName === 'work_report_status_updated') {
         this.load(true);
       }
     });
@@ -237,6 +238,12 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
           found.RejectionReason = res?.rejection_reason ?? rejectionReason;
           found.reviewed_by = res?.reviewed_by ?? found.reviewed_by;
           found.reviewed_at = res?.reviewed_at ?? found.reviewed_at;
+          found.manager_review_status = res?.manager_review_status ?? (status === 'approved' ? 'approved' : 'rejected');
+          found.admin_validation_status = res?.admin_validation_status ?? (status === 'approved' ? 'pending' : 'not_required');
+          found.manager_reviewed_by = res?.manager_reviewed_by ?? found.manager_reviewed_by;
+          found.manager_reviewed_at = res?.manager_reviewed_at ?? found.manager_reviewed_at;
+          found.manager_review_notes = res?.review_notes ?? noteText;
+          if (status === 'rejected') found.manager_rejection_reason = res?.manager_rejection_reason ?? rejectionReason;
         }
         delete this.notes[id];
         this.success = latestStatus === 'approved' ? 'Laporan kerja berhasil disetujui (Approved)' : 'Laporan kerja berhasil ditolak (Rejected)';
@@ -275,15 +282,37 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
   canReview(row: any): boolean {
     const id = row?.id || row?.ID;
     const contract = normalizeWorkReportContract(row);
-    return contract.report_kind === 'work_report'
-      && this.isInternshipReport(row)
+    const role = String(row?.Employee?.User?.Role || row?.Employee?.User?.role || '').toUpperCase();
+    const managerStatus = this.managerReviewStatus(row);
+    const adminStatus = this.adminValidationStatus(row);
+    return (role === 'KARYAWAN' || role === 'MAGANG')
       && contract.filling_status === 'submitted'
-      && contract.review_status === 'pending'
+      && managerStatus === 'pending'
+      && adminStatus !== 'approved'
+      && adminStatus !== 'rejected'
+      && contract.status !== 'no_report'
       && !this.reviewingIds.has(id);
   }
 
   isProcessing(id: number): boolean {
     return this.reviewingIds.has(id) || this.confirmingIds.has(id);
+  }
+
+  viewReportDetail(row: any): void {
+    this.selectedReportDetail = row;
+  }
+
+  closeReportDetail(): void {
+    this.selectedReportDetail = null;
+  }
+
+  employeeName(row: any): string {
+    return row?.Employee?.User?.Nama || row?.Employee?.User?.name || '-';
+  }
+
+  employeeRole(row: any): string {
+    const role = String(row?.Employee?.User?.Role || row?.Employee?.User?.role || '').toUpperCase();
+    return role === 'MAGANG' ? 'Magang' : role === 'KARYAWAN' ? 'Karyawan' : role || '-';
   }
 
   isReviewed(row: any): boolean {
@@ -294,7 +323,7 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
   reviewNote(row: any): string {
     const id = row?.id || row?.ID;
     const draftNote = id ? this.notes[id] : undefined;
-    return String(draftNote !== undefined ? draftNote : (row?.review_notes || row?.ReviewNotes || '')).trim();
+    return String(draftNote !== undefined ? draftNote : (row?.manager_review_notes || row?.ManagerReviewNotes || row?.review_notes || row?.ReviewNotes || '')).trim();
   }
 
   isInternshipReport(row: any): boolean {
@@ -303,13 +332,52 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
     return false;
   }
 
+  private managerReviewStatus(row: any): string {
+    const explicit = String(row?.manager_review_status || row?.ManagerReviewStatus || '').trim().toLowerCase();
+    if (explicit) return explicit;
+    const legacy = String(row?.status_logbook || row?.StatusLogbook || '').trim().toLowerCase();
+    if (legacy === 'submitted') return 'pending';
+    if (legacy === 'approved' || legacy === 'rejected') return legacy;
+    const role = String(row?.Employee?.User?.Role || row?.Employee?.User?.role || '').toUpperCase();
+    return role === 'KARYAWAN' || role === 'MAGANG' ? 'pending' : 'not_required';
+  }
+
+  private adminValidationStatus(row: any): string {
+    const explicit = String(row?.admin_validation_status || row?.AdminValidationStatus || '').trim().toLowerCase();
+    if (explicit) return explicit;
+    const validation = String(row?.status_sesuai || row?.StatusSesuai || '').trim().toLowerCase();
+    if (validation === 'sesuai') return 'approved';
+    if (['tidak sesuai', 'ditolak', 'minta perbaikan', 'minta_perbaikan'].includes(validation)) return 'rejected';
+    const managerStatus = this.managerReviewStatus(row);
+    return managerStatus === 'approved' || managerStatus === 'not_required' ? 'pending' : 'not_required';
+  }
+
   statusLabel(row: any): string {
+    const contract = normalizeWorkReportContract(row);
+    const managerStatus = this.managerReviewStatus(row);
+    const adminStatus = this.adminValidationStatus(row);
+    if (contract.status === 'no_report') return WORK_REPORT_NO_REPORT_LABEL;
+    if (contract.filling_status === 'draft') return 'Draft';
+    if (managerStatus === 'pending') return 'Menunggu Review Manajer';
+    if (managerStatus === 'rejected') return 'Ditolak Manajer';
+    if (managerStatus === 'not_required' && adminStatus === 'pending') return 'Tidak Perlu Review Manajer · Menunggu Validasi HRD';
+    if (managerStatus === 'approved' && adminStatus === 'pending') return 'Disetujui Manajer · Menunggu Validasi HRD';
+    if (adminStatus === 'approved') return 'Disetujui';
+    if (adminStatus === 'rejected') return 'Ditolak HRD/Admin';
     const status = this.reportStatus(row);
     return status === 'approved' ? 'Disetujui' : status === 'rejected' ? 'Ditolak' : status === 'draft' ? 'Draft' : status === 'no_report' ? WORK_REPORT_NO_REPORT_LABEL : 'Menunggu';
   }
 
   rejectionReason(row: any): string {
-    return row?.rejection_reason || row?.RejectionReason || '-';
+    return String(
+      row?.manager_rejection_reason
+      || row?.ManagerRejectionReason
+      || row?.admin_rejection_reason
+      || row?.AdminRejectionReason
+      || row?.rejection_reason
+      || row?.RejectionReason
+      || ''
+    ).trim() || '-';
   }
 
   fillingStatus(row: any): string {
