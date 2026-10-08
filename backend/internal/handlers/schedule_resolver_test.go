@@ -39,6 +39,15 @@ func TestCustomScheduleSelectionBeatsGlobalSchedule(t *testing.T) {
 	}
 }
 
+func TestLegacyShiftPagiRegulerIsTreatedAsRegular(t *testing.T) {
+	if !isRegularShiftName(" Shift Pagi Reguler ") {
+		t.Fatal("legacy Shift Pagi Reguler must be treated as the regular schedule")
+	}
+	if isRegularShiftName("Shift Pagi") || isRegularShiftName("Shift Siang") || isRegularShiftName("Shift Malam") {
+		t.Fatal("custom shifts must remain distinct from the regular schedule")
+	}
+}
+
 func TestExpandProfileSchedulesCreatesOneRowPerWorkday(t *testing.T) {
 	schedules := expandProfileSchedules([]models.WorkSchedule{{NamaShift: "Shift Malam", HariKerja: "[1,2,3,4,5,6]", JamMulai: "18:23", JamSelesai: "23:00"}})
 	if len(schedules) != 6 {

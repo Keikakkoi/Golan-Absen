@@ -128,5 +128,10 @@ func selectEffectiveCustomSchedule(schedules []models.WorkSchedule, employeeID u
 }
 
 func isRegularShiftName(name string) bool {
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(name)), "reguler")
+	normalized := strings.ToLower(strings.TrimSpace(name))
+	// "Shift Pagi Reguler" was created by an older seeder. Treat only that
+	// exact legacy label as regular so it cannot reappear in the shift list or
+	// override the weekly regular schedule. Other custom shift names remain
+	// unaffected.
+	return strings.HasPrefix(normalized, "reguler") || normalized == "shift pagi reguler"
 }

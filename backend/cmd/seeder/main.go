@@ -31,20 +31,6 @@ func main() {
 		log.Println("Seeded office location")
 	}
 
-	// Seed Work Schedule
-	var scheduleCount int64
-	db.Model(&models.WorkSchedule{}).Count(&scheduleCount)
-	if scheduleCount == 0 {
-		db.Create(&models.WorkSchedule{
-			NamaShift:               "Shift Pagi Reguler",
-			JamMulai:                "09:00:00",
-			JamSelesai:              "17:00:00",
-			ToleransiTerlambatMenit: 10,
-			HariKerja:               "[1,2,3,4,5,6]",
-		})
-		log.Println("Seeded work schedule")
-	}
-
 	// Seed the administrator independently of the total user count. This keeps
 	// the bootstrap idempotent when the database already contains employees.
 	var userCount int64
