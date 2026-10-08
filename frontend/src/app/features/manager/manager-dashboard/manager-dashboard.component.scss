@@ -1,7 +1,8 @@
 :host {
   display: block;
   width: 100%;
-  min-height: 100%;
+  min-height: 0;
+  height: auto;
 }
 
 .dashboard-container.manager-dashboard-shell {
@@ -22,18 +23,40 @@
 
 .main-content {
   height: auto;
-  overflow-x: hidden;
+  // `hidden` on one axis makes a `visible` overflow on the other axis compute
+  // to `auto`, which creates a second vertical scrollbar. `clip` prevents
+  // horizontal bleed without turning this content wrapper into a scroller.
+  overflow-x: clip;
   overflow-y: visible;
   box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
-  .dashboard-container {
-    min-height: 100dvh;
+  :host {
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
-  .main-content {
-    min-height: 0;
+  .dashboard-container.manager-dashboard-shell {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-container.manager-dashboard-shell > .main-content.manager-dashboard-page {
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    overflow: visible !important;
+  }
+}
+
+// Preserve the existing desktop viewport shell while making mobile height
+// follow the actual dashboard content.
+@media (min-width: 901px) {
+  :host {
+    min-height: 100%;
   }
 }
 

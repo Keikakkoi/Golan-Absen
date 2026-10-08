@@ -1259,6 +1259,44 @@ body.dark-theme .btn-view-detail:hover { background: var(--mint-1); border-color
     padding-bottom: env(safe-area-inset-bottom) !important;
   }
 
+  app-intern-dashboard {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  html:has(app-intern-dashboard),
+  body:has(app-intern-dashboard),
+  app-root:has(app-intern-dashboard) {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  app-intern-dashboard .dashboard-container.intern-dashboard-shell > .main-content.intern-dashboard-page {
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    overflow: visible !important;
+  }
+
+  app-manager-dashboard {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  html:has(app-manager-dashboard),
+  body:has(app-manager-dashboard),
+  app-root:has(app-manager-dashboard) {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  app-manager-dashboard .dashboard-container.manager-dashboard-shell > .main-content.manager-dashboard-page {
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    overflow: visible !important;
+  }
+
   .dashboard-container.employee-dashboard,
   .dashboard-container.employee-dashboard > .main-content {
     height: auto !important;
@@ -5304,5 +5342,25 @@ app-admin-sidebar .sidebar {
     height: 100dvh !important;
     min-height: 100dvh !important;
     max-height: 100dvh !important;
+  }
+}
+
+/* Keep one vertical scroll owner on the manager desktop dashboard. The outer
+   document scrollbar is hidden, while the dashboard shell remains scrollable;
+   this removes the duplicate scrollbar at the far right without hiding page
+   content below the viewport. */
+@media (min-width: 901px) {
+  html:has(app-manager-dashboard),
+  body:has(app-manager-dashboard) {
+    overflow-y: hidden !important;
+  }
+
+  body.role-manajer app-manager-dashboard .dashboard-container.manager-dashboard-shell {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100dvh !important;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
   }
 }

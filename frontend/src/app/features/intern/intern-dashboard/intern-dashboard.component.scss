@@ -43,6 +43,27 @@
   box-sizing: border-box;
 }
 
+@media (max-width: 900px) {
+  :host {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-container.intern-dashboard-shell {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-container.intern-dashboard-shell > .main-content.intern-dashboard-page {
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    overflow: visible !important;
+  }
+}
+
 .main-content > .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .dashboard-feedback { grid-column: 1 / -1; padding: 10px 14px; border-radius: 8px; font-size: .85rem; }
 .dashboard-feedback.loading { color: var(--text-dark-lo); background: var(--mint-1); }
