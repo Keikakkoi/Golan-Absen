@@ -27,6 +27,9 @@ export class OrganizationComponent implements OnInit {
   showDeptModal = false;
   showPosModal = false;
   showProjectModal = false;
+  selectedDivision: any = null;
+  selectedPosition: any = null;
+  selectedProject: any = null;
   errorMessage = '';
 
   constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
@@ -60,6 +63,27 @@ export class OrganizationComponent implements OnInit {
 
   closeDeptModal() {
     this.showDeptModal = false;
+  }
+
+  openDivisionDetail(division: any): void {
+    this.closeDetails();
+    this.selectedDivision = division;
+  }
+
+  openPositionDetail(position: any): void {
+    this.closeDetails();
+    this.selectedPosition = position;
+  }
+
+  openProjectDetail(project: any): void {
+    this.closeDetails();
+    this.selectedProject = project;
+  }
+
+  closeDetails(): void {
+    this.selectedDivision = null;
+    this.selectedPosition = null;
+    this.selectedProject = null;
   }
 
   async saveDivision(): Promise<void> {

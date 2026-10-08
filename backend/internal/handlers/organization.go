@@ -51,7 +51,7 @@ func GetAvailableManagers(c *fiber.Ctx) error {
 
 func GetAllProjects(c *fiber.Ctx) error {
 	var projects []models.Project
-	if err := config.DB.Where("status_aktif = ?", true).Order("nama_project asc").Find(&projects).Error; err != nil {
+	if err := config.DB.Where("status_aktif = ?", true).Order("id asc").Find(&projects).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch projects"})
 	}
 	return c.JSON(projects)
@@ -59,7 +59,7 @@ func GetAllProjects(c *fiber.Ctx) error {
 
 func GetAllProjectsForAdmin(c *fiber.Ctx) error {
 	var projects []models.Project
-	if err := config.DB.Order("nama_project asc").Find(&projects).Error; err != nil {
+	if err := config.DB.Order("id asc").Find(&projects).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch projects"})
 	}
 	return c.JSON(projects)
@@ -129,7 +129,7 @@ func GetAllDivisions(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate organization codes"})
 	}
 	var depts []models.Division
-	if err := config.DB.Find(&depts).Error; err != nil {
+	if err := config.DB.Order("id asc").Find(&depts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch divisions"})
 	}
 	return c.JSON(depts)
@@ -214,7 +214,7 @@ func GetAllPositions(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate organization codes"})
 	}
 	var pos []models.Position
-	if err := config.DB.Find(&pos).Error; err != nil {
+	if err := config.DB.Order("id asc").Find(&pos).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch positions"})
 	}
 	return c.JSON(pos)

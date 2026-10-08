@@ -29,18 +29,21 @@
         </colgroup>
         <thead>
           <tr>
-            <th>Kode</th>
+            <th>No.</th>
             <th>Nama Divisi</th>
             <th class="w-100">Deskripsi</th>
             <th>Aksi</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let d of divisions">
-            <td>{{ d.division_code || '-' }}</td>
+          <tr *ngFor="let d of divisions; let i = index">
+            <td>{{ i + 1 }}</td>
             <td>{{ d.NamaDivisi }}</td>
-            <td>{{ d.Deskripsi }}</td>
+            <td>{{ d.Deskripsi || '-' }}</td>
             <td class="actions">
+              <button type="button" class="icon-button view" (click)="openDivisionDetail(d)" aria-label="Lihat detail divisi" title="Lihat detail divisi">
+                <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+              </button>
               <button type="button" class="icon-button edit" (click)="openDeptModal(d)" aria-label="Edit divisi" title="Edit divisi">
                 <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
               </button>
@@ -70,18 +73,21 @@
         </colgroup>
         <thead>
           <tr>
-            <th>Kode</th>
+            <th>No.</th>
             <th>Nama Jabatan</th>
             <th class="w-100">Deskripsi</th>
             <th>Aksi</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let p of positions">
-            <td>{{ p.position_code || '-' }}</td>
+          <tr *ngFor="let p of positions; let i = index">
+            <td>{{ i + 1 }}</td>
             <td>{{ p.NamaJabatan }}</td>
-            <td>{{ p.Deskripsi }}</td>
+            <td>{{ p.Deskripsi || '-' }}</td>
             <td class="actions">
+              <button type="button" class="icon-button view" (click)="openPositionDetail(p)" aria-label="Lihat detail jabatan" title="Lihat detail jabatan">
+                <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+              </button>
               <button type="button" class="icon-button edit" (click)="openPosModal(p)" aria-label="Edit jabatan" title="Edit jabatan">
                 <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
               </button>
@@ -113,12 +119,15 @@
             <col class="org-col-status">
             <col class="org-col-actions">
           </colgroup>
-          <thead><tr><th>ID</th><th>Nama Project</th><th class="w-100">Deskripsi</th><th>Status</th><th>Aksi</th></tr></thead>
+          <thead><tr><th>No.</th><th>Nama Project</th><th class="w-100">Deskripsi</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody>
-            <tr *ngFor="let p of projects">
-              <td>{{ p.ID }}</td><td>{{ p.NamaProject }}</td><td>{{ p.Deskripsi || '-' }}</td>
+            <tr *ngFor="let p of projects; let i = index">
+              <td>{{ i + 1 }}</td><td>{{ p.NamaProject }}</td><td>{{ p.Deskripsi || '-' }}</td>
               <td><span class="status-badge" [class.status-hadir]="p.StatusAktif" [class.status-alpha]="!p.StatusAktif">{{ p.StatusAktif ? 'Aktif' : 'Nonaktif' }}</span></td>
               <td class="actions">
+                <button type="button" class="icon-button view" (click)="openProjectDetail(p)" aria-label="Lihat detail project" title="Lihat detail project">
+                  <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+                </button>
                 <button type="button" class="icon-button edit" (click)="openProjectModal(p)" aria-label="Edit project" title="Edit project">
                   <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
                 </button>
@@ -132,6 +141,41 @@
         </table>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Organization detail modal -->
+<div class="modal-overlay detail-overlay" *ngIf="selectedDivision || selectedPosition || selectedProject" (click)="closeDetails()">
+  <div class="modal-content golan-card organization-modal detail-modal" (click)="$event.stopPropagation()">
+    <div class="detail-modal-header">
+      <h3 *ngIf="selectedDivision">Detail Divisi</h3>
+      <h3 *ngIf="selectedPosition">Detail Jabatan</h3>
+      <h3 *ngIf="selectedProject">Detail Project</h3>
+      <button type="button" class="btn-close" (click)="closeDetails()" aria-label="Tutup detail">&times;</button>
+    </div>
+
+    <div class="detail-list" *ngIf="selectedDivision">
+      <div><span>Kode Divisi</span><strong>{{ selectedDivision.division_code || '-' }}</strong></div>
+      <div><span>Nama Divisi</span><strong>{{ selectedDivision.NamaDivisi || '-' }}</strong></div>
+      <div><span>Deskripsi</span><p>{{ selectedDivision.Deskripsi || '-' }}</p></div>
+    </div>
+
+    <div class="detail-list" *ngIf="selectedPosition">
+      <div><span>Kode Jabatan</span><strong>{{ selectedPosition.position_code || '-' }}</strong></div>
+      <div><span>Nama Jabatan</span><strong>{{ selectedPosition.NamaJabatan || '-' }}</strong></div>
+      <div><span>Deskripsi</span><p>{{ selectedPosition.Deskripsi || '-' }}</p></div>
+    </div>
+
+    <div class="detail-list" *ngIf="selectedProject">
+      <div><span>ID/Kode Project</span><strong>{{ selectedProject.ID || '-' }}</strong></div>
+      <div><span>Nama Project</span><strong>{{ selectedProject.NamaProject || '-' }}</strong></div>
+      <div><span>Deskripsi</span><p>{{ selectedProject.Deskripsi || '-' }}</p></div>
+      <div><span>Status</span><strong>{{ selectedProject.StatusAktif ? 'Aktif' : 'Nonaktif' }}</strong></div>
+      <div *ngIf="selectedProject.CreatedAt"><span>Dibuat</span><strong>{{ selectedProject.CreatedAt | date:'dd MMMM yyyy HH:mm' }}</strong></div>
+      <div *ngIf="selectedProject.UpdatedAt"><span>Diperbarui</span><strong>{{ selectedProject.UpdatedAt | date:'dd MMMM yyyy HH:mm' }}</strong></div>
+    </div>
+
+    <div class="modal-actions"><button type="button" class="btn-outline-primary" (click)="closeDetails()">Tutup</button></div>
   </div>
 </div>
 
