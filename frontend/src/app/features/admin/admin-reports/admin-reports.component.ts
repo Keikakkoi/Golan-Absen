@@ -157,7 +157,7 @@ export class AdminReportsComponent implements OnInit {
     
     let queryParams = `?start_date=${this.filters.start_date}&end_date=${this.filters.end_date}`;
     if (this.filters.status !== 'Semua') {
-      queryParams += `&status=${this.filters.status}`;
+      queryParams += `&status=${encodeURIComponent(this.filters.status)}`;
     }
     if (this.filters.division_id) {
       queryParams += `&division_id=${this.filters.division_id}`;
@@ -181,6 +181,10 @@ export class AdminReportsComponent implements OnInit {
 
   applyFilters(resetPage = true): void {
     let temp = [...this.allReports];
+
+    if (this.filters.status !== 'Semua') {
+      temp = temp.filter(report => this.attendanceStatus(report) === this.filters.status);
+    }
 
     if (this.filters.search) {
       const q = this.filters.search.toLowerCase();
@@ -291,6 +295,21 @@ export class AdminReportsComponent implements OnInit {
     return Boolean(report?.JamPulang && !report?.IsCheckoutMissing);
   }
 
+  /**
+   * Returns the same display status used by the admin report API and table.
+   * A missing checkout always wins over the stored attendance status.
+   */
+  attendanceStatus(report: any): string {
+    if (report?.IsCheckoutMissing === true || report?.is_checkout_missing === true) {
+      return 'Belum Check-out';
+    }
+
+    const status = report?.Status ?? report?.status ?? '';
+    if (status === 'Hadir' || status === 'Terlambat') return 'Hadir';
+    if (status === 'Alpha' || status === 'Izin' || status === 'Cuti') return status;
+    return status || '-';
+  }
+
   mapEmbedUrl(report: any): SafeResourceUrl | null {
     const latitude = this.checkInLatitude(report);
     const longitude = this.checkInLongitude(report);
@@ -363,7 +382,7 @@ export class AdminReportsComponent implements OnInit {
         r.TipeKerja || 'WFO',
         jamMasuk,
         jamPulang,
-        r.Status
+        this.attendanceStatus(r)
       ];
       csvContent += row.join(',') + '\n';
     });
@@ -427,7 +446,7 @@ export class AdminReportsComponent implements OnInit {
           <td>${r.TipeKerja || 'WFO'}</td>
           <td>${jamMasuk}</td>
           <td>${jamPulang}</td>
-          <td>${r.Status}</td>
+          <td>${this.attendanceStatus(r)}</td>
         </tr>
       `;
     });
@@ -456,7 +475,11 @@ export class AdminReportsComponent implements OnInit {
       alert('Tidak ada data untuk diekspor.');
       return;
     }
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.reports, null, 2));
+    const exportReports = this.reports.map(report => ({
+      ...report,
+      Status: this.attendanceStatus(report)
+    }));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportReports, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", `rekap_absensi_${this.filters.start_date}_to_${this.filters.end_date}.json`);
@@ -486,7 +509,7 @@ export class AdminReportsComponent implements OnInit {
     const rows = this.reports.map(r => [
       this.formatAttendanceDate(r.Tanggal), r.Employee?.NIK || '-', r.Employee?.User?.Nama || '-',
       r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', r.TipeKerja || 'WFO',
-      this.formatAttendanceTime(r.JamMasuk), this.formatAttendanceTime(r.JamPulang), r.Status || '-'
+      this.formatAttendanceTime(r.JamMasuk), this.formatAttendanceTime(r.JamPulang), this.attendanceStatus(r)
     ]);
     return { headers, rows };
   }

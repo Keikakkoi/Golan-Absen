@@ -13,6 +13,7 @@ import (
 	"absensi-golan-backend/internal/models"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 func SetupReportRoutes(router fiber.Router) {
@@ -228,6 +229,79 @@ func GetMissingWorkReports(c *fiber.Ctx) error {
 	return c.JSON(missingWorkReportRows(employeeIDs, attendanceNow()))
 }
 
+const adminReportCheckoutMissingStatus = "Belum Check-out"
+
+// adminReportDisplayStatus is the single status mapping used by the admin
+// report response and exports. Missing checkout has priority over the stored
+// attendance status, while legacy late records are displayed as Hadir.
+func adminReportDisplayStatus(record models.AttendanceRecord) string {
+	if record.IsCheckoutMissing {
+		return adminReportCheckoutMissingStatus
+	}
+
+	switch record.Status {
+	case models.StatusHadir, models.StatusTerlambat:
+		return string(models.StatusHadir)
+	case models.StatusAlpha, models.StatusIzin, models.StatusCuti:
+		return string(record.Status)
+	default:
+		return string(record.Status)
+	}
+}
+
+func adminReportStatusMatches(record models.AttendanceRecord, requestedStatus string) bool {
+	if requestedStatus == "" || requestedStatus == "Semua" {
+		return true
+	}
+	return adminReportDisplayStatus(record) == requestedStatus
+}
+
+func applyAdminReportStatusFilter(query *gorm.DB, requestedStatus string) *gorm.DB {
+	switch requestedStatus {
+	case "", "Semua":
+		return query
+	case "Hadir":
+		return query.Where("is_checkout_missing = ? AND status IN ?", false, []models.AttendanceStatus{models.StatusHadir, models.StatusTerlambat})
+	case adminReportCheckoutMissingStatus:
+		return query.Where("is_checkout_missing = ?", true)
+	case "Alpha", "Izin", "Cuti":
+		return query.Where("is_checkout_missing = ? AND status = ?", false, requestedStatus)
+	default:
+		// The admin UI exposes only the canonical display statuses. An unknown
+		// value must not accidentally become a raw database status filter.
+		return query.Where("1 = 0")
+	}
+}
+
+func adminReportsQuery(startDate, endDate, requestedStatus, deptID, projectID string) *gorm.DB {
+	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Order("tanggal desc")
+
+	if startDate != "" && endDate != "" {
+		query = query.Where("tanggal::date BETWEEN ? AND ?", startDate, endDate)
+	}
+	query = applyAdminReportStatusFilter(query, requestedStatus)
+	if deptID != "" && deptID != "Semua" {
+		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", deptID)
+	}
+	if projectID != "" && projectID != "Semua" {
+		query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON users.id = employees.user_id WHERE users.project_id = ?)", projectID)
+	}
+
+	return query
+}
+
+func normalizeAdminReportRecords(records []models.AttendanceRecord) {
+	for i := range records {
+		// Deleted employees keep immutable identity snapshots, so historical
+		// attendance remains readable even after employee_id is detached.
+		if records[i].Employee.ID == 0 {
+			records[i].Employee.NIK = records[i].EmployeeCodeSnapshot
+			records[i].Employee.User = &models.User{Nama: records[i].EmployeeNameSnapshot}
+		}
+		records[i].Status = models.AttendanceStatus(adminReportDisplayStatus(records[i]))
+	}
+}
+
 func GetAdminReports(c *fiber.Ctx) error {
 	role := c.Locals("role").(models.Role)
 	if role != models.RoleHRD {
@@ -241,43 +315,13 @@ func GetAdminReports(c *fiber.Ctx) error {
 	deptID := c.Query("division_id")
 	projectID := c.Query("project_id")
 
-	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Order("tanggal desc")
-
-	if startDate != "" && endDate != "" {
-		query = query.Where("tanggal::date BETWEEN ? AND ?", startDate, endDate)
-	}
-	if status != "" && status != "Semua" {
-		if status == "Belum Check-out" {
-			query = query.Where("is_checkout_missing = ?", true)
-		} else {
-			query = query.Where("status = ?", status)
-		}
-	}
-	if deptID != "" && deptID != "Semua" {
-		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", deptID)
-	}
-	if projectID != "" && projectID != "Semua" {
-		query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON users.id = employees.user_id WHERE users.project_id = ?)", projectID)
-	}
+	query := adminReportsQuery(startDate, endDate, status, deptID, projectID)
 
 	var records []models.AttendanceRecord
 	if err := query.Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch reports"})
 	}
-	for i := range records {
-		// Deleted employees keep immutable identity snapshots, so historical
-		// attendance remains readable even after employee_id is detached.
-		if records[i].Employee.ID == 0 {
-			records[i].Employee.NIK = records[i].EmployeeCodeSnapshot
-			records[i].Employee.User = &models.User{Nama: records[i].EmployeeNameSnapshot}
-		}
-	}
-	// Mask any legacy Terlambat records to Hadir
-	for i := range records {
-		if records[i].Status == models.StatusTerlambat {
-			records[i].Status = models.StatusHadir
-		}
-	}
+	normalizeAdminReportRecords(records)
 
 	return c.JSON(records)
 }
@@ -295,35 +339,13 @@ func ExportAdminReportsCSV(c *fiber.Ctx) error {
 	deptID := c.Query("division_id")
 	projectID := c.Query("project_id")
 
-	query := config.DB.Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Order("tanggal desc")
-
-	if startDate != "" && endDate != "" {
-		query = query.Where("tanggal::date BETWEEN ? AND ?", startDate, endDate)
-	}
-	if status != "" && status != "Semua" {
-		if status == "Belum Check-out" {
-			query = query.Where("is_checkout_missing = ?", true)
-		} else {
-			query = query.Where("status = ?", status)
-		}
-	}
-	if deptID != "" && deptID != "Semua" {
-		query = query.Where("employee_id IN (SELECT id FROM employees WHERE division_id = ?)", deptID)
-	}
-	if projectID != "" && projectID != "Semua" {
-		query = query.Where("employee_id IN (SELECT employees.id FROM employees JOIN users ON users.id = employees.user_id WHERE users.project_id = ?)", projectID)
-	}
+	query := adminReportsQuery(startDate, endDate, status, deptID, projectID)
 
 	var records []models.AttendanceRecord
 	if err := query.Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch reports"})
 	}
-	for i := range records {
-		if records[i].Employee.ID == 0 {
-			records[i].Employee.NIK = records[i].EmployeeCodeSnapshot
-			records[i].Employee.User = &models.User{Nama: records[i].EmployeeNameSnapshot}
-		}
-	}
+	normalizeAdminReportRecords(records)
 
 	c.Set("Content-Type", "text/csv")
 	c.Set("Content-Disposition", `attachment; filename="rekap_absensi.csv"`)

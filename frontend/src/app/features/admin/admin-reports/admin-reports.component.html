@@ -123,7 +123,7 @@
               <select class="filter-input" [(ngModel)]="filters.status" (change)="onFilterChange()">
                 <option value="Semua">Semua Status</option>
                 <option value="Hadir">Hadir</option>
-                <option value="Belum Check-out">⚠ Belum Check-out</option>
+                <option value="Belum Check-out">Belum Check-out</option>
                 <option value="Alpha">Alpha</option>
                 <option value="Izin">Izin</option>
                 <option value="Cuti">Cuti</option>
@@ -190,17 +190,17 @@
               <td style="padding: 0.75rem;">{{ req.JamMasuk ? (req.JamMasuk | date:'dd MMM yyyy, HH:mm:ss') : '-' }}</td>
               <td style="padding: 0.75rem;">{{ req.JamPulang ? (req.JamPulang | date:'HH:mm:ss') : '-' }}</td>
               <td style="padding: 0.75rem;">
-                <span *ngIf="!req.IsCheckoutMissing" class="status-badge" [ngClass]="{
-                  'status-hadir': req.Status === 'Hadir',
-                  'status-alpha': req.Status === 'Alpha',
-                  'status-izin': req.Status === 'Izin',
-                  'status-cuti': req.Status === 'Cuti'
+                <span *ngIf="attendanceStatus(req) !== 'Belum Check-out'" class="status-badge" [ngClass]="{
+                  'status-hadir': attendanceStatus(req) === 'Hadir',
+                  'status-alpha': attendanceStatus(req) === 'Alpha',
+                  'status-izin': attendanceStatus(req) === 'Izin',
+                  'status-cuti': attendanceStatus(req) === 'Cuti'
                 }" style="padding: 0.25rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500;"
-                [style.background-color]="req.Status === 'Hadir' ? '#dbeafe' : (req.Status === 'Izin' ? '#e0e7ff' : (req.Status === 'Cuti' ? '#fef3c7' : '#fee2e2'))"
-                [style.color]="req.Status === 'Hadir' ? '#2563eb' : (req.Status === 'Izin' ? '#4f46e5' : (req.Status === 'Cuti' ? '#d97706' : '#dc2626'))">
-                  {{ req.Status }}
+                [style.background-color]="attendanceStatus(req) === 'Hadir' ? '#dbeafe' : (attendanceStatus(req) === 'Izin' ? '#e0e7ff' : (attendanceStatus(req) === 'Cuti' ? '#fef3c7' : '#fee2e2'))"
+                [style.color]="attendanceStatus(req) === 'Hadir' ? '#2563eb' : (attendanceStatus(req) === 'Izin' ? '#4f46e5' : (attendanceStatus(req) === 'Cuti' ? '#d97706' : '#dc2626'))">
+                  {{ attendanceStatus(req) }}
                 </span>
-                <span *ngIf="req.IsCheckoutMissing" class="status-badge status-warning">⚠ Belum Check-out</span>
+                <span *ngIf="attendanceStatus(req) === 'Belum Check-out'" class="status-badge status-warning"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i> Belum Check-out</span>
               </td>
               <td style="padding: 0.75rem;"><button type="button" class="icon-button view" (click)="openReportDetail(req)" aria-label="Lihat detail absensi" title="Lihat detail absensi"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button></td>
             </tr>

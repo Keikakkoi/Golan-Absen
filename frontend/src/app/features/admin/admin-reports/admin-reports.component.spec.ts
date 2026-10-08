@@ -59,4 +59,38 @@ describe('AdminReportsComponent sorting', () => {
     expect(component.reports[0].Tanggal).toBe('2026-10-01');
     expect(component.reports[2].Tanggal).toBe('2026-10-07');
   });
+
+  it('maps late attendance to Hadir and gives missing checkout priority', () => {
+    expect(component.attendanceStatus({ Status: 'Hadir' })).toBe('Hadir');
+    expect(component.attendanceStatus({ Status: 'Terlambat' })).toBe('Hadir');
+    expect(component.attendanceStatus({ Status: 'Hadir', IsCheckoutMissing: true })).toBe('Belum Check-out');
+    expect(component.attendanceStatus({ Status: 'Alpha', IsCheckoutMissing: true })).toBe('Belum Check-out');
+  });
+
+  it('filters every report using the same status shown in the table', () => {
+    component.allReports = [
+      { Status: 'Hadir' },
+      { Status: 'Terlambat' },
+      { Status: 'Hadir', IsCheckoutMissing: true },
+      { Status: 'Alpha' },
+      { Status: 'Izin' },
+      { Status: 'Cuti' }
+    ];
+
+    const expected: Record<string, number> = {
+      Hadir: 2,
+      'Belum Check-out': 1,
+      Alpha: 1,
+      Izin: 1,
+      Cuti: 1,
+      Semua: 6
+    };
+
+    for (const [status, count] of Object.entries(expected)) {
+      component.filters.status = status;
+      component.applyFilters();
+      expect(component.reports.length).withContext(status).toBe(count);
+      expect(component.reports.every(report => status === 'Semua' || component.attendanceStatus(report) === status)).toBeTrue();
+    }
+  });
 });
