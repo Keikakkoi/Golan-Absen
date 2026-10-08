@@ -1239,6 +1239,26 @@ body.dark-theme .btn-view-detail:hover { background: var(--mint-1); border-color
   }
 
   /* Completed employee dashboards should not keep a viewport-sized empty tail. */
+  app-dashboard {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  html:has(app-dashboard),
+  body:has(app-dashboard),
+  app-root:has(app-dashboard) {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  /* Do not reserve the global 40px footer padding for the short employee
+     dashboard. Keep only the inset required by iOS Safari. */
+  app-dashboard .dashboard-container.employee-dashboard > .main-content.employee-dashboard-page {
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+
   .dashboard-container.employee-dashboard,
   .dashboard-container.employee-dashboard > .main-content {
     height: auto !important;

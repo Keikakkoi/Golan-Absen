@@ -1,7 +1,8 @@
 :host {
   display: block;
   width: 100%;
-  min-height: 100%;
+  min-height: 0;
+  height: auto;
 }
 
 .dashboard-container.employee-dashboard-shell {
@@ -22,14 +23,32 @@
 }
 
 @media (max-width: 900px) {
-  .dashboard-container {
-    min-height: 100dvh;
+  :host {
+    min-height: 0 !important;
+    height: auto !important;
   }
 
-  .dashboard-container > .main-content {
-    height: auto;
-    min-height: 0;
+  // The mobile route host must size itself from the real dashboard content.
+  // Keep the fixed sidebar/topbar viewport sizing independent from document
+  // flow so it cannot add a blank tail below the final action.
+  .dashboard-container.employee-dashboard-shell {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .dashboard-container.employee-dashboard-shell > .main-content.employee-dashboard-page {
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
     overflow: visible;
+  }
+}
+
+// Desktop keeps the existing viewport-sized shell. Mobile must be content
+// sized so a short dashboard cannot create an artificial scroll tail.
+@media (min-width: 901px) {
+  :host {
+    min-height: 100%;
   }
 }
 
