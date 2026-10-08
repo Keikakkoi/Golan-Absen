@@ -1,7 +1,11 @@
 :host {
   display: block;
   width: 100%;
-  min-height: 100%;
+  /* Let the route host follow its content. A 100% minimum height can become
+     taller than the visual viewport on mobile Safari and leave a scrollable
+     white tail below short dashboard content. */
+  min-height: 0;
+  height: auto;
 }
 
 .dashboard-container.employee-dashboard-shell {
@@ -22,13 +26,19 @@
 }
 
 @media (max-width: 900px) {
+  :host {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
   .dashboard-container {
-    min-height: 100dvh;
+    height: auto !important;
+    min-height: 0 !important;
   }
 
   .dashboard-container > .main-content {
-    height: auto;
-    min-height: 0;
+    height: auto !important;
+    min-height: 0 !important;
     overflow: visible;
   }
 }
