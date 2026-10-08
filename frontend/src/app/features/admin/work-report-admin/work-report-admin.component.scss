@@ -31,7 +31,7 @@
   .work-report-table {
     width: max-content;
     min-width: 2750px !important;
-    table-layout: fixed;
+    table-layout: auto;
     white-space: normal !important;
     font-size: 0.85rem;
 
@@ -529,7 +529,7 @@
 .work-report-admin-page .work-report-table {
   width: 2550px;
   min-width: 2550px !important;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .work-report-admin-page .work-report-table th,
@@ -628,7 +628,7 @@
   .admin-report-detail-grid .wide { grid-column: auto; }
 }
 
-/* Final screen-only table contract for the 22-column incoming-report grid.
+/* Final screen-only table contract for the 23-column incoming-report grid.
    Keep this scoped to the admin report page so other tables retain their
    existing responsive behavior. */
 @media screen {
@@ -644,10 +644,12 @@
     }
 
     .work-report-table-wrapper > .work-report-table {
-      width: 3700px !important;
-      min-width: 3700px !important;
+      width: 3920px !important;
+      min-width: 3920px !important;
       max-width: none !important;
-      table-layout: fixed !important;
+      /* Let the browser honor the explicit column minimums without assigning
+         the unconfigured remainder to the final action column. */
+      table-layout: auto !important;
       border-collapse: separate;
       border-spacing: 0;
     }
@@ -708,6 +710,14 @@
       min-width: 230px !important;
     }
 
+    /* The action column is the last of the 23 rendered columns. Keep enough
+       room for the detail button and validation select together. */
+    .work-report-table th:nth-child(23),
+    .work-report-table td:nth-child(23) {
+      width: 220px !important;
+      min-width: 220px !important;
+    }
+
     .work-report-table .rejection-reason-header,
     .work-report-table .rejection-reason-cell {
       border-left: 0 !important;
@@ -752,10 +762,14 @@
     .work-report-table .action-validation-header {
       padding-left: 16px !important;
       text-align: center;
+      white-space: nowrap !important;
+      overflow-wrap: normal !important;
+      word-break: normal !important;
     }
 
     .work-report-table .action-validation-cell {
       padding: 12px 16px !important;
+      white-space: nowrap !important;
     }
 
     .action-validation-controls {
@@ -763,7 +777,7 @@
       flex-direction: column;
       align-items: stretch;
       gap: 8px;
-      min-width: 0;
+      min-width: 188px;
     }
 
     .action-validation-controls .btn-view-detail {
@@ -774,12 +788,12 @@
     .action-validation-controls select {
       display: block;
       width: 100% !important;
-      min-width: 0 !important;
+      min-width: 188px !important;
       max-width: 100%;
       min-height: 38px;
       padding: 8px 10px !important;
       line-height: 1.2;
-      white-space: normal !important;
+      white-space: nowrap !important;
     }
 
     .work-report-table .status-pill,
@@ -820,5 +834,7 @@
     .work-report-table td:nth-child(21) { width: 220px !important; min-width: 220px !important; }
     .work-report-table th:nth-child(22),
     .work-report-table td:nth-child(22) { width: 210px !important; min-width: 210px !important; }
+    .work-report-table th:nth-child(23),
+    .work-report-table td:nth-child(23) { width: 220px !important; min-width: 220px !important; }
   }
 }
