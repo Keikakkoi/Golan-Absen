@@ -1289,15 +1289,20 @@ func GetWorkReportDeadline(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Tanggal harus berformat YYYY-MM-DD"})
 	}
-	schedule, assigned := getWorkReportSchedule(employee.ID, date)
-	if !assigned {
+	resolved := ResolveEffectiveSchedule(employee.ID, date)
+	if resolved.Source == scheduleSourceFallback {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Tidak ada shift aktif atau jadwal shift untuk tanggal laporan ini. Hubungi admin untuk penjadwalan shift."})
 	}
+	schedule := resolved.Schedule
 	setting := getGeneralSetting()
 	deadline := scheduleEndTime(schedule, date).Add(time.Duration(setting.BatasLaporanSetelahCheckoutMenit) * time.Minute)
 	now := attendanceNow()
 	return c.JSON(fiber.Map{
-		"work_date": date.Format("2006-01-02"), "shift_name": schedule.NamaShift,
+		"work_date": date.Format("2006-01-02"), "shift_name": resolved.ShiftName,
+		"employee_id": resolved.EmployeeID, "schedule_id": resolved.ScheduleID,
+		"source": resolved.Source, "effective_date": resolved.EffectiveDate,
+		"start_time": resolved.StartTime, "end_time": resolved.EndTime,
+		"is_working_day": resolved.IsWorkingDay, "is_overnight": resolved.IsOvernight,
 		"shift_end":         scheduleEndTime(schedule, date).Format("15:04"),
 		"tolerance_minutes": setting.BatasLaporanSetelahCheckoutMenit,
 		"deadline":          deadline.Format(time.RFC3339), "deadline_label": deadline.Format("02 Jan 2006 15:04 WIB"),

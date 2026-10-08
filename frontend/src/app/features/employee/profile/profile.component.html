@@ -119,6 +119,9 @@
               <p class="text-dark-lo" style="font-size: 0.9rem; margin-bottom: 12px;">
                 Jadwal di bawah ini adalah acuan jam absensi yang ditetapkan admin.
               </p>
+              <p *ngIf="profileData?.effective_schedule" class="text-dark-lo" style="font-size: 0.85rem; margin-bottom: 12px;">
+                Sumber jadwal efektif: <strong>{{ scheduleSourceLabel() }}</strong>
+              </p>
               <div *ngIf="weeklyShiftRows.length; else noWorkSchedule" class="golan-table-responsive">
                 <table class="golan-table">
                   <thead>

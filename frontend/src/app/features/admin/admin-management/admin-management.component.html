@@ -190,7 +190,7 @@
 
           <div class="table-container schedule-table-container" *ngIf="!isLoading && schedules.length > 0">
             <table class="golan-table schedule-table">
-              <thead><tr><th>Nama shift</th><th>Tanggal</th><th>Karyawan</th><th>Divisi</th><th>Jam kerja</th><th>Hari kerja</th><th>Toleransi Absen Awal</th><th>Toleransi Keterlambatan</th><th>Aksi</th></tr></thead>
+              <thead><tr><th>Nama shift</th><th>Sumber</th><th>Tanggal berlaku</th><th>Karyawan</th><th>Divisi</th><th>Jam kerja</th><th>Hari kerja</th><th>Toleransi Absen Awal</th><th>Toleransi Keterlambatan</th><th>Aksi</th></tr></thead>
               <tbody>
                 <tr *ngFor="let schedule of displayedSchedules">
                   <td>
@@ -204,7 +204,8 @@
                       <strong>{{ schedule.NamaShift }}</strong><small *ngIf="schedule.NamaShift?.toLowerCase() === 'reguler'" class="legacy-badge">Legacy — atur di Pengaturan Umum</small>
                     </div>
                   </td>
-                  <td><span class="schedule-date">{{ schedule.Tanggal ? (schedule.Tanggal | date:'dd MMM yyyy') : '-' }}</span></td>
+                  <td><span class="schedule-source">{{ scheduleSourceLabel(schedule) }}</span></td>
+                  <td><span class="schedule-date">{{ (schedule.effective_date || schedule.Tanggal) ? ((schedule.effective_date || schedule.Tanggal) | date:'dd MMM yyyy') : '-' }}</span></td>
                   <td><span class="schedule-employee">{{ schedule.EmployeeID ? (schedule.Employee?.User?.Nama || '-') : 'Semua Karyawan (Global)' }}</span></td>
                   <td><span class="schedule-division">{{ schedule.EmployeeID ? (schedule.Employee?.Division?.NamaDivisi || '-') : 'Semua Divisi' }}</span></td>
                   <td><span class="schedule-hours" *ngIf="scheduleTime(schedule, 'start') && scheduleTime(schedule, 'end')">{{ scheduleTime(schedule, 'start') }} <small>–</small> {{ scheduleTime(schedule, 'end') }}</span><span class="schedule-hours" *ngIf="!scheduleTime(schedule, 'start') || !scheduleTime(schedule, 'end')">{{ scheduleStatus(schedule) || 'Tidak ada jam kerja' }}</span></td>

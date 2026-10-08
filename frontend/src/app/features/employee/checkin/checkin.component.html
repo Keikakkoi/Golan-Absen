@@ -14,6 +14,7 @@
           <h2 *ngIf="isWorkingDay && !hasLeaveToday && attendanceClosed && !hasCheckedOut">Absensi Ditutup</h2>
           <h2 *ngIf="isWorkingDay && !hasLeaveToday && hasCheckedOut">Absensi Selesai</h2>
           <p class="subtitle text-dark-lo">Silakan verifikasi lokasi dan bukti foto Anda untuk memulai absensi.</p>
+          <p *ngIf="effectiveShiftName !== '-'" class="subtitle text-dark-lo">Shift efektif: <strong>{{ effectiveShiftName }}</strong><span *ngIf="scheduleSourceLabel()"> ({{ scheduleSourceLabel() }})</span></p>
         </div>
         <app-notification-bell class="checkin-page-notification-bell"></app-notification-bell>
       </div>

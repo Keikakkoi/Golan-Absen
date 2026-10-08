@@ -231,6 +231,12 @@ func GetEmployeeManager(c *fiber.Ctx) error {
 	if resolved.StartTime != "" && resolved.EndTime != "" {
 		result["shift"] = fmt.Sprintf("%s (%s - %s)", resolved.ShiftName, resolved.StartTime, resolved.EndTime)
 	}
+	result["effective_schedule"] = resolved
+	result["shift_name"] = resolved.ShiftName
+	result["schedule_id"] = resolved.ScheduleID
+	result["schedule_source"] = resolved.Source
+	result["start_time"] = resolved.StartTime
+	result["end_time"] = resolved.EndTime
 
 	return c.JSON(result)
 }
@@ -294,25 +300,20 @@ func GetProfile(c *fiber.Ctx) error {
 
 	today := attendanceBusinessDate(attendanceNow())
 	var schedules []models.WorkSchedule
+	var effective *EffectiveSchedule
 	if empID != 0 {
-		config.DB.Where("employee_id = ?", empID).Order("tanggal desc, id desc").Find(&schedules)
-	}
-
-	if len(schedules) == 0 {
-		config.DB.Where("employee_id IS NULL").Order("tanggal desc, id desc").Find(&schedules)
-	}
-
-	// Reguler is a weekly schedule. Always serialize the effective day's
-	// configuration for profile viewers instead of an old/static work_schedule
-	// row (for example, a legacy 09:00-17:00 row).
-	if empID != 0 {
-		effective := ResolveEffectiveSchedule(empID, today)
-		if effective.Source == "regular_default" {
-			// Profile displays the complete weekly Reguler schedule, not only
-			// today's row. Each configured working day becomes one table row.
+		resolved := ResolveEffectiveSchedule(empID, today)
+		effective = &resolved
+		user.Employee.ShiftID = resolved.ScheduleID
+		user.Employee.ShiftName = resolved.ShiftName
+		user.Employee.ShiftTanggal = resolved.EffectiveDate
+		user.Employee.ShiftJamMulai = resolved.StartTime
+		user.Employee.ShiftJamSelesai = resolved.EndTime
+		if resolved.Source == scheduleSourceRegular {
+			// A regular profile shows the configured weekly rows. The current
+			// day's row is still produced by the same resolver above.
 			var weekly []models.RegularWorkSchedule
 			if err := config.DB.Order("day_of_week asc").Find(&weekly).Error; err == nil {
-				schedules = make([]models.WorkSchedule, 0, len(weekly))
 				for _, day := range weekly {
 					if !day.IsWorkingDay || strings.TrimSpace(day.StartTime) == "" || strings.TrimSpace(day.EndTime) == "" {
 						continue
@@ -320,37 +321,49 @@ func GetProfile(c *fiber.Ctx) error {
 					schedules = append(schedules, scheduleFromRegular(day))
 				}
 			}
-			if len(schedules) == 0 {
-				schedule := effective.Schedule
-				schedule.Tanggal = &today
-				schedules = []models.WorkSchedule{schedule}
+		} else if resolved.Source != scheduleSourceFallback {
+			// Dated and base assignments are represented by the one schedule
+			// that the resolver selected, never by every historical row.
+			schedule := resolved.Schedule
+			if schedule.Tanggal == nil {
+				date := today
+				schedule.Tanggal = &date
 			}
-		} else if effective.Source == "system_fallback" && len(schedules) == 0 {
-			// Do not expose resolver fallback hours as if they were configured.
-			schedule := effective.Schedule
+			schedules = []models.WorkSchedule{schedule}
+		} else {
+			// Do not expose fallback hours as if they were configured.
+			schedule := resolved.Schedule
 			schedule.JamMulai, schedule.JamSelesai, schedule.HariKerja = "", "", "[]"
 			schedule.Tanggal = &today
 			schedules = []models.WorkSchedule{schedule}
 		}
 	}
-
 	if len(schedules) == 0 {
-		effSchedule := getAttendanceSchedule(empID, today)
-		if effSchedule.Tanggal == nil {
-			effSchedule.Tanggal = &today
-		}
-		schedules = append(schedules, effSchedule)
+		// Keep a stable response shape even when a user has no employee row.
+		schedules = []models.WorkSchedule{}
 	}
-	schedules = expandProfileSchedules(schedules)
+	if effective == nil || effective.Source == scheduleSourceRegular {
+		schedules = expandProfileSchedules(schedules)
+	}
+	profileSchedules := make([]scheduleListItem, 0, len(schedules))
+	for _, schedule := range schedules {
+		source := scheduleSourceRegular
+		if effective != nil && effective.Source != scheduleSourceRegular {
+			source = effective.Source
+		}
+		profileSchedules = append(profileSchedules, scheduleListItemFromModel(schedule, source))
+	}
 
 	return c.JSON(struct {
 		models.User
-		WorkSchedules      []models.WorkSchedule `json:"WorkSchedules"`
-		WorkSchedulesSnake []models.WorkSchedule `json:"work_schedules"`
+		WorkSchedules      []scheduleListItem `json:"WorkSchedules"`
+		WorkSchedulesSnake []scheduleListItem `json:"work_schedules"`
+		EffectiveSchedule  *EffectiveSchedule `json:"effective_schedule,omitempty"`
 	}{
 		User:               user,
-		WorkSchedules:      schedules,
-		WorkSchedulesSnake: schedules,
+		WorkSchedules:      profileSchedules,
+		WorkSchedulesSnake: profileSchedules,
+		EffectiveSchedule:  effective,
 	})
 }
 
@@ -622,24 +635,23 @@ func GetAllEmployees(c *fiber.Ctx) error {
 			continue
 		}
 		resolved := ResolveEffectiveSchedule(employee.ID, effectiveDate)
-		if resolved.Source != "system_fallback" {
-			employee.ShiftName = strings.TrimSpace(resolved.ShiftName)
-			employee.ShiftJamMulai = resolved.StartTime
-			employee.ShiftJamSelesai = resolved.EndTime
-			employee.ShiftKerja = employee.ShiftName
-		} else {
-			employee.ShiftName = "Reguler"
-			employee.ShiftKerja = "Reguler"
-		}
+		employee.ShiftID = resolved.ScheduleID
+		employee.ShiftName = strings.TrimSpace(resolved.ShiftName)
+		employee.ShiftTanggal = resolved.EffectiveDate
+		employee.ShiftJamMulai = resolved.StartTime
+		employee.ShiftJamSelesai = resolved.EndTime
 		entries = append(entries, employeeDirectoryEntry{
-			User:           users[i],
-			EmployeeID:     employee.ID,
-			EmployeeName:   users[i].Nama,
-			ShiftID:        employee.ShiftID,
-			ShiftName:      employee.ShiftName,
-			TanggalBerlaku: employee.ShiftTanggal,
-			JamMasuk:       employee.ShiftJamMulai,
-			JamPulang:      employee.ShiftJamSelesai,
+			User:          users[i],
+			EmployeeID:    employee.ID,
+			EmployeeName:  users[i].Nama,
+			ShiftID:       resolved.ScheduleID,
+			ShiftName:     resolved.ShiftName,
+			Source:        resolved.Source,
+			EffectiveDate: resolved.EffectiveDate,
+			StartTime:     resolved.StartTime,
+			EndTime:       resolved.EndTime,
+			IsWorkingDay:  resolved.IsWorkingDay,
+			IsOvernight:   resolved.IsOvernight,
 		})
 	}
 
@@ -648,59 +660,16 @@ func GetAllEmployees(c *fiber.Ctx) error {
 
 type employeeDirectoryEntry struct {
 	models.User
-	EmployeeID     uint       `json:"employee_id,omitempty"`
-	EmployeeName   string     `json:"employee_name,omitempty"`
-	ShiftID        uint       `json:"shift_id,omitempty"`
-	ShiftName      string     `json:"shift_name"`
-	TanggalBerlaku *time.Time `json:"tanggal_berlaku,omitempty"`
-	JamMasuk       string     `json:"jam_masuk,omitempty"`
-	JamPulang      string     `json:"jam_pulang,omitempty"`
-}
-
-// findEffectiveSchedule applies the scheduling precedence used by the employee
-// directory: employee-specific schedules beat global schedules, and the latest
-// schedule effective on the selected date wins.
-func findEffectiveSchedule(employeeID uint, date time.Time) (models.WorkSchedule, bool) {
-	dateOnly := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
-	var schedules []models.WorkSchedule
-	result := config.DB.Where("employee_id = ? OR employee_id IS NULL", employeeID).Find(&schedules)
-	if result.Error != nil {
-		return models.WorkSchedule{}, false
-	}
-	return selectEffectiveSchedule(schedules, employeeID, dateOnly)
-}
-
-func selectEffectiveSchedule(schedules []models.WorkSchedule, employeeID uint, date time.Time) (models.WorkSchedule, bool) {
-	var selected models.WorkSchedule
-	found := false
-	for _, schedule := range schedules {
-		isSpecific := schedule.EmployeeID != nil && *schedule.EmployeeID == employeeID
-		if schedule.EmployeeID != nil && !isSpecific {
-			continue
-		}
-		if schedule.Tanggal != nil && schedule.Tanggal.After(date) {
-			continue
-		}
-		if !found || (isSpecific && (selected.EmployeeID == nil || scheduleDateAfter(schedule, selected))) ||
-			(!isSpecific && selected.EmployeeID == nil && scheduleDateAfter(schedule, selected)) {
-			selected = schedule
-			found = true
-		}
-	}
-	return selected, found
-}
-
-func scheduleDateAfter(candidate, current models.WorkSchedule) bool {
-	if candidate.Tanggal == nil {
-		return false
-	}
-	if current.Tanggal == nil {
-		return true
-	}
-	if candidate.Tanggal.After(*current.Tanggal) {
-		return true
-	}
-	return candidate.Tanggal.Equal(*current.Tanggal) && candidate.ID > current.ID
+	EmployeeID    uint       `json:"employee_id,omitempty"`
+	EmployeeName  string     `json:"employee_name,omitempty"`
+	ShiftID       uint       `json:"shift_id,omitempty"`
+	ShiftName     string     `json:"shift_name"`
+	Source        string     `json:"source"`
+	EffectiveDate *time.Time `json:"effective_date,omitempty"`
+	StartTime     string     `json:"start_time,omitempty"`
+	EndTime       string     `json:"end_time,omitempty"`
+	IsWorkingDay  bool       `json:"is_working_day"`
+	IsOvernight   bool       `json:"is_overnight"`
 }
 
 func GetEmployeeDetail(c *fiber.Ctx) error {
@@ -718,7 +687,17 @@ func GetEmployeeDetail(c *fiber.Ctx) error {
 		config.DB.Where("employee_id = ?", user.Employee.ID).Order("tahun desc").Find(&quotas)
 		config.DB.Where("employee_id = ?", user.Employee.ID).Find(&locations)
 	}
-	return c.JSON(fiber.Map{"user": user, "quotas": quotas, "home_locations": locations})
+	var effective *EffectiveSchedule
+	if user.Employee.ID != 0 {
+		resolved := ResolveEffectiveSchedule(user.Employee.ID, attendanceBusinessDate(attendanceNow()))
+		effective = &resolved
+		user.Employee.ShiftID = resolved.ScheduleID
+		user.Employee.ShiftName = resolved.ShiftName
+		user.Employee.ShiftTanggal = resolved.EffectiveDate
+		user.Employee.ShiftJamMulai = resolved.StartTime
+		user.Employee.ShiftJamSelesai = resolved.EndTime
+	}
+	return c.JSON(fiber.Map{"user": user, "quotas": quotas, "home_locations": locations, "effective_schedule": effective})
 }
 
 func CreateEmployee(c *fiber.Ctx) error {

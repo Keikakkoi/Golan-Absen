@@ -285,7 +285,58 @@ func GetSchedules(c *fiber.Ctx) error {
 	}
 	regularRow := scheduleFromRegular(regular)
 	schedules = append([]models.WorkSchedule{regularRow}, schedules...)
-	return c.JSON(schedules)
+	items := make([]scheduleListItem, 0, len(schedules))
+	for _, schedule := range schedules {
+		source := scheduleSourceGlobal
+		if schedule.ID == 0 {
+			source = scheduleSourceRegular
+		} else if schedule.EmployeeID != nil {
+			source = scheduleSourceEmployeeSpecific
+		}
+		items = append(items, scheduleListItemFromModel(schedule, source))
+	}
+	return c.JSON(items)
+}
+
+// scheduleListItem keeps the existing PascalCase fields used by older admin
+// clients while exposing the canonical effective-schedule fields for new
+// clients. It describes the stored row; resolution for a particular employee
+// and date remains the responsibility of ResolveEffectiveSchedule.
+type scheduleListItem struct {
+	models.WorkSchedule
+	ScheduleID    uint       `json:"schedule_id"`
+	ShiftName     string     `json:"shift_name"`
+	Source        string     `json:"source"`
+	EffectiveDate *time.Time `json:"effective_date,omitempty"`
+	StartTime     string     `json:"start_time"`
+	EndTime       string     `json:"end_time"`
+	IsWorkingDay  bool       `json:"is_working_day"`
+	IsOvernight   bool       `json:"is_overnight"`
+}
+
+func scheduleListItemFromModel(schedule models.WorkSchedule, source string) scheduleListItem {
+	working := schedule.HariKerja != "[]"
+	if source == scheduleSourceRegular {
+		working = schedule.HariKerja != "[]" && strings.TrimSpace(schedule.JamMulai) != "" && strings.TrimSpace(schedule.JamSelesai) != ""
+	}
+	var effectiveDate *time.Time
+	if schedule.Tanggal != nil {
+		date := scheduleDateOnly(*schedule.Tanggal)
+		effectiveDate = &date
+	}
+	start, startErr := time.Parse("15:04:05", normalizeScheduleClock(schedule.JamMulai))
+	end, endErr := time.Parse("15:04:05", normalizeScheduleClock(schedule.JamSelesai))
+	return scheduleListItem{
+		WorkSchedule:  schedule,
+		ScheduleID:    schedule.ID,
+		ShiftName:     schedule.NamaShift,
+		Source:        source,
+		EffectiveDate: effectiveDate,
+		StartTime:     schedule.JamMulai,
+		EndTime:       schedule.JamSelesai,
+		IsWorkingDay:  working,
+		IsOvernight:   startErr == nil && endErr == nil && end.Before(start),
+	}
 }
 
 type scheduleInput struct {
@@ -343,6 +394,13 @@ func CreateSchedule(c *fiber.Ctx) error {
 	input.NamaShift = strings.TrimSpace(input.NamaShift)
 	if isRegularShiftName(input.NamaShift) {
 		return c.Status(400).JSON(fiber.Map{"error": "Jadwal Reguler harus diatur dari Pengaturan Umum"})
+	}
+	if !validScheduleClock(input.JamMulai) || !validScheduleClock(input.JamSelesai) {
+		return c.Status(400).JSON(fiber.Map{"error": "Format jam harus HH:MM atau HH:MM:SS"})
+	}
+	if input.Tanggal != nil {
+		date := scheduleDateOnly(*input.Tanggal)
+		input.Tanggal = &date
 	}
 	if input.ToleransiTerlambatMenit < 0 || (input.ToleransiAbsenAwalMenit != nil && (*input.ToleransiAbsenAwalMenit < 0 || *input.ToleransiAbsenAwalMenit > 24*60)) {
 		return c.Status(400).JSON(fiber.Map{"error": "Nilai toleransi tidak valid"})
@@ -421,6 +479,13 @@ func UpdateSchedule(c *fiber.Ctx) error {
 	input.NamaShift = strings.TrimSpace(input.NamaShift)
 	if isRegularShiftName(input.NamaShift) {
 		return c.Status(400).JSON(fiber.Map{"error": "Jadwal Reguler harus diatur dari Pengaturan Umum"})
+	}
+	if !validScheduleClock(input.JamMulai) || !validScheduleClock(input.JamSelesai) {
+		return c.Status(400).JSON(fiber.Map{"error": "Format jam harus HH:MM atau HH:MM:SS"})
+	}
+	if input.Tanggal != nil {
+		date := scheduleDateOnly(*input.Tanggal)
+		input.Tanggal = &date
 	}
 	if input.ToleransiTerlambatMenit < 0 || (input.ToleransiAbsenAwalMenit != nil && (*input.ToleransiAbsenAwalMenit < 0 || *input.ToleransiAbsenAwalMenit > 24*60)) {
 		return c.Status(400).JSON(fiber.Map{"error": "Nilai toleransi tidak valid"})

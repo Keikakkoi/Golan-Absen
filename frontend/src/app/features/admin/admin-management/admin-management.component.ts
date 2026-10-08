@@ -87,7 +87,20 @@ export class AdminManagementComponent implements OnInit {
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }
 
   loadEmployees(): void {
-    this.http.get<any[]>(`${this.api}/admin/employees`, { headers: this.headers() }).subscribe({ next: employees => { this.employees = employees || []; }, error: err => this.fail(err) });
+    this.http.get<any[]>(`${this.api}/admin/employees`, { headers: this.headers() }).subscribe({
+      next: employees => {
+        this.employees = (employees || []).map(employee => ({
+          ...employee,
+          Employee: employee.Employee ? {
+            ...employee.Employee,
+            // Keep the legacy assignment field in this in-memory projection
+            // aligned with the canonical effective response for old markup.
+            ShiftKerja: employee.shift_name || employee.Employee.ShiftName || employee.Employee.shift_name || '-'
+          } : { ShiftKerja: '-', ShiftName: '-', shift_name: '-' }
+        }));
+      },
+      error: err => this.fail(err)
+    });
   }
 
   get filteredEmployees(): any[] {
@@ -198,14 +211,27 @@ export class AdminManagementComponent implements OnInit {
   }
 
   scheduleTime(schedule: any, field: 'start' | 'end'): string {
-    const isRegular = String(schedule?.NamaShift || '').trim().toLowerCase().startsWith('reguler');
+    const isRegular = this.scheduleName(schedule).trim().toLowerCase().startsWith('reguler');
     if (isRegular) return field === 'start' ? this.regularHours.start : this.regularHours.end;
-    return this.clock(field === 'start' ? schedule?.JamMulai : schedule?.JamSelesai);
+    return this.clock(field === 'start' ? (schedule?.start_time || schedule?.JamMulai) : (schedule?.end_time || schedule?.JamSelesai));
   }
 
   scheduleStatus(schedule: any): string {
-    if (!String(schedule?.NamaShift || '').trim().toLowerCase().startsWith('reguler')) return '';
+    if (!this.scheduleName(schedule).trim().toLowerCase().startsWith('reguler')) return '';
     return this.regularHours.status;
+  }
+
+  scheduleName(schedule: any): string {
+    return String(schedule?.shift_name || schedule?.NamaShift || '-');
+  }
+
+  scheduleSourceLabel(schedule: any): string {
+    const source = String(schedule?.source || '').toLowerCase();
+    if (source === 'employee_specific') return 'Karyawan tertentu';
+    if (source === 'global_schedule') return 'Global';
+    if (source === 'regular_default') return 'Pengaturan Umum';
+    if (source === 'employee_assignment') return 'Assignment dasar';
+    return source ? source : '-';
   }
 
   private clock(value: any): string { return String(value || '').substring(0, 5); }

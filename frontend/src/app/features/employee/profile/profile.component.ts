@@ -405,7 +405,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private buildWeeklyShiftRows(schedules: any[]): WeeklyShiftRow[] {
     const scheduleByDay = new Map<number, any>();
     for (const schedule of Array.isArray(schedules) ? schedules : []) {
-      for (const day of this.parseWorkDays(schedule?.HariKerja ?? schedule?.hari_kerja)) {
+      for (const day of this.parseWorkDays(schedule?.HariKerja ?? schedule?.hari_kerja ?? schedule?.work_days)) {
         // The API normally sends one row per day. Keeping the first row also
         // makes this work with older responses that still contain a combined
         // Monday-Saturday schedule.
@@ -418,10 +418,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
       const date = this.weekDate(index);
       return {
         tanggal: this.formatIndonesianDate(date),
-        namaShift: schedule ? (schedule.NamaShift || schedule.nama_shift || '-') : '-',
+        namaShift: schedule ? (schedule.shift_name || schedule.NamaShift || schedule.nama_shift || '-') : '-',
         hariKerja: this.workDayLabels[String(day)],
-        jamMulai: schedule?.JamMulai || schedule?.jam_mulai ? this.formatScheduleTime(schedule.JamMulai ?? schedule.jam_mulai) : '-',
-        jamSelesai: schedule?.JamSelesai || schedule?.jam_selesai ? this.formatScheduleTime(schedule.JamSelesai ?? schedule.jam_selesai) : '-'
+        jamMulai: schedule?.start_time || schedule?.JamMulai || schedule?.jam_mulai ? this.formatScheduleTime(schedule.start_time ?? schedule.JamMulai ?? schedule.jam_mulai) : '-',
+        jamSelesai: schedule?.end_time || schedule?.JamSelesai || schedule?.jam_selesai ? this.formatScheduleTime(schedule.end_time ?? schedule.JamSelesai ?? schedule.jam_selesai) : '-'
       };
     });
   }
@@ -456,6 +456,15 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private formatScheduleTime(value: any): string {
     const time = String(value ?? '');
     return time ? time.slice(0, 5) : '-';
+  }
+
+  scheduleSourceLabel(): string {
+    const source = String(this.profileData?.effective_schedule?.source || '').toLowerCase();
+    if (source === 'employee_specific') return 'Jadwal khusus karyawan';
+    if (source === 'global_schedule') return 'Jadwal khusus global';
+    if (source === 'employee_assignment') return 'Assignment shift dasar';
+    if (source === 'regular_default') return 'Jadwal Reguler dari Pengaturan Umum';
+    return source === 'system_fallback' ? 'Fallback sistem' : '-';
   }
 
   initHomeMap(): void {

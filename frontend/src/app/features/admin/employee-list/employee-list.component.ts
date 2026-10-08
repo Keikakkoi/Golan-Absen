@@ -79,7 +79,7 @@ export class EmployeeListComponent implements OnInit {
   private baseUrl = 'http://localhost:8080/api/v1/admin/employees';
 
   getShiftLabel(employee: any): string {
-    return employee?.Employee?.ShiftName || employee?.Employee?.shift_name || employee?.Employee?.ShiftKerja || 'Reguler';
+    return employee?.shift_name || employee?.Employee?.ShiftName || employee?.Employee?.shift_name || '-';
   }
   getShiftClass(employee: any): string {
     return this.getShiftLabel(employee).toLowerCase().replace(/\s+/g, '-');
@@ -142,7 +142,7 @@ export class EmployeeListComponent implements OnInit {
       value(emp, 'Employee.employee_code', 'Employee.EmployeeCode', 'employee_code'), value(emp, 'Employee.NIK', 'NIK'), value(emp, 'Nama', 'name'), value(emp, 'Email', 'email'),
       value(emp, 'Role', 'role'), value(emp, 'Status', 'status'), value(emp, 'Employee.JenisKelamin', 'JenisKelamin', 'jenis_kelamin'), value(emp, 'Employee.TempatLahir', 'tempat_lahir'),
       date(emp.Employee?.TanggalLahir), value(emp, 'Employee.NomorTelepon', 'NomorTelepon', 'nomor_telepon', 'phone'), value(emp, 'Employee.Alamat', 'alamat', 'Alamat'),
-      value(emp, 'Employee.ShiftKerja', 'ShiftKerja', 'shift_kerja'), value(emp, 'Employee.DivisionID', 'division_id'), value(emp, 'Employee.PositionID', 'position_id'),
+      value(emp, 'shift_name', 'Employee.ShiftName', 'Employee.shift_name'), value(emp, 'Employee.DivisionID', 'division_id'), value(emp, 'Employee.PositionID', 'position_id'),
       date(emp.Employee?.TanggalBergabung), value(emp, 'Employee.HomeLatitude', 'home_latitude'), value(emp, 'Employee.HomeLongitude', 'home_longitude'), value(emp, 'Employee.HomeLocation.GoogleMapsURL', 'Employee.HomeLocation.google_maps_url'),
       value(emp, 'ManagerID', 'manager_id'), value(emp, 'ProjectID', 'project_id'), value(emp, 'TeamID', 'team_id'), date(emp.InternshipStartDate), date(emp.InternshipEndDate), value(emp, 'MentorName', 'mentor_name'), value(emp, 'InstitutionName', 'institution_name'), ''
     ]);
@@ -437,6 +437,7 @@ export class EmployeeListComponent implements OnInit {
       password: '',
       role: emp.Role || 'Karyawan',
       status: emp.Status || 'aktif',
+      shift_name: emp.shift_name || emp.Employee?.ShiftName || emp.Employee?.shift_name || '',
       nik: emp.Employee?.NIK,
       jenis_kelamin: emp.Employee?.JenisKelamin || '', tempat_lahir: emp.Employee?.TempatLahir || '', tanggal_lahir: emp.Employee?.TanggalLahir ? emp.Employee.TanggalLahir.split('T')[0] : '', nomor_telepon: emp.Employee?.NomorTelepon || '', alamat: emp.Employee?.Alamat || '', foto_profil_url: emp.Employee?.FotoProfilURL || '', shift_kerja: emp.Employee?.ShiftKerja || '',
       division_id: emp.Employee?.DivisionID || 0,

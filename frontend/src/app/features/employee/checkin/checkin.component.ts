@@ -173,6 +173,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   shiftCloseTime: number = 18 * 3600;
   shiftOvernight = false;
   todayDashboardMessage: string = '';
+  effectiveShiftName = '-';
+  effectiveScheduleSource = '';
   private scheduleStartAt: Date | null = null;
   private scheduleCheckinStartAt: Date | null = null;
   private scheduleEndAt: Date | null = null;
@@ -200,6 +202,9 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         this.attendanceService.getDashboardStats().subscribe({
           next: (stats) => {
             if (stats.schedule) {
+              const effective = stats.effective_schedule || stats.schedule;
+              this.effectiveShiftName = effective.shift_name || '-';
+              this.effectiveScheduleSource = effective.source || '';
               const parseTime = (timeStr: string) => {
                 const parts = timeStr.split(':');
                 return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60;
@@ -226,6 +231,11 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
                 if (this.shiftCheckoutTime < this.shiftStartTime) this.shiftCheckoutTime += 24 * 3600;
                 if (this.shiftCloseTime < this.shiftStartTime) this.shiftCloseTime += 24 * 3600;
               }
+            } else {
+              this.effectiveShiftName = '-';
+              this.effectiveScheduleSource = '';
+              this.isWorkingDay = false;
+              this.todayDashboardMessage = 'Jadwal efektif belum tersedia.';
             }
             if (stats.todayMessage) {
               this.todayDashboardMessage = stats.todayMessage;
@@ -236,6 +246,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
           },
           error: (err) => {
             console.error('Failed to load dashboard stats', err);
+            this.effectiveShiftName = '-';
+            this.effectiveScheduleSource = '';
+            this.isWorkingDay = false;
+            this.todayDashboardMessage = 'Jadwal efektif tidak dapat dimuat.';
             this.isScheduleLoaded = true;
             this.updateAttendanceWindow();
             this.tryInitHardware();
@@ -244,6 +258,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       },
       error: (err) => {
         console.error('Failed to load attendance history', err);
+        this.effectiveShiftName = '-';
+        this.effectiveScheduleSource = '';
+        this.isWorkingDay = false;
+        this.todayDashboardMessage = 'Jadwal efektif tidak dapat dimuat.';
         // Fallback so it doesn't hang forever
         this.isScheduleLoaded = true;
         this.updateAttendanceWindow();
@@ -262,6 +280,14 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     if (typeof value !== 'string' || !value.trim()) return null;
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  scheduleSourceLabel(): string {
+    if (this.effectiveScheduleSource === 'employee_specific') return 'jadwal khusus karyawan';
+    if (this.effectiveScheduleSource === 'global_schedule') return 'jadwal khusus global';
+    if (this.effectiveScheduleSource === 'employee_assignment') return 'assignment shift dasar';
+    if (this.effectiveScheduleSource === 'regular_default') return 'Jadwal Reguler';
+    return this.effectiveScheduleSource === 'system_fallback' ? 'fallback sistem' : '';
   }
 
   private updateAttendanceWindow(): void {
