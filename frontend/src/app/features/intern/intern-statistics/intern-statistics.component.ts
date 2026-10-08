@@ -113,7 +113,7 @@ export class InternStatisticsComponent implements OnInit {
     const headers = ['Metric / Tanggal', 'Nilai / Status', 'Tipe Kerja', 'Jam Masuk', 'Jam Pulang', 'Durasi (Jam)'];
     const summaryRows = [
       ['Persentase Kehadiran', `${this.stats.attendance_rate || 0}%`, '', '', '', ''],
-      ['Hadir Tepat Waktu', `${this.stats.hadir || 0} Hari`, '', '', '', ''],
+      ['Hadir', `${this.stats.hadir || 0} Hari`, '', '', '', ''],
       ['Terlambat', `${this.stats.terlambat || 0} Hari`, '', '', '', ''],
       ['Izin & Cuti', `${this.stats.izin_disetujui || 0} Hari`, '', '', '', ''],
       ['Alpha / Mangkir', `${this.stats.alpha || 0} Hari`, '', '', '', ''],
@@ -137,7 +137,7 @@ export class InternStatisticsComponent implements OnInit {
     const headers = ['Metric / Tanggal', 'Nilai / Status', 'Tipe Kerja', 'Jam Masuk', 'Jam Pulang', 'Durasi (Jam)'];
     const summaryRows = [
       ['Persentase Kehadiran', `${this.stats.attendance_rate || 0}%`, '', '', '', ''],
-      ['Hadir Tepat Waktu', `${this.stats.hadir || 0} Hari`, '', '', '', ''],
+      ['Hadir', `${this.stats.hadir || 0} Hari`, '', '', '', ''],
       ['Terlambat', `${this.stats.terlambat || 0} Hari`, '', '', '', ''],
       ['Izin & Cuti', `${this.stats.izin_disetujui || 0} Hari`, '', '', '', ''],
       ['Alpha / Mangkir', `${this.stats.alpha || 0} Hari`, '', '', '', ''],
@@ -178,7 +178,7 @@ export class InternStatisticsComponent implements OnInit {
   private summaryRows(): unknown[][] {
     return [
       ['Persentase Kehadiran', `${this.stats.attendance_rate || 0}%`, '', '', '', ''],
-      ['Hadir Tepat Waktu', `${this.stats.hadir || 0} Hari`, '', '', '', ''],
+      ['Hadir', `${this.stats.hadir || 0} Hari`, '', '', '', ''],
       ['Terlambat', `${this.stats.terlambat || 0} Hari`, '', '', '', ''],
       ['Izin & Cuti', `${this.stats.izin_disetujui || 0} Hari`, '', '', '', ''],
       ['Alpha / Mangkir', `${this.stats.alpha || 0} Hari`, '', '', '', ''],
