@@ -15,15 +15,15 @@ import (
 )
 
 func SetupOrganizationRoutes(router fiber.Router) {
-	// Public (Authenticated) routes
-	orgs := router.Group("/organization", middleware.Protected())
+	// Admin lookup routes used by administration screens.
+	orgs := router.Group("/organization", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	orgs.Get("/divisions", GetAllDivisions)
 	orgs.Get("/positions", GetAllPositions)
 	orgs.Get("/managers", GetAvailableManagers)
 	orgs.Get("/projects", GetAllProjects)
 
 	// Admin only routes
-	admin := router.Group("/admin/organization", middleware.Protected())
+	admin := router.Group("/admin/organization", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Get("/divisions", GetAllDivisions)
 	admin.Get("/positions", GetAllPositions)
 	admin.Get("/projects", GetAllProjectsForAdmin)

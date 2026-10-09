@@ -20,7 +20,7 @@ func SetupReportRoutes(router fiber.Router) {
 	employee := router.Group("/dashboard/employee", middleware.Protected())
 	employee.Get("/stats", middleware.RequireRoles(models.RoleKaryawan, models.RoleMagang, models.RoleManajer), GetEmployeeDashboardStats)
 
-	admin := router.Group("/admin/reports", middleware.Protected())
+	admin := router.Group("/admin/reports", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Get("/stats", GetAdminDashboardStats)
 	admin.Get("/", GetAdminReports)
 	admin.Get("", GetAdminReports)

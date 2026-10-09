@@ -62,6 +62,22 @@ func Protected() fiber.Handler {
 	}
 }
 
+// ProtectedWebSocket authenticates browser WebSocket clients that cannot set
+// an Authorization header through the native WebSocket constructor. The
+// client supplies the same short-lived JWT as the `token` query parameter;
+// authorization is still resolved from the current database role by
+// Protected().
+func ProtectedWebSocket() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		token := strings.TrimSpace(c.Query("token"))
+		if token == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+		}
+		c.Request().Header.Set("Authorization", "Bearer "+token)
+		return Protected()(c)
+	}
+}
+
 // RequireRoles is the backend counterpart of the frontend role guard. It is
 // intentionally applied to every role-specific route so hiding a menu cannot
 // be mistaken for authorization.
@@ -69,13 +85,15 @@ func RequireRoles(roles ...models.Role) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		current, ok := c.Locals("role").(models.Role)
 		if !ok {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Role is missing"})
+			c.Set("X-Authorization-Error", "role")
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"code": "forbidden_role", "error": "Role is missing"})
 		}
 		for _, allowed := range roles {
 			if current == allowed {
 				return c.Next()
 			}
 		}
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied for this role"})
+		c.Set("X-Authorization-Error", "role")
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"code": "forbidden_role", "error": "Access denied for this role"})
 	}
 }

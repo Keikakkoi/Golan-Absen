@@ -145,21 +145,21 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
   }
 
   loadDivisionsAndRoles() {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/divisions', { headers: this.getHeaders() }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/divisions', { headers: this.getHeaders() }).subscribe({
       next: (data) => {
         this.uniqueDivisions = data.map(d => d.NamaDivisi).sort();
       },
       error: (err) => console.error('Failed to load divisions', err)
     });
 
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/positions', { headers: this.getHeaders() }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/positions', { headers: this.getHeaders() }).subscribe({
       next: (data) => {
         this.uniqueRoles = data.map(p => p.NamaJabatan).sort();
       },
       error: (err) => console.error('Failed to load roles', err)
     });
 
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/projects', { headers: this.getHeaders() }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/projects', { headers: this.getHeaders() }).subscribe({
       next: (data) => this.projects = data || [],
       error: (err) => console.error('Failed to load projects', err)
     });

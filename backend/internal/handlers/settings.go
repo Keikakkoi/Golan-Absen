@@ -28,7 +28,7 @@ import (
 
 func SetupSettingsRoutes(router fiber.Router) {
 	// Admin only routes
-	admin := router.Group("/admin/settings", middleware.Protected())
+	admin := router.Group("/admin/settings", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Get("/office", GetOfficeLocation)
 	admin.Put("/office", UpdateOfficeLocation)
 	admin.Get("/schedule", GetWorkSchedule)
@@ -51,7 +51,7 @@ func SetupSettingsRoutes(router fiber.Router) {
 
 	// Shift management is separate from the default working-hours setting.
 	// The existing /schedule endpoint remains the default schedule used by attendance.
-	shifts := router.Group("/admin/schedules", middleware.Protected())
+	shifts := router.Group("/admin/schedules", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	shifts.Get("/", GetSchedules)
 	shifts.Post("/", CreateSchedule)
 	shifts.Put("/:id", UpdateSchedule)

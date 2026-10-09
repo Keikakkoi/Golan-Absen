@@ -101,9 +101,14 @@ export class NotificationService {
 
   private openRealtimeSocket(): void {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const token = this.authService.getToken();
+    if (!token) {
+      this.startRealtimeFallbackPolling();
+      return;
+    }
     let socket: WebSocket;
     try {
-      socket = new WebSocket(`${protocol}//localhost:8080/ws/dashboard`);
+      socket = new WebSocket(`${protocol}//localhost:8080/ws/dashboard?token=${encodeURIComponent(token)}`);
     } catch {
       this.startRealtimeFallbackPolling();
       this.scheduleRealtimeReconnect();

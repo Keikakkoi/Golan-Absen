@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { normalizeRole, roleHome } from '../../../core/auth/role';
 
 @Component({
   selector: 'app-login',
@@ -71,12 +72,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.authService.login(email, password).subscribe({
       next: (res) => {
         this.isLoading = false;
-        const role = String(res.role || '').trim().toUpperCase();
-        if (role === 'HRD') {
-          this.router.navigateByUrl('/admin/dashboard', { replaceUrl: true });
-        } else {
-          this.router.navigateByUrl('/employee/checkin', { replaceUrl: true });
-        }
+        this.router.navigateByUrl(roleHome(normalizeRole(res.role)), { replaceUrl: true });
       },
       error: (err) => {
         this.isLoading = false;

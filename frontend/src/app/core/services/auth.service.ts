@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { ThemeService } from './theme.service';
 import { environment } from '../../../environments/environment';
+import { normalizeRole } from '../auth/role';
 
 export interface LoginResponse {
   token: string;
@@ -155,7 +156,7 @@ export class AuthService {
   }
 
   getRole(): string | null {
-    return localStorage.getItem('role');
+    return normalizeRole(localStorage.getItem('role'));
   }
 
   isAuthenticated(): boolean {

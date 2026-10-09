@@ -23,7 +23,7 @@ func SetupNotificationRoutes(router fiber.Router) {
 	notif.Put("/read-all", MarkAllNotificationsAsRead)
 	notif.Put("/:id/read", MarkNotificationAsRead)
 
-	admin := router.Group("/admin/notifications", middleware.Protected())
+	admin := router.Group("/admin/notifications", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Post("/broadcast", BroadcastNotification)
 }
 

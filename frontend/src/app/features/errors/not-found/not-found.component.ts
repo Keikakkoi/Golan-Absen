@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
+import { roleHome } from '../../../core/auth/role';
 
 @Component({
   selector: 'app-not-found',
@@ -12,11 +13,6 @@ export class NotFoundComponent {
   readonly homeLink = this.resolveHomeLink();
 
   private resolveHomeLink(): string {
-    const role = localStorage.getItem('role');
-    if (role === 'HRD') return '/admin/dashboard';
-    if (role === 'MAGANG') return '/intern/dashboard';
-    if (role === 'MANAJER') return '/manager/dashboard';
-    if (role === 'Karyawan') return '/employee/checkin';
-    return '/login';
+    return roleHome(localStorage.getItem('role'));
   }
 }

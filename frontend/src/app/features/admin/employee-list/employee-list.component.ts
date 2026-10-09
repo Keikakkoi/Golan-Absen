@@ -165,7 +165,7 @@ export class EmployeeListComponent implements OnInit {
   }
 
   loadDivisions(): void {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/divisions', { headers: this.getHeaders() })
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/divisions', { headers: this.getHeaders() })
       .subscribe({
         next: (data) => this.divisions = data,
         error: (err) => console.error('Gagal memuat divisi:', err)
@@ -173,7 +173,7 @@ export class EmployeeListComponent implements OnInit {
   }
 
   loadPositions(): void {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/positions', { headers: this.getHeaders() })
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/positions', { headers: this.getHeaders() })
       .subscribe({
         next: (data) => this.positions = data,
         error: (err) => console.error('Gagal memuat jabatan:', err)
@@ -181,7 +181,7 @@ export class EmployeeListComponent implements OnInit {
   }
 
   loadManagers(): void {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/managers', { headers: this.getHeaders() })
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/managers', { headers: this.getHeaders() })
       .subscribe({
         next: (data) => {
           this.managers = data || [];
@@ -192,7 +192,7 @@ export class EmployeeListComponent implements OnInit {
   }
 
   loadProjects(): void {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/projects', { headers: this.getHeaders() })
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/projects', { headers: this.getHeaders() })
       .subscribe({
         next: (data) => this.projects = data || [],
         error: (err) => console.error('Gagal memuat project:', err)

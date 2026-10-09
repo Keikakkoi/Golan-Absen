@@ -172,7 +172,9 @@ export class LeaveRequestComponent implements OnInit, OnDestroy {
   private connectLiveUpdates(): void {
     if (this.destroyed) return;
     this.reconnectTimer = undefined;
-    this.socket = new WebSocket('ws://localhost:8080/ws/dashboard');
+    const token = this.authService.getToken();
+    if (!token) return;
+    this.socket = new WebSocket(`ws://localhost:8080/ws/dashboard?token=${encodeURIComponent(token)}`);
     this.socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);

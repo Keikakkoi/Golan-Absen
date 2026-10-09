@@ -19,7 +19,7 @@ func SetupWorkTypeRoutes(router fiber.Router) {
 	worktypes.Get("/", GetAllWorkTypes)
 
 	// Admin only routes
-	admin := router.Group("/admin/worktypes", middleware.Protected())
+	admin := router.Group("/admin/worktypes", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Get("/", GetAllWorkTypes)
 	admin.Post("/", CreateWorkType)
 	admin.Put("/:id", UpdateWorkType)

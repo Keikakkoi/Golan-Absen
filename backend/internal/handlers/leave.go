@@ -108,12 +108,12 @@ func calendarLeaveDays(start, end time.Time) int {
 }
 
 func SetupLeaveRoutes(router fiber.Router) {
-	leave := router.Group("/leave", middleware.Protected())
+	leave := router.Group("/leave", middleware.Protected(), middleware.RequireRoles(models.RoleKaryawan, models.RoleMagang, models.RoleManajer))
 	leave.Post("/", SubmitLeaveRequest)
 	leave.Get("/", GetMyLeaveRequests)
 	leave.Get("/policy", GetLeavePolicy)
 
-	admin := router.Group("/admin/leave", middleware.Protected())
+	admin := router.Group("/admin/leave", middleware.Protected(), middleware.RequireRoles(models.RoleHRD, models.RoleManajer))
 	admin.Get("/", GetAllLeaveRequests)
 	admin.Put("/:id/note", SaveAdminLeaveNote)
 	admin.Get("/:id", GetLeaveRequestDetail)

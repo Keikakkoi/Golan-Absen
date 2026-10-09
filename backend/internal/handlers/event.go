@@ -35,7 +35,7 @@ func SetupEventRoutes(router fiber.Router) {
 	events := router.Group("/events", middleware.Protected())
 	events.Get("/", GetCompanyEvents)
 
-	admin := router.Group("/admin/events", middleware.Protected())
+	admin := router.Group("/admin/events", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Get("/", GetAdminCompanyEvents)
 	admin.Post("/", CreateCompanyEvent)
 	admin.Put("/:id", UpdateCompanyEvent)

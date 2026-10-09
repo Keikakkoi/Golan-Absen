@@ -148,11 +148,11 @@ export class AdminAlphaReportsComponent implements OnInit {
   }
 
   loadDepartments(): void {
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/divisions', { headers: this.getHeaders() }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/divisions', { headers: this.getHeaders() }).subscribe({
       next: data => this.departments = data || [],
       error: () => this.departments = []
     });
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/projects', { headers: this.getHeaders() }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/projects', { headers: this.getHeaders() }).subscribe({
       next: data => this.projects = data || [],
       error: () => this.projects = []
     });

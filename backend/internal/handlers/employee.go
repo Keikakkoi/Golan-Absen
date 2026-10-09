@@ -158,7 +158,7 @@ func SetupEmployeeRoutes(router fiber.Router) {
 	employee.Put("/email", UpdateMyEmail)
 
 	// Admin only routes
-	admin := router.Group("/admin", middleware.Protected())
+	admin := router.Group("/admin", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Get("/employees", GetAllEmployees)
 	admin.Get("/employees/:id", GetEmployeeDetail)
 	admin.Post("/employees", CreateEmployee)

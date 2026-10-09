@@ -51,7 +51,7 @@ export class AdminReportsComponent implements OnInit {
   };
 
   private baseReportUrl = 'http://localhost:8080/api/v1/admin/reports';
-  private baseDeptUrl = 'http://localhost:8080/api/v1/organization/divisions';
+  private baseDeptUrl = 'http://localhost:8080/api/v1/admin/organization/divisions';
 
   constructor(
     private http: HttpClient,
@@ -105,14 +105,14 @@ export class AdminReportsComponent implements OnInit {
       }
     });
 
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/positions', { headers }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/positions', { headers }).subscribe({
       next: (data) => {
         this.uniqueRoles = data.map(p => p.NamaJabatan).sort();
       },
       error: (err) => console.error('Failed to load roles', err)
     });
 
-    this.http.get<any[]>('http://localhost:8080/api/v1/organization/projects', { headers }).subscribe({
+    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/projects', { headers }).subscribe({
       next: (data) => this.projects = data || [],
       error: (err) => console.error('Failed to load projects', err)
     });

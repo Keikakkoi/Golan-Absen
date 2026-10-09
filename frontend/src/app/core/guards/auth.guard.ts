@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { normalizeRole } from '../auth/role';
 
 /** Keeps authenticated application pages out of the public auth flow. */
 export const authGuard: CanActivateFn = (_route, state) => {
@@ -17,9 +18,10 @@ export const authGuard: CanActivateFn = (_route, state) => {
 export const roleGuard: CanActivateFn = (route) => {
   const router = inject(Router);
   const allowedRoles = route.data?.['roles'] as string[] | undefined;
-  const currentRole = localStorage.getItem('role');
+  const currentRole = normalizeRole(localStorage.getItem('role'));
 
-  if (!allowedRoles || (currentRole && allowedRoles.includes(currentRole))) {
+  const normalizedAllowedRoles = allowedRoles?.map(role => normalizeRole(role)).filter(Boolean);
+  if (!normalizedAllowedRoles || (currentRole && normalizedAllowedRoles.includes(currentRole))) {
     return true;
   }
 

@@ -4,6 +4,7 @@ import (
 	"log"
 	"sync"
 
+	"absensi-golan-backend/internal/middleware"
 	"absensi-golan-backend/internal/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -81,7 +82,7 @@ func SetupWebSocketRoutes(router fiber.Router) {
 		return fiber.ErrUpgradeRequired
 	})
 
-	router.Get("/ws/dashboard", websocket.New(func(c *websocket.Conn) {
+	router.Get("/ws/dashboard", middleware.ProtectedWebSocket(), websocket.New(func(c *websocket.Conn) {
 		WsHub.register <- c
 		defer func() {
 			WsHub.unregister <- c

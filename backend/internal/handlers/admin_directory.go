@@ -15,7 +15,7 @@ import (
 )
 
 func SetupAdminDirectoryRoutes(router fiber.Router) {
-	admin := router.Group("/admin", middleware.Protected())
+	admin := router.Group("/admin", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Get("/home-locations", GetHomeLocations)
 	admin.Put("/home-locations/:employee_id", UpdateHomeLocation)
 	admin.Get("/leave-quotas", GetLeaveQuotas)
