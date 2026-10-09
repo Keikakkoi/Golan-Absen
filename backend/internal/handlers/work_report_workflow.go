@@ -50,16 +50,15 @@ func workReportHasManager(employee models.Employee) (bool, error) {
 	return len(ids) > 0, err
 }
 
-func workReportSubmissionWorkflow(employee models.Employee, rejectedBy string) (models.WorkReportReviewDecision, models.WorkReportReviewDecision, error) {
-	hasManager, err := workReportHasManager(employee)
-	if err != nil {
-		return "", "", err
-	}
+func workReportSubmissionDecision(employee models.Employee, hasManager bool, rejectedBy string, isRevision bool) (models.WorkReportReviewDecision, models.WorkReportReviewDecision, error) {
 	if employee.User != nil && employee.User.Role == models.RoleKaryawan && !hasManager {
 		return "", "", fmt.Errorf("Karyawan belum memiliki Manager aktif")
 	}
 	if !hasManager {
 		return models.WorkReportDecisionNotRequired, models.WorkReportDecisionPending, nil
+	}
+	if !isRevision {
+		return models.WorkReportDecisionPending, models.WorkReportDecisionNotRequired, nil
 	}
 	// A Manager rejection must pass through the Manager again. An HRD/Admin
 	// rejection preserves the already-approved Manager stage and returns to the
@@ -68,6 +67,26 @@ func workReportSubmissionWorkflow(employee models.Employee, rejectedBy string) (
 		return models.WorkReportDecisionPending, models.WorkReportDecisionNotRequired, nil
 	}
 	return models.WorkReportDecisionApproved, models.WorkReportDecisionPending, nil
+}
+
+// workReportSubmissionWorkflow returns the active stage for a submission.
+// A first submission always starts in the Manager queue when an active
+// Manager exists. Only a resubmission after an explicit HRD/Admin rejection
+// may skip that queue; Manager approval is written by ReviewManagerWorkReport,
+// never while the employee is submitting the report.
+func workReportSubmissionWorkflow(employee models.Employee, rejectedBy string, isRevision bool) (models.WorkReportReviewDecision, models.WorkReportReviewDecision, error) {
+	hasManager, err := workReportHasManager(employee)
+	if err != nil {
+		return "", "", err
+	}
+	return workReportSubmissionDecision(employee, hasManager, rejectedBy, isRevision)
+}
+
+func managerReviewDecision(status string) (models.WorkReportReviewDecision, models.WorkReportReviewDecision) {
+	if status == "rejected" {
+		return models.WorkReportDecisionRejected, models.WorkReportDecisionNotRequired
+	}
+	return models.WorkReportDecisionApproved, models.WorkReportDecisionPending
 }
 
 func effectiveManagerReviewStatus(report models.WorkReport) models.WorkReportReviewDecision {

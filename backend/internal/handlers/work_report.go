@@ -255,11 +255,16 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			if isRevisionSubmission {
 				rejectedBy = existing.RejectionSource
 			}
-			managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(emp, rejectedBy)
+			managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(emp, rejectedBy, isRevisionSubmission)
 			if workflowErr != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to resolve report approval workflow"})
 			}
-			updates["manager_review_status"] = managerStatus
+			// An HRD/Admin resubmission keeps the Manager approval that was
+			// already recorded. Do not manufacture a new Manager approval while
+			// the employee is submitting a revision.
+			if !isAdminWorkReportRejectionSource(rejectedBy) || !isRevisionSubmission {
+				updates["manager_review_status"] = managerStatus
+			}
 			updates["admin_validation_status"] = adminStatus
 			updates["admin_validated_by"] = nil
 			updates["admin_validated_at"] = nil
@@ -316,7 +321,7 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		IsLateSubmission:   isLateWorkReportSubmission(emp.ID, t),
 	}
 	if statusLaporan == "submitted" {
-		managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(emp, "")
+		managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(emp, "", false)
 		if workflowErr != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to resolve report approval workflow"})
 		}
@@ -473,11 +478,15 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		if isRevisionSubmission {
 			rejectedBy = report.RejectionSource
 		}
-		managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(report.Employee, rejectedBy)
+		managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(report.Employee, rejectedBy, isRevisionSubmission)
 		if workflowErr != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to resolve report approval workflow"})
 		}
-		updates["manager_review_status"] = managerStatus
+		// Preserve the Manager decision after an HRD/Admin rejection; only the
+		// Manager review endpoint is allowed to create that approval.
+		if !isAdminWorkReportRejectionSource(rejectedBy) || !isRevisionSubmission {
+			updates["manager_review_status"] = managerStatus
+		}
 		updates["admin_validation_status"] = adminStatus
 		updates["admin_validated_by"] = nil
 		updates["admin_validated_at"] = nil
@@ -1029,7 +1038,12 @@ func isAdminRejectedWorkReport(report models.WorkReport) bool {
 	if status != "tidak sesuai" && status != "ditolak" && status != "minta perbaikan" && status != "minta_perbaikan" {
 		return false
 	}
-	return strings.EqualFold(strings.TrimSpace(report.RejectionSource), "admin")
+	return isAdminWorkReportRejectionSource(report.RejectionSource)
+}
+
+func isAdminWorkReportRejectionSource(source string) bool {
+	source = strings.ToLower(strings.TrimSpace(source))
+	return source == "admin" || source == "hrd"
 }
 
 func isWorkReportRevisionSubmission(report models.WorkReport, targetStatus string) bool {

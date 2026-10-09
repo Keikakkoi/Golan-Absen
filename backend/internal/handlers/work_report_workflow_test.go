@@ -24,6 +24,63 @@ func TestWorkReportDecisionStagesStayIndependent(t *testing.T) {
 	}
 }
 
+func TestWorkReportSubmissionStages(t *testing.T) {
+	tests := []struct {
+		name       string
+		role       models.Role
+		hasManager bool
+		rejectedBy string
+		revision   bool
+		manager    models.WorkReportReviewDecision
+		admin      models.WorkReportReviewDecision
+		wantErr    bool
+	}{
+		{name: "new Karyawan with Manager", role: models.RoleKaryawan, hasManager: true, manager: models.WorkReportDecisionPending, admin: models.WorkReportDecisionNotRequired},
+		{name: "new MAGANG with Manager", role: models.RoleMagang, hasManager: true, manager: models.WorkReportDecisionPending, admin: models.WorkReportDecisionNotRequired},
+		{name: "Manager rejection resubmission", role: models.RoleKaryawan, hasManager: true, rejectedBy: "manager", revision: true, manager: models.WorkReportDecisionPending, admin: models.WorkReportDecisionNotRequired},
+		{name: "HRD rejection resubmission", role: models.RoleKaryawan, hasManager: true, rejectedBy: "admin", revision: true, manager: models.WorkReportDecisionApproved, admin: models.WorkReportDecisionPending},
+		{name: "Karyawan without Manager", role: models.RoleKaryawan, wantErr: true},
+		{name: "MAGANG without Manager", role: models.RoleMagang, manager: models.WorkReportDecisionNotRequired, admin: models.WorkReportDecisionPending},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			manager, admin, err := workReportSubmissionDecision(models.Employee{User: &models.User{Role: test.role}}, test.hasManager, test.rejectedBy, test.revision)
+			if (err != nil) != test.wantErr {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if test.wantErr {
+				return
+			}
+			if manager != test.manager || admin != test.admin {
+				t.Fatalf("submission stages = %s/%s, want %s/%s", manager, admin, test.manager, test.admin)
+			}
+		})
+	}
+}
+
+func TestManagerReviewDecisionStages(t *testing.T) {
+	manager, admin := managerReviewDecision("approved")
+	if manager != models.WorkReportDecisionApproved || admin != models.WorkReportDecisionPending {
+		t.Fatalf("approval stages = %s/%s, want approved/pending", manager, admin)
+	}
+	manager, admin = managerReviewDecision("rejected")
+	if manager != models.WorkReportDecisionRejected || admin != models.WorkReportDecisionNotRequired {
+		t.Fatalf("rejection stages = %s/%s, want rejected/not_required", manager, admin)
+	}
+}
+
+func TestNewSubmissionDoesNotHaveManagerReviewAudit(t *testing.T) {
+	manager, admin, err := workReportSubmissionDecision(models.Employee{User: &models.User{Role: models.RoleMagang}}, true, "", false)
+	if err != nil || manager != models.WorkReportDecisionPending || admin != models.WorkReportDecisionNotRequired {
+		t.Fatalf("unexpected new submission workflow: %s/%s, %v", manager, admin, err)
+	}
+	report := models.WorkReport{ManagerReviewStatus: manager, AdminValidationStatus: admin}
+	if report.ManagerReviewedBy != nil || report.ManagerReviewedAt != nil {
+		t.Fatal("new submission must not have Manager review audit fields")
+	}
+}
+
 func TestAdminValidationRequiresManagerApprovalForKaryawan(t *testing.T) {
 	employee := models.User{Role: models.RoleKaryawan}
 	report := models.WorkReport{

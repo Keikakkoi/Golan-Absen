@@ -369,8 +369,8 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
     if (contract.filling_status === 'draft') return 'Draft';
     if (managerStatus === 'pending') return 'Menunggu Persetujuan Manajer';
     if (managerStatus === 'rejected') return 'Ditolak Manajer';
-    if (managerStatus === 'not_required' && adminStatus === 'pending') return 'Disetujui Manajer / Menunggu Validasi HRD';
     if (managerStatus === 'approved' && adminStatus === 'pending') return 'Disetujui Manajer / Menunggu Validasi HRD';
+    if (adminStatus === 'pending') return 'Menunggu Validasi HRD';
     if (adminStatus === 'approved') return 'Tervalidasi HRD/Admin';
     if (adminStatus === 'rejected') return 'Ditolak HRD/Admin';
     const status = this.reportStatus(row);

@@ -502,6 +502,19 @@ func CreateInternshipLogbook(c *fiber.Ctx) error {
 		StatusLogbook:      status,
 		IsLateSubmission:   isLateWorkReportSubmission(user.Employee.ID, date),
 	}
+	if status == "submitted" {
+		workflowEmployee := user.Employee
+		workflowEmployee.User = &user
+		managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(workflowEmployee, "", false)
+		if workflowErr != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to resolve logbook approval workflow"})
+		}
+		report.ManagerReviewStatus = managerStatus
+		report.AdminValidationStatus = adminStatus
+	} else {
+		report.ManagerReviewStatus = models.WorkReportDecisionNotRequired
+		report.AdminValidationStatus = models.WorkReportDecisionNotRequired
+	}
 	if err := config.DB.Create(&report).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create logbook"})
 	}
@@ -579,6 +592,21 @@ func UpdateInternshipLogbook(c *fiber.Ctx) error {
 	}
 	wasSubmitted := normalizeWorkReportStatus(report.StatusLogbook) == "submitted"
 	updates["status_logbook"] = status
+	if status == "submitted" && !wasSubmitted {
+		workflowEmployee := user.Employee
+		workflowEmployee.User = &user
+		managerStatus, adminStatus, workflowErr := workReportSubmissionWorkflow(workflowEmployee, "", false)
+		if workflowErr != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to resolve logbook approval workflow"})
+		}
+		updates["manager_review_status"] = managerStatus
+		updates["admin_validation_status"] = adminStatus
+		updates["admin_validated_by"] = nil
+		updates["admin_validated_at"] = nil
+	} else if status == "draft" {
+		updates["manager_review_status"] = models.WorkReportDecisionNotRequired
+		updates["admin_validation_status"] = models.WorkReportDecisionNotRequired
+	}
 	if err := config.DB.Model(&report).Updates(updates).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update logbook"})
 	}

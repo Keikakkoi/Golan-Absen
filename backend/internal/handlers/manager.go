@@ -514,16 +514,13 @@ func ReviewManagerWorkReport(c *fiber.Ctx) error {
 	}
 	now := time.Now()
 	legacyWorkflow := report.ReportKind == models.WorkReportKindLegacyLogbook
-	managerStatus := models.WorkReportDecisionApproved
-	if input.Status == "rejected" {
-		managerStatus = models.WorkReportDecisionRejected
-	}
+	managerStatus, adminStatus := managerReviewDecision(input.Status)
 	updates := map[string]interface{}{
 		"manager_review_status":   managerStatus,
 		"manager_reviewed_by":     managerID,
 		"manager_reviewed_at":     now,
 		"manager_review_notes":    reviewNotes,
-		"admin_validation_status": models.WorkReportDecisionPending,
+		"admin_validation_status": adminStatus,
 		"validasi_oleh_hr":        false,
 		// Compatibility fields are retained, but no longer drive the active
 		// Manager/Admin workflow.
@@ -532,7 +529,6 @@ func ReviewManagerWorkReport(c *fiber.Ctx) error {
 		"review_notes": reviewNotes,
 	}
 	if input.Status == "rejected" {
-		updates["admin_validation_status"] = models.WorkReportDecisionNotRequired
 		updates["manager_rejection_reason"] = rejectionReason
 	} else {
 		updates["manager_rejection_reason"] = ""

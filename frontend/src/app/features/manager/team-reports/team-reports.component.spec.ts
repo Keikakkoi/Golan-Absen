@@ -53,6 +53,22 @@ describe('TeamReportsComponent work report review', () => {
     expect(component.canReview({ ...base, ID: 11, Employee: { User: { Role: 'MAGANG' } } })).toBeTrue();
   });
 
+  it('does not label not_required Manager status as Manager-approved', () => {
+    const { component } = createComponent();
+    const row = {
+      ID: 12,
+      Employee: { User: { Role: 'MAGANG' } },
+      report_kind: 'work_report',
+      status_laporan: 'submitted',
+      manager_review_status: 'not_required',
+      admin_validation_status: 'pending',
+      deskripsi_kegiatan: 'Isi laporan'
+    };
+
+    expect(component.statusLabel(row)).toBe('Menunggu Validasi HRD');
+    expect(component.canReview(row)).toBeFalse();
+  });
+
   it('keeps legacy_logbook submissions reviewable and hides actions after approval', () => {
     const { component } = createComponent();
     const row = {
