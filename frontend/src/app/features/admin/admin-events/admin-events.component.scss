@@ -133,13 +133,32 @@
 .event-copy strong { color: var(--text-dark); }
 .event-copy span, .event-copy p, .event-copy small { margin: 4px 0 0; color: var(--text-dark-lo); font-size: 0.78rem; line-height: 1.45; }
 .event-copy p { margin-top: 8px; }
-.event-actions { display: flex; flex: 0 0 auto; min-width: 72px; gap: 6px; }
-.event-actions .icon-button { flex: 0 0 34px; }
+.event-actions {
+  display: flex;
+  flex: 0 0 auto;
+  min-width: 72px;
+  align-items: center;
+  gap: 6px;
+}
+.event-actions .icon-button {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  align-self: center;
+  box-sizing: border-box;
+}
 .btn-small { padding: 7px 10px; font-size: 0.8rem; }
 .btn-sm { padding: 5px 9px; border: 0; border-radius: 5px; color: white; cursor: pointer; font-size: 0.75rem; }
 .btn-edit { background: var(--info); }
 .btn-danger { background: var(--absent); }
-.actions { display: flex; gap: 6px; }
+.actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+}
 
 /* Keep the edit/delete actions readable in both the selected-event card and
    the full event table when dark mode is active. */
@@ -225,7 +244,20 @@
 .all-events-card .golan-table td:nth-child(7) { width: 10%; }
 .all-events-card .golan-table th:nth-child(8),
 .all-events-card .golan-table td:nth-child(8) { width: 13%; }
-.all-events-card .golan-table td.actions { min-width: 0; }
+.all-events-card .golan-table td.actions {
+  min-width: 0;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.all-events-card .golan-table td.actions > .icon-button {
+  flex: 0 0 34px;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  align-self: center;
+  box-sizing: border-box;
+}
 .all-events-card .table-description { overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
 .event-field-meta {
   display: flex;
