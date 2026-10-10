@@ -1,11 +1,13 @@
 export const environment = {
   production: true,
-  apiUrl: 'http://localhost:8080/api/v1',
+  // Local production builds use the same-origin API path. `npm run start:production`
+  // serves this build through Angular's dev proxy to the local Go backend.
+  apiUrl: '/api/v1',
   appName: 'Absensi Golan Digital Kreatif',
   companyName: 'PT. Golan Digital Kreatif',
-  publicSiteUrl: 'http://localhost:4300',
-  logoUrl: 'http://localhost:4300/assets/icon_golan.png',
-  socialImageUrl: 'http://localhost:4300/assets/social-share.svg',
+  publicSiteUrl: '/',
+  logoUrl: '/assets/icon_golan.png',
+  socialImageUrl: '/assets/social-share.svg',
   contactEmail: '',
   contactPhone: ''
 };

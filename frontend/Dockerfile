@@ -5,8 +5,10 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build -- --configuration production
-# Production requests must use the same-origin Nginx proxy instead of the
-# developer-only localhost backend URL embedded in legacy feature services.
+# The application uses environment.apiUrl for the backup flow and therefore
+# does not need post-build URL rewriting. Legacy feature services still have
+# their own migration pending; keep their existing fallback isolated from this
+# backup fix rather than changing unrelated features in this deployment.
 RUN find /app/dist/frontend/browser -type f -name '*.js' -exec sed -i 's|http://localhost:8080||g' {} +
 
 FROM nginx:1.27-alpine

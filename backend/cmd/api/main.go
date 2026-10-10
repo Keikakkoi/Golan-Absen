@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"absensi-golan-backend/config"
@@ -46,7 +47,22 @@ func main() {
 	})
 
 	app.Use(logger.New())
-	app.Use(cors.New())
+	allowedOrigins := strings.TrimSpace(cfg.FrontendURL)
+	if cfg.AppEnv == "development" {
+		for _, origin := range []string{"http://localhost:4200", "http://localhost:4300"} {
+			if !strings.Contains(allowedOrigins, origin) {
+				if allowedOrigins != "" {
+					allowedOrigins += ","
+				}
+				allowedOrigins += origin
+			}
+		}
+	}
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: allowedOrigins,
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowMethods: "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
+	}))
 
 	api := app.Group("/api/v1")
 

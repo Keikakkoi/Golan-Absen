@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "start:production": "ng build --configuration local-production && npx serve -s dist/frontend/browser -l 4300",
+    "start:production": "ng serve --configuration local-production --port 4300",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

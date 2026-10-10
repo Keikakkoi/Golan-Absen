@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
+import { environment } from '../../../../environments/environment';
 
 interface BackupHistory { name: string; type: string; modules: number; size: string; createdBy: string; createdAt: string; status: string; }
 interface BackupPreview { version?: string; type?: string; modules: string[]; tables: string[]; counts: Record<string, number>; files: number; includeFiles: boolean; createdAt?: string; }
@@ -27,7 +28,7 @@ export class AdminBackupComponent {
   private readonly moduleKeys: Record<string, string> = {
     'Karyawan': 'karyawan', 'Organisasi & jabatan': 'organisasi_jabatan', 'Project': 'project', 'Presensi': 'presensi', 'Pengajuan izin/cuti': 'pengajuan_izin_cuti', 'Lokasi WFH': 'lokasi_wfh', 'Jadwal & shift': 'jadwal_shift', 'Work Report': 'work_report', 'Agenda & Hari Libur': 'agenda_event', 'Sertifikat & Dokumen Magang': 'sertifikat_dokumen_magang', 'Pengaturan Aplikasi': 'pengaturan_aplikasi', 'Notifikasi & Perangkat': 'notifikasi_perangkat', 'Audit & Sistem': 'audit_sistem'
   };
-  private backupUrl = 'http://localhost:8080/api/v1/admin/settings/backup';
+  private readonly backupUrl = `${environment.apiUrl}/admin/settings/backup`;
   constructor(private http: HttpClient, private authService: AuthService, private alert: AlertService) {}
   get lastBackup(): BackupHistory | undefined { return this.history[0]; }
   get previewTables(): string[] { return this.preview?.tables || []; }
@@ -57,7 +58,20 @@ export class AdminBackupComponent {
       window.setTimeout(() => { window.URL.revokeObjectURL(url); link.remove(); }, 1500);
       const item: BackupHistory = { name: filename, type: this.backupType === 'full' ? 'Lengkap' : 'Terpilih', modules: this.backupType === 'full' ? this.modules.length : this.selectedModules.size, size: this.formatBytes(blob.size), createdBy: localStorage.getItem('name') || 'Admin', createdAt: new Date().toISOString(), status: 'Berhasil' };
       this.history = [item, ...this.history].slice(0, 20); localStorage.setItem('golan-backup-history', JSON.stringify(this.history)); this.successMessage = 'Backup berhasil dibuat dan telah diunduh.'; this.isLoading = false;
-    }, error: err => { this.isLoading = false; this.errorMessage = err.status === 403 ? 'Anda tidak memiliki izin untuk membuat backup.' : 'Backup gagal dibuat. Silakan coba lagi.'; } });
+    }, error: async (err: HttpErrorResponse) => {
+      this.isLoading = false;
+      const backendMessage = await this.readBackendError(err);
+      if (!environment.production) {
+        // Keep diagnostics useful without logging response bodies or auth data.
+        console.warn('[AdminBackup] backup request failed', {
+          status: err.status,
+          statusText: err.statusText,
+          url: err.url,
+          backendMessage
+        });
+      }
+      this.errorMessage = this.downloadErrorMessage(err.status, backendMessage);
+    } });
   }
   onFileSelected(event: Event): void { const input = event.target as HTMLInputElement; if (input.files?.[0]) this.validateFile(input.files[0]); }
   onBackupFilesChange(files: File[]): void { if (files[0]) this.validateFile(files[0]); else { this.selectedFile = null; this.validationState = 'empty'; this.preview = null; } }
@@ -86,7 +100,20 @@ export class AdminBackupComponent {
     const headers = new HttpHeaders().set('Authorization', `Bearer ${this.authService.getToken()}`);
     this.http.post<{ message: string; restored: Record<string, number>; rollback?: boolean }>(`${this.backupUrl}/restore`, form, { headers }).subscribe({
       next: async response => { this.restoreLoading = false; this.restoreResult = response as any; this.restoreMessage = response.message || 'Restore berhasil.'; await this.alert.success('Restore berhasil', this.restoreMessage); },
-      error: async err => { this.restoreLoading = false; this.restoreMessage = ''; await this.alert.error('Restore gagal', err.error?.error || 'Tidak ada perubahan data yang diterapkan.'); }
+      error: async (err: HttpErrorResponse) => {
+        this.restoreLoading = false;
+        this.restoreMessage = '';
+        const backendMessage = this.safeBackendMessage(err.error?.error);
+        if (!environment.production) {
+          console.warn('[AdminBackup] restore request failed', {
+            status: err.status,
+            statusText: err.statusText,
+            url: err.url,
+            backendMessage
+          });
+        }
+        await this.alert.error('Restore gagal', backendMessage || 'Tidak ada perubahan data yang diterapkan.');
+      }
     });
   }
   toggleRestoreFailures(): void { this.showRestoreFailures = !this.showRestoreFailures; }
@@ -95,4 +122,25 @@ export class AdminBackupComponent {
   private getFilename(header: string | null): string | null { const match = header?.match(/filename[^;=]*=(?:"([^"]+)"|([^;]+))/i); return match ? (match[1] || match[2]).trim() : null; }
   private formatBytes(bytes: number): string { return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`; }
   private readHistory(): BackupHistory[] { try { return JSON.parse(localStorage.getItem('golan-backup-history') || '[]'); } catch { return []; } }
+  private downloadErrorMessage(status: number, backendMessage: string | null): string {
+    if (status === 401) return 'Sesi Anda tidak valid atau sudah berakhir. Silakan login kembali.';
+    if (status === 403) return 'Anda tidak memiliki izin untuk membuat backup.';
+    if (status === 400 && backendMessage) return `Permintaan backup ditolak server: ${backendMessage}`;
+    if (status === 0) return 'Backend tidak dapat dihubungi. Periksa koneksi atau konfigurasi proxy.';
+    if (status >= 500) return 'Server gagal membuat backup. Periksa log backend untuk detail teknis.';
+    return 'Backup gagal dibuat. Silakan coba lagi.';
+  }
+  private async readBackendError(error: HttpErrorResponse): Promise<string | null> {
+    let payload: unknown = error.error;
+    if (payload instanceof Blob) {
+      try { payload = JSON.parse(await payload.text()); } catch { return null; }
+    }
+    return this.safeBackendMessage((payload as { error?: unknown } | null)?.error);
+  }
+  private safeBackendMessage(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const message = value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+    if (!message || message.length > 160 || /(password|token|secret|credential|authorization|bearer)/i.test(message)) return null;
+    return message;
+  }
 }
