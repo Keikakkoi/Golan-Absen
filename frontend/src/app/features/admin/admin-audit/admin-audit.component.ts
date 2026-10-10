@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { ReportExportService } from '../../../core/services/report-export.service';
 
 @Component({
   selector: 'app-admin-audit',
@@ -27,7 +28,11 @@ export class AdminAuditComponent implements OnInit {
   readonly tables = ['Semua', 'User', 'Employee', 'Division', 'Position', 'AttendanceRecord', 'LeaveRequest', 'NotificationSetting', 'OfficeLocation', 'WorkSchedule', 'WorkType', 'Holiday', 'LeaveQuota', 'RolePermission', 'EmployeeHomeLocation'];
   private readonly baseUrl = 'http://localhost:8080/api/v1/admin/settings/audit-logs';
 
-  constructor(private http: HttpClient, private authService: AuthService) {}
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService,
+    private reportExport: ReportExportService
+  ) {}
 
   ngOnInit(): void {
     this.loadLogs();
@@ -126,7 +131,68 @@ export class AdminAuditComponent implements OnInit {
   }
 
   exportPDF(): void {
-    window.print();
+    if (this.logs.length === 0) return;
+    const report = this.buildPrintableReport();
+    void this.reportExport.downloadPdf(
+      `audit-log-${this.reportDateForExport()}.pdf`,
+      'Laporan Audit Log Sistem',
+      this.reportDateLabel(),
+      report.headers,
+      report.rows
+    );
+  }
+
+  printReport(): void {
+    if (this.logs.length === 0) return;
+    const report = this.buildPrintableReport();
+    this.reportExport.printReport(
+      'Laporan Audit Log Sistem',
+      this.reportDateLabel(),
+      report.headers,
+      report.rows
+    );
+  }
+
+  private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
+    const headers = ['Waktu', 'Aktor (User)', 'Aksi', 'Tabel / ID', 'Detail Perubahan'];
+    const rows = this.logs.map(log => [
+      this.formatAuditDate(log.CreatedAt),
+      `${log.User?.Nama || '-'}\n${log.User?.Email || '-'} · ${log.User?.Role || '-'}`,
+      log.Action || '-',
+      `${log.TableName || '-'} #${log.RecordID ?? '-'}`,
+      log.ChangesDetail || '-'
+    ]);
+    return { headers, rows };
+  }
+
+  private formatAuditDate(value: string): string {
+    if (!value) return '-';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? '-'
+      : new Intl.DateTimeFormat('id-ID', {
+          weekday: 'short',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: 'Asia/Jakarta'
+        }).format(date);
+  }
+
+  private reportDateLabel(): string {
+    if (this.filters.start_date && this.filters.end_date) {
+      return `${this.filters.start_date} s/d ${this.filters.end_date}`;
+    }
+    if (this.filters.start_date) return `sejak ${this.filters.start_date}`;
+    if (this.filters.end_date) return `sampai ${this.filters.end_date}`;
+    return 'Semua tanggal';
+  }
+
+  private reportDateForExport(): string {
+    return `${this.filters.start_date || 'semua'}-${this.filters.end_date || 'tanggal'}`;
   }
 
   logout(): void {
