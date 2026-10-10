@@ -2696,6 +2696,8 @@ body.dark-theme .help-page {
 .calendar-card,
 .events-card {
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   background: white;
 }
 
@@ -2884,30 +2886,54 @@ body.dark-theme .calendar-legend .legend-today {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .event-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(48px, auto) minmax(0, 1fr);
   gap: 14px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 14px;
   border-left: 3px solid var(--green, #10b981);
   border-radius: 8px;
   background: #f8fbff;
+  overflow: hidden;
 
   &.event-meeting { border-left-color: var(--stamp, #f59e0b); }
   &.event-info { border-left-color: var(--info, #3b82f6); }
   &.event-holiday { border-left-color: #e74c3c; background: #fff1f1; }
 
   .event-time {
-    flex: 0 0 48px;
+    min-width: 0;
     color: var(--green-deep, #0d5c3a);
     font-family: var(--font-mono, monospace);
     font-size: 0.83rem;
     font-weight: 700;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
   }
 
   .event-copy {
     min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+
+    strong,
+    p,
+    span,
+    a {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      white-space: normal;
+    }
 
     strong {
       display: block;
@@ -2927,6 +2953,8 @@ body.dark-theme .calendar-legend .legend-today {
 
 .event-attachment {
   margin-top: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .attachment-image-preview {
@@ -2935,6 +2963,7 @@ body.dark-theme .calendar-legend .legend-today {
 
   a {
     display: inline-block;
+    max-width: 100%;
   }
 
   .event-img-thumb {
@@ -2956,6 +2985,9 @@ body.dark-theme .calendar-legend .legend-today {
 .attachment-link {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
+  max-width: 100%;
+  box-sizing: border-box;
   gap: 6px;
   padding: 4px 10px;
   border-radius: 6px;
@@ -2975,6 +3007,13 @@ body.dark-theme .calendar-legend .legend-today {
 
   i {
     font-size: 0.85rem;
+  }
+
+  span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
   }
 }
 
@@ -3167,7 +3206,7 @@ body.dark-theme .topbar-header .hamburger-btn:hover {
    Component-local rules and inline styles previously left neutral buttons
    with white/light backgrounds in dark mode. Semantic action buttons keep
    their role color; all neutral controls use the shared dark surfaces. */
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn),
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn),
 body.dark-theme .main-content
   a.btn-secondary,
 body.dark-theme .main-content
@@ -3203,7 +3242,7 @@ body.dark-theme .main-content
   text-shadow: none !important;
 }
 
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(:disabled):hover,
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(:disabled):hover,
 body.dark-theme .main-content a.btn-secondary:hover,
 body.dark-theme .main-content a.btn-view-detail:hover,
 body.dark-theme .main-content .btn-outline-primary:hover,
@@ -3223,7 +3262,7 @@ body.dark-theme .main-content .calendar-header button:hover {
   color: var(--text-dark) !important;
 }
 
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):active,
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):active,
 body.dark-theme .main-content a.btn-secondary:active,
 body.dark-theme .main-content a.btn-view-detail:active,
 body.dark-theme .main-content .btn-outline-primary:active,

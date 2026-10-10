@@ -1029,6 +1029,33 @@
   color: #dbeafe !important;
 }
 
+/* Keep employee edit/delete actions readable on the dark table surface while
+   preserving their existing light-theme colors. These declarations need the
+   same priority as the shared dark button rules above. */
+:host-context(body.dark-theme) .employee-action-buttons .icon-button.edit {
+  background: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .employee-action-buttons .icon-button.edit:hover {
+  background: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+:host-context(body.dark-theme) .employee-table .employee-actions-cell .employee-action-buttons > .icon-button.delete {
+  background: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .employee-table .employee-actions-cell .employee-action-buttons > .icon-button.delete:hover {
+  background: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
 :host-context(body.dark-theme) .employee-csv-upload ::ng-deep .file-preview-picker {
   border-color: var(--mint-2);
   background: var(--mint-1);

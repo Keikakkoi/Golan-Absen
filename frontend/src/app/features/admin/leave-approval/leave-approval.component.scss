@@ -168,6 +168,44 @@
   margin-inline: auto;
 }
 
+/* The shared status-badge palette is intentionally light-mode friendly. Keep
+   the dark-mode correction scoped to this table's Status column so other
+   badges and the light theme remain unchanged. The legacy status-hadir and
+   status-alpha classes stay on the element to preserve their light palette. */
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-pending {
+  background-color: #3b2f13;
+  border: 1px solid #a16207;
+  color: #fde68a;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-alpha {
+  background-color: #451a1a;
+  border: 1px solid #b91c1c;
+  color: #fca5a5;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-manager-approved {
+  background-color: #172554;
+  border: 1px solid #2563eb;
+  color: #93c5fd;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-approved {
+  background-color: #052e16;
+  border: 1px solid #16a34a;
+  color: #86efac;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-cancelled {
+  background-color: #1e293b;
+  border: 1px solid #64748b;
+  color: #cbd5e1;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge::before {
+  background-color: currentColor;
+}
+
 .leave-toolbar {
   display: flex;
   gap: 0.75rem;
@@ -294,6 +332,45 @@
   opacity: 0.8;
 }
 
+/* Approval actions use compact semantic colors in dark mode. Keep the rules
+   local to the Status table's action cell so other approval controls remain
+   unchanged. */
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-actions-cell .table-actions > .icon-button.view {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-actions-cell .table-actions > .icon-button.view:hover {
+  background: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-actions-cell .table-actions .action-group > .icon-button.approve {
+  background: #14532d !important;
+  border-color: #16a34a !important;
+  color: #86efac !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-actions-cell .table-actions .action-group > .icon-button.approve:hover {
+  background: #166534 !important;
+  border-color: #4ade80 !important;
+  color: #bbf7d0 !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-actions-cell .table-actions .action-group > .icon-button.reject {
+  background: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-actions-cell .table-actions .action-group > .icon-button.reject:hover {
+  background: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
 .btn-action {
   border: none;
   border-radius: 8px;
@@ -352,8 +429,11 @@
   left: 0;
   right: 0;
   bottom: 0;
-  width: 100vw;
+  width: 100%;
+  max-width: 100vw;
   height: 100vh;
+  max-height: 100dvh;
+  box-sizing: border-box;
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -362,6 +442,7 @@
   justify-content: center;
   z-index: 9999;
   padding: 1rem;
+  overflow-x: hidden;
   animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -388,9 +469,11 @@
 .leave-detail-modal {
   background: #ffffff;
   border-radius: 16px;
-  width: 100%;
+  width: min(600px, 100%);
   max-width: 600px;
-  max-height: 90vh;
+  max-height: min(90vh, calc(100dvh - 2rem));
+  min-width: 0;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.04);
@@ -400,6 +483,7 @@
 }
 
 .leave-detail-modal .modal-header {
+  flex: 0 0 auto;
   padding: 1.25rem 1.5rem;
   background: #ffffff;
   border-bottom: 1px solid #f1f5f9;
@@ -432,6 +516,8 @@
     font-weight: 700;
     color: #0f172a;
     line-height: 1.3;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .request-id {
@@ -464,8 +550,11 @@
 }
 
 .leave-detail-modal .modal-body {
+  width: 100%;
+  min-height: 0;
   padding: 1.5rem;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -590,7 +679,7 @@
 /* Grid Layout for details */
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 
   .grid-item {
@@ -611,6 +700,8 @@
     }
 
     .grid-value {
+      overflow-wrap: anywhere;
+      word-break: break-word;
       font-size: 0.925rem;
       color: #0f172a;
 
@@ -676,6 +767,8 @@
       color: #1e293b;
       line-height: 1.5;
       white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
   }
 
@@ -720,6 +813,8 @@
         font-size: 0.85rem;
         font-weight: 700;
         color: #0369a1;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
       .attachment-sub {
         font-size: 0.75rem;
@@ -773,6 +868,28 @@
   border-radius: 8px;
   font-size: 0.85rem;
   color: #64748b;
+}
+
+/* Long approval text must wrap inside the dialog, including pasted strings
+   without spaces. Keep editable admin notes within the same width contract. */
+.leave-detail-modal,
+.leave-detail-modal *,
+.leave-approval-page textarea {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.leave-detail-modal textarea {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.leave-detail-modal textarea {
+  width: 100%;
+  white-space: pre-wrap;
+  overflow-x: hidden;
+  resize: vertical;
 }
 
 /* Modal Footer */

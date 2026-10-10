@@ -402,6 +402,42 @@
   border-color: var(--green) !important;
 }
 
+:host-context(body.dark-theme) .work-report-page .report-history-table tbody td[data-label="Aksi"] > .icon-button.view {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table tbody td[data-label="Aksi"] > .icon-button.view:hover {
+  background: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table tbody td[data-label="Aksi"] > .icon-button.edit {
+  background: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table tbody td[data-label="Aksi"] > .icon-button.edit:hover {
+  background: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table tbody td[data-label="Aksi"] > .icon-button.delete {
+  background: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table tbody td[data-label="Aksi"] > .icon-button.delete:hover {
+  background: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
 @media (max-width: 640px) {
   .reporting-month-toolbar {
     margin-bottom: .75rem;

@@ -103,6 +103,8 @@
                 <span class="status-badge" [ngClass]="{
                   'status-pending': req.Status === 'Pending' || req.Status === 'pending_hrd_approval' || req.Status === 'pending_manager_approval',
                   'status-hadir': req.Status === 'Approved' || req.Status === 'manager_approved' || req.Status === 'hrd_approved',
+                  'status-manager-approved': req.Status === 'manager_approved',
+                  'status-approved': req.Status === 'Approved' || req.Status === 'hrd_approved',
                   'status-alpha': req.Status === 'Rejected' || req.Status === 'manager_rejected' || req.Status === 'hrd_rejected',
                   'status-cancelled': req.Status === 'Cancelled'
                 }"

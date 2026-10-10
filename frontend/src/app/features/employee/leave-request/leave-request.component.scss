@@ -345,11 +345,42 @@ body.dark-theme .file-name {
   margin-top: 4px;
 }
 
-.leave-history-card .leave-request-actions {
+.leave-history-card .golan-table tbody td.leave-request-attachment,
+.leave-history-card .golan-table tbody td.leave-request-actions {
+  vertical-align: middle;
+}
+
+.leave-history-card .leave-request-cell-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   white-space: nowrap;
+  min-height: 34px;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .golan-table .leave-request-cell-actions > .icon-button.view {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .golan-table .leave-request-cell-actions > .icon-button.view:hover {
+  background: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .golan-table .leave-request-cell-actions > .icon-button.delete.leave-cancel-action {
+  background: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .golan-table .leave-request-cell-actions > .icon-button.delete.leave-cancel-action:hover {
+  background: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
 }
 
 .history-empty {
@@ -442,9 +473,47 @@ body.dark-theme .file-name {
   max-height: calc(100vh - 36px);
   max-height: calc(100dvh - 36px);
   box-sizing: border-box;
-  overflow-y: auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   overscroll-behavior: contain;
   color: #173450;
+}
+
+/* Keep the detail dialog bounded even when a value is one uninterrupted
+   string. The body owns vertical scrolling so the header and close control
+   remain available while long notes are read. */
+.modal-backdrop,
+.leave-detail-modal,
+.leave-detail-modal * {
+  box-sizing: border-box;
+}
+
+.modal-backdrop {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+.leave-detail-modal .modal-header,
+.leave-detail-modal .modal-body,
+.leave-detail-modal .detail-row,
+.leave-detail-modal .detail-block {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.leave-detail-modal .modal-header {
+  flex: 0 0 auto;
+}
+
+.leave-detail-modal .modal-body {
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 .detail-row,
@@ -463,9 +532,13 @@ body.dark-theme .file-name {
 
 .detail-row strong,
 .detail-block p {
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   color: #173450;
   font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .detail-block p {
@@ -474,6 +547,8 @@ body.dark-theme .file-name {
   background: #f4f9ff;
   border: 1px solid #dbeaf6;
   line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-x: hidden;
 }
 
 /* The shared status styles are intentionally broad because they are used by
@@ -618,6 +693,7 @@ body.dark-theme .leave-detail-modal .status-detail-cancelled {
   .modal-backdrop {
     padding: 12px;
     overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .leave-detail-modal {

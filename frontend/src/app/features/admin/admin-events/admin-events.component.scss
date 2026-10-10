@@ -109,19 +109,68 @@
   &.selected i { background: white; }
 }
 
+.selected-events-card,
+.selected-event-list,
+.selected-event { min-width: 0; max-width: 100%; box-sizing: border-box; }
 .selected-event-list { display: flex; flex-direction: column; gap: 12px; }
-.selected-event { display: flex; gap: 14px; align-items: flex-start; padding: 14px; border-left: 3px solid var(--green); border-radius: 8px; background: #f8fbff; }
-.event-time { flex: 0 0 58px; color: var(--green-deep); font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; }
-.event-copy { flex: 1; min-width: 0; }
-.event-copy strong { display: block; color: var(--text-dark); }
-.event-copy span, .event-copy p, .event-copy small { display: block; margin: 4px 0 0; color: var(--text-dark-lo); font-size: 0.78rem; line-height: 1.45; }
+.selected-event {
+  display: grid;
+  grid-template-columns: minmax(58px, auto) minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding: 14px;
+  border-left: 3px solid var(--green);
+  border-radius: 8px;
+  background: #f8fbff;
+  overflow: hidden;
+}
+.event-time { min-width: 0; color: var(--green-deep); font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+.event-copy { min-width: 0; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+.event-copy strong,
+.event-copy span,
+.event-copy p,
+.event-copy small { display: block; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+.event-copy strong { color: var(--text-dark); }
+.event-copy span, .event-copy p, .event-copy small { margin: 4px 0 0; color: var(--text-dark-lo); font-size: 0.78rem; line-height: 1.45; }
 .event-copy p { margin-top: 8px; }
-.event-actions { display: flex; gap: 6px; }
+.event-actions { display: flex; flex: 0 0 auto; min-width: 72px; gap: 6px; }
+.event-actions .icon-button { flex: 0 0 34px; }
 .btn-small { padding: 7px 10px; font-size: 0.8rem; }
 .btn-sm { padding: 5px 9px; border: 0; border-radius: 5px; color: white; cursor: pointer; font-size: 0.75rem; }
 .btn-edit { background: var(--info); }
 .btn-danger { background: var(--absent); }
 .actions { display: flex; gap: 6px; }
+
+/* Keep the edit/delete actions readable in both the selected-event card and
+   the full event table when dark mode is active. */
+:host-context(body.dark-theme) .events-page .event-actions > .icon-button.edit,
+:host-context(body.dark-theme) .events-page .golan-table td.actions > .icon-button.edit {
+  background: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .events-page .event-actions > .icon-button.edit:hover,
+:host-context(body.dark-theme) .events-page .golan-table td.actions > .icon-button.edit:hover {
+  background: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+:host-context(body.dark-theme) .events-page .event-actions > .icon-button.delete,
+:host-context(body.dark-theme) .events-page .golan-table td.actions > .icon-button.delete {
+  background: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .events-page .event-actions > .icon-button.delete:hover,
+:host-context(body.dark-theme) .events-page .golan-table td.actions > .icon-button.delete:hover {
+  background: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
 .loading-label, .table-description { display: block; color: var(--text-dark-lo); font-size: 0.75rem; }
 
 .event-filter-card {
@@ -140,11 +189,59 @@
 .event-mobile-list { display: none; }
 
 .all-events-card .table-container {
-  overflow-x: auto;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .all-events-card .golan-table {
-  min-width: 920px;
+  width: 100%;
+  min-width: 0 !important;
+  table-layout: fixed;
+  white-space: normal;
+}
+
+.all-events-card .golan-table th,
+.all-events-card .golan-table td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+
+.all-events-card .golan-table th:nth-child(1),
+.all-events-card .golan-table td:nth-child(1) { width: 10%; }
+.all-events-card .golan-table th:nth-child(2),
+.all-events-card .golan-table td:nth-child(2) { width: 10%; }
+.all-events-card .golan-table th:nth-child(3),
+.all-events-card .golan-table td:nth-child(3) { width: 20%; }
+.all-events-card .golan-table th:nth-child(4),
+.all-events-card .golan-table td:nth-child(4) { width: 11%; }
+.all-events-card .golan-table th:nth-child(5),
+.all-events-card .golan-table td:nth-child(5) { width: 10%; }
+.all-events-card .golan-table th:nth-child(6),
+.all-events-card .golan-table td:nth-child(6) { width: 16%; }
+.all-events-card .golan-table th:nth-child(7),
+.all-events-card .golan-table td:nth-child(7) { width: 10%; }
+.all-events-card .golan-table th:nth-child(8),
+.all-events-card .golan-table td:nth-child(8) { width: 13%; }
+.all-events-card .golan-table td.actions { min-width: 0; }
+.all-events-card .table-description { overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+.event-field-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--text-dark-lo);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.event-field-meta small,
+.event-field-meta span { min-width: 0; overflow-wrap: anywhere; }
+.event-field-meta span { flex: 0 0 auto; font-family: var(--font-mono); }
+
+.event-modal .form-group:has(.event-field-meta) .golan-input {
+  white-space: normal;
 }
 
 .all-events-card app-pagination {
@@ -423,8 +520,8 @@
 }
 
 @media (max-width: 600px) {
-  .selected-event { flex-wrap: wrap; }
-  .event-actions { width: 100%; }
+  .selected-event { grid-template-columns: minmax(58px, auto) minmax(0, 1fr); }
+  .event-actions { grid-column: 1 / -1; width: 100%; justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--mint-1); }
   .modal-header { padding: 22px 20px 18px; }
   .event-modal form { padding: 22px 20px 24px; }
   .event-modal .form-grid { grid-template-columns: 1fr; gap: 0; }

@@ -564,6 +564,30 @@
 .schedule-actions { white-space: nowrap; }
 .schedule-actions .btn-edit, .schedule-actions .btn-delete { margin: 0 4px 0 0; padding: 7px 9px; border-radius: 8px; font-size: .72rem; }
 
+:host-context(body.dark-theme) .admin-management-shell .main-content .schedule-table .schedule-actions > .icon-button.edit {
+  background-color: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .schedule-table .schedule-actions > .icon-button.edit:hover {
+  background-color: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .schedule-table .schedule-actions > .icon-button.delete {
+  background-color: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .schedule-table .schedule-actions > .icon-button.delete:hover {
+  background-color: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
 .schedule-loading,
 .schedule-empty {
   display: flex;
@@ -1477,6 +1501,42 @@ textarea.golan-input {
   box-sizing: border-box;
 }
 
+:host-context(body.dark-theme) .admin-management-shell .main-content .quota-table .quota-actions > .icon-button.view {
+  background-color: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .quota-table .quota-actions > .icon-button.view:hover {
+  background-color: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .quota-table .quota-actions > .icon-button.edit {
+  background-color: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .quota-table .quota-actions > .icon-button.edit:hover {
+  background-color: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .quota-table .quota-actions > .icon-button.delete {
+  background-color: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .quota-table .quota-actions > .icon-button.delete:hover {
+  background-color: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
 .quota-loading,
 .quota-empty {
   display: flex;
@@ -1599,6 +1659,19 @@ textarea.golan-input {
 .main-content .home-location-table th {
   white-space: nowrap;
 }
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .home-location-table td:last-child > .icon-button.edit {
+  background-color: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .home-location-table td:last-child > .icon-button.edit:hover {
+  background-color: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
 .main-content .home-location-table td:nth-child(1) { min-width: 190px; }
 .main-content .home-location-table td:nth-child(2) { min-width: 130px; white-space: nowrap; }
 .main-content .home-location-table td:nth-child(3) { min-width: 90px; white-space: nowrap; }
@@ -1824,6 +1897,18 @@ textarea.golan-input {
 .home-request-table .home-request-actions {
   flex-wrap: nowrap;
   gap: 8px;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .home-request-table .home-request-actions > .icon-button.view {
+  background-color: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .admin-management-shell .main-content .home-request-table .home-request-actions > .icon-button.view:hover {
+  background-color: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
 }
 
 @media (max-width: 768px) {
