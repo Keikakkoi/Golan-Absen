@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"absensi-golan-backend/config"
@@ -15,6 +16,7 @@ func Protected() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			log.Printf("auth rejected: path=%s reason=missing_bearer_header", c.Path())
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
 		}
 
@@ -27,6 +29,7 @@ func Protected() fiber.Handler {
 		})
 
 		if err != nil || !token.Valid {
+			log.Printf("auth rejected: path=%s reason=invalid_token error=%v", c.Path(), err)
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token"})
 		}
 
@@ -34,12 +37,14 @@ func Protected() fiber.Handler {
 		if config.RedisClient != nil {
 			val, _ := config.RedisClient.Get(config.Ctx, "blacklist:"+tokenStr).Result()
 			if val == "true" {
+				log.Printf("auth rejected: path=%s reason=blacklisted_token user_id=%d", c.Path(), claims.UserID)
 				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Token has been revoked (Logged out or logged in on another device)"})
 			}
 
 			sessionKey := fmt.Sprintf("active_session:%d", claims.UserID)
 			activeToken, err := config.RedisClient.Get(config.Ctx, sessionKey).Result()
 			if err == nil && activeToken != "" && activeToken != tokenStr {
+				log.Printf("auth rejected: path=%s reason=session_replaced user_id=%d", c.Path(), claims.UserID)
 				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Token has been replaced by a newer session"})
 			}
 		}
@@ -50,9 +55,11 @@ func Protected() fiber.Handler {
 		// the user logs in again.
 		var user models.User
 		if err := config.DB.Select("id", "role", "status").First(&user, claims.UserID).Error; err != nil {
+			log.Printf("auth rejected: path=%s reason=user_lookup_failed user_id=%d error=%v", c.Path(), claims.UserID, err)
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User account not found"})
 		}
 		if strings.TrimSpace(user.Status) != "" && !strings.EqualFold(strings.TrimSpace(user.Status), "aktif") {
+			log.Printf("auth rejected: path=%s reason=inactive_user user_id=%d", c.Path(), claims.UserID)
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "User account is inactive"})
 		}
 

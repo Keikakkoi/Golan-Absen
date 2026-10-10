@@ -751,6 +751,7 @@ func BackupDatabase(c *fiber.Ctx) error {
 	if !isHRD(c) {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
+	userID, _ := c.Locals("user_id").(uint)
 	modules, allowed, err := requestedBackupModules(c.Query("modules"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
@@ -820,6 +821,7 @@ func BackupDatabase(c *fiber.Ctx) error {
 			continue
 		}
 		if err := config.DB.Find(query.dest).Error; err != nil {
+			log.Printf("backup failed: user_id=%d format=%s operation=select table=%s error=%v", userID, backupFormat, query.name, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to create backup",
 				"table": query.name,
@@ -892,10 +894,12 @@ func BackupDatabase(c *fiber.Ctx) error {
 	}
 	jsonData, err := json.Marshal(backupData)
 	if err != nil {
+		log.Printf("backup failed: user_id=%d format=%s operation=marshal error=%v", userID, backupFormat, err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal membuat isi backup"})
 	}
 	jsonData, err = removeSensitiveBackupFields(jsonData)
 	if err != nil {
+		log.Printf("backup failed: user_id=%d format=%s operation=scrub_sensitive_fields error=%v", userID, backupFormat, err)
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal menyaring data sensitif backup"})
 	}
 	if backupFormat == "zip" {
@@ -903,20 +907,25 @@ func BackupDatabase(c *fiber.Ctx) error {
 		writer := zip.NewWriter(&archive)
 		entry, err := writer.Create(backupFilename + ".json")
 		if err != nil {
+			log.Printf("backup failed: user_id=%d format=zip operation=create_json_entry error=%v", userID, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal membuat arsip backup"})
 		}
 		if _, err = entry.Write(jsonData); err != nil {
+			log.Printf("backup failed: user_id=%d format=zip operation=write_json_entry error=%v", userID, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menulis isi backup"})
 		}
 		if allowed["internship_certificates"] || allowed["internship_documents"] {
 			if err = appendInternshipBackupFiles(writer, internshipCerts, internshipDocs); err != nil {
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mencadangkan file sertifikat atau dokumen magang: " + err.Error()})
+				log.Printf("backup failed: user_id=%d format=zip operation=read_internship_files error=%v", userID, err)
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mencadangkan file sertifikat atau dokumen magang"})
 			}
 		}
 		if err = appendBackupFiles(writer, files); err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": "Gagal mencadangkan file: " + err.Error()})
+			log.Printf("backup failed: user_id=%d format=zip operation=read_attachment_files error=%v", userID, err)
+			return c.Status(500).JSON(fiber.Map{"error": "Gagal mencadangkan file lampiran"})
 		}
 		if err = writer.Close(); err != nil {
+			log.Printf("backup failed: user_id=%d format=zip operation=close_archive error=%v", userID, err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal mengompres backup"})
 		}
 		c.Set("Content-Disposition", "attachment; filename="+backupFilename+".zip")

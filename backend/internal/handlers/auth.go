@@ -56,6 +56,10 @@ func SetupAuthRoutes(router fiber.Router) {
 func Login(c *fiber.Ctx) error {
 	var req LoginRequest
 	if err := c.BodyParser(&req); err != nil {
+		// Do not log the request body: it contains the user's password. The
+		// parser metadata and error are enough to diagnose proxy/content-type
+		// problems without exposing credentials.
+		log.Printf("login payload rejected: content_type=%q content_length=%d body_length=%d error=%v", c.Get("Content-Type"), c.Request().Header.ContentLength(), len(c.Body()), err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request payload"})
 	}
 
