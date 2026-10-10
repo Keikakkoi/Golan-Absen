@@ -138,19 +138,23 @@
                   <td data-label="Approver">{{ approverLabel(req) }}</td>
                   <td data-label="Alasan Penolakan">{{ rejectionReason(req) }}</td>
                   <td data-label="Catatan" class="leave-note-cell" [title]="note(req)">{{ note(req) }}</td>
-                  <td data-label="Lampiran">
-                    <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" rel="noopener noreferrer" class="icon-button view" aria-label="Lihat lampiran" title="Lihat lampiran">
-                      <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
-                    </a>
-                    <span *ngIf="!req.LampiranURL" class="text-muted">-</span>
+                  <td data-label="Lampiran" class="leave-request-attachment">
+                    <div class="leave-request-cell-actions">
+                      <a *ngIf="req.LampiranURL" [href]="req.LampiranURL" target="_blank" rel="noopener noreferrer" class="icon-button view" aria-label="Lihat lampiran" title="Lihat lampiran">
+                        <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+                      </a>
+                      <span *ngIf="!req.LampiranURL" class="text-muted">-</span>
+                    </div>
                   </td>
                   <td data-label="Aksi" class="leave-request-actions">
-                    <button type="button" class="icon-button view" (click)="openDetail(req)" aria-label="Lihat detail pengajuan" title="Lihat detail pengajuan">
-                      <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
-                    </button>
-                    <button *ngIf="isCancellable(req)" type="button" class="icon-button delete leave-cancel-action" (click)="cancelRequest(req)" aria-label="Batalkan pengajuan" title="Batalkan pengajuan">
-                      <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg>
-                    </button>
+                    <div class="leave-request-cell-actions">
+                      <button type="button" class="icon-button view" (click)="openDetail(req)" aria-label="Lihat detail pengajuan" title="Lihat detail pengajuan">
+                        <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+                      </button>
+                      <button *ngIf="isCancellable(req)" type="button" class="icon-button delete leave-cancel-action" (click)="cancelRequest(req)" aria-label="Batalkan pengajuan" title="Batalkan pengajuan">
+                        <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
