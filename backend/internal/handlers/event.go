@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/middleware"
@@ -30,6 +31,12 @@ type companyEventInput struct {
 	StatusAktif *bool  `json:"status_aktif"`
 	RemoveFile  string `json:"remove_file" form:"remove_file"`
 }
+
+const (
+	companyEventTitleMaxLength       = 150
+	companyEventLocationMaxLength    = 150
+	companyEventDescriptionMaxLength = 2000
+)
 
 func SetupEventRoutes(router fiber.Router) {
 	events := router.Group("/events", middleware.Protected())
@@ -318,6 +325,17 @@ func (input companyEventInput) toModel() (models.CompanyEvent, error) {
 	if judul == "" || jamMulai == "" {
 		return models.CompanyEvent{}, fiber.NewError(fiber.StatusBadRequest, "Judul dan jam mulai event wajib diisi")
 	}
+	if utf8.RuneCountInString(judul) > companyEventTitleMaxLength {
+		return models.CompanyEvent{}, fiber.NewError(fiber.StatusBadRequest, "Judul event maksimal 150 karakter")
+	}
+	lokasi := strings.TrimSpace(input.Lokasi)
+	if utf8.RuneCountInString(lokasi) > companyEventLocationMaxLength {
+		return models.CompanyEvent{}, fiber.NewError(fiber.StatusBadRequest, "Lokasi maksimal 150 karakter")
+	}
+	deskripsi := strings.TrimSpace(input.Deskripsi)
+	if utf8.RuneCountInString(deskripsi) > companyEventDescriptionMaxLength {
+		return models.CompanyEvent{}, fiber.NewError(fiber.StatusBadRequest, "Deskripsi/catatan maksimal 2000 karakter")
+	}
 	if !validClock(jamMulai) || (jamSelesai != "" && !validClock(jamSelesai)) {
 		return models.CompanyEvent{}, fiber.NewError(fiber.StatusBadRequest, "Format jam harus HH:mm")
 	}
@@ -339,8 +357,8 @@ func (input companyEventInput) toModel() (models.CompanyEvent, error) {
 	}
 	return models.CompanyEvent{
 		Tanggal: parsedDate, JamMulai: jamMulai, JamSelesai: jamSelesai,
-		Judul: judul, Tipe: tipe, Deskripsi: strings.TrimSpace(input.Deskripsi),
-		Lokasi: strings.TrimSpace(input.Lokasi), StatusAktif: aktif,
+		Judul: judul, Tipe: tipe, Deskripsi: deskripsi,
+		Lokasi: lokasi, StatusAktif: aktif,
 	}, nil
 }
 

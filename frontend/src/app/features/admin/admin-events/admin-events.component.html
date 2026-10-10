@@ -237,9 +237,21 @@
           </div>
         </div>
       </div>
-      <div class="form-group"><label for="event-title">Judul Event <b>*</b></label><input id="event-title" type="text" class="golan-input" name="judul" [(ngModel)]="form.judul" placeholder="Contoh: Meeting dengan investor" required></div>
-      <div class="form-group"><label for="event-location">Lokasi <span>(opsional)</span></label><input id="event-location" type="text" class="golan-input" name="lokasi" [(ngModel)]="form.lokasi" placeholder="Contoh: Ruang Meeting Utama / Online"></div>
-      <div class="form-group"><label for="event-description">Deskripsi / Catatan <span>(opsional)</span></label><textarea id="event-description" class="golan-input" name="deskripsi" [(ngModel)]="form.deskripsi" rows="3" placeholder="Tambahkan informasi event"></textarea></div>
+      <div class="form-group">
+        <label for="event-title">Judul Event <b>*</b></label>
+        <input id="event-title" type="text" class="golan-input" name="judul" [(ngModel)]="form.judul" [maxlength]="eventFieldLimits.judul" placeholder="Contoh: Meeting dengan investor" required>
+        <div class="event-field-meta"><small>Maksimal {{ eventFieldLimits.judul }} karakter.</small><span>{{ characterCount(form.judul) }}/{{ eventFieldLimits.judul }}</span></div>
+      </div>
+      <div class="form-group">
+        <label for="event-location">Lokasi <span>(opsional)</span></label>
+        <input id="event-location" type="text" class="golan-input" name="lokasi" [(ngModel)]="form.lokasi" [maxlength]="eventFieldLimits.lokasi" placeholder="Contoh: Ruang Meeting Utama / Online">
+        <div class="event-field-meta"><small>Maksimal {{ eventFieldLimits.lokasi }} karakter.</small><span>{{ characterCount(form.lokasi) }}/{{ eventFieldLimits.lokasi }}</span></div>
+      </div>
+      <div class="form-group">
+        <label for="event-description">Deskripsi / Catatan <span>(opsional)</span></label>
+        <textarea id="event-description" class="golan-input" name="deskripsi" [(ngModel)]="form.deskripsi" [maxlength]="eventFieldLimits.deskripsi" rows="3" placeholder="Tambahkan informasi event"></textarea>
+        <div class="event-field-meta"><small>Maksimal {{ eventFieldLimits.deskripsi }} karakter.</small><span>{{ characterCount(form.deskripsi) }}/{{ eventFieldLimits.deskripsi }}</span></div>
+      </div>
       
       <!-- FILE UPLOAD FIELD -->
       <div class="form-group">

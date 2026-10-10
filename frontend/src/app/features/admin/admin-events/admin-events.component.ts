@@ -51,6 +51,11 @@ interface PaginatedEventsResponse {
   styleUrls: ['./admin-events.component.scss']
 })
 export class AdminEventsComponent implements OnInit, OnDestroy {
+  readonly eventFieldLimits = {
+    judul: 150,
+    lokasi: 150,
+    deskripsi: 2000
+  } as const;
   readonly eventTypeOptions = [
     { value: 'rapat', label: 'Rapat' },
     { value: 'meeting', label: 'Meeting' },
@@ -427,8 +432,8 @@ export class AdminEventsComponent implements OnInit, OnDestroy {
   }
 
   async saveEvent(): Promise<void> {
-    if (!this.form.tanggal || !this.form.jam_mulai || !this.form.judul.trim()) {
-      this.errorMessage = 'Tanggal, jam mulai, dan judul wajib diisi.';
+    this.errorMessage = this.eventValidationError();
+    if (this.errorMessage) {
       return;
     }
     const isEdit = this.form.ID > 0;
@@ -445,8 +450,8 @@ export class AdminEventsComponent implements OnInit, OnDestroy {
     formData.append('jam_selesai', jamSelesaiClean);
     formData.append('judul', this.form.judul.trim());
     formData.append('tipe', this.form.tipe || 'info');
-    formData.append('deskripsi', this.form.deskripsi || '');
-    formData.append('lokasi', this.form.lokasi || '');
+    formData.append('deskripsi', this.form.deskripsi.trim());
+    formData.append('lokasi', this.form.lokasi.trim());
     formData.append('status_aktif', this.form.status_aktif ? 'true' : 'false');
     if (this.removeExistingFile) {
       formData.append('remove_file', 'true');
@@ -511,6 +516,26 @@ export class AdminEventsComponent implements OnInit, OnDestroy {
 
   private toDateKey(date: Date): string {
     return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+  }
+
+  characterCount(value: string | null | undefined): number {
+    return Array.from(value || '').length;
+  }
+
+  eventValidationError(): string {
+    if (!this.form.tanggal || !this.form.jam_mulai || !this.form.judul.trim()) {
+      return 'Tanggal, jam mulai, dan judul wajib diisi.';
+    }
+    if (this.characterCount(this.form.judul) > this.eventFieldLimits.judul) {
+      return `Judul event maksimal ${this.eventFieldLimits.judul} karakter.`;
+    }
+    if (this.characterCount(this.form.lokasi) > this.eventFieldLimits.lokasi) {
+      return `Lokasi maksimal ${this.eventFieldLimits.lokasi} karakter.`;
+    }
+    if (this.characterCount(this.form.deskripsi) > this.eventFieldLimits.deskripsi) {
+      return `Deskripsi/catatan maksimal ${this.eventFieldLimits.deskripsi} karakter.`;
+    }
+    return '';
   }
 
   private jakartaTodayKey(): string {
