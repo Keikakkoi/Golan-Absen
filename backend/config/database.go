@@ -63,6 +63,7 @@ func ConnectDB(cfg *Config) {
 		&models.WorkSchedule{},
 		&models.RegularWorkSchedule{},
 		&models.LeaveRequest{},
+		&models.ApprovalDelegation{},
 		&models.LeaveApprovalHistory{},
 		&models.LeaveQuota{},
 		&models.Notification{},
