@@ -111,8 +111,9 @@ func BroadcastNotification(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Judul atau pesan terlalu panjang"})
 	}
 
-	query := config.DB.Model(&models.User{})
-	if input.TargetRole != "" && input.TargetRole != "Semua" {
+	query := config.DB.Model(&models.User{}).Where("status = ?", "aktif")
+	isAllRoles := input.TargetRole == "" || strings.EqualFold(input.TargetRole, "Semua") || strings.EqualFold(input.TargetRole, "Semua role")
+	if !isAllRoles {
 		role := models.Role(input.TargetRole)
 		if role != models.RoleKaryawan && role != models.RoleHRD && role != models.RoleMagang && role != models.RoleManajer {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Target role tidak valid"})
@@ -127,7 +128,7 @@ func BroadcastNotification(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Tidak ada penerima notifikasi"})
 	}
 	for _, user := range users {
-		if err := utils.CreateNotification(config.DB, user.ID, user.Role, "Info Admin", input.Judul, input.Pesan); err != nil {
+		if err := utils.CreateAdminAnnouncementNotification(config.DB, user.ID, user.Role, input.Judul, input.Pesan); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal membuat notifikasi"})
 		}
 	}

@@ -31,6 +31,14 @@ func CreateNotification(db *gorm.DB, userID uint, role models.Role, notification
 	return createNotification(db, userID, role, notificationType, title, message, nil)
 }
 
+// CreateAdminAnnouncementNotification stores an administrator announcement
+// regardless of the recipient's optional notification preferences. An admin
+// announcement is an explicit dashboard message and must be visible to every
+// selected active user.
+func CreateAdminAnnouncementNotification(db *gorm.DB, userID uint, role models.Role, title, message string) error {
+	return createNotificationWithTarget(db, userID, role, "Info Admin", title, message, nil, nil, nil, true)
+}
+
 // CreateAttendanceNotification makes attendance notifications idempotent per
 // recipient and attendance record. Duplicate requests are rejected by the
 // database unique index without affecting the saved attendance.
@@ -52,21 +60,23 @@ func CreateWorkReportRevisionNotification(db *gorm.DB, userID uint, role models.
 // notification, while retries for the same rejection share one key.
 func CreateWorkReportRevisionNotificationForCycle(db *gorm.DB, userID uint, role models.Role, title, message string, reportID uint, idempotencyKey string) error {
 	targetID := reportID
-	return createNotificationWithTarget(db, userID, role, "Revisi Laporan Kerja", title, message, nil, &targetID, &idempotencyKey)
+	return createNotificationWithTarget(db, userID, role, "Revisi Laporan Kerja", title, message, nil, &targetID, &idempotencyKey, false)
 }
 
 func createNotification(db *gorm.DB, userID uint, role models.Role, notificationType, title, message string, referenceID *uint) error {
-	return createNotificationWithTarget(db, userID, role, notificationType, title, message, referenceID, nil, nil)
+	return createNotificationWithTarget(db, userID, role, notificationType, title, message, referenceID, nil, nil, false)
 }
 
-func createNotificationWithTarget(db *gorm.DB, userID uint, role models.Role, notificationType, title, message string, referenceID, targetID *uint, idempotencyKey *string) error {
+func createNotificationWithTarget(db *gorm.DB, userID uint, role models.Role, notificationType, title, message string, referenceID, targetID *uint, idempotencyKey *string, ignoreSettings bool) error {
 	var setting models.NotificationSetting
-	err := db.Where("tipe_notifikasi = ? AND role = ?", notificationType, role).First(&setting).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return err
-	}
-	if err == nil && !setting.IsInAppEnabled {
-		return nil
+	if !ignoreSettings {
+		err := db.Where("tipe_notifikasi = ? AND role = ?", notificationType, role).First(&setting).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if err == nil && !setting.IsInAppEnabled {
+			return nil
+		}
 	}
 
 	notification := models.Notification{

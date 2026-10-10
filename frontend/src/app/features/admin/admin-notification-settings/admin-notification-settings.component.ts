@@ -48,7 +48,7 @@ export class AdminNotificationSettingsComponent implements OnInit {
   successMessage = '';
   isSending = false;
   broadcastError = '';
-  broadcast = { judul: '', pesan: '', target_role: 'Karyawan' };
+  broadcast = { judul: '', pesan: '', target_role: 'Semua' };
 
   private baseUrl = 'http://localhost:8080/api/v1/admin/settings/notifications';
   private broadcastUrl = 'http://localhost:8080/api/v1/admin/notifications/broadcast';
@@ -130,7 +130,7 @@ export class AdminNotificationSettingsComponent implements OnInit {
     this.http.post<any>(this.broadcastUrl, this.broadcast, { headers: this.getHeaders() }).subscribe({
       next: (result) => {
         this.isSending = false;
-        this.broadcast = { judul: '', pesan: '', target_role: 'Karyawan' };
+        this.broadcast = { judul: '', pesan: '', target_role: 'Semua' };
         this.alert.success(`Notifikasi terkirim ke ${result.recipient_count} penerima`);
       },
       error: (err) => {
