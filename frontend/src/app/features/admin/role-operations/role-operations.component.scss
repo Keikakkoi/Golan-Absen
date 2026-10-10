@@ -1921,3 +1921,79 @@ body.dark-theme .team-filter-panel .report-export-dropdown .dropdown-item-print 
 }
 
 .status-summary,.status-chip{display:inline-flex;align-items:center;gap:7px}.status-summary>span,.status-chip{display:inline-flex;align-items:center;gap:8px}.status-dot{display:inline-block;width:8px;height:8px;flex:0 0 8px;border-radius:50%;vertical-align:middle}.status-present{background:#16A34A}.status-late{background:#f59e0b}.status-leave{background:#8b5cf6}.status-alpha{background:#dc2626}.status-pending{background:#64748b}.status-neutral{background:#94a3b8}.statistics-manager-members .status-summary{display:flex;flex-wrap:wrap;gap:6px 10px;line-height:1.5}.statistics-manager-members .status-summary>span{white-space:nowrap}.bar-line .present{background:#16A34A}.bar-line .leave{background:#8b5cf6}.bar-line .alpha{background:#dc2626}.bar-line .pending{background:#64748b}.statistics-show-more{display:block;margin:12px auto 4px}
+
+/* Laporan Tim has a dedicated five-column layout. The status track is kept
+   wide enough for the canonical no-report label while the viewport remains
+   the only horizontal scroll owner on smaller screens. */
+.role-operations-page .team-reports-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+}
+
+.role-operations-page .team-filter-panel .team-reports-table {
+  display: table !important;
+  width: 100% !important;
+  min-width: 980px !important;
+  max-width: none !important;
+  table-layout: fixed !important;
+  white-space: normal !important;
+}
+
+.role-operations-page .team-reports-table .team-report-col-date { width: 12% !important; }
+.role-operations-page .team-reports-table .team-report-col-member { width: 20% !important; }
+.role-operations-page .team-reports-table .team-report-col-task { width: 17% !important; }
+.role-operations-page .team-reports-table .team-report-col-activity { width: 21% !important; }
+.role-operations-page .team-reports-table .team-report-col-status {
+  width: 30% !important;
+  min-width: 280px;
+}
+
+.role-operations-page .team-reports-table th,
+.role-operations-page .team-reports-table td {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 11px 12px;
+  vertical-align: middle;
+  line-height: 1.35;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.role-operations-page .team-reports-table th {
+  white-space: nowrap !important;
+}
+
+.role-operations-page .team-reports-table .team-report-status-cell {
+  min-width: 280px;
+  overflow: hidden;
+}
+
+.role-operations-page .team-reports-table .team-report-status {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: clip;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+@media (max-width: 768px) {
+  .role-operations-page .team-reports-table th,
+  .role-operations-page .team-reports-table td {
+    padding: 10px 11px;
+  }
+
+  .role-operations-page .team-reports-table {
+    min-width: 980px !important;
+  }
+}

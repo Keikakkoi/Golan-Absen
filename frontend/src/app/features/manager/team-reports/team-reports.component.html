@@ -75,8 +75,8 @@
               <th>Link Artikel</th>
               <th>Catatan Tambahan</th>
               <th>Screenshot</th>
-              <th>Status Laporan Kerja</th>
-              <th>Status Pengisian</th>
+              <th class="team-reports-status-header">Status Laporan Kerja</th>
+              <th class="team-reports-status-header">Status Pengisian</th>
               <th>Status Waktu</th>
               <th>Catatan Review</th>
                <th>Alasan Penolakan</th>
@@ -117,12 +117,12 @@
                 </span>
                 <span *ngIf="!(row.attachments?.length || row.Attachments?.length)">-</span>
               </td>
-              <td>
+              <td class="team-reports-status-cell">
                 <span class="status-pill" [ngClass]="reportStatusClass(row)">
                   {{ statusLabel(row) }}
                 </span>
               </td>
-              <td>
+              <td class="team-reports-status-cell">
                 <span class="status-pill" [ngClass]="fillingStatusClass(row)">{{ fillingStatus(row) }}</span>
               </td>
               <td>

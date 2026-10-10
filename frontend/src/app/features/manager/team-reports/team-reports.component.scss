@@ -708,3 +708,60 @@
     font-size: 0.72rem;
   }
 }
+
+/* Final layout contract for the Manager Laporan Tim grid. Keep the table
+   inside its responsive viewport and reserve real tracks for both status
+   columns; this prevents a long badge from painting outside the table. */
+.team-report-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.team-reports-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+}
+
+.team-reports-table {
+  display: table !important;
+  width: 100% !important;
+  min-width: 2850px !important;
+  max-width: none !important;
+  table-layout: auto !important;
+}
+
+.team-reports-table .team-reports-status-header,
+.team-reports-table .team-reports-status-cell {
+  width: 280px !important;
+  min-width: 280px !important;
+}
+
+.team-reports-table .team-reports-status-cell {
+  overflow: hidden;
+}
+
+.team-reports-table .team-reports-status-cell .status-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: clip;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+@media (max-width: 900px) {
+  .team-reports-table-wrapper {
+    overflow-x: auto !important;
+  }
+
+  .team-reports-table {
+    min-width: 2850px !important;
+  }
+}
