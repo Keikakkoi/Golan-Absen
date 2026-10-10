@@ -375,7 +375,11 @@
               <option [ngValue]="null">Tidak ada manager</option>
               <option *ngFor="let manager of managers" [ngValue]="manager.ID">{{ manager.ID }} - {{ manager.Nama }}</option>
             </select>
-            <small class="form-help" *ngIf="managers.length === 0">Belum ada manajer aktif. Buat akun dengan role MANAJER terlebih dahulu.</small>
+            <small class="form-help" *ngIf="isManagersLoading">Memuat daftar manajer aktif...</small>
+            <small class="form-help form-help-error" *ngIf="!isManagersLoading && managerLoadError" role="alert">
+              {{ managerLoadError }} <button type="button" class="manager-retry-button" (click)="loadManagers()">Coba lagi</button>
+            </small>
+            <small class="form-help" *ngIf="!isManagersLoading && !managerLoadError && managers.length === 0">Belum ada manajer aktif. Buat akun dengan role MANAJER terlebih dahulu.</small>
           </div>
           <div class="form-group">
             <label>Project (opsional)</label>

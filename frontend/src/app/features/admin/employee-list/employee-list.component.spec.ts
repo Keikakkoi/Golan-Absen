@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
 
 import { EmployeeListComponent } from './employee-list.component';
 import { EMPLOYEE_CSV_HEADERS } from './employee-csv.schema';
@@ -13,7 +14,7 @@ describe('EmployeeListComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [EmployeeListComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]
     })
     .compileComponents();
 
@@ -104,6 +105,44 @@ describe('EmployeeListComponent', () => {
 
     expect(alert.error).toHaveBeenCalledWith('Gagal menghapus data', 'Gagal memutus referensi work_reports\nforeign key masih digunakan');
     expect(alert.success).not.toHaveBeenCalled();
+  });
+
+  it('should load active managers from the canonical organization endpoint', () => {
+    component.loadManagers();
+    const request = httpTesting.expectOne('http://localhost:8080/api/v1/organization/managers');
+    expect(request.request.method).toBe('GET');
+
+    request.flush([{ ID: '7', Nama: 'Manager Aktif', Role: 'MANAJER', Status: 'aktif' }]);
+
+    expect(component.managers).toEqual([{ ID: 7, Nama: 'Manager Aktif' }]);
+    expect(component.managerLoadError).toBe('');
+  });
+
+  it('should render manager ID and name while keeping the no-manager option', () => {
+    component.managers = [{ ID: 7, Nama: 'Manager Aktif' }];
+    component.openAddModal();
+    fixture.detectChanges();
+
+    const select = fixture.nativeElement.querySelector('select[name="manager_id"]') as HTMLSelectElement;
+    expect(select.textContent).toContain('7 - Manager Aktif');
+    expect(Array.from(select.options).some(option => option.textContent?.includes('Tidak ada manager'))).toBeTrue();
+  });
+
+  it('should keep the saved manager selected when editing an employee', () => {
+    component.managers = [{ ID: 7, Nama: 'Manager Aktif' }];
+    component.openEditModal({ ID: 12, Nama: 'Karyawan', Email: 'karyawan@example.com', Role: 'Karyawan', ManagerID: '7' });
+
+    expect(component.formData.manager_id).toBe(7);
+  });
+
+  it('should expose a manager loading error instead of showing no managers', () => {
+    component.loadManagers();
+    const request = httpTesting.expectOne('http://localhost:8080/api/v1/organization/managers');
+    request.flush({ error: 'Access denied' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(component.managers).toEqual([]);
+    expect(component.managerLoadError).toContain('Gagal memuat daftar manajer');
+    expect(component.managerLoadError).toContain('Access denied');
   });
 
   it('should not call DELETE when confirmation is cancelled', async () => {

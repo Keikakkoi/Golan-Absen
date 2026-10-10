@@ -518,6 +518,16 @@
   color: #64748b;
   font-size: 0.8rem;
 }
+.form-help-error { color: #b42318; }
+.manager-retry-button {
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 .detail-photo {
   grid-column: 1 / -1;

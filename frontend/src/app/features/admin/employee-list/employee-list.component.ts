@@ -12,6 +12,11 @@ import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.
 import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
 import { EMPLOYEE_CSV_HEADERS } from './employee-csv.schema';
 
+interface ManagerOption {
+  ID: number;
+  Nama: string;
+}
+
 @Component({
   selector: 'app-employee-list',
   standalone: true,
@@ -48,7 +53,9 @@ export class EmployeeListComponent implements OnInit {
   
   divisions: any[] = [];
   positions: any[] = [];
-  managers: any[] = [];
+  managers: ManagerOption[] = [];
+  isManagersLoading = false;
+  managerLoadError = '';
   projects: any[] = [];
   
   // Detail Modal
@@ -181,13 +188,26 @@ export class EmployeeListComponent implements OnInit {
   }
 
   loadManagers(): void {
-    this.http.get<any[]>('http://localhost:8080/api/v1/admin/organization/managers', { headers: this.getHeaders() })
+    this.isManagersLoading = true;
+    this.managerLoadError = '';
+    this.http.get<ManagerOption[]>('http://localhost:8080/api/v1/organization/managers', { headers: this.getHeaders() })
       .subscribe({
         next: (data) => {
-          this.managers = data || [];
+          this.managers = Array.isArray(data)
+            ? data
+              .map(manager => ({ ID: Number(manager.ID), Nama: String(manager.Nama || '').trim() }))
+              .filter(manager => Number.isInteger(manager.ID) && manager.ID > 0 && !!String(manager.Nama || '').trim())
+            : [];
+          this.isManagersLoading = false;
           if (this.formData.role === 'MAGANG') this.syncInternManagerName();
         },
-        error: (err) => console.error('Gagal memuat manajer:', err)
+        error: (err) => {
+          this.managers = [];
+          this.isManagersLoading = false;
+          const detail = typeof err.error === 'string' ? err.error : err.error?.error;
+          this.managerLoadError = `Gagal memuat daftar manajer${detail ? `: ${detail}` : '.'} Silakan coba lagi.`;
+          console.error('Gagal memuat manajer:', err);
+        }
       });
   }
 
@@ -429,6 +449,9 @@ export class EmployeeListComponent implements OnInit {
   openEditModal(emp: any): void {
     this.isEditMode = true;
     this.showPassword = false;
+    const managerID = emp.Role === 'MANAJER'
+      ? null
+      : this.normalizeOptionalID(emp.ManagerID ?? emp.manager_id ?? emp.Manager?.ID);
     this.formData = {
       id: emp.ID,
       employee_code: emp.Employee?.employee_code || '',
@@ -446,7 +469,7 @@ export class EmployeeListComponent implements OnInit {
       home_latitude: emp.Employee?.HomeLatitude,
       home_longitude: emp.Employee?.HomeLongitude,
       home_google_maps_url: emp.Employee?.HomeLocation?.GoogleMapsURL || '',
-      manager_id: emp.Role === 'MANAJER' ? null : (emp.ManagerID || null),
+      manager_id: managerID,
       project_id: emp.ProjectID || null,
       team_id: emp.TeamID || '',
       internship_start_date: emp.InternshipStartDate ? emp.InternshipStartDate.split('T')[0] : '',
@@ -643,6 +666,11 @@ export class EmployeeListComponent implements OnInit {
   private getHeaders(): HttpHeaders {
     const token = this.authService.getToken();
     return new HttpHeaders().set('Authorization', `Bearer ${token}`);
+  }
+
+  private normalizeOptionalID(value: unknown): number | null {
+    const id = Number(value);
+    return Number.isInteger(id) && id > 0 ? id : null;
   }
 
   logout(): void {
