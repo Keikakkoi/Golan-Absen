@@ -48,6 +48,10 @@ describe('ProfileComponent resilience', () => {
     http.expectOne('http://localhost:8080/api/v1/employee/profile/home-location').flush({ active: null });
     http.expectOne('http://localhost:8080/api/v1/employee/profile/home-location/requests').flush([]);
   }
+  function loadTestProfile() {
+    profileRequest().flush(profile);
+    flushSecondaryRequests();
+  }
   afterEach(() => http.verify());
 
   it('normalizes profile envelopes and nested fallbacks', () => {
@@ -80,6 +84,74 @@ describe('ProfileComponent resilience', () => {
     profileRequest().flush(profile); flushSecondaryRequests(); component.updateProfile(); tick();
     http.expectOne(req => req.method === 'PUT' && req.url.endsWith('/employee/profile')).flush({ error: 'bad' }, { status: 400, statusText: 'Bad request' });
     expect(component.isSubmitting).toBeFalse(); expect(component.errorMessage).toContain('bad');
+  }));
+  it('keeps the profile form open when the old email password is wrong', fakeAsync(() => {
+    loadTestProfile();
+    component.updateForm.email = 'new@example.test';
+    component.updateForm.email_password = 'wrong-password';
+
+    component.updateEmail();
+    tick();
+    http.expectOne(req => req.method === 'PUT' && req.url.endsWith('/employee/email'))
+      .flush({ code: 'invalid_current_password', error: 'Password lama tidak sesuai' }, { status: 422, statusText: 'Unprocessable Entity' });
+    tick();
+
+    expect(component.isSubmitting).toBeFalse();
+    expect(component.updateForm.email).toBe('new@example.test');
+    expect(component.updateForm.email_password).toBe('wrong-password');
+    expect(component.profileData.Email).toBe(profile.Email);
+    expect(alert.error).toHaveBeenCalledWith('Gagal mengganti email', 'Password lama tidak sesuai.');
+  }));
+  it('keeps the profile form open when the old account password is wrong', fakeAsync(() => {
+    loadTestProfile();
+    component.updateForm.old_password = 'wrong-password';
+    component.updateForm.password = 'New-password1';
+    component.updateForm.confirm_password = 'New-password1';
+
+    component.updatePassword();
+    tick();
+    http.expectOne(req => req.method === 'PUT' && req.url.endsWith('/employee/profile'))
+      .flush({ code: 'invalid_current_password', error: 'Password lama tidak sesuai' }, { status: 422, statusText: 'Unprocessable Entity' });
+    tick();
+
+    expect(component.isSubmitting).toBeFalse();
+    expect(component.updateForm.old_password).toBe('wrong-password');
+    expect(component.updateForm.password).toBe('New-password1');
+    expect(component.updateForm.confirm_password).toBe('New-password1');
+    expect(alert.error).toHaveBeenCalledWith('Gagal mengubah password', 'Password lama tidak sesuai.');
+  }));
+  it('updates the email and reloads the profile after a successful change', fakeAsync(() => {
+    loadTestProfile();
+    component.updateForm.email = 'new@example.test';
+    component.updateForm.email_password = 'correct-password';
+
+    component.updateEmail();
+    tick();
+    http.expectOne(req => req.method === 'PUT' && req.url.endsWith('/employee/email'))
+      .flush({ email: 'new@example.test' });
+    profileRequest().flush({ ...profile, Email: 'new@example.test' });
+    flushSecondaryRequests();
+    tick();
+
+    expect(component.profileData.Email).toBe('new@example.test');
+    expect(component.updateForm.email_password).toBe('');
+    expect(alert.success).toHaveBeenCalledWith('Email berhasil diganti');
+  }));
+  it('shows duplicate-email errors without redirecting or clearing the form', fakeAsync(() => {
+    loadTestProfile();
+    component.updateForm.email = 'used@example.test';
+    component.updateForm.email_password = 'correct-password';
+
+    component.updateEmail();
+    tick();
+    http.expectOne(req => req.method === 'PUT' && req.url.endsWith('/employee/email'))
+      .flush({ error: 'Email sudah digunakan oleh akun lain' }, { status: 409, statusText: 'Conflict' });
+    tick();
+
+    expect(component.isSubmitting).toBeFalse();
+    expect(component.updateForm.email).toBe('used@example.test');
+    expect(component.updateForm.email_password).toBe('correct-password');
+    expect(component.errorMessage).toBe('Email sudah digunakan oleh akun lain');
   }));
   it('resets upload state after upload failure', fakeAsync(() => {
     profileRequest().flush(profile); flushSecondaryRequests(); component.selectedPhoto = new File(['photo'], 'photo.jpg', { type: 'image/jpeg' }); component.uploadProfilePhoto(); tick();

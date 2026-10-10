@@ -600,7 +600,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.alert.success('Password berhasil diubah');
       },
       error: (err) => {
-        this.errorMessage = err.error?.error || 'Gagal mengubah password. Pastikan password lama benar.';
+        this.errorMessage = err.error?.code === 'invalid_current_password'
+          ? 'Password lama tidak sesuai.'
+          : err.error?.error || 'Gagal mengubah password. Pastikan password lama benar.';
         this.alert.error('Gagal mengubah password', this.errorMessage);
       }
     });
@@ -713,7 +715,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.loadProfile();
       },
       error: (err) => {
-        this.errorMessage = err.error?.error || 'Gagal mengganti alamat email.';
+        this.errorMessage = err.error?.code === 'invalid_current_password'
+          ? 'Password lama tidak sesuai.'
+          : err.error?.error || 'Gagal mengganti alamat email.';
         this.alert.error('Gagal mengganti email', this.errorMessage);
       }
     });

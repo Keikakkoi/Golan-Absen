@@ -432,7 +432,10 @@ func UpdateMyProfile(c *fiber.Ctx) error {
 			}
 			if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
 				tx.Rollback()
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Password saat ini salah"})
+				return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+					"code":  "invalid_current_password",
+					"error": "Password lama tidak sesuai",
+				})
 			}
 
 			var emailOwner models.User
@@ -455,7 +458,10 @@ func UpdateMyProfile(c *fiber.Ctx) error {
 		}
 		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
 			tx.Rollback()
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Incorrect old password"})
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+				"code":  "invalid_current_password",
+				"error": "Password lama tidak sesuai",
+			})
 		}
 		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		user.PasswordHash = string(hashedPassword)
@@ -573,7 +579,10 @@ func UpdateMyEmail(c *fiber.Ctx) error {
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword)); err != nil {
 		tx.Rollback()
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Password saat ini salah"})
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{
+			"code":  "invalid_current_password",
+			"error": "Password lama tidak sesuai",
+		})
 	}
 	if strings.EqualFold(user.Email, req.Email) {
 		tx.Rollback()
