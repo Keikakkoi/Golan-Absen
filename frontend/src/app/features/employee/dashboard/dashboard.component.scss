@@ -22,30 +22,55 @@
   background-color: var(--bg);
 }
 
-@media (max-width: 900px) {
+/* On desktop the route-level shell owns the viewport. The content column is
+   allowed to become the scroll container by the shared desktop contract in
+   styles.scss, so the document itself does not gain a second scrollbar. */
+@media (min-width: 901px) {
   :host {
-    min-height: 0 !important;
-    height: auto !important;
+    height: 100%;
+    min-height: 0;
   }
 
-  // The mobile route host must size itself from the real dashboard content.
-  // Keep the fixed sidebar/topbar viewport sizing independent from document
-  // flow so it cannot add a blank tail below the final action.
   .dashboard-container.employee-dashboard-shell {
-    height: auto !important;
+    height: 100%;
     min-height: 0 !important;
+    align-items: stretch;
   }
 
   .dashboard-container.employee-dashboard-shell > .main-content.employee-dashboard-page {
-    height: auto !important;
+    height: 100%;
     min-height: 0 !important;
-    padding-bottom: env(safe-area-inset-bottom) !important;
-    overflow: visible;
+    box-sizing: border-box;
+    flex: 1 1 auto;
   }
 }
 
-// Desktop keeps the existing viewport-sized shell. Mobile must be content
-// sized so a short dashboard cannot create an artificial scroll tail.
+@media (max-width: 900px) {
+  :host {
+    min-height: 0 !important;
+    height: 100dvh !important;
+    overflow: hidden;
+  }
+
+  // The fixed topbar/sidebar stay outside the flow while the main column
+  // remains the single scroll owner for long dashboard content.
+  .dashboard-container.employee-dashboard-shell {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden;
+  }
+
+  .dashboard-container.employee-dashboard-shell > .main-content.employee-dashboard-page {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    overflow-x: clip;
+    overflow-y: auto;
+  }
+}
+
+// Desktop keeps the existing viewport-sized shell. Mobile uses the same
+// viewport-sized shell with an internal content scroll area.
 @media (min-width: 901px) {
   :host {
     min-height: 100%;

@@ -1,66 +1,68 @@
 :host {
-  position: fixed;
-  inset: 0;
   display: block;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-:host {
-  position: static;
-  inset: auto;
   height: auto;
   min-height: 0;
   overflow: visible;
 }
 
-.dashboard-container.intern-dashboard-shell {
-  height: auto !important;
-  min-height: 0 !important;
-  align-items: flex-start;
-  overflow: visible !important;
-}
-
-.dashboard-container.intern-dashboard-shell > .main-content.intern-dashboard-page {
-  height: auto !important;
-  min-height: 0 !important;
-  overflow: visible !important;
-}
-
 .dashboard-container {
-  height: 100%;
-  min-height: 100%;
-  overflow: hidden;
+  display: flex;
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
   background-color: var(--bg);
 }
 
 .main-content {
-  height: 100%;
+  height: auto;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  flex: 1 1 auto;
+  overflow: visible;
   box-sizing: border-box;
+}
+
+/* Desktop sizing is completed by the shared route-level viewport contract in
+   styles.scss. Keep this feature component aligned when its styles are used
+   without that global layer (for example in isolated component previews). */
+@media (min-width: 901px) {
+  :host {
+    height: 100%;
+  }
+
+  .dashboard-container.intern-dashboard-shell {
+    height: 100%;
+    min-height: 0 !important;
+    align-items: stretch;
+  }
+
+  .dashboard-container.intern-dashboard-shell > .main-content.intern-dashboard-page {
+    height: 100%;
+    min-height: 0 !important;
+    box-sizing: border-box;
+  }
 }
 
 @media (max-width: 900px) {
   :host {
-    height: auto !important;
+    height: 100dvh !important;
     min-height: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   .dashboard-container.intern-dashboard-shell {
-    height: auto !important;
+    display: block;
+    height: 100dvh !important;
     min-height: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
   }
 
   .dashboard-container.intern-dashboard-shell > .main-content.intern-dashboard-page {
-    height: auto !important;
+    height: 100dvh !important;
     min-height: 0 !important;
     padding-bottom: env(safe-area-inset-bottom) !important;
-    overflow: visible !important;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
   }
 }
 

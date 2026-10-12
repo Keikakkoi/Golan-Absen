@@ -4262,6 +4262,52 @@ body.dark-theme .filter-date-year-option:hover, body.dark-theme .filter-date-yea
   }
 }
 
+/* Use the same single-scroll-owner model for the drawer layout. The topbar
+   and sidebar are fixed on small screens, so the main column can safely fill
+   the dynamic viewport and retain access to long dashboard content. */
+@media (max-width: 900px) {
+  html:has(app-dashboard),
+  body:has(app-dashboard),
+  html:has(app-intern-dashboard),
+  body:has(app-intern-dashboard) {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+  }
+
+  app-root:has(app-dashboard),
+  app-root:has(app-intern-dashboard) {
+    display: block !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  app-dashboard .dashboard-container.employee-dashboard-shell,
+  app-intern-dashboard .dashboard-container.intern-dashboard-shell {
+    display: block !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  app-dashboard .dashboard-container.employee-dashboard-shell > .main-content.employee-dashboard-page,
+  app-intern-dashboard .dashboard-container.intern-dashboard-shell > .main-content.intern-dashboard-page {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: 100dvh !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+
 /* Team reports has variable-height table content. The role-level desktop
    shell rule above must not stretch this page to the viewport height. */
 body.role-manajer app-team-reports .dashboard-container.team-reports-shell {
@@ -5401,5 +5447,58 @@ app-admin-sidebar .sidebar {
     overflow-x: clip !important;
     overflow-y: auto !important;
     overscroll-behavior: contain;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Employee and intern dashboard viewport/scroll contract
+
+   These dashboards contain long chart, calendar, and event content. Keep the
+   application shell locked to the viewport on desktop/tablet landscape and
+   make only the main column scroll. This prevents the zoomed desktop shell
+   from extending the document and creating a second browser scrollbar while
+   preserving access to all content.
+   ------------------------------------------------------------------------- */
+@media (min-width: 901px) {
+  html:has(app-dashboard),
+  body:has(app-dashboard),
+  html:has(app-intern-dashboard),
+  body:has(app-intern-dashboard) {
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+  }
+
+  app-dashboard .dashboard-container.employee-dashboard-shell,
+  app-intern-dashboard .dashboard-container.intern-dashboard-shell {
+    min-height: 0 !important;
+    align-items: stretch !important;
+    overflow-x: clip !important;
+    overflow-y: hidden !important;
+    overscroll-behavior: contain;
+  }
+
+  /* The route shell is zoomed on large desktop screens. Divide the viewport
+     height by that scale so its visual height remains exactly one viewport. */
+  app-dashboard .dashboard-container.employee-dashboard-shell {
+    height: calc(100dvh / var(--employee-dashboard-scale, 1)) !important;
+    max-height: calc(100dvh / var(--employee-dashboard-scale, 1)) !important;
+  }
+
+  app-intern-dashboard .dashboard-container.intern-dashboard-shell {
+    height: calc(100dvh / var(--intern-dashboard-scale, 1)) !important;
+    max-height: calc(100dvh / var(--intern-dashboard-scale, 1)) !important;
+  }
+
+  app-dashboard .dashboard-container.employee-dashboard-shell > .main-content.employee-dashboard-page,
+  app-intern-dashboard .dashboard-container.intern-dashboard-shell > .main-content.intern-dashboard-page {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
   }
 }
