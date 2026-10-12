@@ -1,5 +1,3 @@
-@import '../employee-list/employee-list.component.scss';
-
 /* Keep the approval page wrapper at the table's content height. This avoids
    the extra white viewport area on large and 4K screens. */
 .admin-theme.leave-approval-shell {
@@ -81,16 +79,10 @@
 .leave-col-type { width: 90px; }
 .leave-col-date { width: 130px; }
 .leave-col-reason { width: 190px; }
-.leave-col-note { width: 240px; }
+.leave-col-note { width: 220px; min-width: 220px; }
 .leave-col-attachment { width: 160px; }
 .leave-col-status { width: 260px; min-width: 260px; }
-.leave-col-actions { width: 190px; min-width: 190px; }
-
-/* There are now two independent note columns. Keep both readable and keep
-   the status/action columns outside their content even on narrow screens. */
-.leave-table .leave-col-note { width: 220px; min-width: 220px; }
-.leave-table .leave-col-status { width: 260px; min-width: 260px; }
-.leave-table .leave-col-actions { width: 220px; min-width: 220px; }
+.leave-col-actions { width: 220px; min-width: 220px; }
 
 /* Keep the last approval columns aligned with their centered headers. */
 .leave-table th:nth-child(n+7),
@@ -121,9 +113,8 @@
 .leave-reason-cell { min-width: 0; }
 .leave-note-cell { min-width: 240px; text-align: left !important; }
 .note-source { margin-bottom: 0.35rem; font-size: 0.78rem; line-height: 1.35; text-align: left; overflow-wrap: anywhere; word-break: break-word; }
-.leave-table td.leave-note-cell { text-align: left !important; }
 .note-editor { display: flex; gap: 0.35rem; align-items: flex-start; }
-.note-editor textarea { width: 100%; min-width: 0; resize: vertical; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.35rem; font: inherit; font-size: 0.78rem; }
+.note-editor textarea,
 .admin-note-input { width: 100%; min-width: 0; resize: vertical; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.35rem; font: inherit; font-size: 0.78rem; }
 .note-editor label { display: block; margin-bottom: 0.35rem; font-weight: 700; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
@@ -260,18 +251,6 @@
 
 @media (min-width: 769px) {
   .leave-table-container { scrollbar-width: thin; }
-  .leave-table {
-    width: max(100%, 1740px) !important;
-    min-width: 1740px !important;
-  }
-  .leave-col-employee { width: 190px; }
-  .leave-col-approver { width: 150px; }
-  .leave-col-type { width: 90px; }
-  .leave-col-date { width: 130px; }
-  .leave-col-reason { width: 190px; }
-  .leave-col-attachment { width: 160px; }
-  .leave-col-status { width: 260px; min-width: 260px; }
-  .leave-col-actions { width: 220px; min-width: 220px; }
   .leave-date-cell { white-space: normal; }
 }
 
