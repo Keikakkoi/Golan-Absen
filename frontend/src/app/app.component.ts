@@ -6,6 +6,7 @@ import { ThemeService } from './core/services/theme.service';
 import { AuthService } from './core/services/auth.service';
 import { PageLoadingService } from './core/services/page-loading.service';
 import { PageSkeletonComponent } from './shared/page-skeleton/page-skeleton.component';
+import { isProtectedRoute } from './core/auth/route-access';
 
 @Component({
   selector: 'app-root',
@@ -76,8 +77,13 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    if (this.authService.isAuthenticated()) {
-      this.authService.refreshProfile().subscribe();
+    const initialRoute = this.router.url === '/' && this.document.location.pathname !== '/'
+      ? this.document.location.pathname
+      : this.router.url;
+    if (this.authService.isAuthenticated() && isProtectedRoute(initialRoute)) {
+      // Profile validation is useful for a private deep link, but it must not
+      // turn a stale token into a redirect while the public home page opens.
+      this.authService.refreshProfile().subscribe({ error: () => undefined });
     }
     this.syncThemeWithRoute(this.router.url);
     this.routeSubscription = this.router.events

@@ -1,13 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { AppComponent } from './app.component';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
-      providers: [provideHttpClient(), provideRouter([])],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
   });
 
@@ -28,6 +29,27 @@ describe('AppComponent', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('router-outlet')).toBeTruthy();
+  });
+
+  it('does not validate a stale token while opening the public home route', () => {
+    localStorage.clear();
+    localStorage.setItem('token', 'expired-token');
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    const http = TestBed.inject(HttpTestingController);
+    expect(http.match(request => request.url.includes('/employee/profile'))).toHaveSize(0);
+    expect(TestBed.inject(Router).url).toBe('/');
+    localStorage.clear();
+  });
+
+  it('keeps the public home route available without a token', () => {
+    localStorage.clear();
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    expect(TestBed.inject(Router).url).toBe('/');
+    expect(localStorage.getItem('token')).toBeNull();
   });
 
   it('applies the custom date-year picker to every supported date field', () => {

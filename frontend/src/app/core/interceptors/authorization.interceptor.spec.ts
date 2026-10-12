@@ -2,7 +2,9 @@ import { HttpClient, HttpHeaders, provideHttpClient, withInterceptors } from '@a
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { HttpContext } from '@angular/common/http';
 import { authorizationInterceptor } from './authorization.interceptor';
+import { PROFILE_VALIDATION } from './authorization-context';
 
 describe('authorizationInterceptor', () => {
   let http: HttpClient;
@@ -35,8 +37,9 @@ describe('authorizationInterceptor', () => {
     expect(navigateSpy).not.toHaveBeenCalled();
   });
 
-  it('redirects only when an authenticated API request returns an auth 401', () => {
+  it('redirects an authenticated private API request with an auth 401', () => {
     const navigateSpy = spyOn(router, 'navigate').and.resolveTo(true);
+    spyOnProperty(router, 'url', 'get').and.returnValue('/');
     http.get('/api/v1/employee/profile', { headers: new HttpHeaders({ Authorization: 'Bearer token' }) }).subscribe({ error: () => undefined });
     testingController.expectOne('/api/v1/employee/profile').flush(
       { error: 'Invalid token' },
@@ -44,5 +47,18 @@ describe('authorizationInterceptor', () => {
     );
 
     expect(navigateSpy).toHaveBeenCalledWith(['/login'], { queryParams: { returnUrl: router.url } });
+  });
+
+  it('does not redirect a profile validation failure from a public route', () => {
+    const navigateSpy = spyOn(router, 'navigate').and.resolveTo(true);
+    spyOnProperty(router, 'url', 'get').and.returnValue('/');
+    const context = new HttpContext().set(PROFILE_VALIDATION, true);
+    http.get('/api/v1/employee/profile', { headers: new HttpHeaders({ Authorization: 'Bearer expired-token' }), context }).subscribe({ error: () => undefined });
+    testingController.expectOne('/api/v1/employee/profile').flush(
+      { error: 'Invalid token' },
+      { status: 401, statusText: 'Unauthorized' }
+    );
+
+    expect(navigateSpy).not.toHaveBeenCalled();
   });
 });

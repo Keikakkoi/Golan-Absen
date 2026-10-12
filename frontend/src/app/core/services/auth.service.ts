@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { HttpClient, HttpContext, HttpHeaders } from '@angular/common/http';
+import { BehaviorSubject, Observable, catchError, tap, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { ThemeService } from './theme.service';
 import { environment } from '../../../environments/environment';
 import { normalizeRole } from '../auth/role';
+import { PROFILE_VALIDATION } from '../interceptors/authorization-context';
 
 export interface LoginResponse {
   token: string;
@@ -120,15 +121,7 @@ export class AuthService {
   }
 
   private clearSession(): void {
-    this.themeService.clearActiveTheme();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('role');
-    localStorage.removeItem('name');
-    localStorage.removeItem('divisi');
-    localStorage.removeItem('jabatan');
-    localStorage.removeItem('permissions');
-    this.currentUserSubject.next(null);
+    this.clearStoredSession();
     this.router.navigate(['/login']);
   }
 
@@ -141,7 +134,8 @@ export class AuthService {
     if (!token) return new Observable(sub => sub.complete());
 
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
-    return this.http.get<any>(`http://localhost:8080/api/v1/employee/profile`, { headers }).pipe(
+    const context = new HttpContext().set(PROFILE_VALIDATION, true);
+    return this.http.get<any>(`http://localhost:8080/api/v1/employee/profile`, { headers, context }).pipe(
       tap(profile => {
         if (profile.permissions) {
           localStorage.setItem('permissions', JSON.stringify(profile.permissions));
@@ -151,6 +145,13 @@ export class AuthService {
             this.currentUserSubject.next({ ...current, permissions: profile.permissions });
           }
         }
+      }),
+      catchError(error => {
+        // A profile check can run during bootstrap. Remove stale credentials
+        // without navigating here; the interceptor decides whether the current
+        // route is private, while a public page remains where it is.
+        if (error?.status === 401) this.clearStoredSession();
+        return throwError(() => error);
       })
     );
   }
@@ -183,5 +184,17 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  private clearStoredSession(): void {
+    this.themeService.clearActiveTheme();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('role');
+    localStorage.removeItem('name');
+    localStorage.removeItem('divisi');
+    localStorage.removeItem('jabatan');
+    localStorage.removeItem('permissions');
+    this.currentUserSubject.next(null);
   }
 }
