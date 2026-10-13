@@ -36,7 +36,8 @@ func main() {
 	// Start background ticker for missing daily work report check
 	go func() {
 		handlers.EnsureDailyWorkReportsAutoCreated(config.DB, time.Now())
-		ticker := time.NewTicker(15 * time.Minute)
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
 		for range ticker.C {
 			handlers.EnsureDailyWorkReportsAutoCreated(config.DB, time.Now())
 		}

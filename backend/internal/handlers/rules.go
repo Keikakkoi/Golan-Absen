@@ -3,6 +3,7 @@ package handlers
 import (
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"absensi-golan-backend/config"
@@ -97,7 +98,14 @@ func ensureDefaultCutiQuota(db *gorm.DB, employeeID uint, year, defaultBalance i
 }
 
 func workReportDeadline(record models.AttendanceRecord, schedule models.WorkSchedule, setting models.GeneralSetting) time.Time {
-	return scheduleEndTime(schedule, record.Tanggal).Add(time.Duration(setting.BatasLaporanSetelahCheckoutMenit) * time.Minute)
+	return workReportScheduleDeadline(record.Tanggal, schedule, setting)
+}
+
+// workReportScheduleDeadline is based only on the scheduled work date. A
+// check-in record must not be required because a missing report is also
+// generated for employees who did not check in.
+func workReportScheduleDeadline(date time.Time, schedule models.WorkSchedule, setting models.GeneralSetting) time.Time {
+	return scheduleEndTime(schedule, date.In(jakartaLocation)).Add(time.Duration(setting.BatasLaporanSetelahCheckoutMenit) * time.Minute)
 }
 
 // findAttendanceForReport returns only a real check-in. A row created for an
@@ -145,14 +153,16 @@ func missingWorkReportRows(employeeIDs []uint, now time.Time) []fiber.Map {
 }
 
 func missingWorkReportRowsAndEmployeeCount(employeeIDs []uint, now time.Time) ([]fiber.Map, int) {
-	_ = now // Warning visibility is attendance-based; deadline is enforced on save.
 	if len(employeeIDs) == 0 {
 		return []fiber.Map{}, 0
 	}
+	if config.DB == nil {
+		return []fiber.Map{}, 0
+	}
+	now = now.In(jakartaLocation)
 	setting := getGeneralSetting()
-	var records []models.AttendanceRecord
-	config.DB.Preload("Employee.User").Where("employee_id IN ? AND jam_masuk IS NOT NULL", employeeIDs).Order("tanggal DESC").Order("id DESC").Find(&records)
-	if len(records) == 0 {
+	var employees []models.Employee
+	if err := config.DB.Preload("User").Where("id IN ?", employeeIDs).Find(&employees).Error; err != nil {
 		return []fiber.Map{}, 0
 	}
 	var reports []models.WorkReport
@@ -164,44 +174,46 @@ func missingWorkReportRowsAndEmployeeCount(employeeIDs []uint, now time.Time) ([
 			hasReport[parts[0]+":"+parts[1]] = true
 		}
 	}
+	lookbackStart := dateOnly(now.AddDate(0, 0, -60))
+	today := dateOnly(now)
+	holidayDates, leaveDates := workReportExcludedDates(config.DB, lookbackStart, today)
 	// The dashboard is intentionally a single actionable reminder. Keep the
 	// most recent missing date; older missed days remain available in history.
 	var latestDate time.Time
 	var latestRow fiber.Map
 	missingEmployeeIDs := make(map[uint]struct{})
-	for _, record := range records {
-		if record.EmployeeID == nil {
+	for _, employee := range employees {
+		if employee.User == nil || (employee.User.Role != models.RoleKaryawan && employee.User.Role != models.RoleManajer && employee.User.Role != models.RoleMagang) {
 			continue
 		}
-		employeeID := *record.EmployeeID
-		schedule, assigned := getWorkReportSchedule(employeeID, record.Tanggal)
-		if !assigned {
-			continue
+		employeeID := employee.ID
+		startDate := workReportEmployeeStartDate(employee, lookbackStart)
+		for day := startDate; !day.After(today); day = day.AddDate(0, 0, 1) {
+			dateStr := day.Format("2006-01-02")
+			schedule := getAttendanceSchedule(employeeID, day)
+			if !schedule.IsWorkingDay(day) || holidayDates[dateStr] || leaveDates[workReportDateKey(employeeID, day)] {
+				continue
+			}
+			deadline := workReportScheduleDeadline(day, schedule, setting)
+			// A missing-report warning becomes actionable only after the
+			// configured report tolerance has elapsed, just like auto creation.
+			if now.Before(deadline) || hasReport[workReportKey(employeeID, day)] {
+				continue
+			}
+			missingEmployeeIDs[employeeID] = struct{}{}
+			row := fiber.Map{
+				"employee_id":    employeeID,
+				"nama":           employee.User.Nama,
+				"tanggal":        dateStr,
+				"deadline":       deadline.Format(time.RFC3339),
+				"deadline_label": deadline.Format("02 Jan 2006 15:04"),
+				"status":         string(models.WorkReportStatusNoReport),
+				"state":          string(models.WorkReportStatusNoReport),
+				"label":          models.WorkReportNoReportLabel,
+				"has_report":     false,
+			}
+			latestRow, latestDate = selectLatestMissingWorkReport(latestRow, latestDate, row, day)
 		}
-		deadline := workReportDeadline(record, schedule, setting)
-		// The dashboard warning starts immediately after a successful check-in
-		// and remains until a real work report is saved. The deadline only
-		// controls whether a new submission is accepted by the write endpoints.
-		if hasReport[workReportKey(employeeID, record.Tanggal)] {
-			continue
-		}
-		missingEmployeeIDs[employeeID] = struct{}{}
-		name := "-"
-		if record.Employee.User != nil {
-			name = record.Employee.User.Nama
-		}
-		row := fiber.Map{
-			"employee_id":    employeeID,
-			"nama":           name,
-			"tanggal":        record.Tanggal.Format("2006-01-02"),
-			"deadline":       deadline.Format(time.RFC3339),
-			"deadline_label": deadline.Format("02 Jan 2006 15:04"),
-			"status":         string(models.WorkReportStatusNoReport),
-			"state":          string(models.WorkReportStatusNoReport),
-			"label":          models.WorkReportNoReportLabel,
-			"has_report":     false,
-		}
-		latestRow, latestDate = selectLatestMissingWorkReport(latestRow, latestDate, row, record.Tanggal)
 	}
 	if latestRow == nil {
 		return []fiber.Map{}, 0
@@ -228,10 +240,16 @@ func missingWorkReportRowsForEmployee(employeeID uint, now time.Time) []fiber.Ma
 	return missingWorkReportRows([]uint{employeeID}, now)
 }
 
+var workReportAutoCreateMu sync.Mutex
+
 func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
 	if db == nil {
 		return
 	}
+	workReportAutoCreateMu.Lock()
+	defer workReportAutoCreateMu.Unlock()
+
+	now = now.In(jakartaLocation)
 	var employees []models.Employee
 	if err := db.Preload("User").Find(&employees).Error; err != nil {
 		return
@@ -243,6 +261,9 @@ func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
 		Update("status_sesuai", "tidak membuat laporan kerja")
 
 	setting := getGeneralSetting()
+	lookbackStart := dateOnly(now.AddDate(0, 0, -60))
+	today := dateOnly(now)
+	holidayDates, leaveDates := workReportExcludedDates(db, lookbackStart, today)
 
 	for _, emp := range employees {
 		if emp.User == nil {
@@ -253,29 +274,7 @@ func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
 			continue
 		}
 
-		var startDate time.Time
-		if role == models.RoleMagang {
-			if emp.User.InternshipStartDate != nil && !emp.User.InternshipStartDate.IsZero() {
-				startDate = *emp.User.InternshipStartDate
-			} else {
-				startDate = emp.User.CreatedAt
-			}
-		} else {
-			if !emp.TanggalBergabung.IsZero() {
-				startDate = emp.TanggalBergabung
-			} else {
-				startDate = emp.User.CreatedAt
-			}
-		}
-
-		// Restrict lookback window up to 60 days
-		minAllowed := now.AddDate(0, 0, -60)
-		if startDate.Before(minAllowed) {
-			startDate = minAllowed
-		}
-
-		startDate = startDate.Truncate(24 * time.Hour)
-		today := now.Truncate(24 * time.Hour)
+		startDate := workReportEmployeeStartDate(emp, lookbackStart)
 
 		var existingReports []models.WorkReport
 		db.Where("employee_id = ? AND tanggal BETWEEN ? AND ?", emp.ID, startDate, today).Find(&existingReports)
@@ -289,34 +288,19 @@ func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
 			reportMap[deleted.Tanggal.Format("2006-01-02")] = true
 		}
 
-		var attendances []models.AttendanceRecord
-		db.Where("employee_id = ? AND tanggal BETWEEN ? AND ?", emp.ID, startDate, today).Find(&attendances)
-		attMap := make(map[string]models.AttendanceRecord)
-		for _, a := range attendances {
-			attMap[a.Tanggal.Format("2006-01-02")] = a
-		}
-
 		for d := startDate; !d.After(today); d = d.AddDate(0, 0, 1) {
 			dateStr := d.Format("2006-01-02")
 			if reportMap[dateStr] {
 				continue
 			}
 
-			attRecord, hasAtt := attMap[dateStr]
-			var deadline time.Time
-			if hasAtt && attRecord.JamMasuk != nil {
-				schedule, assigned := getWorkReportSchedule(emp.ID, d)
-				if !assigned {
-					continue
-				}
-				deadline = workReportDeadline(attRecord, schedule, setting)
-			} else {
-				// A report can only be missing for a day on which the employee
-				// actually checked in. Do not create markers for no-attendance days.
+			schedule := getAttendanceSchedule(emp.ID, d)
+			if !schedule.IsWorkingDay(d) || holidayDates[dateStr] || leaveDates[workReportDateKey(emp.ID, d)] {
 				continue
 			}
+			deadline := workReportScheduleDeadline(d, schedule, setting)
 
-			if now.After(deadline) {
+			if !now.Before(deadline) {
 				autoReport := models.WorkReport{
 					ReportKind:        models.WorkReportKindCanonical,
 					EmployeeID:        &emp.ID,
@@ -336,4 +320,69 @@ func EnsureDailyWorkReportsAutoCreated(db *gorm.DB, now time.Time) {
 			}
 		}
 	}
+}
+
+func workReportEmployeeStartDate(emp models.Employee, lookbackStart time.Time) time.Time {
+	var startDate time.Time
+	if emp.User != nil && emp.User.Role == models.RoleMagang {
+		if emp.User.InternshipStartDate != nil && !emp.User.InternshipStartDate.IsZero() {
+			startDate = *emp.User.InternshipStartDate
+		} else {
+			startDate = emp.User.CreatedAt
+		}
+	} else {
+		startDate = emp.TanggalBergabung
+		if startDate.IsZero() && emp.User != nil {
+			startDate = emp.User.CreatedAt
+		}
+	}
+
+	if startDate.IsZero() {
+		return lookbackStart
+	}
+	startDate = dateOnly(startDate.In(jakartaLocation))
+	if startDate.Before(lookbackStart) {
+		return lookbackStart
+	}
+	return startDate
+}
+
+func workReportDateKey(employeeID uint, date time.Time) string {
+	return strconv.FormatUint(uint64(employeeID), 10) + ":" + date.In(jakartaLocation).Format("2006-01-02")
+}
+
+func workReportExcludedDates(db *gorm.DB, start, end time.Time) (map[string]bool, map[string]bool) {
+	holidayDates := make(map[string]bool)
+	leaveDates := make(map[string]bool)
+	if db == nil {
+		return holidayDates, leaveDates
+	}
+
+	var holidays []models.Holiday
+	if err := db.Where("tanggal BETWEEN ? AND ?", start.Format("2006-01-02"), end.Format("2006-01-02")).Find(&holidays).Error; err == nil {
+		for _, holiday := range holidays {
+			holidayDates[holiday.Tanggal.In(jakartaLocation).Format("2006-01-02")] = true
+		}
+	}
+
+	var leaves []models.LeaveRequest
+	if err := db.Where("status IN ? AND tanggal_mulai <= ? AND tanggal_selesai >= ?", approvedLeaveStatuses(), end.Format("2006-01-02"), start.Format("2006-01-02")).Find(&leaves).Error; err == nil {
+		for _, leave := range leaves {
+			if leave.EmployeeID == nil {
+				continue
+			}
+			leaveStart := dateOnly(leave.TanggalMulai.In(jakartaLocation))
+			leaveEnd := dateOnly(leave.TanggalSelesai.In(jakartaLocation))
+			if leaveStart.Before(start) {
+				leaveStart = start
+			}
+			if leaveEnd.After(end) {
+				leaveEnd = end
+			}
+			for day := leaveStart; !day.After(leaveEnd); day = day.AddDate(0, 0, 1) {
+				leaveDates[workReportDateKey(*leave.EmployeeID, day)] = true
+			}
+		}
+	}
+	return holidayDates, leaveDates
 }
