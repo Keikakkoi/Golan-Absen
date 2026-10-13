@@ -17,6 +17,44 @@
   box-sizing: border-box;
 }
 
+/* The shared mobile shell is a column flex layout. Stretch this page's
+   children so the approval content follows the viewport width instead of
+   shrinking to its intrinsic width when the shell has align-items overridden
+   elsewhere. Keep the table's own horizontal scrolling in its wrapper. */
+@media screen and (max-width: 900px) {
+  .admin-theme.leave-approval-shell {
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .admin-theme.leave-approval-shell
+    > .main-content.leave-approval-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-inline: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .leave-approval-page .leave-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .leave-approval-page .leave-table-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+  }
+}
+
 .leave-card {
   /* Keep the shared pagination menu visible outside the card boundary. */
   overflow: visible;
