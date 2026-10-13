@@ -120,6 +120,7 @@
 }
 
 .notification-item {
+  box-sizing: border-box;
   width: 100%;
   display: flex;
   align-items: flex-start;
@@ -127,13 +128,25 @@
   padding: 1rem 1.2rem;
   text-align: left;
   border: 0;
+  border-left: 3px solid transparent;
   border-bottom: 1px solid var(--mint-1);
   background: var(--surface);
+  color: var(--text-dark);
   cursor: pointer;
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease;
 }
 
+.notification-item:hover { background: var(--surface-muted); }
+.notification-item:focus-visible {
+  outline: 3px solid var(--green);
+  outline-offset: -3px;
+}
 .notification-item:last-child { border-bottom: 0; }
-.notification-item.unread { background: var(--mint-0); }
+.notification-item.unread {
+  background: var(--mint-0);
+  border-left-color: var(--green);
+}
+.notification-item.unread:hover { background: var(--mint-1); }
 .notification-item:first-of-type {
   border-top-left-radius: inherit;
   border-top-right-radius: inherit;
@@ -150,30 +163,71 @@
   margin-top: .4rem;
   border-radius: 50%;
   background: transparent;
+  opacity: 0;
+  transform: scale(.65);
+  transition: opacity .2s ease, transform .2s ease, background-color .2s ease;
 }
 
-.notification-dot.visible { background: var(--green); }
+.notification-dot.visible {
+  background: var(--green);
+  opacity: 1;
+  transform: scale(1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+}
 
 .notification-copy {
   display: flex;
   flex-direction: column;
   gap: .3rem;
+  min-width: 0;
 }
 
-.notification-copy strong { color: var(--text-dark); }
+.notification-copy strong { color: var(--text-dark); font-weight: 700; }
+.notification-item:not(.unread) .notification-copy strong {
+  color: var(--text-dark-lo);
+  font-weight: 600;
+}
 .notification-copy span { color: var(--text-dark-lo); line-height: 1.45; }
 .notification-copy small { color: var(--text-dark-lo); }
 .state-message { padding: 2rem; color: var(--text-dark-lo); text-align: center; }
 
 /* Keep notification surfaces readable in both theme modes. */
-body.dark-theme .notification-item {
-  background: var(--surface) !important;
-  color: var(--text-dark) !important;
-  border-bottom-color: var(--border-strong) !important;
+:host-context(body.dark-theme) .notification-item {
+  background: #202a3d !important;
+  color: #e2e8f0 !important;
+  border-bottom-color: #475569 !important;
+  border-left-color: transparent !important;
 }
 
-body.dark-theme .notification-item.unread {
-  background: var(--surface-raised) !important;
+:host-context(body.dark-theme) .notification-item:hover {
+  background: #26364d !important;
+}
+
+:host-context(body.dark-theme) .notification-item.unread {
+  background: #293852 !important;
+  border-left-color: #60a5fa !important;
+}
+
+:host-context(body.dark-theme) .notification-item.unread:hover {
+  background: #304563 !important;
+}
+
+:host-context(body.dark-theme) .notification-item:not(.unread) .notification-copy strong {
+  color: #cbd5e1 !important;
+}
+
+:host-context(body.dark-theme) .notification-item.unread .notification-copy strong {
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .notification-item:not(.unread) .notification-copy span,
+:host-context(body.dark-theme) .notification-item:not(.unread) .notification-copy small {
+  color: #94a3b8 !important;
+}
+
+:host-context(body.dark-theme) .notification-item.unread .notification-copy span,
+:host-context(body.dark-theme) .notification-item.unread .notification-copy small {
+  color: #cbd5e1 !important;
 }
 
 body.dark-theme .notification-list {
@@ -197,8 +251,12 @@ body.dark-theme .notification-list {
 
 @media (max-width: 640px) {
   .notification-header { align-items: flex-start; flex-direction: column; }
+  .notification-actions { width: 100%; }
+  .notification-actions > button { flex: 1 1 0; min-width: 0; }
   .admin-notification-tabs { overflow-x: auto; }
   .admin-notification-tabs a { white-space: nowrap; }
+  .notification-item { gap: .65rem; padding: .95rem .9rem; }
+  .notification-copy { overflow-wrap: anywhere; }
 }
 
 /* Tablet landscape baseline: keep the push and mark-all controls on the

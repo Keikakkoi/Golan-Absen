@@ -3101,6 +3101,46 @@ body.dark-theme .main-content [class*="-item"] small {
   color: var(--text-dark-lo) !important;
 }
 
+/* The full notification page has a stronger read/unread hierarchy than the
+   generic legacy item safety net above. Keep these selectors page-specific so
+   dashboard dropdowns and other list components retain their own treatment. */
+body.dark-theme .main-content .notification-list .notification-item {
+  background: #202a3d !important;
+  border-bottom-color: #475569 !important;
+  border-left-color: transparent !important;
+}
+
+body.dark-theme .main-content .notification-list .notification-item:hover {
+  background: #26364d !important;
+}
+
+body.dark-theme .main-content .notification-list .notification-item.unread {
+  background: #293852 !important;
+  border-left-color: #60a5fa !important;
+}
+
+body.dark-theme .main-content .notification-list .notification-item.unread:hover {
+  background: #304563 !important;
+}
+
+body.dark-theme .main-content .notification-list .notification-item:not(.unread) .notification-copy strong {
+  color: #cbd5e1 !important;
+}
+
+body.dark-theme .main-content .notification-list .notification-item.unread .notification-copy strong {
+  color: #f8fafc !important;
+}
+
+body.dark-theme .main-content .notification-list .notification-item:not(.unread) .notification-copy span,
+body.dark-theme .main-content .notification-list .notification-item:not(.unread) .notification-copy small {
+  color: #94a3b8 !important;
+}
+
+body.dark-theme .main-content .notification-list .notification-item.unread .notification-copy span,
+body.dark-theme .main-content .notification-list .notification-item.unread .notification-copy small {
+  color: #cbd5e1 !important;
+}
+
 body.dark-theme .main-content table,
 body.dark-theme .main-content table tbody,
 body.dark-theme .main-content table tbody tr,
