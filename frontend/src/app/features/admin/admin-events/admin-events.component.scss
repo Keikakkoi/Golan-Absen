@@ -163,6 +163,7 @@
 /* Keep the edit/delete actions readable in both the selected-event card and
    the full event table when dark mode is active. */
 :host-context(body.dark-theme) .events-page .event-actions > .icon-button.edit,
+:host-context(body.dark-theme) .events-page .event-mobile-actions > .icon-button.edit,
 :host-context(body.dark-theme) .events-page .golan-table td.actions > .icon-button.edit {
   background: #3f2a0a !important;
   border-color: #a16207 !important;
@@ -170,6 +171,7 @@
 }
 
 :host-context(body.dark-theme) .events-page .event-actions > .icon-button.edit:hover,
+:host-context(body.dark-theme) .events-page .event-mobile-actions > .icon-button.edit:hover,
 :host-context(body.dark-theme) .events-page .golan-table td.actions > .icon-button.edit:hover {
   background: #5b4219 !important;
   border-color: #f59e0b !important;
@@ -177,6 +179,7 @@
 }
 
 :host-context(body.dark-theme) .events-page .event-actions > .icon-button.delete,
+:host-context(body.dark-theme) .events-page .event-mobile-actions > .icon-button.delete,
 :host-context(body.dark-theme) .events-page .golan-table td.actions > .icon-button.delete {
   background: #451a1a !important;
   border-color: #b91c1c !important;
@@ -184,6 +187,7 @@
 }
 
 :host-context(body.dark-theme) .events-page .event-actions > .icon-button.delete:hover,
+:host-context(body.dark-theme) .events-page .event-mobile-actions > .icon-button.delete:hover,
 :host-context(body.dark-theme) .events-page .golan-table td.actions > .icon-button.delete:hover {
   background: #5f2020 !important;
   border-color: #ef4444 !important;
