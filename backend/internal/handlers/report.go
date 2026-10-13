@@ -175,7 +175,8 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 
 	now := attendanceNow()
 	_ = closeExpiredAttendanceRecords(now)
-	today := attendanceBusinessDate(now).Format("2006-01-02")
+	todayDate := attendanceBusinessDate(now)
+	today := todayDate.Format("2006-01-02")
 
 	var hadirHariIni int64
 	config.DB.Model(&models.AttendanceRecord{}).
@@ -187,10 +188,15 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 		Where("? BETWEEN tanggal_mulai AND tanggal_selesai AND status = ?", today, models.LeaveStatusApproved).
 		Count(&izinCutiHariIni)
 
-	belumAbsenHariIni := totalKaryawan - (hadirHariIni + izinCutiHariIni)
-	if belumAbsenHariIni < 0 {
-		belumAbsenHariIni = 0
-	}
+	// The dashboard's pending/alpha figures are based on the same per-employee
+	// schedule model used by attendance statistics. This avoids counting
+	// inactive users, non-working days, or approved leave as "Belum Absen".
+	var activeEmployees []models.Employee
+	config.DB.Joins("JOIN users ON users.id = employees.user_id").
+		Where("users.status = ?", "aktif").
+		Find(&activeEmployees)
+	statsInput := loadAttendanceStatisticsInput(todayDate, todayDate, activeEmployees)
+	todayAttendance := attendanceDaySummary(activeEmployees, todayDate, now, statsInput)
 
 	var totalMagang, magangAktif, workReportsPending int64
 	config.DB.Model(&models.User{}).Where("role = ?", models.RoleMagang).Count(&totalMagang)
@@ -204,7 +210,8 @@ func GetAdminDashboardStats(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"total_karyawan":       totalKaryawan,
 		"hadir_hari_ini":       hadirHariIni,
-		"belum_absen_hari_ini": belumAbsenHariIni,
+		"belum_absen_hari_ini": todayAttendance.BelumAbsen,
+		"alpha_hari_ini":       todayAttendance.Alpha,
 		"izin_cuti_hari_ini":   izinCutiHariIni,
 		"total_magang":         totalMagang,
 		"magang_aktif":         magangAktif,

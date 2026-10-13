@@ -22,6 +22,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     total_karyawan: 0,
     hadir_hari_ini: 0,
     belum_absen_hari_ini: 0,
+    alpha_hari_ini: 0,
     izin_cuti_hari_ini: 0,
     total_magang: 0,
     magang_aktif: 0,
@@ -31,7 +32,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   adminName = '';
   isLoading = true;
-  skeletonItems = [1, 2, 3, 4, 5, 6];
+  skeletonItems = [1, 2, 3, 4, 5, 6, 7, 8];
   lastUpdated = '';
   private refreshTimer?: ReturnType<typeof setInterval>;
   notifications: AppNotification[] = [];
@@ -77,6 +78,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.stats = {
           ...data,
+          alpha_hari_ini: Number(data?.alpha_hari_ini) || 0,
           work_reports_pending: Number(data?.work_reports_pending) || 0,
           missing_work_report_employee_count: Number(data?.missing_work_report_employee_count ?? data?.missing_work_report_count) || 0
         };

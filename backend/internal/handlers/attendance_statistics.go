@@ -117,6 +117,14 @@ func attendanceDayStatusWithSchedule(employee models.Employee, day, now time.Tim
 		return "", false
 	}
 	if record, ok := in.records[recordKey(employee.ID, day)]; ok {
+		// A punched attendance record remains authoritative. For an empty row
+		// (including a materialized Alpha row), an approved leave is the
+		// exception and must replace it.
+		if record.JamMasuk == nil {
+			if status, onLeave := in.leaves[recordKey(employee.ID, day)]; onLeave {
+				return string(status), true
+			}
+		}
 		return string(record.Status), true
 	}
 	if status, ok := in.leaves[recordKey(employee.ID, day)]; ok {

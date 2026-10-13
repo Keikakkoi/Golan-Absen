@@ -102,3 +102,40 @@ func TestAttendanceDaySummaryAggregatesTeamByMemberAndWorkingDay(t *testing.T) {
 		t.Fatalf("unexpected team summary: %+v, percentage=%d", got, attendancePercentage(got))
 	}
 }
+
+func TestAttendanceDayStatusChangesFromPendingToAlphaAfterScheduleEnd(t *testing.T) {
+	day := time.Date(2026, 9, 18, 0, 0, 0, 0, jakartaLocation) // Friday
+	id := uint(9)
+	employee := models.Employee{Model: models.Model{ID: id}, TanggalBergabung: day}
+	schedule := resolveRegularForTest(models.RegularWorkSchedule{
+		DayOfWeek: 5, IsWorkingDay: true, StartTime: "09:00", EndTime: "17:00",
+	}, day)
+	in := attendanceStatisticsInput{records: map[string]models.AttendanceRecord{}, leaves: map[string]models.AttendanceStatus{}, holidays: map[string]bool{}}
+
+	status, working := attendanceDayStatusWithSchedule(employee, day, time.Date(2026, 9, 18, 16, 59, 0, 0, jakartaLocation), in, schedule)
+	if !working || status != "Belum Absen" {
+		t.Fatalf("before schedule end: status=%q working=%v", status, working)
+	}
+
+	status, working = attendanceDayStatusWithSchedule(employee, day, time.Date(2026, 9, 18, 17, 0, 0, 0, jakartaLocation), in, schedule)
+	if !working || status != string(models.StatusAlpha) {
+		t.Fatalf("at schedule end: status=%q working=%v", status, working)
+	}
+}
+
+func TestAttendanceDayStatusApprovedLeaveOverridesMaterializedAlpha(t *testing.T) {
+	day := time.Date(2026, 9, 18, 0, 0, 0, 0, jakartaLocation)
+	id := uint(10)
+	employee := models.Employee{Model: models.Model{ID: id}, TanggalBergabung: day}
+	schedule := resolveRegularForTest(models.RegularWorkSchedule{
+		DayOfWeek: 5, IsWorkingDay: true, StartTime: "09:00", EndTime: "17:00",
+	}, day)
+	in := attendanceStatisticsInput{records: map[string]models.AttendanceRecord{}, leaves: map[string]models.AttendanceStatus{}, holidays: map[string]bool{}}
+	in.records[recordKey(id, day)] = models.AttendanceRecord{EmployeeID: &id, Tanggal: day, Status: models.StatusAlpha}
+	in.leaves[recordKey(id, day)] = models.StatusCuti
+
+	status, working := attendanceDayStatusWithSchedule(employee, day, day.Add(18*time.Hour), in, schedule)
+	if !working || status != string(models.StatusCuti) {
+		t.Fatalf("approved leave must replace empty alpha row: status=%q working=%v", status, working)
+	}
+}
