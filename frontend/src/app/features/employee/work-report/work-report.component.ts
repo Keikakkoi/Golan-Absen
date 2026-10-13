@@ -161,7 +161,10 @@ export class WorkReportComponent implements OnDestroy, OnInit {
             title: this.refreshSuccess,
             showConfirmButton: false,
             timer: 2500,
-            timerProgressBar: true
+            timerProgressBar: true,
+            customClass: {
+              popup: 'report-refresh-toast'
+            }
           });
         }
       },

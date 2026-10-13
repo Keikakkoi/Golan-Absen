@@ -363,6 +363,12 @@
   border: 1px solid #86efac;
 }
 
+:host-context(body.dark-theme) .report-refresh-success {
+  background: #14532D;
+  border-color: #22C55E;
+  color: #BBF7D0;
+}
+
 .report-refresh-loading {
   color: #1d4ed8;
   background: #dbeafe;

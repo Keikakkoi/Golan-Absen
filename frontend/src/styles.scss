@@ -3374,6 +3374,29 @@ body.swal2-shown {
   overflow-y: scroll !important;
 }
 
+/* The report refresh toast is rendered directly under <body>, so its dark
+   mode palette must live in the global stylesheet rather than the component
+   stylesheet. Keep the light-mode SweetAlert palette unchanged. */
+body.dark-theme .swal2-popup.report-refresh-toast {
+  background: #1E293B !important;
+  border: 1px solid #475569 !important;
+  color: #E2E8F0 !important;
+}
+
+body.dark-theme .swal2-popup.report-refresh-toast .swal2-title,
+body.dark-theme .swal2-popup.report-refresh-toast .swal2-html-container {
+  color: #DCFCE7 !important;
+}
+
+body.dark-theme .swal2-popup.report-refresh-toast .swal2-icon.swal2-success {
+  border-color: #86EFAC !important;
+  color: #86EFAC !important;
+}
+
+body.dark-theme .swal2-popup.report-refresh-toast .swal2-timer-progress-bar {
+  background: #22C55E !important;
+}
+
 body.dark-theme .main-content .btn-info,
 body.dark-theme .main-content .btn-edit,
 body.dark-theme .main-content .btn-detail,

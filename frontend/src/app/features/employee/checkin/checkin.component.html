@@ -78,9 +78,11 @@
           </div>
           <div
             *ngIf="locationError"
-            class="alert alert-danger"
+            class="alert alert-danger geolocation-warning"
+            role="alert"
             [class.outside-radius-message]="locationError.includes('di luar radius')">
-            {{ locationError }}
+            <span class="warning-icon" aria-hidden="true">!</span>
+            <span class="warning-message">{{ locationError }}</span>
           </div>
           <div id="map" class="map-container"></div>
           <div class="status-indicator-pill">
@@ -97,7 +99,10 @@
         <!-- Camera Selfie Card -->
         <div class="golan-card camera-card">
           <h3>Bukti Kehadiran (Selfie)</h3>
-          <div *ngIf="cameraError" class="alert alert-danger">{{ cameraError }}</div>
+          <div *ngIf="cameraError" class="alert alert-danger camera-warning" role="alert">
+            <span class="warning-icon" aria-hidden="true">!</span>
+            <span class="warning-message">{{ cameraError }}</span>
+          </div>
           
           <div class="video-container" [hidden]="capturedImage">
             <video #videoElement autoplay playsinline></video>
