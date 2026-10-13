@@ -52,6 +52,7 @@
         var savedTheme = localStorage.getItem('golan:theme:user:' + userId);
         if (preferences && preferences.darkMode === true && savedTheme === 'dark') {
           document.body.classList.add('dark-theme');
+          document.documentElement.classList.add('dark-theme');
         }
       } catch (_) {
         // A malformed optional theme value must never prevent app bootstrap.

@@ -92,6 +92,7 @@ export class ThemeService {
 
   clearActiveTheme(persistLight = false): void {
     document.body.classList.remove('dark-theme');
+    document.documentElement.classList.remove('dark-theme');
     if (persistLight) {
       const key = this.scopedKey('theme');
       if (key) localStorage.setItem(key, 'light');
@@ -102,6 +103,7 @@ export class ThemeService {
   private setActiveTheme(isDark: boolean): void {
     const active = isDark && this.darkModeEnabledSubject.value;
     document.body.classList.toggle('dark-theme', active);
+    document.documentElement.classList.toggle('dark-theme', active);
     const key = this.scopedKey('theme');
     if (key) localStorage.setItem(key, active ? 'dark' : 'light');
     this.darkModeSubject.next(active);
