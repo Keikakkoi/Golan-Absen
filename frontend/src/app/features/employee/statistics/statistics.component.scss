@@ -9,6 +9,32 @@
   min-height: 0 !important;
 }
 
+// This page is content-height driven. The shared dashboard stylesheet uses a
+// viewport-sized, internally scrolling shell for the employee dashboard, but
+// the statistics page does not need that nested scroll owner. On mobile that
+// contract otherwise clips the cards below the viewport.
+@media (max-width: 900px) {
+  :host {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-container.personal-statistics-shell {
+    height: auto !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-container.personal-statistics-shell > .main-content.personal-statistics-page {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
