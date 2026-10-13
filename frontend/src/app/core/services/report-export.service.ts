@@ -3,6 +3,29 @@ import * as XLSX from 'xlsx';
 
 type ReportCellAlign = 'left' | 'center';
 
+export interface ReportImageCell {
+  readonly type: 'report-images';
+  readonly urls: string[];
+}
+
+interface PdfReportImage {
+  readonly dataUrl: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+interface PreparedReportImageCell {
+  readonly type: 'report-images';
+  readonly images: Array<PdfReportImage | null>;
+}
+
+interface PdfImageEntry {
+  readonly image: PdfReportImage | null;
+  readonly lines: string[];
+  readonly width: number;
+  readonly height: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReportExportService {
   private readonly blue = '#1769AA';
@@ -33,23 +56,35 @@ export class ReportExportService {
     const logo = await this.loadLogoDataUrl(); const margin = 10;
     const pageWidth = pdf.internal.pageSize.getWidth(); const pageHeight = pdf.internal.pageSize.getHeight();
     const isAlpha = this.isAlphaReport(headers); const isWorkReport = this.isWorkReport(headers); const statusTimeIndex = this.statusTimeIndex(headers); const widths = this.getColumnWidths(headers.length, pageWidth - margin * 2);
+    const preparedRows = await this.preparePdfRows(headers, rows);
     const columnStyles: Record<number, { cellWidth: number; halign?: ReportCellAlign }> = {};
     widths.forEach((cellWidth, index) => columnStyles[index] = { cellWidth });
     if (isAlpha) [0, 3, 4].forEach(index => columnStyles[index].halign = 'center');
     if (isWorkReport) [0, 1, 13, 14].forEach(index => { if (columnStyles[index]) columnStyles[index].halign = 'center'; });
     autoTable(pdf, {
-      head: [headers], body: rows.map(row => row.map(value => String(value ?? '-'))), startY: 35,
+      head: [headers], body: preparedRows as any, startY: 35,
       margin: { top: 35, right: margin, bottom: 14, left: margin }, tableWidth: pageWidth - margin * 2,
       theme: 'grid', rowPageBreak: 'avoid', showHead: 'everyPage',
       styles: { font: 'helvetica', fontSize: isAlpha || isWorkReport ? 7 : 6.4, cellPadding: isAlpha || isWorkReport ? 2.2 : 2, overflow: 'linebreak', valign: 'top', textColor: this.ink, lineColor: this.border, lineWidth: .2 },
       headStyles: { fillColor: this.blue, textColor: '#FFFFFF', fontStyle: 'bold', fontSize: isAlpha || isWorkReport ? 7 : 6.2, halign: 'center', valign: 'middle' },
       alternateRowStyles: { fillColor: '#F1F7FB' }, columnStyles,
       didParseCell: data => {
+        if (data.section === 'body' && this.isPreparedReportImageCell(data.cell.raw)) {
+          const entries = this.getPdfImageEntries(pdf, data.cell.raw, widths[data.column.index] || data.cell.width, data.cell.styles.fontSize, data.cell.styles.cellPadding);
+          const padding = this.getCellPadding(data.cell.styles.cellPadding);
+          data.cell.text = [''];
+          data.cell.styles.minCellHeight = Math.max(data.cell.styles.minCellHeight || 0, padding.top + padding.bottom + entries.reduce((height, entry) => height + entry.height, 0) + Math.max(0, entries.length - 1) * 1.2);
+          return;
+        }
         if ((!isAlpha && !isWorkReport && statusTimeIndex < 0) || data.section !== 'body') return;
         if (isAlpha && data.column.index === 3) { const total = Number(data.cell.raw || 0); data.cell.styles.fontStyle = 'bold'; data.cell.styles.textColor = total > 2 ? '#B42318' : total > 0 ? '#A15C00' : '#19734B'; }
         if (isAlpha && data.column.index === 4) { data.cell.styles.fontStyle = 'bold'; data.cell.styles.textColor = '#B42318'; data.cell.styles.fillColor = '#FEE4E2'; }
         if (isWorkReport && data.column.index >= 13 && data.column.index <= 14) this.styleWorkReportStatus(data.cell, String(data.cell.raw || '-'));
         if (statusTimeIndex >= 0 && data.column.index === statusTimeIndex) this.styleTimeStatus(data.cell, String(data.cell.raw || '-'));
+      },
+      didDrawCell: data => {
+        if (data.section !== 'body' || !this.isPreparedReportImageCell(data.cell.raw)) return;
+        this.drawPdfImageCell(pdf, data.cell.raw, data.cell.x, data.cell.y, data.cell.width, data.cell.styles.fontSize, data.cell.styles.cellPadding);
       },
       didDrawPage: data => this.drawPdfHeader(pdf, logo, title, printDate, data.pageNumber, pageWidth, pageHeight, margin)
     });
@@ -84,12 +119,164 @@ export class ReportExportService {
     pdf.setDrawColor(this.blue); pdf.setLineWidth(.6); pdf.line(margin, 30, pageWidth - margin, 30); pdf.setFontSize(7); pdf.text(`Halaman ${page}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
   }
 
+  private isReportImageCell(value: unknown): value is ReportImageCell {
+    return !!value && typeof value === 'object' && (value as { type?: unknown }).type === 'report-images' && Array.isArray((value as { urls?: unknown }).urls);
+  }
+
+  private isPreparedReportImageCell(value: unknown): value is PreparedReportImageCell {
+    return !!value && typeof value === 'object' && (value as { type?: unknown }).type === 'report-images' && Array.isArray((value as { images?: unknown }).images);
+  }
+
+  private async preparePdfRows(headers: string[], rows: unknown[][]): Promise<unknown[][]> {
+    const imageCache = new Map<string, Promise<PdfReportImage | null>>();
+    return Promise.all(rows.map(row => Promise.all(row.map(async (value, columnIndex) => {
+      const imageCell = this.asReportImageCell(value, headers[columnIndex]);
+      if (!imageCell) return String(value ?? '-');
+      const images = await Promise.all(imageCell.urls.map(url => {
+        const cacheKey = String(url);
+        let imagePromise = imageCache.get(cacheKey);
+        if (!imagePromise) {
+          imagePromise = this.loadPdfImage(cacheKey);
+          imageCache.set(cacheKey, imagePromise);
+        }
+        return imagePromise;
+      }));
+      return { type: 'report-images', images } satisfies PreparedReportImageCell;
+    }))));
+  }
+
+  private getPdfImageEntries(pdf: any, cell: PreparedReportImageCell, cellWidth: number, fontSize: number, cellPadding?: unknown): PdfImageEntry[] {
+    const padding = this.getCellPadding(cellPadding);
+    const availableWidth = Math.max(1, cellWidth - padding.left - padding.right);
+    const maxWidth = Math.min(20, availableWidth);
+    const maxHeight = 24;
+    const fallbackFontSize = Number(fontSize) || 7;
+    const fallbackLineHeight = fallbackFontSize * .45;
+    return cell.images.map(image => {
+      if (!image) {
+        const lines = (pdf.splitTextToSize('Gambar tidak dapat dimuat', availableWidth) || ['Gambar tidak dapat dimuat']).map((line: unknown) => String(line));
+        return { image: null, lines, width: availableWidth, height: Math.max(fallbackLineHeight, lines.length * fallbackLineHeight) };
+      }
+      const ratio = image.width > 0 && image.height > 0 ? image.width / image.height : 1;
+      const width = Math.min(maxWidth, maxHeight * ratio);
+      return { image, lines: [], width, height: width / ratio };
+    });
+  }
+
+  private drawPdfImageCell(pdf: any, cell: PreparedReportImageCell, x: number, y: number, cellWidth: number, fontSize: number, cellPadding: unknown): void {
+    const padding = this.getCellPadding(cellPadding);
+    const entries = this.getPdfImageEntries(pdf, cell, cellWidth, fontSize, cellPadding);
+    let currentY = y + padding.top;
+    const fallbackFontSize = Number(fontSize) || 7;
+    for (const entry of entries) {
+      if (entry.image) {
+        pdf.addImage(entry.image.dataUrl, 'PNG', x + padding.left, currentY, entry.width, entry.height, undefined, 'FAST');
+      } else {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(fallbackFontSize);
+        pdf.setTextColor('#64748B');
+        pdf.text(entry.lines, x + padding.left, currentY + fallbackFontSize * .45 - .6);
+      }
+      currentY += entry.height + 1.2;
+    }
+  }
+
+  private getCellPadding(value: unknown): { top: number; right: number; bottom: number; left: number } {
+    if (typeof value === 'number') return { top: value, right: value, bottom: value, left: value };
+    if (!value || typeof value !== 'object') return { top: 2.2, right: 2.2, bottom: 2.2, left: 2.2 };
+    const padding = value as Record<string, unknown>;
+    const top = padding['top']; const right = padding['right']; const bottom = padding['bottom']; const left = padding['left'];
+    const fallback = Number(top ?? right ?? bottom ?? left ?? 2.2) || 2.2;
+    return {
+      top: Number(top ?? fallback) || fallback,
+      right: Number(right ?? fallback) || fallback,
+      bottom: Number(bottom ?? fallback) || fallback,
+      left: Number(left ?? fallback) || fallback
+    };
+  }
+
+  private renderPrintImageCell(cell: ReportImageCell, escape: (value: unknown) => string): string {
+    const items = cell.urls.map(url => {
+      const safeUrl = this.resolveReportImageUrl(url);
+      if (!safeUrl) return '<span class="report-evidence-fallback">Gambar tidak dapat dimuat</span>';
+      return `<span class="report-evidence-item"><img src="${escape(safeUrl)}" alt="Bukti pengisian" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span class="report-evidence-fallback" style="display:none">Gambar tidak dapat dimuat</span></span>`;
+    });
+    return `<div class="report-evidence-list">${items.length ? items.join('') : '<span class="report-evidence-fallback">Gambar tidak dapat dimuat</span>'}</div>`;
+  }
+
+  private asReportImageCell(value: unknown, header?: string): ReportImageCell | null {
+    if (this.isReportImageCell(value)) return value;
+    if (!this.isEvidenceColumn(header) || typeof value !== 'string') return null;
+    const urls = value.split(/\s*\|\s*/).map(item => item.trim()).filter(item => !!this.resolveReportImageUrl(item));
+    return urls.length ? { type: 'report-images', urls } : null;
+  }
+
+  private isEvidenceColumn(header?: string): boolean {
+    const normalized = String(header || '').trim().toUpperCase();
+    return normalized.includes('SCREENSHOT') || normalized.includes('BUKTI PENGISIAN');
+  }
+
+  private async loadPdfImage(url: string): Promise<PdfReportImage | null> {
+    try {
+      const safeUrl = this.resolveReportImageUrl(url);
+      if (!safeUrl) return null;
+      const response = await fetch(safeUrl, { credentials: 'include' });
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      if (!blob.type.toLowerCase().startsWith('image/')) return null;
+      const sourceDataUrl = await this.readBlobAsDataUrl(blob);
+      const image = await this.loadHtmlImage(sourceDataUrl);
+      const naturalWidth = image.naturalWidth || image.width;
+      const naturalHeight = image.naturalHeight || image.height;
+      if (!naturalWidth || !naturalHeight) return null;
+      const scale = Math.min(1, 2400 / Math.max(naturalWidth, naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(naturalHeight * scale));
+      const context = canvas.getContext('2d');
+      if (!context) return null;
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return { dataUrl: canvas.toDataURL('image/png'), width: naturalWidth, height: naturalHeight };
+    } catch {
+      return null;
+    }
+  }
+
+  private resolveReportImageUrl(url: string): string | null {
+    try {
+      const resolved = new URL(String(url).trim(), document.baseURI);
+      if (!['http:', 'https:', 'blob:', 'data:'].includes(resolved.protocol)) return null;
+      if (resolved.protocol === 'data:' && !String(url).trim().toLowerCase().startsWith('data:image/')) return null;
+      return resolved.href;
+    } catch {
+      return null;
+    }
+  }
+
+  private readBlobAsDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error || new Error('Gagal membaca gambar'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  private loadHtmlImage(dataUrl: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('Gagal memuat gambar'));
+      image.src = dataUrl;
+    });
+  }
+
   private openPrintWindow(title: string, printDate: string, headers: string[], rows: unknown[][], alpha: boolean): void {
     const printWindow = window.open('', '_blank', 'width=1200,height=800'); if (!printWindow) return;
     const escape = (value: unknown) => this.escapeHtml(String(value ?? '-')); const logoUrl = new URL('assets/icon_golan.png', document.baseURI).href; const widths = this.getPrintColumnWidths(headers.length);
     const workReport = this.isWorkReport(headers); const statusTimeIndex = this.statusTimeIndex(headers);
-    const body = rows.map(row => `<tr>${row.map((cell, index) => { const classes = alpha && index === 3 ? `alpha-total ${this.alphaLevel(Number(cell))}` : alpha && index === 4 ? 'status-follow-up' : workReport && index >= 13 && index <= 14 ? `work-status ${this.workStatusClass(String(cell))}` : statusTimeIndex >= 0 && index === statusTimeIndex ? `time-status ${this.timeStatusClass(String(cell))}` : ''; const content = escape(cell).replace(/\n/g, '<br>'); return `<td class="${classes}">${content}</td>`; }).join('')}</tr>`).join('');
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escape(title)}</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Arial,sans-serif;color:${this.ink};font-size:7.5px;margin:0}.report-header{display:flex;align-items:center;gap:12px;border-bottom:2px solid ${this.blue};padding:0 0 8px;margin-bottom:10px}.report-header img{width:42px;height:42px;object-fit:contain}.report-header h1{margin:0;color:${this.blue};font-size:17px;line-height:1.2}.report-header h2{margin:3px 0 0;font-size:12px}.report-header p{margin:3px 0 0;color:${this.muted};font-size:8px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid ${this.border};padding:5px 4px;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:break-word;line-height:1.3}th{background:${this.blue};color:#fff;font-size:7px;text-align:center;vertical-align:middle}td{font-size:7px}tbody tr:nth-child(even){background:#F1F7FB}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}.alpha-total{text-align:center;font-weight:700}.alpha-total.green{color:#19734B}.alpha-total.orange{color:#A15C00}.alpha-total.red{color:#B42318}.status-follow-up{background:#FEE4E2;color:#B42318;font-weight:700;text-align:center}.work-status.neutral{background:#F1F5F9;color:#475569;font-weight:700}.time-status{font-weight:700;text-align:center}.time-status.on-time{background:#ECFDF5;color:#047857}.time-status.late{background:#FEF3C7;color:#B7791F}.time-status.empty{color:#64748B}</style></head><body><header class="report-header"><img src="${logoUrl}" alt="Logo Golan"><div><h1>GOLAN - PT. GOLAN DIGITAL KREATIF</h1><h2>${escape(title)}</h2><p>Tanggal pembuatan laporan: ${escape(printDate)}</p></div></header><table><colgroup>${widths.map(width => `<col style="width:${width}">`).join('')}</colgroup><thead><tr>${headers.map(header => `<th>${escape(header)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table><script>window.onload=function(){window.print();}</script></body></html>`;
+    const body = rows.map(row => `<tr>${row.map((cell, index) => { const classes = alpha && index === 3 ? `alpha-total ${this.alphaLevel(Number(cell))}` : alpha && index === 4 ? 'status-follow-up' : workReport && index >= 13 && index <= 14 ? `work-status ${this.workStatusClass(String(cell))}` : statusTimeIndex >= 0 && index === statusTimeIndex ? `time-status ${this.timeStatusClass(String(cell))}` : ''; const imageCell = this.asReportImageCell(cell, headers[index]); const content = imageCell ? this.renderPrintImageCell(imageCell, escape) : escape(cell).replace(/\n/g, '<br>'); return `<td class="${classes}">${content}</td>`; }).join('')}</tr>`).join('');
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escape(title)}</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Arial,sans-serif;color:${this.ink};font-size:7.5px;margin:0}.report-header{display:flex;align-items:center;gap:12px;border-bottom:2px solid ${this.blue};padding:0 0 8px;margin-bottom:10px}.report-header img{width:42px;height:42px;object-fit:contain}.report-header h1{margin:0;color:${this.blue};font-size:17px;line-height:1.2}.report-header h2{margin:3px 0 0;font-size:12px}.report-header p{margin:3px 0 0;color:${this.muted};font-size:8px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid ${this.border};padding:5px 4px;text-align:left;vertical-align:top;overflow-wrap:anywhere;word-break:break-word;line-height:1.3}th{background:${this.blue};color:#fff;font-size:7px;text-align:center;vertical-align:middle}td{font-size:7px}tbody tr:nth-child(even){background:#F1F7FB}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}.report-evidence-list{display:flex;flex-direction:column;align-items:flex-start;gap:1mm}.report-evidence-list img{display:block;max-width:20mm;max-height:24mm;width:auto;height:auto;object-fit:contain}.report-evidence-fallback{display:block;color:#64748B;font-size:6.5px;line-height:1.2}.alpha-total{text-align:center;font-weight:700}.alpha-total.green{color:#19734B}.alpha-total.orange{color:#A15C00}.alpha-total.red{color:#B42318}.status-follow-up{background:#FEE4E2;color:#B42318;font-weight:700;text-align:center}.work-status.neutral{background:#F1F5F9;color:#475569;font-weight:700}.time-status{font-weight:700;text-align:center}.time-status.on-time{background:#ECFDF5;color:#047857}.time-status.late{background:#FEF3C7;color:#B7791F}.time-status.empty{color:#64748B}</style></head><body><header class="report-header"><img src="${logoUrl}" alt="Logo Golan"><div><h1>GOLAN - PT. GOLAN DIGITAL KREATIF</h1><h2>${escape(title)}</h2><p>Tanggal pembuatan laporan: ${escape(printDate)}</p></div></header><table><colgroup>${widths.map(width => `<col style="width:${width}">`).join('')}</colgroup><thead><tr>${headers.map(header => `<th>${escape(header)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table><script>window.onload=function(){window.print();}</script></body></html>`;
     printWindow.document.write(html); printWindow.document.close(); printWindow.opener = null;
   }
 

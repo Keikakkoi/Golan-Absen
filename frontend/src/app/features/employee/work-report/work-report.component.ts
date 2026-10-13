@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
-import { ReportExportService } from '../../../core/services/report-export.service';
+import { ReportExportService, ReportImageCell } from '../../../core/services/report-export.service';
 import { dateOnly, isSameJakartaDate, jakartaDateString, monthRange, reportDayStatus } from './work-report-date.utils';
 import { isValidRealisasiKegiatan, REALISASI_KEGIATAN_ERROR } from './work-report-validation';
 import { requiresReportTitle as resolveRequiresReportTitle } from '../../../core/utils/report-completeness';
@@ -722,14 +722,14 @@ export class WorkReportComponent implements OnDestroy, OnInit {
   }
 
   private buildPrintableReport(reports = this.reports): { headers: string[]; rows: unknown[][] } {
-    return { headers: this.exportHeaders(), rows: this.exportRows(reports) };
+    return { headers: this.exportHeaders(), rows: this.exportRows(reports, true) };
   }
 
   private exportHeaders(): string[] {
     return ['No', 'Hari/Tanggal', 'Divisi', 'Judul Tugas', 'Deskripsi Kegiatan', 'Realisasi Kegiatan (Capaian Target, %)', 'Kendala (Jika Ada)', 'Rencana Minggu Depan', 'Link Artikel', 'Screenshot/Bukti Pengisian', 'Status Pengisian', 'Catatan Tambahan', 'Status Validasi', 'Catatan Review/Alasan Penolakan', ...this.columns.map(column => column.nama_kolom)];
   }
 
-  private exportRows(reports = this.reports): unknown[][] {
+  private exportRows(reports = this.reports, includeEvidenceImages = false): unknown[][] {
     return reports.map((report, index) => [
       index + 1,
       this.formatReportDate(report.tanggal),
@@ -740,7 +740,7 @@ export class WorkReportComponent implements OnDestroy, OnInit {
       report.kendala || '-',
       report.rencana_minggu_depan || '-',
       report.link_artikel || '-',
-      (report.attachments || []).map(image => image.file_url).filter(Boolean).join(' | ') || '-',
+      includeEvidenceImages ? this.reportEvidenceCell(report) : (report.attachments || []).map(image => image.file_url).filter(Boolean).join(' | ') || '-',
       this.reportFillingLabel(report),
       report.catatan_tambahan || '-',
       this.validationStatusLabel(report),
@@ -771,6 +771,11 @@ export class WorkReportComponent implements OnDestroy, OnInit {
       },
       error: () => done(this.reports)
     });
+  }
+
+  private reportEvidenceCell(report: WorkReport): ReportImageCell | '-' {
+    const urls = (report.attachments || []).map(image => image.file_url).filter((url): url is string => Boolean(url));
+    return urls.length ? { type: 'report-images', urls } : '-';
   }
 
   private reportDate(): string { return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date()); }
