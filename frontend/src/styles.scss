@@ -3323,6 +3323,40 @@ body.dark-theme .main-content .view-toggle button.active {
   color: var(--text-dark) !important;
 }
 
+/* The employee create/edit modal uses a blue outlined cancel action. Keep it
+   intentionally distinct from neutral dashboard buttons in dark mode. */
+body.dark-theme .employee-form-modal .modal-footer > .btn-cancel-reference {
+  background: #172033 !important;
+  background-color: #172033 !important;
+  border: 2px solid #5ea9ff !important;
+  border-radius: 13px !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+body.dark-theme .employee-form-modal .modal-footer > .btn-cancel-reference:not(:disabled):hover {
+  background: #22365b !important;
+  background-color: #22365b !important;
+  border-color: #8bc2ff !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(7, 16, 35, 0.35) !important;
+}
+
+body.dark-theme .employee-form-modal .modal-footer > .btn-cancel-reference:active {
+  background: #1c2d4c !important;
+  background-color: #1c2d4c !important;
+  border-color: #b4d8ff !important;
+  color: #ffffff !important;
+  transform: scale(0.98);
+}
+
+body.dark-theme .employee-form-modal .modal-footer > .btn-cancel-reference:focus-visible {
+  outline: 3px solid #5ea9ff !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #172033, 0 0 0 5px rgba(94, 169, 255, 0.38) !important;
+}
+
 body.dark-theme .main-content .btn-primary,
 body.dark-theme .main-content .btn-approve,
 body.dark-theme .main-content .btn-success {
