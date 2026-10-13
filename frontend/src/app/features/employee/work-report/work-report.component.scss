@@ -395,6 +395,20 @@
   color: #fca5a5 !important;
 }
 
+/* Keep the no-report status readable in both history badge columns and the
+   report detail view without changing Draft or other report statuses. */
+:host-context(body.dark-theme) .work-report-page .status-pill.status-neutral,
+:host-context(body.dark-theme) .work-report-page .status-badge.status-neutral {
+  background: #334155 !important;
+  color: #f8fafc !important;
+  border: 1px solid #64748b !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .status-pill.status-neutral::before,
+:host-context(body.dark-theme) .work-report-page .status-badge.status-neutral::before {
+  background-color: #94a3b8 !important;
+}
+
 :host-context(body.dark-theme) .report-history-table .icon-button.edit,
 :host-context(body.dark-theme) .report-history-table .icon-button.delete {
   background: var(--surface-muted) !important;

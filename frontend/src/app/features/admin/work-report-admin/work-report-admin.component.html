@@ -211,10 +211,10 @@
                   <span *ngIf="!r.link_artikel">-</span>
                 </td>
                 <td class="text-cell" [title]="r.catatan_tambahan || '-'">{{ r.catatan_tambahan || '-' }}</td>
-                <td><span class="status-pill" [ngClass]="reportFillingClass(r)">{{ reportFillingLabel(r) }}</span></td>
-                <td><span class="status-badge" [ngClass]="reportStatusClass(r)">{{ reportStatusLabel(r) }}</span></td>
+                <td><span class="status-pill" [ngClass]="reportFillingClass(r)" [class.status-no-report]="isNoReport(r)">{{ reportFillingLabel(r) }}</span></td>
+                <td><span class="status-badge" [ngClass]="reportStatusClass(r)" [class.status-no-report]="isNoReport(r)">{{ reportStatusLabel(r) }}</span></td>
                 <td>
-                  <span *ngIf="isNoReport(r)" class="status-pill status-alpha">{{ evidenceLabel(r) }}</span>
+                  <span *ngIf="isNoReport(r)" class="status-pill status-alpha status-no-report">{{ evidenceLabel(r) }}</span>
                   <ng-container *ngIf="!isNoReport(r)">
                     <span *ngFor="let image of r.attachments" class="report-thumb"><a [href]="image.file_url" target="_blank"><img [src]="image.file_url" [alt]="image.file_name"></a></span>
                     <span *ngIf="!hasEvidence(r)">{{ evidenceLabel(r) }}</span>
@@ -306,7 +306,7 @@
             <span>Role: {{ reporterRole(detail) }}</span>
             <span>Tim: {{ reporterTeam(detail) }}</span>
             <span>Divisi: {{ detail.Employee?.Division?.NamaDivisi || '-' }}</span>
-            <span class="status-pill" [ngClass]="reportFillingClass(detail)">{{ reportFillingLabel(detail) }}</span>
+            <span class="status-pill" [ngClass]="reportFillingClass(detail)" [class.status-no-report]="isNoReport(detail)">{{ reportFillingLabel(detail) }}</span>
             <span class="status-pill" [ngClass]="validationStatusClass(detail)">{{ managerReviewLabel(detail) }}</span>
             <span class="status-pill" [ngClass]="validationStatusClass(detail)">{{ validationLabel(detail) }}</span>
           </div>

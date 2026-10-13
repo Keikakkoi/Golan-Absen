@@ -568,6 +568,17 @@
 .work-report-admin-page .work-report-table .validation-status-approved { background: #E6F8EF; color: #087443; }
 .work-report-admin-page .work-report-table .validation-status-rejected { background: #FDEBEC; color: #C53030; }
 .work-report-admin-page .work-report-table .validation-status-none { background: #F1F5F9; color: #64748B; }
+
+:host-context(body.dark-theme) .work-report-admin-page .status-no-report {
+  background: #334155 !important;
+  color: #f8fafc !important;
+  border: 1px solid #64748b !important;
+}
+
+:host-context(body.dark-theme) .work-report-admin-page .status-no-report::before {
+  background-color: #94a3b8 !important;
+}
+
 .work-report-admin-page .work-report-table .rejection-reason-cell {
   min-width: 220px;
   white-space: pre-wrap !important;

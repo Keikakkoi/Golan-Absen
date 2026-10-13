@@ -486,6 +486,17 @@
   border-color: #e2e8f0 !important;
 }
 
+/* Keep only the no-report badge aligned with the dark table surface. */
+:host-context(body.dark-theme) .team-reports-page .status-pill.status-neutral {
+  background: #334155 !important;
+  color: #f8fafc !important;
+  border: 1px solid #64748b !important;
+}
+
+:host-context(body.dark-theme) .team-reports-page .status-pill.status-neutral::before {
+  background-color: #94a3b8 !important;
+}
+
 .team-reports-col-date { width: 125px; }
 .team-reports-col-member { width: 220px; }
 .team-reports-col-task { width: 150px; }
