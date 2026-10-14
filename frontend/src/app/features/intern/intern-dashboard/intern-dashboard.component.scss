@@ -9,7 +9,9 @@
 .dashboard-container {
   display: flex;
   height: auto;
-  min-height: 100vh;
+  /* The shared route contract owns the viewport height. Let the main column
+     own vertical scrolling instead of reserving a second viewport-sized box. */
+  min-height: 0;
   overflow: visible;
   background-color: var(--bg);
 }

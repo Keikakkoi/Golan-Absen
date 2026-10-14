@@ -4952,6 +4952,10 @@ body.role-manajer app-team-reports .dashboard-container.team-reports-shell > .ma
   body.role-magang app-statistics .dashboard-container,
   body.role-magang app-notifications .dashboard-container,
   body.role-magang app-profile .dashboard-container {
+    /* The tablet/normal-width layer disables the large-screen CSS zoom below.
+       Keep the height compensation in sync with that effective zoom value. */
+    --employee-dashboard-scale: 1;
+    --intern-dashboard-scale: 1;
     zoom: 1 !important;
   }
 

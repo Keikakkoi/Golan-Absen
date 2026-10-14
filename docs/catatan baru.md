@@ -1,487 +1,360 @@
-# Rencana Prompt Bertahap
+# Alur Testing End-to-End Sistem Absensi Golan
 
-## Migrasi Logbook Magang menjadi Laporan Kerja
+Dokumen ini adalah checklist pengujian fungsional berbasis browser. Jalankan sesuai urutan: **Karyawan → Manajer → Admin/HRD → Magang**. Setiap langkah harus dicentang dan bukti berupa screenshot, file hasil ekspor, atau nomor data dicatat pada kolom catatan.
 
-Dokumen ini berisi prompt yang dapat diberikan kepada agent pengembang secara berurutan. Tujuannya adalah mengubah seluruh pengalaman dan alur laporan user `MAGANG` dari **Logbook** menjadi **Laporan Kerja**, lalu menggabungkannya ke halaman admin **Manajemen Laporan Kerja** seperti laporan user `Karyawan` dan `MANAJER`.
+> **Catatan role:** pada aplikasi, role admin ditampilkan sebagai `HRD`. Istilah **Admin/HRD** pada dokumen ini berarti akun dengan role `HRD`.
 
-Jalankan satu tahap sampai selesai dan terverifikasi sebelum menjalankan tahap berikutnya. Jangan mengerjakan seluruh tahap dalam satu perubahan besar.
+## 1. Persiapan Pengujian
 
-## Konteks proyek yang wajib diperiksa
+### 1.1 Lingkungan dan data uji
 
-Audit awal menunjukkan beberapa bagian yang kemungkinan terlibat:
+- [ ] Pastikan frontend, backend, database, object storage, dan layanan peta berjalan.
+- [ ] Gunakan browser terbaru dalam mode incognito atau hapus sesi sebelumnya.
+- [ ] Catat URL aplikasi, tanggal pengujian, versi/build, nama penguji, dan timezone `Asia/Jakarta`.
+- [ ] Siapkan lokasi/GPS uji untuk WFO di dalam dan di luar radius geofence kantor.
+- [ ] Siapkan lokasi/GPS uji untuk WFH yang berada di dalam dan di luar radius rumah.
+- [ ] Siapkan kamera yang dapat mengambil foto selfie.
+- [ ] Siapkan file JPG/PNG/WEBP untuk selfie/lampiran dan PDF untuk dokumen izin, sertifikat, serta backup.
+- [ ] Jangan memakai data pribadi nyata pada screenshot. Samarkan email, NIK, alamat, koordinat, foto, token, dan password.
 
-- Frontend Angular: `frontend/src/app/app.routes.ts`.
-- Halaman magang saat ini: `features/intern/intern-logbook/`.
-- Halaman laporan kerja karyawan/manajer: `features/employee/work-report/`.
-- Halaman admin tujuan: `features/admin/work-report-admin/` dengan judul **Manajemen Laporan Kerja**.
-- Operasional admin yang masih terpisah: `features/admin/role-operations/`.
-- Sidebar bersama dan sidebar admin: `features/shared/shared-sidebar/` dan `features/admin/admin-sidebar/`.
-- Service laporan kerja, export, notifikasi, dan guard permission di `features/core/`.
-- Backend laporan kerja: `backend/internal/handlers/work_report.go`.
-- Backend operasi magang: `backend/internal/handlers/admin_role_operations.go`.
-- Model laporan: `backend/internal/models/models.go`.
-- Route lama yang perlu diaudit: `/intern/logbooks` dan `/admin/internship/logbooks`.
-- Struktur lama yang perlu diaudit, bukan langsung dihapus: `status_logbook`, event notifikasi logbook, query chart logbook, serta migration/data historis.
+### 1.2 Akun uji
 
-Daftar di atas bukan batasan pencarian. Agent tetap wajib mencari seluruh repository, termasuk variasi `logbook`, `log book`, `log-book`, `logbbok`, `Logbook Magang`, `logbook harian`, dan `Laporan Tim / Logbook`.
+| Akun | Role | Kegunaan utama | Data yang perlu tersedia |
+|---|---|---|---|
+| `KARYAWAN_A` | Karyawan | Membuat absensi, izin/cuti, dan laporan kerja | Divisi, jabatan, project, shift, kuota cuti, manajer |
+| `KARYAWAN_B` | Karyawan | Skenario pembatasan data dan pembanding | Berbeda divisi atau tim bila memungkinkan |
+| `MANAJER_A` | MANAJER | Review data tim dan persetujuan | Memimpin tim `KARYAWAN_A` dan/atau `MAGANG_A` |
+| `ADMIN_A` | HRD | Administrasi dan validasi akhir | Hak akses HRD aktif |
+| `MAGANG_A` | MAGANG | Alur terakhir peserta magang | Institusi, periode magang, mentor/manajer |
 
----
+### 1.3 Format pencatatan hasil
 
-## Prompt Tahap 1 — Audit tanpa Mengubah Kode
-
-> Lakukan audit menyeluruh terhadap semua fitur yang berkaitan dengan logbook user magang dan semua fitur laporan kerja karyawan/manajer. Jangan mengubah kode pada tahap ini.
->
-> Petakan minimal: route frontend dan backend, komponen, template, style, service, model, migration, nama tabel/kolom, enum/status, query, filter, pagination, export, upload lampiran, validasi, notifikasi/realtime event, audit log, permission, guard, dashboard chart, sidebar, breadcrumb, modal, seed, fixture, dan test.
->
-> Periksa secara khusus route `/intern/logbooks`, `/admin/internship/logbooks`, komponen `intern-logbook`, `work-report`, `work-report-admin`, `role-operations`, `admin-dashboard`, sidebar, `work_report.go`, `admin_role_operations.go`, serta model `WorkReport`.
->
-> Bandingkan alur logbook magang dengan alur laporan kerja karyawan dan manajer. Catat perbedaan field, status, aturan edit/hapus, pengajuan, verifikasi, penolakan, notifikasi, kepemilikan data, dan hak akses.
->
-> Hasilkan laporan audit yang berisi:
->
-> 1. tabel file/fungsi/endpoint yang terdampak;
-> 2. diagram atau uraian alur data dari pembuatan sampai verifikasi;
-> 3. daftar field dan status lama beserta padanannya pada laporan kerja;
-> 4. daftar data historis yang harus dipertahankan;
-> 5. risiko perubahan dan potensi regresi;
-> 6. urutan perubahan paling aman;
-> 7. daftar test yang harus ditambahkan atau diperbarui.
->
-> Jangan menyimpulkan bahwa penggantian label sudah cukup. Tunjukkan bagian yang masih menggunakan dua status atau dua alur berbeda.
-
-**Kriteria selesai:** tidak ada perubahan kode; laporan audit lengkap; semua temuan memiliki lokasi file dan alasan dampaknya.
+Untuk setiap skenario, catat: **Lulus**, **Gagal**, atau **Belum Diuji**. Jika gagal, tulis URL, langkah terakhir, pesan error, waktu kejadian, dan lampiran bukti.
 
 ---
 
-## Prompt Tahap 2 — Tetapkan Desain Target dan Kontrak Kompatibilitas
+## 2. Pengujian Umum Sebelum Masuk Role
 
-> Berdasarkan hasil audit Tahap 1, tetapkan desain target berikut: user `MAGANG` membuat, menyimpan, mengedit, mengajukan, dan melihat riwayat **Laporan Kerja** dengan pola yang sama atau setara dengan user `Karyawan` dan `MANAJER`; laporan tersebut masuk ke halaman admin **Manajemen Laporan Kerja**.
->
-> Gunakan alur laporan kerja karyawan/manajer sebagai sumber acuan utama. Jangan membuat alur logbook baru dengan nama yang hanya diganti.
->
-> Tentukan kontrak final untuk:
->
-> - field laporan dan field yang sudah tidak dibutuhkan;
-> - status draft, diajukan, disetujui, ditolak, dan status pengisian bila memang digunakan;
-> - aturan user magang hanya dapat mengakses laporan miliknya;
-> - kewenangan manager dan admin/HRD dalam melihat, memverifikasi, menolak, mengedit, atau menghapus;
-> - bentuk filter, pagination, detail, lampiran, export, notifikasi, dan audit log;
-> - route baru atau route lama yang diarahkan ke halaman baru.
->
-> Rancang strategi kompatibilitas data. Data historis logbook tidak boleh hilang. Jika `status_logbook` atau nama teknis lama masih diperlukan untuk membaca data lama, gunakan mapping, adapter, alias, view, atau migration bertahap. Jangan menghapus kolom, tabel, endpoint, atau migration hanya karena namanya mengandung logbook.
->
-> Implementasikan hanya fondasi yang diperlukan pada tahap ini, misalnya tipe bersama, mapping status, normalisasi response, atau migration kompatibilitas. Tambahkan test kontrak untuk memastikan data lama tetap dapat dibaca dan laporan baru dapat diproses.
+### 2.1 Halaman publik dan autentikasi
 
-**Kriteria selesai:** desain target terdokumentasi; mapping data/status jelas; keputusan permission jelas; test kompatibilitas tersedia dan lulus.
+1. Buka `/` dan pastikan halaman beranda tampil tanpa error.
+2. Buka `/login`; pastikan form email, password, verifikasi matematika, tombol tampilkan password, dan tautan **Lupa password?** tersedia.
+3. Kirim login dengan field kosong. Pastikan validasi tampil dan request tidak dilanjutkan.
+4. Masukkan email/password salah dengan jawaban matematika benar. Pastikan login ditolak tanpa membuka dashboard.
+5. Masukkan jawaban matematika salah. Pastikan muncul pesan validasi dan soal dibuat ulang.
+6. Login menggunakan akun uji yang benar. Pastikan pengguna diarahkan ke dashboard sesuai role.
+7. Uji **Lupa password** dengan email uji, lanjutkan verifikasi OTP 6 digit, kirim OTP salah, lalu kirim OTP benar.
+8. Pada halaman reset password, uji password kurang dari 8 karakter, password tanpa kombinasi yang disyaratkan, konfirmasi berbeda, lalu password valid.
+9. Login dengan password baru dan pastikan password lama tidak lagi diterima.
 
----
+### 2.2 Otorisasi dan komponen bersama
 
-## Prompt Tahap 3 — Samakan Backend Laporan Kerja
-
-> Sesuaikan backend agar laporan kerja user `MAGANG` menggunakan kontrak laporan kerja yang sama atau setara dengan karyawan dan manajer. Prioritaskan reuse handler, model, validasi, service, query, dan response yang sudah stabil.
->
-> Pastikan endpoint laporan kerja mendukung role `MAGANG` tanpa melemahkan authorization. Validasi harus dilakukan di backend, bukan hanya dengan menyembunyikan menu frontend. User magang tidak boleh membaca, mengubah, menghapus, atau mengajukan laporan milik user lain.
->
-> Integrasikan field magang yang memang masih diperlukan ke dalam bentuk laporan kerja. Jangan mempertahankan field khusus hanya karena UI lama menggunakannya; lakukan pemetaan yang jelas dan pertahankan data historis melalui kompatibilitas.
->
-> Pastikan query admin dapat mengambil laporan kerja dari role `Karyawan`, `MANAJER`, dan `MAGANG` tanpa duplikasi, tanpa kehilangan laporan magang, dan tanpa menghitung draft sebagai laporan yang harus diverifikasi jika aturan bisnis tidak mengizinkannya.
->
-> Sesuaikan notifikasi, status, audit log, lampiran, pagination, filter tanggal/user/status, serta export agar memakai istilah dan kontrak laporan kerja. Pertahankan route lama hanya jika dibutuhkan untuk kompatibilitas, dan tandai sebagai deprecated atau arahkan ke endpoint baru dengan aman.
->
-> Tambahkan/update test backend untuk authorization, validasi, status transition, filter role, data historis, dan response laporan magang.
-
-**Kriteria selesai:** API laporan kerja mendukung magang secara aman; test backend relevan lulus; laporan karyawan/manajer tidak berubah perilakunya.
+1. Saat login sebagai tiap role, pastikan menu sidebar hanya menampilkan menu yang sesuai.
+2. Buka `/help` dan uji pencarian, filter kategori FAQ, serta modal kontak bantuan.
+3. Buka `/about` dan pastikan informasi aplikasi serta status layanan tampil.
+4. Uji mode terang/gelap dari profil dan pastikan preferensi bertahan setelah reload.
+5. Klik ikon notifikasi di topbar, buka satu notifikasi, lalu pastikan status terbaca berubah.
+6. Logout, tekan tombol Back browser, dan pastikan halaman terlindungi tidak dapat digunakan tanpa login.
+7. Dengan role yang salah, buka URL role lain secara langsung. Pastikan diarahkan ke `/403` atau ditolak oleh backend.
 
 ---
 
-## Prompt Tahap 4 — Ubah Dashboard dan Halaman User Magang
+## 3. Alur 1 — Role Karyawan
 
-> Ubah dashboard user `MAGANG` dari logbook menjadi laporan kerja secara menyeluruh. Gunakan komponen dan pola halaman `features/employee/work-report/` bila memungkinkan, bukan mempertahankan implementasi logbook terpisah hanya dengan mengganti tulisan.
->
-> Perbarui route, nama komponen bila aman, sidebar, judul halaman, breadcrumb, heading, tombol, placeholder, label field, empty state, status, validasi, tooltip, modal, notifikasi, accessibility text, dan pesan error.
->
-> Halaman harus mendukung alur yang sama seperti laporan kerja karyawan/manajer: membuat laporan, menyimpan draft, mengedit draft atau laporan yang boleh diedit, mengajukan, melihat status, membuka detail, melihat riwayat, melihat alasan penolakan, dan mengelola lampiran bila fitur tersebut tersedia pada kontrak final.
->
-> Pastikan route guard tetap membatasi halaman untuk role `MAGANG`, dan service mengirim identitas/parameter yang benar. Jangan hanya menyembunyikan tabel atau tombol dari frontend.
->
-> Setelah implementasi, uji minimal: buka halaman, buat draft, validasi field wajib, simpan, edit, ajukan, lihat status, lihat detail, tangani penolakan, reload halaman, pagination/filter, upload lampiran bila ada, dan tampilan responsif.
+Gunakan `KARYAWAN_A`. Skenario pada bagian ini membuat data yang akan diverifikasi oleh MANAJER dan ADMIN/HRD.
 
-**Kriteria selesai:** user magang tidak lagi melihat istilah logbook pada UI aktif; alurnya konsisten dengan laporan kerja; build dan test frontend terkait lulus.
+### 3.1 Dashboard dan navigasi karyawan
 
----
+1. Login sebagai `KARYAWAN_A`; pastikan diarahkan ke `/employee/dashboard`.
+2. Verifikasi nama/email, status absensi hari ini, kehadiran bulan berjalan, dan sisa cuti.
+3. Pada **Kalender perusahaan**, pindah bulan, klik tanggal yang memiliki event, dan pastikan detail event/libur tampil.
+4. Klik quick action **Mulai Check-in Harian** atau **Mulai Check-out Harian** sesuai kondisi akun.
+5. Buka semua menu karyawan: dashboard, check-in/out, riwayat absensi, laporan kerja, statistik, pengajuan izin, relasi manajer, notifikasi, profil, dan bantuan.
 
-## Prompt Tahap 5 — Gabungkan ke Manajemen Laporan Kerja Admin
+### 3.2 Check-in dan check-out WFO
 
-> Integrasikan seluruh laporan kerja user `MAGANG` ke halaman admin **Manajemen Laporan Kerja**. Jangan membuat halaman verifikasi magang baru jika fungsi yang sama sudah tersedia di `work-report-admin`.
->
-> Gunakan komponen, service, query, filter, pagination, detail, lampiran, export, status, verifikasi, penolakan, notifikasi, dan audit log yang sama atau setara dengan laporan kerja karyawan/manajer.
->
-> Pastikan admin/HRD dapat:
->
-> - melihat laporan dari karyawan, manajer, dan magang;
-> - membedakan role/sumber pelapor jika dibutuhkan melalui kolom/filter, bukan melalui halaman logbook terpisah;
-> - memfilter user, role, tim/divisi, periode, status, dan kata kunci;
-> - membuka detail dan lampiran;
-> - memproses aksi sesuai permission dan status;
-> - melihat perubahan status dan alasan penolakan;
-> - memperoleh hasil export yang tidak menggandakan atau menghilangkan laporan.
->
-> Periksa juga dashboard admin, badge jumlah pending, chart, notifikasi, dan refresh realtime. Jangan lagi menggunakan nama `logbook_pending` pada UI aktif; jika nama teknis belum dapat diubah pada tahap ini, buat mapping internal dan dokumentasikan rencana deprecation.
->
-> Tambahkan test integrasi/komponen untuk tiga role pelapor dan admin sebagai pemroses laporan.
+1. Buka `/employee/checkin` pada hari kerja dengan akun yang belum absen.
+2. Tolak izin lokasi/kamera browser. Pastikan aplikasi menampilkan instruksi/error yang jelas dan tidak menyimpan absensi palsu.
+3. Izinkan lokasi dan kamera; pastikan peta lokasi real-time, status geofence, dan tombol ambil foto tampil.
+4. Pilih tipe event yang tersedia, ambil selfie valid, lalu kirim check-in dari lokasi kantor.
+5. Pastikan berhasil tersimpan dengan waktu, koordinat, tipe kerja, foto, dan status hadir/terlambat yang benar.
+6. Coba check-in kedua kali. Pastikan aplikasi mencegah duplikasi.
+7. Buka `/employee/checkout`, ambil selfie check-out, dan kirim dari lokasi yang valid.
+8. Pastikan status berubah menjadi selesai dan tombol check-out tidak dapat digunakan lagi pada hari yang sama.
+9. Uji validasi foto dengan file tidak didukung/ukuran melebihi batas jika kontrol file tersedia.
+10. Uji lokasi di luar geofence pada data/sesi uji terpisah. Pastikan check-in ditolak dan tidak membuat record absensi.
+11. Uji route `/employee/checkout` ketika belum check-in. Pastikan sistem tidak membuat check-out yatim.
+12. Uji kondisi hari libur, bukan hari kerja, absensi ditutup, dan hari dengan izin/cuti. Pesan dan tombol harus sesuai kondisi.
 
-**Kriteria selesai:** laporan magang muncul di **Manajemen Laporan Kerja**, dapat difilter dan diproses, serta tidak mengganggu laporan karyawan/manajer.
+### 3.3 Riwayat absensi pribadi
 
----
+1. Buka `/employee/history` dan pastikan data absensi milik `KARYAWAN_A` tampil, bukan data user lain.
+2. Ganti tampilan **Tabel** ke **Kalender**, pindah bulan, dan kembali ke bulan berjalan.
+3. Buka detail satu record; verifikasi jam masuk, jam pulang, durasi, status, tipe kerja, koordinat, dan foto selfie.
+4. Pastikan record tanpa check-out diberi status **Belum Check-out** dan dibedakan dari hadir lengkap.
+5. Reload halaman dan pastikan riwayat tetap konsisten.
 
-## Prompt Tahap 6 — Hapus Duplikasi Fitur Logbook dari Dashboard Admin
+### 3.4 Pengajuan izin/cuti
 
-> Setelah Tahap 5 lulus, bersihkan dashboard admin dari fitur logbook yang sudah digantikan. Hapus atau alihkan secara aman semua UI dan alur aktif yang duplikat, termasuk:
->
-> - `VERIFIKASI LOGBOOK`;
-> - `Logbook Magang`;
-> - `Laporan Tim / Logbook` jika isinya sudah tercakup oleh laporan kerja;
-> - kartu/widget jumlah logbook;
-> - shortcut, tab, filter, heading, breadcrumb, modal, tooltip, empty state, dan notifikasi logbook;
-> - menu atau route admin yang hanya memiliki fungsi logbook.
->
-> Periksa `role-operations`, `admin-dashboard`, sidebar admin, shared sidebar, route, service, export, chart, permission, dan seluruh template/style yang terkait.
->
-> Jangan menghapus data historis atau kode yang masih diperlukan oleh adapter kompatibilitas. Untuk route lama yang masih mungkin dibuka dari bookmark, pilih salah satu strategi yang telah disetujui pada Tahap 2: redirect ke **Manajemen Laporan Kerja**, response deprecation yang aman, atau tetap read-only untuk historis. Jangan meninggalkan route yang menuju halaman kosong.
+1. Buka `/employee/leaves`; pastikan sisa kuota, terpakai, dan sedang diproses tampil.
+2. Uji submit form tanpa jenis, tanggal, alasan, atau lampiran. Pastikan validasi wajib tampil.
+3. Ajukan izin sakit dengan tanggal valid dan lampiran PDF/JPG/PNG yang diizinkan.
+4. Ajukan cuti dalam batas kuota. Pastikan jumlah hari kerja dan sisa kuota dihitung benar.
+5. Coba mengajukan cuti melebihi sisa kuota atau tanggal tidak valid. Pastikan request ditolak.
+6. Buka detail pengajuan dan verifikasi alasan, lampiran, approver, status, serta catatan manager/admin.
+7. Batalkan satu pengajuan yang masih dapat dibatalkan. Pastikan status berubah menjadi dibatalkan dan tidak lagi menunggu persetujuan.
+8. Simpan satu pengajuan berstatus menunggu untuk diproses oleh MANAJER.
 
-**Kriteria selesai:** dashboard admin hanya memiliki satu alur aktif untuk manajemen laporan kerja; tidak ada menu duplikat atau dead link; data historis tetap dapat ditangani sesuai strategi kompatibilitas.
+### 3.5 Laporan kerja
 
----
+1. Buka `/employee/work-report`; pastikan status pelaporan periode dan riwayat laporan tampil.
+2. Buka form baru lalu uji validasi tanggal, judul tugas, deskripsi kegiatan, dan realisasi kegiatan yang wajib diisi.
+3. Isi seluruh field: judul tugas, deskripsi, realisasi/capaian, kendala, rencana minggu depan, link artikel, catatan tambahan, kolom tambahan, dan maksimal tiga screenshot.
+4. Simpan sebagai **Draft**. Reload halaman, buka kembali laporan, dan pastikan isi tetap ada.
+5. Edit draft, hapus satu lampiran bila tersedia, lalu simpan perubahan.
+6. Ajukan laporan. Pastikan status berubah menjadi diajukan/menunggu review dan notifikasi dikirim ke pihak yang berwenang.
+7. Buka detail laporan dan pastikan seluruh field, lampiran, status pengisian, status validasi, serta catatan review tampil.
+8. Pastikan laporan yang sudah diajukan tidak dapat diedit/dihapus kecuali status mengizinkan.
+9. Setelah nanti ditolak MANAJER atau ADMIN, kembali ke halaman ini, baca alasan penolakan, edit laporan, dan ajukan ulang.
+10. Pastikan status kalender membedakan belum membuat laporan, draft, diajukan, disetujui, ditolak, dan tanggal mendatang.
+11. Uji filter/periode, pagination, refresh, dan detail setelah reload.
+12. Uji **Unduh/Cetak** dalam CSV, Excel/XLS, JSON, PDF, dan cetak. Pastikan hasil mengikuti data user/periode yang dipilih dan tidak menggandakan baris.
+13. Simpan satu laporan berstatus diajukan untuk direview MANAJER.
 
-## Prompt Tahap 7 — Bersihkan Istilah dan Kode Aktif
+### 3.6 Statistik, profil, relasi manajer, dan notifikasi
 
-> Lakukan pencarian akhir pada seluruh repository terhadap `logbook`, `log book`, `log-book`, `logbbok`, `logbook harian`, `Logbook Magang`, `Laporan Tim / Logbook`, `status_logbook`, dan event logbook.
->
-> Bedakan dua kategori hasil pencarian:
->
-> 1. referensi UI/logika aktif yang wajib diubah menjadi laporan kerja;
-> 2. referensi migration, data historis, adapter, alias, atau dokumentasi kompatibilitas yang boleh dipertahankan dan harus diberi komentar yang jelas.
->
-> Perbarui nama tampilan, translation key, konstanta, label status, komentar, dokumentasi pengguna, test, seed, pesan error, dan nama CSS/class yang aktif bila perubahan nama tidak merusak selector atau import. Hindari rename massal tanpa memeriksa route, import, relasi, query, response API, dan permission.
->
-> Pastikan tidak ada referensi frontend ke endpoint yang sudah dihapus, route tanpa handler, handler tanpa pemanggil, query ke kolom yang tidak tersedia, menu kosong, status yang tidak punya label, atau notifikasi yang tidak punya penerima.
-
-**Kriteria selesai:** pencarian ulang hanya menemukan referensi historis/kompatibilitas yang sudah dijelaskan, bukan fitur logbook aktif yang seharusnya sudah diganti.
-
----
-
-## Prompt Tahap 8 — Verifikasi, UAT, dan Laporan Akhir
-
-> Jalankan verifikasi menyeluruh sesuai toolchain proyek: format/lint, static analysis, unit test, component test, integration test, migration check, build backend, dan build frontend. Jangan melewati error dengan menonaktifkan test atau menambahkan pengecualian tanpa alasan.
->
-> Lakukan smoke test untuk role `MAGANG`, `Karyawan`, `MANAJER`, dan `HRD` dengan skenario minimal:
->
-> 1. magang membuka halaman Laporan Kerja;
-> 2. magang membuat dan menyimpan draft;
-> 3. magang mengajukan laporan;
-> 4. laporan tampil pada Manajemen Laporan Kerja admin;
-> 5. admin memfilter berdasarkan role/status/periode dan membuka detail;
-> 6. admin memproses laporan sesuai permission;
-> 7. status, alasan penolakan, notifikasi, dan audit log berubah benar;
-> 8. magang hanya dapat melihat laporan miliknya;
-> 9. alur laporan kerja karyawan dan manajer tetap berjalan;
-> 10. route lama tidak menyebabkan 404 yang tidak direncanakan atau akses tanpa authorization;
-> 11. tidak ada istilah logbook pada UI aktif.
->
-> Buat laporan akhir yang mencantumkan file yang berubah, migration yang dijalankan, mapping data historis, route/API yang ditambah atau dialihkan, perubahan permission, test yang dijalankan beserta hasilnya, temuan yang belum selesai, dan langkah rollback yang aman.
->
-> Jangan menyatakan pekerjaan selesai apabila build gagal, ada test kritis yang gagal, laporan magang tidak muncul di Manajemen Laporan Kerja, atau masih ada akses logbook aktif yang tidak sengaja dipertahankan.
+1. Buka `/employee/statistics`; ubah periode dan verifikasi metrik hadir, terlambat, izin/cuti, alpha, durasi, dan tren.
+2. Gunakan ekspor CSV, Excel, JSON, PDF, dan cetak bila tersedia; cocokkan periode dengan layar.
+3. Buka `/employee/manager`; pastikan informasi manajer yang ditetapkan tampil. Uji kondisi data manajer kosong bila akun uji mendukung.
+4. Buka `/employee/profile`; verifikasi data profil, divisi, jabatan, status akun, tanggal bergabung, alamat, dan lokasi WFH.
+5. Ubah nama profil dengan data uji, simpan, reload, dan pastikan perubahan tersimpan.
+6. Upload foto profil valid, uji file terlalu besar/tidak didukung, lalu pastikan foto tampil setelah reload.
+7. Ajukan perubahan lokasi WFH dengan alamat, link Google Maps/koordinat, radius, tanggal berlaku, alasan, dan lampiran opsional. Simpan nomor/status pengajuan.
+8. Pada tab keamanan, uji perubahan email dengan password lama yang salah lalu benar; uji perubahan password dan konfirmasi.
+9. Buka `/employee/notifications`, tandai notifikasi terbaca, dan pastikan badge ikut berubah.
+10. Simpan bukti bahwa laporan, pengajuan izin, perubahan lokasi, dan hasil review dapat menghasilkan notifikasi.
 
 ---
 
-## Aturan Wajib untuk Semua Tahap
+## 4. Alur 2 — Role Manajer
 
-- Kerjakan satu tahap per perubahan terukur. Tampilkan file yang diubah dan alasan setiap perubahan.
-- Jadikan laporan kerja karyawan/manajer sebagai acuan perilaku dan komponen.
-- Lakukan authorization di backend; menyembunyikan menu frontend saja tidak cukup.
-- Jangan menghapus data historis, kolom, migration, endpoint, atau event sebelum dampaknya diuji dan strategi kompatibilitas tersedia.
-- Jangan mengganti nama teknis secara massal tanpa memeriksa seluruh pemakaiannya.
-- Setelah setiap tahap, jalankan test yang relevan dan laporkan hasilnya sebelum lanjut.
-- Jika kode aktual berbeda dari asumsi prompt, hentikan bagian yang terdampak, jelaskan perbedaannya, dan sesuaikan rencana berdasarkan hasil audit.
-- Perubahan label harus konsisten dalam bahasa Indonesia: gunakan **Laporan Kerja**, bukan campuran `Logbook`, `Logbook Harian`, atau `Laporan Tim / Logbook`.
-- Jangan mengubah fitur lain yang tidak berkaitan dengan migrasi ini.
+Gunakan `MANAJER_A`. Data laporan, izin, dan lokasi yang dibuat pada bagian Karyawan menjadi data awal verifikasi.
 
----
+### 4.1 Dashboard dan fitur pribadi manajer
 
-# Prompt Lanjutan — Penyelesaian Status, Dashboard, Export, dan UAT
+1. Login sebagai `MANAJER_A`; pastikan diarahkan ke `/manager/dashboard`.
+2. Verifikasi ringkasan tim, jumlah hadir, belum absen, izin/cuti, laporan pending, grafik, dan notifikasi.
+3. Uji check-in/check-out dan riwayat absensi manajer dengan alur yang sama seperti Karyawan.
+4. Buka `/employee/work-report` dan buat satu laporan kerja manajer, simpan draft, ajukan, lihat detail, serta uji ekspor.
+5. Buka `/employee/statistics`; ubah periode, cek metrik pribadi, dan uji ekspor.
+6. Buka `/employee/leaves`; buat satu pengajuan izin/cuti manajer atau verifikasi bahwa menu dapat digunakan sesuai aturan.
+7. Buka notifikasi, profil, `/help`, dan `/about`; uji fungsi bersama serta logout.
 
-Bagian ini dijalankan setelah Tahap 8. Fokusnya hanya pada empat temuan yang masih tersisa:
+### 4.2 Absensi tim
 
-- status **Belum Membuat Laporan Kerja** belum konsisten;
-- chart dan kartu statistik belum sepenuhnya sesuai;
-- status pada export masih perlu diperbaiki;
-- UAT dengan akun nyata belum selesai.
+1. Buka `/manager/team/attendance`.
+2. Pastikan hanya anggota tim dalam scope `MANAJER_A` yang tampil; `KARYAWAN_B` di luar scope tidak boleh muncul.
+3. Filter berdasarkan nama/NIK, tanggal mulai/selesai, dan status Hadir, Terlambat, atau Alpha.
+4. Verifikasi tanggal, status, jam masuk, jam pulang, dan label **Belum Check-out**.
+5. Uji pagination dan perubahan jumlah baris per halaman.
+6. Ekspor hasil filter ke CSV, Excel, JSON, PDF, dan cetak. Cocokkan jumlah data dengan tabel.
 
-Jangan mengulang migrasi data atau menghapus compatibility route. Kerjakan tahap lanjutan satu per satu.
+### 4.3 Laporan tim dan review laporan kerja
 
-## Prompt Tahap Lanjutan 1 — Audit Baseline dan Definisi Status
+1. Buka `/manager/team/reports`; pastikan laporan `KARYAWAN_A` yang diajukan muncul.
+2. Cari berdasarkan nama/NIK dan filter rentang tanggal; uji refresh dan pagination.
+3. Buka detail laporan dan verifikasi role pelapor, divisi, status pengisian, status laporan, status waktu, isi laporan, catatan, dan lampiran.
+4. Untuk satu laporan uji, isi catatan review lalu pilih **Tolak**. Pastikan alasan wajib diminta dan status berubah menjadi ditolak.
+5. Pastikan `KARYAWAN_A` menerima notifikasi/alasan penolakan dan dapat memperbaiki lalu mengajukan ulang.
+6. Untuk laporan uji kedua, buka detail, isi catatan opsional, lalu pilih **Setujui**.
+7. Pastikan status laporan yang disetujui dan catatan review terlihat pada akun Karyawan.
+8. Uji export CSV, Excel, JSON, PDF, dan cetak laporan tim berdasarkan filter aktif.
+9. Pastikan MANAJER tidak dapat memproses laporan atau data di luar timnya.
 
-> Audit kondisi repository setelah Tahap 8 tanpa mengubah kode. Fokuskan audit pada status laporan yang tidak memiliki isi.
->
-> Petakan seluruh penggunaan status berikut pada backend, frontend, query, chart, kartu statistik, tabel, detail, notifikasi, dan export:
->
-> - `draft`;
-> - `submitted`/`diajukan`;
-> - `approved`/`disetujui`;
-> - `rejected`/`ditolak`;
-> - `tidak membuat laporan kerja`;
-> - status `no_report` atau padanan lainnya.
->
-> Tetapkan definisi berikut dan dokumentasikan sebelum mengubah kode:
->
-> - **Draft**: laporan sedang disusun dan belum diajukan;
-> - **Menunggu Review**: laporan memiliki isi dan sudah diajukan, tetapi belum diverifikasi;
-> - **Disetujui**: laporan memiliki isi dan sudah disetujui;
-> - **Ditolak**: laporan memiliki isi dan ditolak, beserta alasan penolakan;
-> - **Belum Membuat Laporan Kerja**: user wajib membuat laporan pada tanggal tersebut, tetapi belum memiliki isi laporan.
->
-> Status **Belum Membuat Laporan Kerja** tidak boleh dihitung sebagai Pending, Draft, Submitted, atau Ditolak. Tentukan apakah status ini menjadi status canonical terpisah atau completion state terpisah yang dipakai bersama. Pilih satu pendekatan dan gunakan konsisten di seluruh aplikasi.
->
-> Catat file yang akan diubah, query yang terdampak, risiko duplikasi data, dan test yang harus dibuat. Jangan mengubah data atau kode pada tahap ini.
+### 4.4 Statistik tim dan persetujuan izin
 
-**Kriteria selesai:** definisi status disetujui; matriks mapping lama-ke-baru tersedia; baseline test dan daftar file terdampak terdokumentasi.
-
-## Prompt Tahap Lanjutan 2 — Perbaiki Kontrak dan Mapping Status
-
-> Implementasikan kontrak status yang telah disetujui pada tahap sebelumnya.
->
-> Buat satu fungsi mapping bersama di backend dan satu fungsi normalisasi bersama di frontend. Keduanya harus mengenali marker `tidak membuat laporan kerja`, data kosong yang memang berarti belum membuat laporan, data legacy, serta status canonical.
->
-> Pastikan hasil mapping untuk laporan tanpa isi adalah:
->
-> - status tampilan: **Belum Membuat Laporan Kerja**;
-> - kelas visual khusus, bukan kelas Pending/Draft/Ditolak;
-> - tidak dapat diverifikasi atau ditolak;
-> - tidak dapat diedit sebagai laporan yang sudah diajukan;
-> - tetap dapat ditindaklanjuti dengan membuat laporan baru pada tanggal yang sesuai, jika aturan bisnis mengizinkan.
->
-> Pertahankan nilai teknis lama untuk histori. Jangan menimpa data historis hanya untuk mengganti label.
->
-> Tambahkan test unit untuk seluruh kombinasi status: draft, submitted berisi, approved, rejected, marker tanpa isi, legacy logbook, dan data kosong historis.
-
-**Kriteria selesai:** seluruh consumer menggunakan mapping bersama; tidak ada consumer yang menerjemahkan marker belum membuat laporan sebagai Pending, Draft, Submitted, atau Ditolak.
-
-## Prompt Tahap Lanjutan 3 — Perbaiki Backend, Query Pending, dan Endpoint
-
-> Sesuaikan backend berdasarkan kontrak status baru.
->
-> Perbaiki seluruh query pending, termasuk badge admin, dashboard statistik, inbox Manajemen Laporan Kerja, query manager, query compliance, dan query chart. Kondisi `tidak membuat laporan kerja`/`no_report` wajib dikeluarkan dari Pending.
->
-> Tambahkan response yang jelas untuk data belum membuat laporan, minimal berupa status canonical/completion state, label display bila diperlukan, tanggal, employee/user, dan alasan bahwa laporan belum dibuat.
->
-> Pastikan filter endpoint membedakan minimal `draft`, `submitted`, `approved`, `rejected`, dan `no_report`. Jika filter `no_report` hanya boleh berasal dari endpoint admin, tegakkan permission tersebut di backend.
->
-> Pastikan:
->
-> - marker belum membuat laporan tidak dapat direview;
-> - marker belum membuat laporan tidak menghasilkan notifikasi verifikasi;
-> - laporan tanpa isi tidak dihitung sebagai laporan selesai;
-> - laporan tanpa isi tidak menggandakan laporan pada tanggal yang sama;
-> - ownership dan scope manager tetap aman;
-> - data legacy tetap dapat dibaca.
-
-> Tambahkan test query/predicate untuk membuktikan bahwa data `no_report` tidak masuk Pending, Approved, Rejected, atau Draft.
-
-**Kriteria selesai:** response dan query backend memisahkan `no_report` dari status workflow; test authorization dan status lulus.
-
-## Prompt Tahap Lanjutan 4 — Perbaiki Halaman User, Manager, dan Admin
-
-> Gunakan normalizer frontend bersama pada halaman:
->
-> - `features/employee/work-report/`;
-> - `features/manager/team-reports/`;
-> - `features/admin/work-report-admin/`;
-> - dashboard user dan dashboard admin yang menampilkan status laporan.
->
-> Ganti seluruh label yang tidak konsisten menjadi **Belum Membuat Laporan Kerja**. Jangan gunakan variasi `Belum Isi Laporan`, `Belum mengisi`, atau label lain untuk state yang sama.
->
-> Untuk state tersebut:
->
-> - tampilkan badge khusus **Belum Membuat Laporan Kerja**;
-> - jangan tampilkan `Menunggu Review`, `Submitted`, `Draft`, atau `Ditolak`;
-> - nonaktifkan aksi review/approve/reject;
-> - tampilkan tanggal dan nama user dengan jelas;
-> - tampilkan empty/detail state yang informatif;
-> - pertahankan perilaku laporan normal untuk Karyawan, Magang, dan Manajer.
->
-> Pastikan halaman Magang memakai halaman Laporan Kerja canonical dan tidak mengaktifkan kembali halaman Logbook lama.
-
-> Tambahkan test component untuk setiap role dan setiap state, terutama laporan tanpa isi.
-
-**Kriteria selesai:** user, manager, dan admin melihat label yang sama dan state belum membuat laporan tidak tercampur dengan status lain.
-
-## Prompt Tahap Lanjutan 5 — Perbaiki Chart dan Kartu Statistik
-
-> Perbaiki semua chart dan kartu statistik yang menggunakan data laporan kerja.
->
-> Chart status laporan kerja harus memiliki kategori yang jelas dan tidak tumpang tindih, minimal:
->
-> - Belum Membuat Laporan Kerja;
-> - Menunggu Review;
-> - Disetujui;
-> - Ditolak;
-> - Draft, hanya jika draft memang sengaja ditampilkan pada dashboard yang bersangkutan.
->
-> Jangan memasukkan `Belum Membuat Laporan Kerja` ke nilai Pending. Pastikan total chart tidak menghitung satu baris dua kali dan membedakan laporan kosong dari laporan berisi.
->
-> Perbarui kartu statistik dengan label **Belum Membuat Laporan Kerja** dan unit yang tepat. Bedakan jumlah laporan dengan jumlah user apabila keduanya berbeda.
->
-> Periksa dashboard Karyawan, Magang, Manajer, dan Admin, termasuk data chart kosong, refresh realtime, rentang tanggal, dan fallback response lama.
->
-> Tambahkan test untuk nilai chart dan kartu ketika dataset berisi kombinasi laporan normal, draft, laporan ditolak, dan user tanpa laporan.
-
-**Kriteria selesai:** chart dan kartu seluruh dashboard menampilkan kategori yang benar; angka `Pending` tidak mengandung user tanpa laporan.
-
-## Prompt Tahap Lanjutan 6 — Perbaiki Export CSV, Excel, PDF, dan JSON
-
-> Audit seluruh export pada halaman user, manager, dan admin: CSV, Excel, PDF, JSON, dan print.
->
-> Pastikan setiap export memakai normalizer status yang sama dengan tampilan tabel. Untuk baris tanpa laporan, kolom status harus berisi persis **Belum Membuat Laporan Kerja**, bukan `Submitted`, `Pending`, `Draft`, atau `Ditolak`.
->
-> Pastikan export:
->
-> - memakai dataset dan filter yang sedang dipilih;
-> - tidak memasukkan draft admin bila aturan inbox tidak mengizinkannya;
-> - tidak menggandakan laporan;
-> - memuat role pelapor bila export admin membutuhkannya;
-> - memuat tanggal, user, status, alasan penolakan, dan lampiran sesuai kontrak;
-> - tetap dapat membaca data legacy tanpa menampilkan istilah legacy kepada user aktif.
-
-> Tambahkan test terhadap isi header dan row export untuk semua format yang dapat diuji otomatis. Untuk PDF/print, uji minimal data row yang diberikan ke service sebelum proses rendering.
-
-**Kriteria selesai:** seluruh format export menampilkan status yang sama dengan tabel dan tidak salah mengategorikan user tanpa laporan.
-
-## Prompt Tahap Lanjutan 7 — UAT dengan Akun Nyata
-
-> Siapkan UAT interaktif dengan akun resmi yang valid untuk role `Karyawan`, `MAGANG`, `MANAJER`, dan `HRD/Admin`. Jangan membuat password sementara di production dan jangan memaksa perubahan data user tanpa prosedur resmi.
->
-> Gunakan data uji yang aman dan catat identitas data uji, tanggal, serta hasilnya. Uji skenario berikut:
->
-> 1. user belum membuat laporan setelah absensi: status terlihat sebagai **Belum Membuat Laporan Kerja**;
-> 2. user membuat draft: status berubah menjadi Draft;
-> 3. user mengajukan laporan berisi: status berubah menjadi Menunggu Review;
-> 4. manager/admin menyetujui: status berubah menjadi Disetujui;
-> 5. manager/admin menolak: status berubah menjadi Ditolak dan alasan tampil;
-> 6. status pada tabel, dashboard, chart, kartu, notifikasi, dan export konsisten;
-> 7. user tidak dapat melihat atau mengubah laporan user lain;
-> 8. manager hanya dapat memproses laporan dalam scope-nya;
-> 9. admin dapat memfilter dan mengelola laporan tiga role pelapor;
-> 10. route lama tidak menjadi entry point aktif dan tidak membuka akses tanpa authorization.
-
-> Simpan bukti UAT berupa screenshot atau log request/response yang tidak membocorkan token/password. Jika kredensial belum tersedia, tandai UAT sebagai blocked dan jangan menyatakan tahap ini lulus.
-
-**Kriteria selesai:** keempat role telah diuji dengan akun valid atau blocker kredensial telah dilaporkan secara resmi.
-
-## Prompt Tahap Lanjutan 8 — Verifikasi Akhir dan Gate Release
-
-> Jalankan ulang `go test -count=1 ./...`, `go vet ./...`, seluruh test frontend, type-check, build frontend, dan `git diff --check`.
->
-> Jalankan pencarian final untuk memastikan label state aktif konsisten. Referensi teknis legacy hanya boleh tersisa pada migration, adapter, compatibility route, test, atau dokumentasi yang telah diberi alasan.
->
-> Buat laporan akhir yang membandingkan hasil terhadap 13 kebutuhan tambahan, mencantumkan file yang diubah per tahap, test tiap tahap, hasil UAT, blocker, risiko, dan rollback.
->
-> Jangan tandai release siap apabila:
->
-> - `no_report` masih masuk Pending/Draft/Ditolak;
-> - chart/kartu belum menampilkan state yang benar;
-> - export berbeda dari tabel;
-> - test gagal;
-> - UAT akun nyata belum selesai atau belum dinyatakan blocked secara resmi.
-
-**Kriteria selesai:** seluruh status konsisten, automated test lulus, UAT tersedia, dan laporan akhir dapat diaudit.
+1. Buka `/manager/team/statistics`; verifikasi grup manajer, total anggota, hadir, terlambat, izin/cuti, alpha, belum absen, dan persentase.
+2. Buka/tutup detail grup, gunakan **Buka Semua**, **Tutup Semua**, dan **Tampilkan anggota berikutnya** bila tersedia.
+3. Ubah periode statistik dan pastikan angka serta grafik mengikuti periode.
+4. Uji ekspor CSV, Excel, JSON, PDF, dan cetak statistik tim.
+5. Buka `/manager/leaves`; temukan pengajuan izin `KARYAWAN_A` yang menunggu.
+6. Buka detail, periksa lampiran dan alasan, lalu lakukan **Approve** pada satu pengajuan.
+7. Tolak pengajuan kedua dengan catatan/alasan. Pastikan status dan alasan terlihat oleh Karyawan.
+8. Pastikan pengajuan yang selesai tidak dapat diproses ulang dan kuota/status absensi mengikuti keputusan.
+9. Uji notifikasi perubahan keputusan untuk Karyawan dan Admin/HRD.
 
 ---
 
-# Prompt Perbaikan Tampilan Desktop 1440×900 dan 1536×864
+## 5. Alur 3 — Role Admin/HRD
 
-> Perbaiki layout web agar tampil rapi, proporsional, dan konsisten pada viewport desktop **1440×900** serta **1536×864**. Fokus utama adalah sidebar yang saat ini terlihat aneh/terpotong dan jarak antara sidebar dengan konten utama yang tidak konsisten seperti pada screenshot referensi.
+Gunakan `ADMIN_A`. Admin/HRD memeriksa data seluruh role, memproses validasi akhir, dan menguji seluruh modul administrasi.
 
-## Konteks masalah
+### 5.1 Dashboard, notifikasi, dan ringkasan
 
-> Screenshot menunjukkan dashboard HRD dengan sidebar kiri, header, kartu statistik, dan grid chart. Audit awal menemukan aturan layout yang berpotensi konflik: komponen sidebar desktop memakai lebar sekitar `238px`, sedangkan beberapa `.main-content` masih memakai `margin-left: 300px` atau `width: calc(100% - 300px)`. Aturan global, style komponen sidebar, dashboard admin, dan media query desktop harus diperiksa sebagai satu sistem.
+1. Login sebagai `ADMIN_A`; pastikan diarahkan ke `/admin/dashboard`.
+2. Verifikasi kartu total karyawan, hadir hari ini, belum absen, izin/cuti, magang aktif, laporan kerja pending, dan belum membuat laporan.
+3. Buka notifikasi dashboard, tandai notifikasi terbaca, dan buka `/admin/notifications`.
+4. Pastikan quick action menuju karyawan, persetujuan izin/cuti, rekap absensi, dan operasional role berfungsi.
 
-## Instruksi audit sebelum mengubah kode
+### 5.2 Manajemen data karyawan
 
-> Jangan langsung menambal CSS secara acak. Cari dan petakan semua pemakai `.sidebar`, `.admin-sidebar`, `app-shared-sidebar`, `app-admin-sidebar`, `.main-content`, `.dashboard-container`, `.admin-theme`, `.topbar-header`, serta semua media query yang memengaruhi layout desktop. Periksa juga template Angular yang menjadi parent-child komponen tersebut.
->
-> Identifikasi aturan yang saling menimpa, terutama perbedaan antara lebar sidebar aktual dan ruang yang dicadangkan oleh konten utama. Pastikan dahulu apakah halaman HRD pada screenshot menggunakan `shared-sidebar` atau `admin-sidebar`, lalu terapkan solusi pada komponen dan shell yang benar tanpa merusak halaman role lain.
+1. Buka `/admin/employees`; uji pencarian, filter divisi, jabatan, project, dan seluruh pilihan pengurutan.
+2. Buka **Tambah Karyawan**, isi data uji lengkap: identitas, akun, role, divisi, jabatan, project, tanggal bergabung, status, dan shift bila tersedia.
+3. Simpan, pastikan kode karyawan dibuat dan baris baru tampil.
+4. Buka detail karyawan; verifikasi NIK, kontak, organisasi, status, shift, lokasi rumah, dan histori yang ditampilkan.
+5. Edit data uji yang diizinkan, simpan, reload, dan pastikan perubahan tampil.
+6. Uji perubahan status aktif/nonaktif atau operasi hapus sesuai kontrol yang tersedia. Pastikan histori tidak hilang tanpa aturan yang jelas.
+7. Buka lokasi rumah dari data karyawan dan pastikan link/koordinat hanya terlihat untuk user berwenang.
+8. Ekspor daftar hasil filter dalam CSV, XLSX, JSON, PDF, dan cetak.
 
-## Target layout desktop
+### 5.3 Organisasi, project, tipe kerja, jadwal, dan kuota
 
-> Gunakan satu sumber nilai layout bersama, misalnya CSS custom property pada shell/global style:
->
-> - `--desktop-sidebar-width`: lebar sidebar desktop yang benar-benar dipakai;
-> - `--desktop-content-gap`: jarak aman antara sidebar dan konten;
-> - `--desktop-content-padding`: padding konten utama.
->
-> Nilai tersebut harus digunakan konsisten untuk `width`, `margin-left`, `padding`, dan kalkulasi area konten. Jangan menyisakan kombinasi angka `238px` dan `300px` yang membuat ruang kosong besar, konten bergeser, atau sebagian layout terpotong.
->
-> Pada lebar 1440px dan 1536px:
->
-> - sidebar tetap berada di kiri, memiliki tinggi viewport, tidak menimpa konten, dan tidak terpotong secara horizontal;
-> - lebar sidebar stabil dan seluruh label menu tetap terbaca;
-> - konten utama dimulai tepat setelah sidebar dan padding yang ditentukan;
-> - tidak ada horizontal scrollbar pada `html`, `body`, shell dashboard, atau konten utama;
-> - header, kartu statistik, dan chart tidak melebar keluar viewport;
-> - sisa ruang pada baris grid dimanfaatkan secara seimbang, bukan menghasilkan kolom kosong yang janggal;
-> - halaman boleh melakukan scroll vertikal secara normal jika isi lebih tinggi dari viewport;
-> - sidebar boleh memiliki scroll internal jika menu lebih panjang dari tinggi layar, tetapi scrollbar tidak boleh membuat lebar layout berubah-ubah;
-> - gunakan `box-sizing: border-box`, `min-width: 0`, dan `overflow-wrap` pada elemen flex/grid yang diperlukan.
+1. Buka `/admin/organization`; pada tab Divisi, tambah/edit data divisi uji, lalu verifikasi tampil pada pilihan karyawan.
+2. Pada tab Jabatan, tambah/edit jabatan uji dan pastikan dapat dipilih pada data karyawan.
+3. Pada tab Project, tambah/edit project, ubah aktif/nonaktif, dan pastikan hanya project aktif yang tersedia untuk pilihan baru.
+4. Buka `/admin/worktypes`; tambah tipe kerja WFO dan WFH uji, atur apakah perlu validasi lokasi rumah, edit, lalu hapus/nonaktifkan data uji.
+5. Buka `/admin/schedules`; tambah shift dengan jam mulai/selesai, toleransi absen awal, toleransi keterlambatan, dan hari kerja.
+6. Edit shift, filter tanggal/nama, tugaskan shift ke `KARYAWAN_A`, lalu kembalikan ke Reguler. Pastikan histori absensi tidak berubah.
+7. Buka `/admin/leave-quotas`; buat atau ubah kuota cuti tahun berjalan untuk `KARYAWAN_A`, lalu verifikasi sisa kuota pada akun Karyawan.
+8. Pastikan perubahan default kuota tidak mengubah kuota yang sudah tersimpan tanpa tindakan eksplisit.
 
-## Perbaikan sidebar
+### 5.4 Lokasi WFH dan pengaturan umum
 
-> Rapikan sidebar agar proporsinya sesuai dashboard pada screenshot:
->
-> - tetapkan satu lebar desktop yang realistis dan gunakan nilai yang sama pada sidebar serta offset konten;
-> - jangan mengandalkan `width: 100vw` pada elemen yang berada di dalam shell desktop;
-> - pastikan `position: fixed`, `top`, `bottom`, `height`, `overflow-y`, `z-index`, border, dan box sizing tidak menyebabkan sidebar keluar frame;
-> - atur padding, jarak antar menu, tinggi item, ukuran icon, ukuran teks, badge notifikasi, role badge, dan tombol mode gelap agar tidak bertabrakan;
-> - label menu panjang harus tetap terbaca atau dipotong dengan cara yang disengaja, bukan keluar dari sidebar;
-> - state aktif harus memiliki indikator yang konsisten tanpa menambah lebar elemen secara tak terduga;
-> - pastikan sidebar tidak ikut memakai aturan mobile drawer pada viewport 1440×900 atau 1536×864;
-> - pertahankan perilaku drawer/hamburger pada breakpoint mobile yang sudah ada.
+1. Buka `/admin/home-locations`; lihat lokasi WFH aktif dan pengajuan perubahan lokasi dari `KARYAWAN_A`.
+2. Buka detail pengajuan, verifikasi alamat, koordinat, radius, tanggal berlaku, alasan, dan lampiran.
+3. Setujui satu pengajuan. Pastikan lokasi aktif berubah dan notifikasi terkirim.
+4. Tolak pengajuan kedua dengan alasan. Pastikan alasan terlihat di akun Karyawan.
+5. Buka `/admin/settings`; uji tab hari libur, jadwal reguler, aturan cuti/laporan kerja, geofence kantor, dan kontak helpdesk.
+6. Ubah satu nilai uji di setiap panel, simpan, reload, dan pastikan nilai tersimpan.
+7. Pastikan perubahan jadwal/geofence berlaku untuk absensi baru dan tidak mengubah record historis.
+8. Buka `/admin/settings/notifications`; pilih role, aktif/nonaktifkan email dan in-app per tipe notifikasi, simpan, reload, dan verifikasi.
+9. Kirim pengumuman ke Karyawan, MANAJER, MAGANG, semua role, dan HRD/Admin secara bergantian. Pastikan penerima serta isi notifikasi benar.
 
-## Perbaikan konten dashboard
+### 5.5 Event perusahaan
 
-> Sesuaikan shell dan dashboard tanpa mengubah fungsi, data, route, permission, atau API:
->
-> - hapus aturan duplikat atau konflik pada `.main-content`, terutama `margin-left` dan `width` lama;
-> - gunakan `flex: 1` dengan `min-width: 0` setelah offset sidebar ditetapkan;
-> - pastikan padding konten cukup tetapi tidak menghabiskan lebar efektif pada 1440px;
-> - kartu statistik menggunakan grid yang responsif terhadap lebar konten, dengan minimum width yang tidak memaksa overflow;
-> - grid chart menggunakan `minmax(0, 1fr)` dan setiap card memiliki `min-width: 0`;
-> - judul halaman, notifikasi, filter, legenda, tabel, dan tombol tidak saling bertumpuk;
-> - komponen chart harus resize mengikuti parent dan tidak menentukan lebar berdasarkan viewport penuh;
-> - jangan menggunakan `transform: scale()` sebagai solusi layout;
-> - jangan menyembunyikan elemen penting hanya untuk menghilangkan overflow.
+1. Buka `/admin/events`; tambah event dengan tanggal, tipe, jam, judul, deskripsi, lokasi, dan lampiran.
+2. Pastikan event muncul pada kalender dan dashboard akun Karyawan/MANAJER/MAGANG.
+3. Buka detail event, edit isi, ubah status aktif/nonaktif, lalu pastikan perubahan tampil di kalender.
+4. Filter daftar event berdasarkan periode, buka lampiran, dan uji event tanpa lampiran.
+5. Hapus/nonaktifkan data event uji dan pastikan tidak lagi muncul pada dashboard publik internal.
 
-## Kriteria visual
+### 5.6 Persetujuan izin/cuti HRD
 
-> Hasil akhir harus mempertahankan identitas visual aplikasi, tetapi terasa lebih seimbang: sidebar tidak terlalu lebar atau menyisakan ruang kosong, konten dashboard memenuhi area yang tersedia, kartu memiliki ukuran konsisten, dan jarak antar-section seragam. Perbaiki akar masalah layout, bukan hanya menambahkan margin negatif atau `overflow: hidden`.
+1. Buka `/admin/leaves`; uji filter jenis dan status: menunggu manager, menunggu admin, disetujui, ditolak, dan dibatalkan.
+2. Buka detail pengajuan `KARYAWAN_A`; verifikasi identitas, approver, periode, durasi, alasan, lampiran, catatan manager, dan catatan admin.
+3. Proses satu pengajuan dengan **Setujui** dan satu dengan **Tolak** menggunakan catatan yang relevan.
+4. Pastikan keputusan HRD, status kuota, status absensi, notifikasi, dan alasan penolakan terlihat pada akun pemohon.
+5. Uji export CSV, Excel, JSON, PDF, dan cetak berdasarkan filter aktif.
 
-## Verifikasi wajib
+### 5.7 Manajemen laporan kerja
 
-> Setelah perubahan:
->
-> 1. Jalankan build, lint/type-check, dan test frontend yang relevan.
-> 2. Buka dashboard HRD pada viewport tepat **1440×900**.
-> 3. Buka dashboard HRD pada viewport tepat **1536×864**.
-> 4. Uji zoom browser 100% dan pastikan hasilnya tidak bergantung pada zoom tertentu.
-> 5. Periksa tidak ada horizontal scrollbar dan tidak ada elemen yang terpotong.
-> 6. Uji sidebar ketika menu aktif, badge notifikasi tampil, mode gelap aktif, dan daftar menu lebih tinggi dari viewport.
-> 7. Uji navigasi ke halaman lain yang memakai sidebar bersama untuk memastikan offset konten tetap benar.
-> 8. Uji viewport mobile yang sudah didukung agar drawer/hamburger tidak rusak.
-> 9. Jika tersedia, ambil screenshot kedua viewport dan bandingkan dengan screenshot referensi.
+1. Buka `/admin/work-reports`; pastikan laporan Karyawan dan MANAJER yang diproses sebelumnya tampil.
+2. Pastikan filter tersedia untuk kata kunci, tanggal, divisi, user pelapor, role pelapor, tim, project, jabatan, dan status.
+3. Filter role pelapor satu per satu; pastikan laporan tidak tertukar dan laporan MAGANG dapat muncul bila sudah tersedia.
+4. Filter status **Menunggu**, **Sesuai**, **Tidak Sesuai**, **Sudah membuat laporan**, **Belum Membuat Laporan Kerja**, **Laporan belum lengkap**, dan **Submitted**.
+5. Buka detail laporan; verifikasi isi, status pengisian, status waktu, review manager, validasi HRD/Admin, catatan, alasan penolakan, dan lampiran.
+6. Validasi laporan yang sudah disetujui MANAJER sebagai **Sesuai**. Pastikan status final dan notifikasi pemilik berubah.
+7. Tandai satu laporan sebagai **Tidak Sesuai**; pastikan alasan/catatan diminta, tersimpan, dan dapat dilihat pemilik.
+8. Pastikan laporan **Belum Membuat Laporan Kerja** tidak diperlakukan sebagai draft, pending review, atau laporan yang dapat divalidasi.
+9. Uji pagination, sort, refresh, dan konsistensi data setelah reload.
+10. Ekspor CSV, XLS, JSON, PDF, dan cetak. Cocokkan filter, role, jumlah, dan isi file dengan tabel.
 
-## Output yang wajib dilaporkan
+### 5.8 Rekap absensi dan laporan khusus
 
-> Laporkan file yang diubah, aturan CSS yang menjadi sumber konflik, nilai akhir lebar sidebar/padding/breakpoint, hasil build/test, serta hasil pemeriksaan viewport 1440×900 dan 1536×864. Jangan menyatakan selesai jika masih ada horizontal overflow, sidebar terpotong, konten tertutup sidebar, atau perbedaan offset antarhalaman.
+1. Buka `/admin/reports`; uji rekap harian, mingguan, bulanan, dan periode kustom.
+2. Filter kata kunci, tanggal, divisi, jabatan, status Hadir, Belum Check-out, Alpha, Izin, dan Cuti.
+3. Buka detail absensi; pastikan identitas, tipe kerja, foto, waktu masuk/pulang, lokasi, dan status tampil.
+4. Uji pagination, pengurutan terbaru/terlama/nama, serta export CSV, XLS, JSON, PDF, dan cetak.
+5. Buka `/admin/reports/alpha`; filter divisi, project, nama, serta pengurutan frekuensi alpha. Buka detail riwayat alpha.
+6. Jika menu **Laporan Keterlambatan** tersedia pada build, uji periode, divisi, nama, pengurutan, total menit, detail tanggal/jam, dan seluruh format ekspor.
 
-## Batasan
+### 5.9 Operasional Magang & Tim
 
-> Perubahan pada tahap ini hanya untuk layout dan visual responsif desktop. Jangan mengubah endpoint, model, database, alur absensi, permission, isi data, atau fitur bisnis lain. Jika ditemukan perbedaan antara screenshot dan implementasi aktual, jelaskan temuan tersebut sebelum mengambil keputusan yang memengaruhi struktur komponen.
+1. Buka `/admin/role-operations`; pastikan tab Operasional Magang dan Operasional Tim & Manajer dapat dibuka.
+2. Pada Operasional Magang, verifikasi total magang, magang aktif, laporan pending, sertifikat terbit, dan arsip kompatibilitas.
+3. Filter peserta berdasarkan nama/NIK dan status sertifikat.
+4. Untuk peserta yang masa magangnya berakhir, upload sertifikat PDF, Nilai Magang, dan Keterangan Lulus.
+5. Download setiap dokumen, lalu hapus satu dokumen uji dan pastikan status berubah.
+6. Pastikan upload sertifikat/dokumen dikunci sebelum masa magang berakhir.
+7. Pada Operasional Tim & Manajer, verifikasi ringkasan anggota, hadir, belum absen, dan izin pending.
+8. Uji filter/export absensi tim, laporan tim, statistik tim, dan daftar persetujuan izin sesuai scope HRD.
+
+### 5.10 Backup, audit, dan pembatasan admin
+
+1. Buka `/admin/backup`; buat backup lengkap dan backup modul tertentu dengan format JSON dan ZIP.
+2. Pastikan file dapat diunduh, password/token/secret tidak ikut, ukuran dan riwayat backup tercatat.
+3. Pilih file backup uji, lakukan validasi/preview, dan pastikan jumlah modul, tabel, file, serta count terbaca.
+4. Uji restore hanya pada lingkungan/data uji. Coba mode tambah data dan timpa data; pastikan transaksi dibatalkan seluruhnya jika ada error.
+5. Buka `/admin/audit`; filter aktor, aksi, entitas, tanggal mulai, dan tanggal selesai.
+6. Pastikan pembuatan/edit/persetujuan/penolakan/penghapusan data pada sesi ini memiliki audit log dengan waktu, aktor, entitas, ID, dan detail perubahan.
+7. Uji export audit log dalam CSV, XLS, JSON, PDF, dan cetak.
+8. Dengan akun bukan HRD, buka seluruh URL `/admin/*` secara langsung. Pastikan akses ditolak dan endpoint backend tetap mengembalikan 403.
+
+---
+
+## 6. Alur 4 — Role Magang (Tahap Terakhir)
+
+Gunakan `MAGANG_A`. Jalankan setelah pengujian Admin/HRD agar data mentor, periode, laporan, dan dokumen akhir sudah tersedia.
+
+### 6.1 Dashboard dan kalender magang
+
+1. Login sebagai `MAGANG_A`; pastikan diarahkan ke `/intern/dashboard`.
+2. Verifikasi sisa hari magang, periode mulai/selesai, progress periode, laporan diajukan, dan laporan disetujui.
+3. Pada kalender, pindah bulan, klik tanggal event/libur, dan pastikan agenda perusahaan tampil.
+4. Pastikan instruksi bahwa laporan kerja wajib diisi setiap hari tampil sesuai aturan.
+
+### 6.2 Absensi, riwayat, laporan kerja, dan izin
+
+1. Jalankan check-in/check-out dari `/employee/checkin` dan `/employee/checkout` dengan validasi lokasi, selfie, tipe kerja, dan kondisi hari kerja yang sama seperti Karyawan.
+2. Buka `/employee/history`; pastikan hanya riwayat `MAGANG_A` tampil, termasuk detail foto, lokasi, jam, durasi, dan status.
+3. Buka `/employee/work-report`; buat draft, isi field wajib dan opsional, upload screenshot, simpan, edit, ajukan, buka detail, dan uji seluruh export.
+4. Pastikan status laporan magang dapat dilihat pada kalender dan dapat berubah setelah review/validasi Admin.
+5. Buka `/employee/leaves`; cek kuota bila berlaku, ajukan izin dengan lampiran, lihat detail/status, dan batalkan pengajuan yang masih dapat dibatalkan.
+6. Pastikan laporan dan izin milik `KARYAWAN_A` atau user lain tidak dapat dibaca melalui UI maupun URL/API.
+
+### 6.3 Statistik, mentor, sertifikat, dan akun
+
+1. Buka `/intern/statistics`; filter tanggal mulai/selesai, verifikasi persentase hadir, status kehadiran, durasi, metrik operasional, status laporan, dan lokasi absensi.
+2. Uji ekspor CSV, Excel, JSON, PDF, dan cetak statistik magang.
+3. Buka `/intern/mentor`; verifikasi ID/nama mentor, kontak, jabatan, departemen, shift, lokasi, dan institusi.
+4. Buka `/intern/certificate`; sebelum masa magang berakhir pastikan status belum tersedia/terkunci.
+5. Setelah Admin mengunggah sertifikat, Nilai Magang, atau Keterangan Lulus, reload halaman dan pastikan status serta nama file tampil.
+6. Klik Download setiap dokumen dan pastikan file benar; uji kondisi dokumen belum tersedia.
+7. Buka `/employee/notifications`; baca notifikasi review laporan, keputusan izin, pengumuman, dan dokumen akhir.
+8. Buka `/employee/profile`; verifikasi institusi, periode magang, mentor/lokasi bila tersedia, foto profil, preferensi, keamanan, dan pengajuan perubahan lokasi WFH.
+9. Buka `/help` dan `/about`, lalu logout. Pastikan sesi terlindungi tidak dapat dibuka kembali dengan tombol Back.
+
+---
+
+## 7. Verifikasi Akhir Lintas Role
+
+- [ ] Data yang dibuat Karyawan terlihat pada scope MANAJER sesuai tim.
+- [ ] Data yang disetujui/ditolak MANAJER terlihat pada Karyawan dan Admin/HRD.
+- [ ] Admin/HRD dapat memfilter laporan berdasarkan Karyawan, MANAJER, dan MAGANG tanpa duplikasi atau kehilangan data.
+- [ ] Status laporan konsisten: draft, diajukan, disetujui/sesuai, ditolak/tidak sesuai, belum lengkap, dan belum membuat laporan kerja.
+- [ ] Status **Belum Membuat Laporan Kerja** tidak masuk hitungan pending review, draft, disetujui, atau ditolak.
+- [ ] Kuota, absensi, notifikasi, dan audit log mengikuti keputusan izin/cuti.
+- [ ] Foto selfie, koordinat, lampiran, dan link hanya dapat dilihat oleh pemilik atau role yang berwenang.
+- [ ] Semua halaman tidak menampilkan error console/API yang tidak tertangani.
+- [ ] Pagination, filter, reload, responsive layout, empty state, loading state, dan pesan error telah diuji pada modul utama.
+- [ ] Export tidak mengandung baris di luar filter aktif, tidak menggandakan baris, dan nama file/periode benar.
+- [ ] Akses langsung ke route role lain ditolak oleh guard dan backend.
+- [ ] Tidak ada dead link dari sidebar, tombol, quick action, atau notifikasi.
+
+## 8. Rekap Hasil Pengujian
+
+| Kelompok | Jumlah skenario | Lulus | Gagal | Belum diuji | Catatan/bukti |
+|---|---:|---:|---:|---:|---|
+| Umum & autentikasi |  |  |  |  |  |
+| Karyawan |  |  |  |  |  |
+| MANAJER |  |  |  |  |  |
+| Admin/HRD |  |  |  |  |  |
+| MAGANG |  |  |  |  |  |
+| Lintas role & keamanan |  |  |  |  |  |
+| **Total** |  |  |  |  |  |
+
+### Format bukti yang disarankan
+
+`<ID>-<role>-<modul>-<status>-<tanggal>`, contoh: `MGR-REPORT-002-manager-approved-2026-10-08.png`.
+
+Untuk setiap bug, lampirkan langkah reproduksi singkat, hasil aktual, hasil yang diharapkan, URL, browser, waktu, dan screenshot tanpa data rahasia.
