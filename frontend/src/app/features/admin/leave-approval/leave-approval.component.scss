@@ -1,7 +1,5 @@
-/* The Angular host is an inline custom element by default. Give this route a
-   definite flex/width contract so mobile browsers do not size the page from
-   the table's intrinsic width. The table itself remains intentionally wider
-   than the viewport and scrolls inside .leave-table-container. */
+/* Keep this route's outer boxes tied to the viewport. The table is intentionally
+   wider than the viewport and must scroll only inside .leave-table-container. */
 :host {
   display: block;
   width: 100%;
@@ -28,12 +26,14 @@
 .admin-theme.leave-approval-shell {
   min-height: 0 !important;
   align-items: flex-start;
+  overflow-x: hidden;
 }
 
 .admin-theme.leave-approval-shell > .main-content.leave-approval-page {
   width: 100%;
   max-width: 100%;
   min-height: 0 !important;
+  overflow-x: hidden;
 }
 
 .leave-approval-page,
@@ -45,10 +45,8 @@
   box-sizing: border-box;
 }
 
-/* The shared mobile shell is a column flex layout. Stretch this page's
-   children so the approval content follows the viewport width instead of
-   shrinking to its intrinsic width when the shell has align-items overridden
-   elsewhere. Keep the table's own horizontal scrolling in its wrapper. */
+/* Keep mobile outer boxes at the viewport width. Horizontal table scrolling
+   remains local to the table wrapper below. */
 @media screen and (max-width: 900px) {
   .admin-theme.leave-approval-shell {
     align-items: stretch !important;
@@ -89,12 +87,14 @@
 }
 
 .leave-table-container {
+  display: block;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   overflow-x: auto !important;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
   overscroll-behavior-inline: contain;
   border: 1px solid #dbeafe;
   border-radius: 10px;
