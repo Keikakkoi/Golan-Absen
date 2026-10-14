@@ -9,18 +9,6 @@
   min-height: 0 !important;
 }
 
-/* The Angular host is a custom element. Give it an explicit mobile width so
-   Safari cannot resolve the page shell from an intrinsic/flex width while the
-   sidebar's fixed mobile topbar is being laid out. The data table may still
-   be wider than the viewport inside its own scroll wrapper below. */
-:host {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-}
-
 .leave-approval-page,
 .leave-card,
 .leave-table-container,
@@ -445,58 +433,6 @@
 
   .leave-table-container {
     margin: 0;
-  }
-}
-
-/* Final mobile width contract for the approval route. Keep this scoped to the
-   route so other pages retain their existing desktop/tablet arrangements. All
-   outer boxes use the CSS viewport width; only the wide data table scrolls. */
-@media screen and (max-width: 900px) {
-  :host,
-  :host .admin-theme.leave-approval-shell,
-  :host .admin-theme.leave-approval-shell > .main-content.leave-approval-page,
-  :host .leave-approval-page .leave-card,
-  :host .leave-approval-page .leave-toolbar,
-  :host .leave-approval-page .leave-table-container,
-  :host app-pagination {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-  }
-
-  :host .admin-theme.leave-approval-shell {
-    display: block !important;
-    margin: 0 !important;
-    overflow-x: hidden !important;
-  }
-
-  :host .admin-theme.leave-approval-shell > .main-content.leave-approval-page {
-    margin-inline: 0 !important;
-    overflow-x: hidden !important;
-  }
-
-  :host .leave-approval-page .leave-toolbar {
-    flex-wrap: wrap !important;
-    align-items: stretch !important;
-  }
-
-  :host .leave-approval-page .leave-toolbar > label {
-    flex: 1 1 100%;
-    width: 100%;
-    min-width: 0;
-  }
-
-  :host .leave-approval-page .leave-toolbar > label .golan-input,
-  :host .leave-approval-page .leave-toolbar > .export-dropdown {
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-
-  :host .leave-approval-page .leave-table-container {
-    overflow-x: auto !important;
-    overflow-y: hidden;
-    overscroll-behavior-inline: contain;
   }
 }
 
