@@ -140,6 +140,10 @@
     min-width: 0;
   }
 
+  .leave-approval-page .leave-mobile-employee {
+    flex: 1 1 48%;
+  }
+
   .leave-approval-page .leave-mobile-name {
     color: #1e3a8a;
     font-size: 0.98rem;
@@ -155,8 +159,9 @@
   }
 
   .leave-approval-page .leave-mobile-status {
-    flex: 0 1 auto;
-    max-width: 48%;
+    flex: 0 1 52%;
+    align-self: flex-start;
+    max-width: 52%;
     min-width: 0;
   }
 
@@ -348,21 +353,32 @@
   text-align: center !important;
 }
 .leave-muted-text { color: #9ca3af; }
-.leave-table .status-badge {
-  display: flex;
+.leave-approval-page .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  min-height: 32px;
   box-sizing: border-box;
-  overflow: hidden;
-  white-space: nowrap;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
-.leave-table .status-badge-label {
+.leave-approval-page .status-badge-label {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 .leave-table .btn-view-detail { white-space: nowrap; }
 .leave-table .leave-attachment-cell > a,
@@ -371,41 +387,67 @@
   margin-inline: auto;
 }
 
-/* The shared status-badge palette is intentionally light-mode friendly. Keep
-   the dark-mode correction scoped to this table's Status column so other
-   badges and the light theme remain unchanged. The legacy status-hadir and
-   status-alpha classes stay on the element to preserve their light palette. */
-:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-pending {
-  background-color: #3b2f13;
-  border: 1px solid #a16207;
+.leave-approval-page .status-badge.status-pending {
+  background-color: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+.leave-approval-page .status-badge.status-manager-approved {
+  background-color: #eff6ff;
+  border-color: #60a5fa;
+  color: #1e40af;
+}
+.leave-approval-page .status-badge.status-approved {
+  background-color: #f0fdf4;
+  border-color: #4ade80;
+  color: #166534;
+}
+.leave-approval-page .status-badge.status-rejected {
+  background-color: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+.leave-approval-page .status-badge.status-cancelled,
+.leave-approval-page .status-badge.status-neutral {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+/* Keep semantic status colors readable on every badge in this page, including
+   the mobile card where the desktop-only override used to be skipped. */
+:host-context(body.dark-theme) .leave-approval-page .status-badge.status-pending {
+  background-color: #78350f;
+  border-color: #f59e0b;
   color: #fde68a;
 }
 
-:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-alpha {
-  background-color: #451a1a;
-  border: 1px solid #b91c1c;
-  color: #fca5a5;
-}
-
-:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-manager-approved {
+:host-context(body.dark-theme) .leave-approval-page .status-badge.status-manager-approved {
   background-color: #172554;
-  border: 1px solid #2563eb;
-  color: #93c5fd;
+  border-color: #60a5fa;
+  color: #bfdbfe;
 }
 
-:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-approved {
-  background-color: #052e16;
-  border: 1px solid #16a34a;
-  color: #86efac;
+:host-context(body.dark-theme) .leave-approval-page .status-badge.status-approved {
+  background-color: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
 }
 
-:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge.status-cancelled {
-  background-color: #1e293b;
-  border: 1px solid #64748b;
-  color: #cbd5e1;
+:host-context(body.dark-theme) .leave-approval-page .status-badge.status-rejected {
+  background-color: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
 }
 
-:host-context(body.dark-theme) .leave-approval-page .leave-table .leave-status-cell > .status-badge::before {
+:host-context(body.dark-theme) .leave-approval-page .status-badge.status-cancelled,
+:host-context(body.dark-theme) .leave-approval-page .status-badge.status-neutral {
+  background-color: #334155;
+  border-color: #94a3b8;
+  color: #e2e8f0;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .status-badge::before {
   background-color: currentColor;
 }
 
@@ -830,6 +872,12 @@
     font-size: 0.8rem;
     font-weight: 700;
     flex-shrink: 0;
+    max-width: 100%;
+    min-width: 0;
+    border: 1px solid transparent;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
 
     .status-dot {
       width: 6px;
@@ -851,6 +899,13 @@
       .status-dot { background: #16a34a; }
     }
 
+    &.status-manager-approved {
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+      .status-dot { background: #2563eb; }
+    }
+
     &.status-rejected {
       background: #fee2e2;
       color: #b91c1c;
@@ -864,7 +919,49 @@
       border: 1px solid #cbd5e1;
       .status-dot { background: #64748b; }
     }
+
+    &.status-neutral {
+      background: #f8fafc;
+      color: #334155;
+      border: 1px solid #94a3b8;
+      .status-dot { background: #64748b; }
+    }
   }
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .status-pill-badge.status-pending {
+  background: #78350f;
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .status-pill-badge.status-manager-approved {
+  background: #172554;
+  border-color: #60a5fa;
+  color: #bfdbfe;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .status-pill-badge.status-approved {
+  background: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .status-pill-badge.status-rejected {
+  background: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .status-pill-badge.status-cancelled,
+:host-context(body.dark-theme) .leave-detail-modal .status-pill-badge.status-neutral {
+  background: #334155;
+  border-color: #94a3b8;
+  color: #e2e8f0;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .status-pill-badge .status-dot {
+  background: currentColor;
 }
 
 /* Grid Layout for details */

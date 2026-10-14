@@ -100,15 +100,7 @@
                 <span *ngIf="!req.LampiranURL" class="leave-muted-text">Tidak ada</span>
               </td>
               <td class="leave-status-cell">
-                <span class="status-badge" [ngClass]="{
-                  'status-pending': req.Status === 'Pending' || req.Status === 'pending_hrd_approval' || req.Status === 'pending_manager_approval',
-                  'status-hadir': req.Status === 'Approved' || req.Status === 'manager_approved' || req.Status === 'hrd_approved',
-                  'status-manager-approved': req.Status === 'manager_approved',
-                  'status-approved': req.Status === 'Approved' || req.Status === 'hrd_approved',
-                  'status-alpha': req.Status === 'Rejected' || req.Status === 'manager_rejected' || req.Status === 'hrd_rejected',
-                  'status-cancelled': req.Status === 'Cancelled'
-                }"
-                >
+                <span class="status-badge" [ngClass]="statusBadgeClass(req.Status)">
                   <span class="status-badge-label">{{ statusLabel(req.Status) }}</span>
                 </span>
               </td>
@@ -139,14 +131,7 @@
                 <span class="leave-mobile-name">{{ req.Employee?.User?.Nama || 'Nama Tidak Tersedia' }}</span>
                 <span class="leave-mobile-nik">NIK: {{ req.Employee?.NIK || '-' }}</span>
               </div>
-              <span class="status-badge leave-mobile-status" [ngClass]="{
-                'status-pending': req.Status === 'Pending' || req.Status === 'pending_hrd_approval' || req.Status === 'pending_manager_approval',
-                'status-hadir': req.Status === 'Approved' || req.Status === 'manager_approved' || req.Status === 'hrd_approved',
-                'status-manager-approved': req.Status === 'manager_approved',
-                'status-approved': req.Status === 'Approved' || req.Status === 'hrd_approved',
-                'status-alpha': req.Status === 'Rejected' || req.Status === 'manager_rejected' || req.Status === 'hrd_rejected',
-                'status-cancelled': req.Status === 'Cancelled'
-              }">
+              <span class="status-badge leave-mobile-status" [ngClass]="statusBadgeClass(req.Status)">
                 <span class="status-badge-label">{{ statusLabel(req.Status) }}</span>
               </span>
             </div>
@@ -232,12 +217,7 @@
             </span>
           </p>
         </div>
-        <div class="status-pill-badge" [ngClass]="{
-          'status-pending': selectedRequest.Status === 'Pending' || selectedRequest.Status === 'pending_hrd_approval' || selectedRequest.Status === 'pending_manager_approval',
-          'status-approved': selectedRequest.Status === 'Approved' || selectedRequest.Status === 'manager_approved' || selectedRequest.Status === 'hrd_approved',
-          'status-rejected': selectedRequest.Status === 'Rejected' || selectedRequest.Status === 'manager_rejected' || selectedRequest.Status === 'hrd_rejected',
-          'status-cancelled': selectedRequest.Status === 'Cancelled'
-        }">
+        <div class="status-pill-badge" [ngClass]="statusBadgeClass(selectedRequest.Status)">
           <span class="status-dot"></span>
           {{ statusLabel(selectedRequest.Status) }}
         </div>

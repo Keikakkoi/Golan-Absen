@@ -231,6 +231,18 @@ export class LeaveApprovalComponent implements OnInit, OnDestroy {
       Cancelled: 'Dibatalkan'
     } as any)[status] || status || '-';
   }
+  statusBadgeClass(status: string): string {
+    if (status === 'Pending' || status === 'pending_hrd_approval' || status === 'pending_manager_approval') {
+      return 'status-pending';
+    }
+    if (status === 'manager_approved') return 'status-manager-approved';
+    if (status === 'Approved' || status === 'hrd_approved') return 'status-approved';
+    if (status === 'Rejected' || status === 'manager_rejected' || status === 'hrd_rejected') {
+      return 'status-rejected';
+    }
+    if (status === 'Cancelled') return 'status-cancelled';
+    return 'status-neutral';
+  }
 
   openDetail(request: any): void { this.selectedRequest = request; }
   closeDetail(): void { this.selectedRequest = null; }
