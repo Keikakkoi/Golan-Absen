@@ -77,8 +77,154 @@
     max-width: 100% !important;
     min-width: 0 !important;
     box-sizing: border-box !important;
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
   }
+
+  .leave-approval-page .leave-table {
+    display: none;
+  }
+
+  .leave-approval-page .leave-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.75rem;
+    box-sizing: border-box;
+  }
+
+  .leave-approval-page .leave-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .leave-approval-page .leave-toolbar > label,
+  .leave-approval-page .leave-toolbar .export-dropdown {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0 !important;
+  }
+
+  .leave-approval-page .leave-toolbar > label .golan-input,
+  .leave-approval-page .leave-toolbar .export-dropdown > .btn {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .leave-approval-page .leave-mobile-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 1rem;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+
+  .leave-approval-page .leave-mobile-card-header,
+  .leave-approval-page .leave-mobile-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .leave-approval-page .leave-mobile-employee,
+  .leave-approval-page .leave-mobile-field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .leave-approval-page .leave-mobile-name {
+    color: #1e3a8a;
+    font-size: 0.98rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .leave-approval-page .leave-mobile-nik {
+    margin-top: 0.2rem;
+    color: #64748b;
+    font-family: monospace;
+    font-size: 0.75rem;
+  }
+
+  .leave-approval-page .leave-mobile-status {
+    flex: 0 1 auto;
+    max-width: 48%;
+    min-width: 0;
+  }
+
+  .leave-approval-page .leave-mobile-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .leave-approval-page .leave-mobile-label {
+    margin-bottom: 0.2rem;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .leave-approval-page .leave-mobile-field > span:last-child {
+    color: #334155;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+  }
+
+  .leave-approval-page .leave-mobile-date-field {
+    grid-column: 1 / -1;
+  }
+
+  .leave-approval-page .leave-mobile-actions {
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .leave-approval-page .leave-mobile-detail-button {
+    min-height: 36px;
+    white-space: nowrap;
+  }
+
+  .leave-approval-page .leave-mobile-action-buttons {
+    margin-inline: 0 0 0 auto;
+  }
+}
+
+.leave-mobile-list {
+  display: none;
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-mobile-card {
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-mobile-name {
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-mobile-nik,
+:host-context(body.dark-theme) .leave-approval-page .leave-mobile-label {
+  color: var(--text-dark-lo);
+}
+
+:host-context(body.dark-theme) .leave-approval-page .leave-mobile-field > span:last-child {
+  color: var(--text-dark);
 }
 
 .leave-card {

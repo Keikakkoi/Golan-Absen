@@ -132,6 +132,59 @@
           </tbody>
         </table>
 
+        <div class="leave-mobile-list" *ngIf="!isLoading && leaveRequests.length > 0" role="list" aria-label="Daftar pengajuan izin dan cuti">
+          <article class="leave-mobile-card" *ngFor="let req of displayedLeaveRequests" role="listitem">
+            <div class="leave-mobile-card-header">
+              <div class="leave-mobile-employee">
+                <span class="leave-mobile-name">{{ req.Employee?.User?.Nama || 'Nama Tidak Tersedia' }}</span>
+                <span class="leave-mobile-nik">NIK: {{ req.Employee?.NIK || '-' }}</span>
+              </div>
+              <span class="status-badge leave-mobile-status" [ngClass]="{
+                'status-pending': req.Status === 'Pending' || req.Status === 'pending_hrd_approval' || req.Status === 'pending_manager_approval',
+                'status-hadir': req.Status === 'Approved' || req.Status === 'manager_approved' || req.Status === 'hrd_approved',
+                'status-manager-approved': req.Status === 'manager_approved',
+                'status-approved': req.Status === 'Approved' || req.Status === 'hrd_approved',
+                'status-alpha': req.Status === 'Rejected' || req.Status === 'manager_rejected' || req.Status === 'hrd_rejected',
+                'status-cancelled': req.Status === 'Cancelled'
+              }">
+                <span class="status-badge-label">{{ statusLabel(req.Status) }}</span>
+              </span>
+            </div>
+
+            <div class="leave-mobile-summary">
+              <div class="leave-mobile-field">
+                <span class="leave-mobile-label">Approver</span>
+                <span>{{ approverLabel(req) }}</span>
+              </div>
+              <div class="leave-mobile-field">
+                <span class="leave-mobile-label">Jenis izin</span>
+                <span>{{ req.JenisIzin }}</span>
+              </div>
+              <div class="leave-mobile-field leave-mobile-date-field">
+                <span class="leave-mobile-label">Tanggal</span>
+                <span>{{ req.TanggalMulai | date:'dd MMM yyyy' }} – {{ req.TanggalSelesai | date:'dd MMM yyyy' }}</span>
+              </div>
+            </div>
+
+            <div class="leave-mobile-actions">
+              <button class="btn-view-detail leave-mobile-detail-button" type="button" (click)="openDetail(req)">Lihat detail</button>
+              <div class="table-actions leave-mobile-action-buttons">
+                <div *ngIf="canDecide(req)" class="action-group">
+                  <button type="button" class="icon-button approve" aria-label="Setujui pengajuan" title="Setujui pengajuan" [disabled]="isProcessing(req.ID)" (click)="updateStatus(req.ID, 'Approved')">
+                    <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
+                  </button>
+                  <button class="icon-button reject" type="button" aria-label="Tolak pengajuan" title="Tolak pengajuan" [disabled]="isProcessing(req.ID)" (click)="updateStatus(req.ID, 'Rejected')">
+                    <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#x"></use></svg>
+                  </button>
+                </div>
+                <button *ngIf="!canDecide(req)" class="icon-button action-completed" disabled type="button" aria-label="Pengajuan sudah diproses" title="Pengajuan sudah diproses">
+                  <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg>
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+
         <div *ngIf="isLoading" style="padding: 1rem; color: #6b7280;">Memuat pengajuan izin...</div>
         <div *ngIf="!isLoading && leaveRequests.length === 0" style="padding: 1rem; color: #6b7280;">Tidak ada pengajuan izin/cuti.</div>
       </div>
