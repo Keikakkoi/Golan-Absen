@@ -1,3 +1,28 @@
+/* The Angular host is an inline custom element by default. Give this route a
+   definite flex/width contract so mobile browsers do not size the page from
+   the table's intrinsic width. The table itself remains intentionally wider
+   than the viewport and scrolls inside .leave-table-container. */
+:host {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+:host .leave-approval-shell,
+:host .leave-approval-page,
+:host .leave-card,
+:host .leave-toolbar,
+:host .leave-table-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 /* Keep the approval page wrapper at the table's content height. This avoids
    the extra white viewport area on large and 4K screens. */
 .admin-theme.leave-approval-shell {
@@ -6,11 +31,14 @@
 }
 
 .admin-theme.leave-approval-shell > .main-content.leave-approval-page {
+  width: 100%;
+  max-width: 100%;
   min-height: 0 !important;
 }
 
 .leave-approval-page,
 .leave-card,
+.leave-toolbar,
 .leave-table-container,
 .leave-table {
   min-width: 0;
