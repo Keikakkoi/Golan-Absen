@@ -464,3 +464,34 @@
     }
   }
 }
+
+/* This page uses the document as its vertical scroll owner on mobile. The
+   imported intern-dashboard styles target a fixed viewport shell, which is
+   appropriate for the dashboard but clips this longer statistics page on
+   mobile browsers. */
+@media screen and (max-width: 900px) {
+  :host {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-container.intern-dashboard-shell {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-container.intern-dashboard-shell > .main-content.intern-dashboard-page {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overscroll-behavior: auto;
+    scrollbar-gutter: auto;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+}

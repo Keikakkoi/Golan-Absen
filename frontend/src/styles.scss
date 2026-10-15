@@ -5615,6 +5615,25 @@ app-admin-sidebar .sidebar {
   }
 }
 
+/* Intern statistics is a long-form mobile page. Keep the document as the
+   vertical scroll owner instead of inheriting the fixed dashboard viewport
+   contract. The page component overrides its imported shell rules below. */
+@media screen and (max-width: 900px) {
+  html:has(app-intern-statistics),
+  body:has(app-intern-statistics) {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: visible !important;
+  }
+
+  app-root:has(app-intern-statistics) {
+    display: block !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+  }
+}
+
 /* Keep one vertical scroll owner on the manager desktop dashboard. The outer
    document scrollbar is hidden, while the dashboard shell remains scrollable;
    this removes the duplicate scrollbar at the far right without hiding page
