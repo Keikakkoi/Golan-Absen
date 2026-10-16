@@ -126,10 +126,9 @@
                 <span class="status-pill" [ngClass]="fillingStatusClass(row)">{{ fillingStatus(row) }}</span>
               </td>
               <td>
-                <span *ngIf="row.is_late_submission" class="status-pill status-warning">⚠ Terlambat</span>
                 <ng-container [ngSwitch]="statusTimeLabel(row)">
-                  <span *ngSwitchCase="'Terlambat'" class="status-pill status-time-pill status-warning">&#9888; Terlambat</span>
-                  <span *ngSwitchCase="'Tepat waktu'" class="status-pill status-time-pill status-success">Tepat waktu</span>
+                  <span *ngSwitchCase="'Terlambat'" class="status-pill status-time-pill" [ngClass]="statusTimeClass(row)">Terlambat</span>
+                  <span *ngSwitchCase="'Tepat waktu'" class="status-pill status-time-pill" [ngClass]="statusTimeClass(row)">Tepat waktu</span>
                   <span *ngSwitchDefault>-</span>
                 </ng-container>
               </td>
@@ -192,7 +191,7 @@
             <span>Divisi: {{ detail.Employee?.Division?.NamaDivisi || '-' }}</span>
             <span class="status-pill" [ngClass]="fillingStatusClass(detail)">{{ fillingStatus(detail) }}</span>
             <span class="status-pill" [ngClass]="reportStatusClass(detail)">{{ statusLabel(detail) }}</span>
-            <span class="status-pill" [ngClass]="statusTimeLabel(detail) === 'Terlambat' ? 'status-warning' : 'status-success'">{{ statusTimeLabel(detail) }}</span>
+            <span *ngIf="statusTimeLabel(detail) !== '-'" class="status-pill status-time-pill" [ngClass]="statusTimeClass(detail)">{{ statusTimeLabel(detail) }}</span>
           </div>
 
           <dl class="team-report-detail-grid">

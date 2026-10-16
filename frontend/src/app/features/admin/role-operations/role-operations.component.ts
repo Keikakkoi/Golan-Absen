@@ -430,7 +430,6 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
         this.leaveTotalItems = this.leaveServerPaginated ? Number(response.total || this.leaveRequests.length) : this.leaveRequests.length;
         this.leavePage = Number(response?.page || requestedPage);
         if (!background) this.leaveLoading = false;
-        setTimeout(() => this.syncLeaveStatusStyles());
       },
       error: e => { if (!background) this.leaveLoading = false; this.fail(e); }
     });
@@ -459,18 +458,18 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     } as Record<string, string>)[status] || status || '-';
   }
 
-  private syncLeaveStatusStyles(): void {
-    const section = Array.from(document.querySelectorAll<HTMLElement>('.role-operations-page section'))
-      .find(item => item.querySelector('h3')?.textContent?.trim() === 'Persetujuan Izin Tim');
-    if (!section) return;
-    section.querySelectorAll('tbody tr').forEach((row, index) => {
-      const pill = row.querySelector<HTMLElement>('.status-pill');
-      const request = this.displayedLeaveRequests[index];
-      if (!pill || !request) return;
-      const status = String(request.Status || '').toLowerCase();
-      pill.classList.remove('leave-status-success', 'leave-status-warning', 'leave-status-danger', 'leave-status-pending');
-      pill.classList.add(status.includes('disetujui') ? 'leave-status-success' : status.includes('ditolak') || status.includes('cancel') ? 'leave-status-danger' : status.includes('menunggu') ? 'leave-status-warning' : 'leave-status-pending');
-    });
+  isLeavePending(status: string): boolean {
+    const normalized = String(status || '').trim().toLowerCase();
+    return normalized === 'pending' || normalized.includes('menunggu') || normalized.includes('pending');
+  }
+
+  leaveStatusClass(status: string): string {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (this.isLeavePending(normalized)) return 'leave-status-pending';
+    if (normalized.includes('disetujui manajer') || normalized.includes('manager_approved')) return 'leave-status-manager-approved';
+    if (normalized === 'approved' || normalized === 'disetujui' || normalized.includes('disetujui hrd') || normalized.includes('hrd_approved')) return 'leave-status-approved';
+    if (normalized.includes('ditolak') || normalized.includes('rejected') || normalized.includes('cancel')) return 'leave-status-rejected';
+    return 'leave-status-neutral';
   }
 
   applyAttendanceFilters(): void {
@@ -602,6 +601,7 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
   }
 
   async decideLeave(id: number, status: 'Approved' | 'Rejected'): Promise<void> {
+    if (!this.canDecideTeamLeave()) return;
     let rejection_reason = '';
     if (status === 'Rejected') {
       const result = await Swal.fire({ title: 'Alasan Ditolak', input: 'textarea', inputLabel: 'Alasan Ditolak', inputPlaceholder: 'Wajib diisi', showCancelButton: true, confirmButtonText: 'Tolak Pengajuan', cancelButtonText: 'Batal', inputValidator: value => !String(value || '').trim() ? 'Alasan Ditolak wajib diisi' : undefined });
@@ -613,6 +613,8 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     }
     this.http.put(`${this.api}/manager/leaves/${id}/approve`, { status, notes: this.notes[id] || '', catatan: this.notes[id] || '', rejection_reason }, { headers: this.headers() }).subscribe({ next: () => this.loadTeam(true), error: e => this.fail(e) });
   }
+
+  canDecideTeamLeave(): boolean { return this.auth.getRole() === 'MANAJER'; }
 
   managerNote(request: any): string { return request?.manager_notes || request?.ManagerNotes || '-'; }
   adminNote(request: any): string { return request?.admin_notes || request?.AdminNotes || '-'; }

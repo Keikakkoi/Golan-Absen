@@ -1978,3 +1978,74 @@ textarea.golan-input {
     font-size: 0.8rem;
   }
 }
+
+/* Final readability rules for the WFH change-request table. The shared table
+   rules use a smaller mobile padding, so keep these selectors more specific
+   and preserve a real horizontal scroll surface for all narrow layouts. */
+.main-content .home-request-table.home-request-table-enhanced {
+  width: max(100%, 1700px) !important;
+  min-width: 1700px !important;
+  max-width: none !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+}
+
+.main-content .home-request-table.home-request-table-enhanced th,
+.main-content .home-request-table.home-request-table-enhanced td {
+  box-sizing: border-box;
+  padding: 15px 18px !important;
+  vertical-align: top;
+  font-size: .83rem !important;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* The location/reason columns need the most room; actions and dates keep a
+   stable track so their controls never crowd the neighbouring content. */
+.main-content .home-request-table.home-request-table-enhanced th:nth-child(1),
+.main-content .home-request-table.home-request-table-enhanced td:nth-child(1) { width: 190px !important; }
+.main-content .home-request-table.home-request-table-enhanced th:nth-child(2),
+.main-content .home-request-table.home-request-table-enhanced td:nth-child(2) { width: 330px !important; }
+.main-content .home-request-table.home-request-table-enhanced th:nth-child(3),
+.main-content .home-request-table.home-request-table-enhanced td:nth-child(3) {
+  width: 200px !important;
+  white-space: nowrap;
+}
+.main-content .home-request-table.home-request-table-enhanced th:nth-child(4),
+.main-content .home-request-table.home-request-table-enhanced td:nth-child(4) {
+  width: 150px !important;
+  white-space: nowrap;
+}
+.main-content .home-request-table.home-request-table-enhanced th:nth-child(5),
+.main-content .home-request-table.home-request-table-enhanced td:nth-child(5) { width: 230px !important; }
+.main-content .home-request-table.home-request-table-enhanced th:nth-child(6),
+.main-content .home-request-table.home-request-table-enhanced td:nth-child(6) { width: 180px !important; }
+.main-content .home-request-table.home-request-table-enhanced th:nth-child(7),
+.main-content .home-request-table.home-request-table-enhanced td:nth-child(7) { width: 150px !important; }
+.main-content .home-request-table.home-request-table-enhanced th:nth-child(8),
+.main-content .home-request-table.home-request-table-enhanced td:nth-child(8) {
+  width: 180px !important;
+  min-width: 180px !important;
+  white-space: nowrap;
+}
+
+.main-content .home-request-table.home-request-table-enhanced th {
+  white-space: nowrap;
+}
+
+.main-content .home-request-table.home-request-table-enhanced .home-request-actions {
+  width: max-content;
+  min-width: 0;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .main-content .home-request-table.home-request-table-enhanced th,
+  .main-content .home-request-table.home-request-table-enhanced td {
+    padding: 13px 15px !important;
+    font-size: .78rem !important;
+  }
+}

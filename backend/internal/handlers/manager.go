@@ -41,6 +41,13 @@ func canReviewManagerWorkReport(role models.Role) bool {
 	return role == models.RoleManajer
 }
 
+// canApproveManagerLeave is deliberately narrower than the access rule for
+// the operational team page. HRD/Admin can monitor the same inbox, but final
+// HRD decisions belong to the /admin/leave workflow.
+func canApproveManagerLeave(role models.Role) bool {
+	return role == models.RoleManajer
+}
+
 func managerTeamEmployees(managerID uint) ([]models.Employee, error) {
 	var manager models.User
 	if err := config.DB.Where("id = ? AND status = ? AND role IN ?", managerID, "aktif", []models.Role{models.RoleManajer, models.RoleHRD}).First(&manager).Error; err != nil {
@@ -416,15 +423,19 @@ func GetManagerLeaveRequests(c *fiber.Ctx) error {
 	return GetAllLeaveRequests(c)
 }
 func ApproveManagerLeaveRequest(c *fiber.Ctx) error {
-	if !hasManagerOperationsAccess(c.Locals("role").(models.Role)) {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Only managers or HRD/Admin can approve team leave requests"})
+	if !canApproveManagerLeave(c.Locals("role").(models.Role)) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Only managers can approve team leave requests from this page"})
 	}
 	return ApproveRejectLeaveRequest(c)
 }
 
 func SaveManagerLeaveNote(c *fiber.Ctx) error {
-	if c.Locals("role").(models.Role) != models.RoleManajer {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Hanya manajer yang dapat menambahkan catatan"})
+	role := c.Locals("role").(models.Role)
+	if role == models.RoleHRD {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "HRD/Admin hanya dapat melihat catatan pada halaman Operasional Tim"})
+	}
+	if role != models.RoleManajer {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Hanya manajer atau HRD yang dapat menambahkan catatan"})
 	}
 	var input struct {
 		Catatan string `json:"catatan"`

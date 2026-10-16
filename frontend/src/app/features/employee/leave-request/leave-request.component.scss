@@ -772,3 +772,155 @@ body.dark-theme .leave-detail-modal .status-detail-cancelled {
   }
 
 }
+
+/* Riwayat Pengajuan Saya: status badges follow the Approval Izin & Cuti
+   reference in light and dark mode. */
+.leave-request-page .leave-history-card .status-pill,
+.leave-detail-modal .status-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid transparent !important;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.leave-request-page .leave-history-card .status-pill::before,
+.leave-detail-modal .status-detail-badge::before {
+  content: '';
+  display: inline-block;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.leave-request-page .leave-history-card .status-neutral,
+.leave-detail-modal .status-detail-neutral {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #94a3b8 !important;
+}
+
+.leave-request-page .leave-history-card .status-menunggu,
+.leave-detail-modal .status-detail-pending {
+  background: #fffbeb !important;
+  color: #92400e !important;
+  border-color: #f59e0b !important;
+}
+
+.leave-request-page .leave-history-card .status-disetujui,
+.leave-detail-modal .status-detail-manager-approved {
+  background: #eff6ff !important;
+  color: #1e40af !important;
+  border-color: #60a5fa !important;
+}
+
+.leave-request-page .leave-history-card .status-hadir,
+.leave-detail-modal .status-detail-approved {
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+  border-color: #4ade80 !important;
+}
+
+.leave-request-page .leave-history-card .status-alpha,
+.leave-detail-modal .status-detail-rejected,
+.leave-detail-modal .status-detail-cancelled {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: #f87171 !important;
+}
+
+.leave-request-page .leave-history-card .status-neutral::before,
+.leave-detail-modal .status-detail-neutral::before {
+  background: #64748b;
+}
+
+.leave-request-page .leave-history-card .status-menunggu::before,
+.leave-detail-modal .status-detail-pending::before {
+  background: #b45309;
+}
+
+.leave-request-page .leave-history-card .status-disetujui::before,
+.leave-detail-modal .status-detail-manager-approved::before {
+  background: #2563eb;
+}
+
+.leave-request-page .leave-history-card .status-hadir::before,
+.leave-detail-modal .status-detail-approved::before {
+  background: #15803d;
+}
+
+.leave-request-page .leave-history-card .status-alpha::before,
+.leave-detail-modal .status-detail-rejected::before,
+.leave-detail-modal .status-detail-cancelled::before {
+  background: #b91c1c;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-neutral,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-neutral {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-menunggu,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-pending {
+  background: #78350f !important;
+  color: #fde68a !important;
+  border-color: #f59e0b !important;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-disetujui,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-manager-approved {
+  background: #172554 !important;
+  color: #bfdbfe !important;
+  border-color: #60a5fa !important;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-hadir,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-approved {
+  background: #14532d !important;
+  color: #bbf7d0 !important;
+  border-color: #22c55e !important;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-alpha,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-rejected,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-cancelled {
+  background: #7f1d1d !important;
+  color: #fecaca !important;
+  border-color: #f87171 !important;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-neutral::before,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-neutral::before {
+  background: #cbd5e1;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-menunggu::before,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-pending::before {
+  background: #fcd34d;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-disetujui::before,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-manager-approved::before {
+  background: #93c5fd;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-hadir::before,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-approved::before {
+  background: #86efac;
+}
+
+:host-context(body.dark-theme) .leave-request-page .leave-history-card .status-alpha::before,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-rejected::before,
+:host-context(body.dark-theme) .leave-detail-modal .status-detail-cancelled::before {
+  background: #fca5a5;
+}

@@ -99,7 +99,7 @@
   vertical-align: middle;
 }
 
-/* Compact status pills for the Absensi Tim table. */
+/* Match the Approval Izin & Cuti status treatment in the Absensi Tim table. */
 .role-operations-page section.team-filter-panel:first-of-type td:nth-child(3) {
   white-space: nowrap !important;
 }
@@ -107,48 +107,95 @@
 .role-operations-page section.team-filter-panel:first-of-type .status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  width: 100%;
   min-height: 32px;
   box-sizing: border-box;
-  padding: 7px 12px;
+  gap: 6px;
+  padding: 0.4rem 0.65rem;
   border-radius: 999px;
-  font-size: 0.8125rem;
+  border: 1px solid transparent;
+  font-size: 0.75rem;
   font-weight: 600;
-  line-height: 1.25;
-  white-space: nowrap;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .role-operations-page section.team-filter-panel:first-of-type .status-pill::before {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
 }
 
-/* Attendance has no status class in the compact legacy template, so scope
-   the colors to the panel identified by its Absensi Tim status cell. */
-.role-operations-page .team-filter-panel .status-pill.status-hadir {
-  background: #dbeafe;
-  color: #2563eb;
+.role-operations-page section.team-filter-panel:first-of-type .status-pill.status-hadir {
+  background-color: #f0fdf4;
+  border-color: #4ade80;
+  color: #166534;
 }
 
-.role-operations-page .team-filter-panel .status-pill.status-izin {
-  background: #e0e7ff;
-  color: #4f46e5;
+.role-operations-page section.team-filter-panel:first-of-type .status-pill.status-izin {
+  background-color: #eff6ff;
+  border-color: #60a5fa;
+  color: #1e40af;
 }
 
-.role-operations-page .team-filter-panel .status-pill.status-warning {
-  background: #fef3c7;
-  color: #d97706;
+.role-operations-page section.team-filter-panel:first-of-type .status-pill.status-warning,
+.role-operations-page section.team-filter-panel:first-of-type .status-pill.status-terlambat {
+  background-color: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
 }
 
-.role-operations-page .team-filter-panel .status-pill.status-alpha,
-.role-operations-page .team-filter-panel .status-pill.status-tidak-hadir {
-  background: #fee2e2;
-  color: #dc2626;
+.role-operations-page section.team-filter-panel:first-of-type .status-pill.status-alpha,
+.role-operations-page section.team-filter-panel:first-of-type .status-pill.status-tidak-hadir {
+  background-color: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
 }
 
-.role-operations-page .team-filter-panel .status-pill.status-terlambat {
-  background: #fef3c7;
-  color: #d97706;
+.role-operations-page section.team-filter-panel:first-of-type .status-pill.status-pending {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+/* Warning statuses use the same status dot as the reference badge. */
+.role-operations-page section.team-filter-panel:first-of-type .status-pill.status-warning::before {
+  display: inline-block;
+}
+
+:host-context(body.dark-theme) .role-operations-page section.team-filter-panel:first-of-type .status-pill.status-hadir {
+  background-color: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+:host-context(body.dark-theme) .role-operations-page section.team-filter-panel:first-of-type .status-pill.status-izin {
+  background-color: #172554;
+  border-color: #60a5fa;
+  color: #bfdbfe;
+}
+
+:host-context(body.dark-theme) .role-operations-page section.team-filter-panel:first-of-type .status-pill.status-warning,
+:host-context(body.dark-theme) .role-operations-page section.team-filter-panel:first-of-type .status-pill.status-terlambat {
+  background-color: #78350f;
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+:host-context(body.dark-theme) .role-operations-page section.team-filter-panel:first-of-type .status-pill.status-alpha,
+:host-context(body.dark-theme) .role-operations-page section.team-filter-panel:first-of-type .status-pill.status-tidak-hadir {
+  background-color: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+:host-context(body.dark-theme) .role-operations-page section.team-filter-panel:first-of-type .status-pill.status-pending {
+  background-color: #334155;
+  border-color: #94a3b8;
+  color: #e2e8f0;
 }
 
 /* Apply the same compact sizing to the status column in Laporan Tim. */
@@ -1277,6 +1324,90 @@
   text-align: center;
 }
 
+/* Approval status badges follow the Approval Izin & Cuti reference. */
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill {
+  min-height: 32px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  margin: 0;
+}
+
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-pending {
+  background-color: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-manager-approved {
+  background-color: #eff6ff;
+  border-color: #60a5fa;
+  color: #1e40af;
+}
+
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-approved {
+  background-color: #f0fdf4;
+  border-color: #4ade80;
+  color: #166534;
+}
+
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-rejected {
+  background-color: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+.role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-neutral {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+:host-context(body.dark-theme) .role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-pending {
+  background-color: #78350f;
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+:host-context(body.dark-theme) .role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-manager-approved {
+  background-color: #172554;
+  border-color: #60a5fa;
+  color: #bfdbfe;
+}
+
+:host-context(body.dark-theme) .role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-approved {
+  background-color: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+:host-context(body.dark-theme) .role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-rejected {
+  background-color: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+:host-context(body.dark-theme) .role-operations-page section:has(.leave-refresh-action) .golan-table td:nth-child(6) .status-pill.leave-status-neutral {
+  background-color: #334155;
+  border-color: #94a3b8;
+  color: #e2e8f0;
+}
+
 @media (max-width: 768px) {
   .role-operations-page .team-filter-panel .golan-table-responsive {
     overflow-x: auto !important;
@@ -1403,11 +1534,16 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 0;
+  justify-content: center;
+  min-height: 32px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
   border-radius: 999px;
-  padding: 5px 10px;
+  padding: 0.4rem 0.65rem;
   font-size: 0.75rem !important;
   font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
 }
 
 .role-operations-page .role-operations-certificate-table .status-pill::before {
@@ -1416,22 +1552,39 @@
 }
 
 .role-operations-page .role-operations-certificate-table .status-certificate-uploaded {
-  background: #dbeafe;
-  color: #2563eb;
+  background: #f0fdf4;
+  border-color: #4ade80;
+  color: #166534;
 }
 
 .role-operations-page .role-operations-certificate-table .status-certificate-ongoing {
-  background: #fef3c7;
-  color: #b45309;
-}
-
-.role-operations-page .role-operations-certificate-table .status-certificate-ongoing::before {
-  display: none;
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
 }
 
 .role-operations-page .role-operations-certificate-table .status-certificate-pending {
-  background: #fee2e2;
-  color: #dc2626;
+  background: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+:host-context(body.dark-theme) .role-operations-page .role-operations-certificate-table .status-certificate-uploaded {
+  background: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+:host-context(body.dark-theme) .role-operations-page .role-operations-certificate-table .status-certificate-ongoing {
+  background: #78350f;
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+:host-context(body.dark-theme) .role-operations-page .role-operations-certificate-table .status-certificate-pending {
+  background: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
 }
 
 .role-operations-page .role-operations-certificate-table .btn-small,
@@ -1812,51 +1965,81 @@ body.dark-theme .team-filter-panel .report-export-dropdown .dropdown-item-print 
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  max-width: 100%;
   min-height: 32px;
   box-sizing: border-box;
-  gap: 0;
-  padding: 7px 12px !important;
+  gap: 6px;
+  padding: 0.4rem 0.65rem !important;
   border: 1px solid transparent !important;
   border-radius: 999px;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  line-height: 1.25;
-  white-space: nowrap !important;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
 }
 
 .role-operations-page .team-report-status::before {
   display: inline-block !important;
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  margin-right: 9px;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  margin-right: 0;
   border-radius: 50%;
   background: currentColor;
   content: '';
 }
 
 .role-operations-page .team-report-status.status-success {
-  background: #dcfce7 !important;
+  background: #f0fdf4 !important;
   color: #166534 !important;
-  border-color: #bbf7d0 !important;
+  border-color: #4ade80 !important;
 }
 
 .role-operations-page .team-report-status.status-warning {
-  background: #fef3c7 !important;
-  color: #b7791f !important;
-  border-color: #fde68a !important;
+  background: #fffbeb !important;
+  color: #92400e !important;
+  border-color: #f59e0b !important;
 }
 
 .role-operations-page .team-report-status.status-danger {
-  background: #fee2e2 !important;
-  color: #b42318 !important;
-  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: #f87171 !important;
 }
 
-.role-operations-page .team-report-status.status-pending {
-  background: #f1f5f9 !important;
-  color: #475569 !important;
-  border-color: #e2e8f0 !important;
+.role-operations-page .team-report-status.status-pending,
+.role-operations-page .team-report-status.status-neutral {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #94a3b8 !important;
+}
+
+:host-context(body.dark-theme) .role-operations-page .team-report-status.status-success {
+  background: #14532d !important;
+  color: #bbf7d0 !important;
+  border-color: #22c55e !important;
+}
+
+:host-context(body.dark-theme) .role-operations-page .team-report-status.status-warning {
+  background: #78350f !important;
+  color: #fde68a !important;
+  border-color: #f59e0b !important;
+}
+
+:host-context(body.dark-theme) .role-operations-page .team-report-status.status-danger {
+  background: #7f1d1d !important;
+  color: #fecaca !important;
+  border-color: #f87171 !important;
+}
+
+:host-context(body.dark-theme) .role-operations-page .team-report-status.status-pending,
+:host-context(body.dark-theme) .role-operations-page .team-report-status.status-neutral {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
 }
 
 /* Tablet: stack the panel heading before the controls and let controls occupy
@@ -1977,14 +2160,13 @@ body.dark-theme .team-filter-panel .report-export-dropdown .dropdown-item-print 
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: max-content;
+  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  white-space: nowrap !important;
-  overflow: hidden;
-  text-overflow: clip;
-  overflow-wrap: normal !important;
-  word-break: normal !important;
+  white-space: normal !important;
+  overflow: visible;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 @media (max-width: 768px) {

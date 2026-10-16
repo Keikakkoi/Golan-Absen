@@ -403,6 +403,10 @@ export class TeamReportsComponent implements OnDestroy, OnInit {
     return row?.is_late_submission ? 'Terlambat' : 'Tepat waktu';
   }
 
+  statusTimeClass(row: any): string {
+    return this.statusTimeLabel(row) === 'Terlambat' ? 'status-warning' : 'status-success';
+  }
+
   customFieldValue(row: any, key: string): string {
     const raw = row?.custom_fields || row?.CustomFields;
     if (!raw) return '-';

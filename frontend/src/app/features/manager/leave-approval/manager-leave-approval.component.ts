@@ -126,14 +126,25 @@ export class ManagerLeaveApprovalComponent implements OnInit, OnDestroy {
     });
   }
 
-  canDecide(request: any): boolean { return request?.Status === 'pending_manager_approval' || request?.Status === 'Pending'; }
+  canDecide(request: any): boolean {
+    return this.auth.getRole() === 'MANAJER' && (request?.Status === 'pending_manager_approval' || request?.Status === 'Pending');
+  }
   canAddManagerNote(request: any): boolean { return this.canDecide(request); }
   approverLabel(request: any): string {
     const approver = request?.AssignedApprover || request?.assigned_approver;
     return approver?.Nama || (request?.AssignedApproverRole === 'HRD' ? 'HRD' : 'Manajer utama');
   }
   statusLabel(status: string): string {
-    return ({pending_manager_approval: 'Menunggu Persetujuan Manajer', manager_approved: 'Disetujui Manajer', manager_rejected: 'Ditolak Manajer', pending_hrd_approval: 'Menunggu Persetujuan HRD', hrd_approved: 'Disetujui HRD', hrd_rejected: 'Ditolak HRD', Pending: 'Menunggu Persetujuan Manajer', Approved: 'Disetujui', Rejected: 'Ditolak'} as any)[status] || status || '-';
+    return ({pending_manager_approval: 'Menunggu Persetujuan Manajer', manager_approved: 'Disetujui Manajer', manager_rejected: 'Ditolak Manajer', pending_hrd_approval: 'Menunggu Persetujuan HRD', hrd_approved: 'Disetujui HRD', hrd_rejected: 'Ditolak HRD', Pending: 'Menunggu Persetujuan Manajer', Approved: 'Disetujui', Rejected: 'Ditolak', Cancelled: 'Dibatalkan'} as any)[status] || status || '-';
+  }
+
+  statusBadgeClass(status: string): string {
+    if (['Pending', 'pending_manager_approval', 'pending_hrd_approval'].includes(status)) return 'status-pending';
+    if (status === 'manager_approved') return 'status-manager-approved';
+    if (status === 'Approved' || status === 'hrd_approved') return 'status-approved';
+    if (['Rejected', 'manager_rejected', 'hrd_rejected'].includes(status)) return 'status-rejected';
+    if (status === 'Cancelled') return 'status-cancelled';
+    return 'status-neutral';
   }
 
   isProcessing(id: number): boolean { return !!this.processingRequests[id]; }

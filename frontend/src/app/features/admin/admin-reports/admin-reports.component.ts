@@ -310,6 +310,17 @@ export class AdminReportsComponent implements OnInit {
     return status || '-';
   }
 
+  attendanceStatusClass(report: any): string {
+    switch (this.attendanceStatus(report)) {
+      case 'Hadir': return 'status-hadir';
+      case 'Izin': return 'status-izin';
+      case 'Cuti': return 'status-warning';
+      case 'Alpha': return 'status-alpha';
+      case 'Belum Check-out': return 'status-warning';
+      default: return 'status-neutral';
+    }
+  }
+
   mapEmbedUrl(report: any): SafeResourceUrl | null {
     const latitude = this.checkInLatitude(report);
     const longitude = this.checkInLongitude(report);

@@ -947,6 +947,16 @@ export class WorkReportAdminComponent implements OnInit, OnDestroy {
     return 'Tidak Perlu Review Manajer';
   }
 
+  managerReviewStatusClass(report: WorkReport): string {
+    if (this.isNoReport(report) || this.isDraft(report)) return 'validation-status-none';
+    const contract = normalizeWorkReportContract(report);
+    const explicit = String(report.manager_review_status || report.ManagerReviewStatus || contract.manager_review_status || '').trim().toLowerCase();
+    if (explicit === 'rejected') return 'validation-status-rejected';
+    if (explicit === 'approved') return 'validation-status-manager-approved';
+    if (explicit === 'pending') return 'validation-status-pending';
+    return 'validation-status-none';
+  }
+
   private exportValidationLabel(report: WorkReport): string {
     return this.isNoReport(report) ? WORK_REPORT_NO_REPORT_LABEL : this.validationLabel(report);
   }

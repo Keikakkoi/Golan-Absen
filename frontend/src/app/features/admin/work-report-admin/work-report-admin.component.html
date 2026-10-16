@@ -217,14 +217,14 @@
                   <span *ngIf="isNoReport(r)" class="status-pill status-alpha status-no-report">{{ evidenceLabel(r) }}</span>
                   <ng-container *ngIf="!isNoReport(r)">
                     <span *ngFor="let image of r.attachments" class="report-thumb"><a [href]="image.file_url" target="_blank"><img [src]="image.file_url" [alt]="image.file_name"></a></span>
-                    <span *ngIf="!hasEvidence(r)">{{ evidenceLabel(r) }}</span>
+                    <span *ngIf="!hasEvidence(r)" class="status-pill status-neutral">{{ evidenceLabel(r) }}</span>
                   </ng-container>
                 </td>
                 <td>
                   <span *ngIf="!isNoReport(r)" class="status-pill" [class.status-warning]="shouldShowLateStatus(r)" [class.status-success]="!shouldShowLateStatus(r)">{{ statusTimeLabel(r) }}</span>
                   <span *ngIf="isNoReport(r)">-</span>
                 </td>
-                <td><span class="status-pill" [ngClass]="validationStatusClass(r)">{{ managerReviewLabel(r) }}</span></td>
+                <td><span class="status-pill" [ngClass]="managerReviewStatusClass(r)">{{ managerReviewLabel(r) }}</span></td>
                 <td><span class="status-pill" [ngClass]="validationStatusClass(r)">{{ validationLabel(r) }}</span></td>
                 <td data-label="Catatan Manager/Admin" class="text-cell manager-admin-note-cell">
                   <div class="manager-admin-note">

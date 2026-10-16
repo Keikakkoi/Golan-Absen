@@ -31,7 +31,7 @@
               <td class="mono-text history-secondary-column">{{ rec.JamPulang ? (rec.JamPulang | date:'HH:mm:ss') : '-' }}</td>
               <td class="mono-text history-secondary-column">{{ getWorkDuration(rec) }}</td>
               <td class="history-status-cell">
-                <span *ngIf="!rec.IsCheckoutMissing" class="status-pill status-{{ rec.Status | lowercase }}">
+                <span *ngIf="!rec.IsCheckoutMissing" class="status-pill" [ngClass]="historyStatusClass(rec.Status)">
                   {{ rec.Status }}
                 </span>
                 <span *ngIf="rec.IsCheckoutMissing" class="status-pill status-warning">⚠ Belum Check-out</span>
@@ -68,7 +68,7 @@
         <div class="day-cell" *ngFor="let day of calendarDays" [class.empty]="!day" (click)="day?.record ? openDetail(day.record) : null" [style.cursor]="day?.record ? 'pointer' : 'default'">
           <ng-container *ngIf="day">
             <div class="day-number">{{ day.date }}</div>
-            <div *ngIf="day.record" class="day-record status-{{ day.record.Status | lowercase }}">
+            <div *ngIf="day.record" class="day-record" [ngClass]="historyStatusClass(day.record.Status)">
               <span class="calendar-status-full">{{ day.record.IsCheckoutMissing ? '⚠ Belum Check-out' : day.record.Status }}</span>
               <span class="calendar-status-short">{{ getStatusShort(day.record.Status) }}</span>
               <br>
@@ -90,7 +90,7 @@
       </div>
       <div class="modal-body history-modal-body">
         <p><strong>Status:</strong>
-          <span *ngIf="!selectedRecord.IsCheckoutMissing" class="status-badge status-{{ selectedRecord.Status | lowercase }}">{{ selectedRecord.Status }}</span>
+          <span *ngIf="!selectedRecord.IsCheckoutMissing" class="status-badge" [ngClass]="historyStatusClass(selectedRecord.Status)">{{ selectedRecord.Status }}</span>
           <span *ngIf="selectedRecord.IsCheckoutMissing" class="status-badge status-warning">⚠ Belum Check-out</span>
         </p>
         <p><strong>Tipe Kerja:</strong> {{ selectedRecord.TipeKerja || 'WFO' }}</p>

@@ -189,23 +189,94 @@ body.dark-theme .team-attendance-toolbar .dropdown-item-print {
 .team-attendance-table th:nth-child(5),
 .team-attendance-table td:nth-child(5) { width: 15%; }
 
-/* Match the compact status treatment used in the attendance reference. */
+/* Match the status treatment used by Approval Izin & Cuti. */
 .team-attendance-table .status-cell { white-space: nowrap !important; }
 .team-attendance-table .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 32px;
+  box-sizing: border-box;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 0.4rem 0.65rem;
   border-radius: 999px;
+  border: 1px solid transparent;
   font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.25;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
-.team-attendance-table .status-pill::before { width: 8px; height: 8px; }
-.team-attendance-table .status-pill.status-hadir { background: var(--mint-1); color: var(--green-deep); }
-.team-attendance-table .status-pill.status-izin { background: #e0e7ff; color: #4f46e5; }
-.team-attendance-table .status-pill.status-warning { background: #fef3c7; color: #d97706; }
+.team-attendance-table .status-pill::before { width: 6px; height: 6px; flex: 0 0 6px; }
+
+.team-attendance-table .status-pill.status-hadir {
+  background-color: #f0fdf4;
+  border-color: #4ade80;
+  color: #166534;
+}
+
+.team-attendance-table .status-pill.status-izin {
+  background-color: #eff6ff;
+  border-color: #60a5fa;
+  color: #1e40af;
+}
+
+.team-attendance-table .status-pill.status-warning,
+.team-attendance-table .status-pill.status-terlambat {
+  background-color: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
 .team-attendance-table .status-pill.status-alpha,
-.team-attendance-table .status-pill.status-tidak-hadir { background: #FBEEEE; color: var(--absent); }
-.team-attendance-table .status-pill.status-terlambat { background: #FDF3E1; color: var(--late); }
+.team-attendance-table .status-pill.status-tidak-hadir {
+  background-color: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+.team-attendance-table .status-pill.status-pending {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+/* Keep the warning status consistent with the reference badge's status dot. */
+.team-attendance-table .status-pill.status-warning::before { display: inline-block; }
+
+:host-context(body.dark-theme) .team-attendance-table .status-pill.status-hadir {
+  background-color: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+:host-context(body.dark-theme) .team-attendance-table .status-pill.status-izin {
+  background-color: #172554;
+  border-color: #60a5fa;
+  color: #bfdbfe;
+}
+
+:host-context(body.dark-theme) .team-attendance-table .status-pill.status-warning,
+:host-context(body.dark-theme) .team-attendance-table .status-pill.status-terlambat {
+  background-color: #78350f;
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+:host-context(body.dark-theme) .team-attendance-table .status-pill.status-alpha,
+:host-context(body.dark-theme) .team-attendance-table .status-pill.status-tidak-hadir {
+  background-color: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+:host-context(body.dark-theme) .team-attendance-table .status-pill.status-pending {
+  background-color: #334155;
+  border-color: #94a3b8;
+  color: #e2e8f0;
+}
 
 /* Keep the team attendance filters compact on phone-sized screens. */
 @media (max-width: 768px) {

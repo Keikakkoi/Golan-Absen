@@ -812,3 +812,121 @@
     min-width: 2850px !important;
   }
 }
+
+/* Final status treatment for Status Laporan Kerja, Status Pengisian, and
+   Status Waktu. The palette follows the Approval Izin & Cuti reference. */
+.team-reports-page .team-reports-table .team-reports-status-cell .status-pill,
+.team-reports-page .team-reports-table td:nth-child(15) .status-time-pill,
+.team-reports-page .team-report-detail-meta .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 32px;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 5px 12px;
+  border: 1px solid transparent !important;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.team-reports-page .team-reports-table .team-reports-status-cell .status-pill::before,
+.team-reports-page .team-reports-table td:nth-child(15) .status-time-pill::before,
+.team-reports-page .team-report-detail-meta .status-pill::before {
+  content: '';
+  display: inline-block !important;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.team-reports-page .status-success {
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+  border-color: #4ade80 !important;
+}
+
+.team-reports-page .status-warning,
+.team-reports-page .status-pending {
+  background: #fffbeb !important;
+  color: #92400e !important;
+  border-color: #f59e0b !important;
+}
+
+.team-reports-page .status-danger {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: #f87171 !important;
+}
+
+.team-reports-page .status-neutral {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #94a3b8 !important;
+}
+
+.team-reports-page .status-success::before {
+  background: #15803d !important;
+}
+
+.team-reports-page .status-warning::before,
+.team-reports-page .status-pending::before {
+  background: #b45309 !important;
+}
+
+.team-reports-page .status-danger::before {
+  background: #b91c1c !important;
+}
+
+.team-reports-page .status-neutral::before {
+  background: #64748b !important;
+}
+
+:host-context(body.dark-theme) .team-reports-page .status-success {
+  background: #14532d !important;
+  color: #bbf7d0 !important;
+  border-color: #22c55e !important;
+}
+
+:host-context(body.dark-theme) .team-reports-page .status-warning,
+:host-context(body.dark-theme) .team-reports-page .status-pending {
+  background: #78350f !important;
+  color: #fde68a !important;
+  border-color: #f59e0b !important;
+}
+
+:host-context(body.dark-theme) .team-reports-page .status-danger {
+  background: #7f1d1d !important;
+  color: #fecaca !important;
+  border-color: #f87171 !important;
+}
+
+:host-context(body.dark-theme) .team-reports-page .status-neutral {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+}
+
+:host-context(body.dark-theme) .team-reports-page .status-success::before {
+  background: #86efac !important;
+}
+
+:host-context(body.dark-theme) .team-reports-page .status-warning::before,
+:host-context(body.dark-theme) .team-reports-page .status-pending::before {
+  background: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .team-reports-page .status-danger::before {
+  background: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .team-reports-page .status-neutral::before {
+  background: #cbd5e1 !important;
+}

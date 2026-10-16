@@ -368,6 +368,9 @@ export class WorkReportComponent implements OnDestroy, OnInit {
   }
 
   validationStatusClass(report: WorkReport): string {
+    const managerStatus = String(report.manager_review_status || report.ManagerReviewStatus || '').trim().toLowerCase();
+    const adminStatus = String(report.admin_validation_status || report.AdminValidationStatus || '').trim().toLowerCase();
+    if (managerStatus === 'approved' && adminStatus === 'pending') return 'status-manager-approved';
     switch (this.validationStatus(report)) {
       case 'approved': return 'status-hadir';
       case 'rejected': return 'status-alpha';

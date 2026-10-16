@@ -81,6 +81,16 @@ export class HistoryComponent implements OnInit {
     return labels[status] || status.slice(0, 2).toUpperCase();
   }
 
+  historyStatusClass(status: string): string {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (normalized === 'hadir') return 'status-hadir';
+    if (normalized === 'terlambat') return 'status-terlambat';
+    if (normalized === 'izin') return 'status-izin';
+    if (normalized === 'cuti') return 'status-cuti';
+    if (normalized === 'alpha' || normalized === 'alfa' || normalized === 'tidak hadir') return 'status-alpha';
+    return 'status-neutral';
+  }
+
   getWorkDuration(rec: any): string {
     if (!rec.JamMasuk || !rec.JamPulang) return '-';
     const entry = new Date(rec.JamMasuk);

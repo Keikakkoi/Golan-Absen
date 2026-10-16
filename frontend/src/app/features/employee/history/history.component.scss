@@ -736,3 +736,113 @@
     border-color: var(--border-strong);
   }
 }
+
+/* Personal attendance statuses use the Approval reference badge treatment. */
+.attendance-history-page .history-table .status-pill,
+.attendance-history-page .history-modal-body .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  min-height: 32px;
+  box-sizing: border-box;
+  gap: 6px;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.attendance-history-page .history-table .status-pill::before,
+.attendance-history-page .history-modal-body .status-badge::before {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  margin: 0;
+  background-color: currentColor;
+}
+
+.attendance-history-page .history-table .status-pill.status-hadir,
+.attendance-history-page .history-modal-body .status-badge.status-hadir {
+  background-color: #f0fdf4 !important;
+  border-color: #4ade80 !important;
+  color: #166534 !important;
+}
+
+.attendance-history-page .history-table .status-pill.status-izin,
+.attendance-history-page .history-modal-body .status-badge.status-izin {
+  background-color: #eff6ff !important;
+  border-color: #60a5fa !important;
+  color: #1e40af !important;
+}
+
+.attendance-history-page .history-table .status-pill.status-cuti,
+.attendance-history-page .history-table .status-pill.status-terlambat,
+.attendance-history-page .history-table .status-pill.status-warning,
+.attendance-history-page .history-modal-body .status-badge.status-cuti,
+.attendance-history-page .history-modal-body .status-badge.status-terlambat,
+.attendance-history-page .history-modal-body .status-badge.status-warning {
+  background-color: #fffbeb !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+
+.attendance-history-page .history-table .status-pill.status-alpha,
+.attendance-history-page .history-modal-body .status-badge.status-alpha {
+  background-color: #fef2f2 !important;
+  border-color: #f87171 !important;
+  color: #991b1b !important;
+}
+
+.attendance-history-page .history-table .status-pill.status-neutral,
+.attendance-history-page .history-modal-body .status-badge.status-neutral {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #334155 !important;
+}
+
+:host-context(body.dark-theme) .attendance-history-page .history-table .status-pill.status-hadir,
+:host-context(body.dark-theme) .attendance-history-page .history-modal-body .status-badge.status-hadir {
+  background-color: #14532d !important;
+  border-color: #22c55e !important;
+  color: #bbf7d0 !important;
+}
+
+:host-context(body.dark-theme) .attendance-history-page .history-table .status-pill.status-izin,
+:host-context(body.dark-theme) .attendance-history-page .history-modal-body .status-badge.status-izin {
+  background-color: #172554 !important;
+  border-color: #60a5fa !important;
+  color: #bfdbfe !important;
+}
+
+:host-context(body.dark-theme) .attendance-history-page .history-table .status-pill.status-cuti,
+:host-context(body.dark-theme) .attendance-history-page .history-table .status-pill.status-terlambat,
+:host-context(body.dark-theme) .attendance-history-page .history-table .status-pill.status-warning,
+:host-context(body.dark-theme) .attendance-history-page .history-modal-body .status-badge.status-cuti,
+:host-context(body.dark-theme) .attendance-history-page .history-modal-body .status-badge.status-terlambat,
+:host-context(body.dark-theme) .attendance-history-page .history-modal-body .status-badge.status-warning {
+  background-color: #78350f !important;
+  border-color: #f59e0b !important;
+  color: #fde68a !important;
+}
+
+:host-context(body.dark-theme) .attendance-history-page .history-table .status-pill.status-alpha,
+:host-context(body.dark-theme) .attendance-history-page .history-modal-body .status-badge.status-alpha {
+  background-color: #7f1d1d !important;
+  border-color: #f87171 !important;
+  color: #fecaca !important;
+}
+
+:host-context(body.dark-theme) .attendance-history-page .history-table .status-pill.status-neutral,
+:host-context(body.dark-theme) .attendance-history-page .history-modal-body .status-badge.status-neutral {
+  background-color: #334155 !important;
+  border-color: #94a3b8 !important;
+  color: #e2e8f0 !important;
+}

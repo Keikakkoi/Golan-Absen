@@ -689,3 +689,117 @@
   background: #26364d !important;
   color: var(--text-dark) !important;
 }
+
+/* Riwayat Laporan status badges follow the Approval reference. */
+.work-report-page .report-history-table .status-pill,
+.work-report-page .report-history-table .status-badge,
+.work-report-page .report-detail-statuses .status-pill,
+.work-report-page .report-detail-statuses .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  min-height: 32px;
+  box-sizing: border-box;
+  gap: 6px;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent !important;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+.work-report-page .report-history-table .status-pill::before,
+.work-report-page .report-history-table .status-badge::before,
+.work-report-page .report-detail-statuses .status-pill::before,
+.work-report-page .report-detail-statuses .status-badge::before {
+  display: inline-block !important;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  margin: 0;
+  background-color: currentColor;
+}
+
+.work-report-page .report-history-table .status-success,
+.work-report-page .report-history-table .status-hadir,
+.work-report-page .report-detail-statuses .status-success,
+.work-report-page .report-detail-statuses .status-hadir {
+  background-color: #f0fdf4 !important;
+  border-color: #4ade80 !important;
+  color: #166534 !important;
+}
+
+.work-report-page .report-history-table .status-warning,
+.work-report-page .report-history-table .status-pending,
+.work-report-page .report-detail-statuses .status-warning,
+.work-report-page .report-detail-statuses .status-pending {
+  background-color: #fffbeb !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+
+.work-report-page .report-history-table .status-alpha,
+.work-report-page .report-detail-statuses .status-alpha {
+  background-color: #fef2f2 !important;
+  border-color: #f87171 !important;
+  color: #991b1b !important;
+}
+
+.work-report-page .report-history-table .status-manager-approved,
+.work-report-page .report-detail-statuses .status-manager-approved {
+  background-color: #eff6ff !important;
+  border-color: #60a5fa !important;
+  color: #1e40af !important;
+}
+
+.work-report-page .report-history-table .status-neutral,
+.work-report-page .report-detail-statuses .status-neutral {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #334155 !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table .status-success,
+:host-context(body.dark-theme) .work-report-page .report-history-table .status-hadir,
+:host-context(body.dark-theme) .work-report-page .report-detail-statuses .status-success,
+:host-context(body.dark-theme) .work-report-page .report-detail-statuses .status-hadir {
+  background-color: #14532d !important;
+  border-color: #22c55e !important;
+  color: #bbf7d0 !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table .status-warning,
+:host-context(body.dark-theme) .work-report-page .report-history-table .status-pending,
+:host-context(body.dark-theme) .work-report-page .report-detail-statuses .status-warning,
+:host-context(body.dark-theme) .work-report-page .report-detail-statuses .status-pending {
+  background-color: #78350f !important;
+  border-color: #f59e0b !important;
+  color: #fde68a !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table .status-alpha,
+:host-context(body.dark-theme) .work-report-page .report-detail-statuses .status-alpha {
+  background-color: #7f1d1d !important;
+  border-color: #f87171 !important;
+  color: #fecaca !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table .status-manager-approved,
+:host-context(body.dark-theme) .work-report-page .report-detail-statuses .status-manager-approved {
+  background-color: #172554 !important;
+  border-color: #60a5fa !important;
+  color: #bfdbfe !important;
+}
+
+:host-context(body.dark-theme) .work-report-page .report-history-table .status-neutral,
+:host-context(body.dark-theme) .work-report-page .report-detail-statuses .status-neutral {
+  background-color: #334155 !important;
+  border-color: #94a3b8 !important;
+  color: #e2e8f0 !important;
+}
