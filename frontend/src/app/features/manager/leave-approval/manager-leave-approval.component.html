@@ -44,12 +44,7 @@
                     <button type="button" class="btn-small reject" [disabled]="isProcessing(request.ID)" (click)="decide(request.ID, 'Rejected')" aria-label="Tolak pengajuan" title="Tolak pengajuan"><svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="m8.5 8.5 7 7m0-7-7 7"></path></svg></button>
                   </ng-container>
                   <ng-template #processed>
-                    <span class="status-pill"
-                      [class.status-pending-manager]="request.Status === 'Pending' || request.Status === 'pending_manager_approval' || request.Status === 'pending_hrd_approval'"
-                      [class.status-approved-hrd]="request.Status === 'manager_approved' || request.Status === 'hrd_approved'"
-                      [class.status-approved]="request.Status === 'Approved'"
-                      [class.status-rejected]="request.Status === 'Rejected' || request.Status === 'manager_rejected' || request.Status === 'hrd_rejected'"
-                      [class.status-cancelled]="request.Status === 'Cancelled'">
+                    <span class="status-pill" [ngClass]="statusBadgeClass(request.Status)">
                       {{ statusLabel(request.Status) }}
                     </span>
                   </ng-template>
@@ -58,6 +53,76 @@
             </tr>
           </tbody>
         </table>
+
+        <div class="leave-mobile-list" *ngIf="!isLoading && requests.length > 0" role="list" aria-label="Daftar pengajuan izin tim">
+          <article class="leave-mobile-card" *ngFor="let request of displayedRequests" role="listitem">
+            <div class="leave-mobile-card-header">
+              <div class="leave-mobile-member">
+                <span class="leave-mobile-member-name">{{ employeeName(request) }}</span>
+                <span class="leave-mobile-member-nik">NIK: {{ request?.Employee?.NIK || request?.Employee?.Nik || '-' }}</span>
+              </div>
+              <span class="status-pill leave-mobile-status" [ngClass]="statusBadgeClass(request.Status)">
+                {{ statusLabel(request.Status) }}
+              </span>
+            </div>
+
+            <div class="leave-mobile-summary">
+              <div class="leave-mobile-field">
+                <span class="leave-mobile-label">Jenis izin</span>
+                <span>{{ leaveType(request) }}</span>
+              </div>
+              <div class="leave-mobile-field">
+                <span class="leave-mobile-label">Approver</span>
+                <span>{{ approverLabel(request) }}</span>
+              </div>
+              <div class="leave-mobile-field leave-mobile-period">
+                <span class="leave-mobile-label">Periode</span>
+                <span>{{ request?.TanggalMulai ? (request.TanggalMulai | date:'dd MMM yyyy') : '-' }} – {{ request?.TanggalSelesai ? (request.TanggalSelesai | date:'dd MMM yyyy') : '-' }}</span>
+              </div>
+            </div>
+
+            <div class="leave-mobile-extra">
+              <div class="leave-mobile-field">
+                <span class="leave-mobile-label">Alasan</span>
+                <span>{{ reason(request) }}</span>
+              </div>
+              <div class="leave-mobile-field" *ngIf="rejectionReason(request) !== '-'">
+                <span class="leave-mobile-label">Alasan ditolak</span>
+                <span>{{ rejectionReason(request) }}</span>
+              </div>
+              <div class="leave-mobile-field">
+                <span class="leave-mobile-label">Catatan Admin</span>
+                <span>{{ displayAdminNote(request) }}</span>
+              </div>
+              <div class="leave-mobile-field" *ngIf="canAddManagerNote(request); else savedMobileManagerNote">
+                <label class="leave-mobile-label" [for]="'manager-note-mobile-' + request.ID">Catatan Manajer</label>
+                <textarea class="manager-note-input leave-mobile-note-input" [id]="'manager-note-mobile-' + request.ID" [(ngModel)]="notes[request.ID]" rows="3" placeholder="Tulis catatan atau alasan keputusan Manajer..." [disabled]="isProcessing(request.ID)"></textarea>
+              </div>
+              <ng-template #savedMobileManagerNote>
+                <div class="leave-mobile-field">
+                  <span class="leave-mobile-label">Catatan Manajer</span>
+                  <span>{{ displayManagerNote(request) }}</span>
+                </div>
+              </ng-template>
+            </div>
+
+            <div class="leave-mobile-actions">
+              <ng-container *ngIf="canDecide(request); else processedMobile">
+                <button type="button" class="btn-small approve" [disabled]="isProcessing(request.ID)" (click)="decide(request.ID, 'Approved')" aria-label="Setujui pengajuan" title="Setujui pengajuan">
+                  <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="m8 12.2 2.7 2.7 5.5-5.8"></path></svg>
+                  <span>Setujui</span>
+                </button>
+                <button type="button" class="btn-small reject" [disabled]="isProcessing(request.ID)" (click)="decide(request.ID, 'Rejected')" aria-label="Tolak pengajuan" title="Tolak pengajuan">
+                  <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5"></circle><path d="m8.5 8.5 7 7m0-7-7 7"></path></svg>
+                  <span>Tolak</span>
+                </button>
+              </ng-container>
+              <ng-template #processedMobile>
+                <span class="status-pill leave-mobile-processed-status" [ngClass]="statusBadgeClass(request.Status)">{{ statusLabel(request.Status) }}</span>
+              </ng-template>
+            </div>
+          </article>
+        </div>
       </div>
       <app-pagination #paginationBar [totalItems]="requests.length" [currentPage]="currentPage" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions" [loading]="isLoading" (pageChange)="pageChanged($event)" (pageSizeChange)="pageSizeChanged($event)"></app-pagination>
       <p *ngIf="!requests.length && !isLoading" class="muted">Tidak ada pengajuan izin tim.</p>

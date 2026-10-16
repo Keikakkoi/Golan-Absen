@@ -109,15 +109,183 @@
   min-width: 0;
 }
 
-@media (max-width: 768px) {
-  .leave-approval-table-wrapper {
-    overflow-x: auto !important;
-    overscroll-behavior-inline: contain;
+.leave-mobile-list {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .dashboard-container.manager-leave-approval-shell,
+  .dashboard-container.manager-leave-approval-shell > .main-content.manager-leave-approval-page,
+  .manager-leave-approval-page > .golan-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 
-  .leave-approval-table td:first-child {
-    white-space: normal !important;
+  .manager-leave-approval-page .toolbar {
+    width: 100%;
+    align-items: stretch;
   }
+
+  .manager-leave-approval-page .toolbar > label,
+  .manager-leave-approval-page .toolbar > select.golan-input,
+  .manager-leave-approval-page .toolbar > .btn-primary {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .manager-leave-approval-page .leave-approval-table-wrapper {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden !important;
+    overflow-y: visible;
+    box-sizing: border-box;
+  }
+
+  .manager-leave-approval-page .leave-approval-table {
+    display: none;
+  }
+
+  .manager-leave-approval-page .leave-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .manager-leave-approval-page .leave-mobile-card {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 1rem;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+
+  .manager-leave-approval-page .leave-mobile-card-header,
+  .manager-leave-approval-page .leave-mobile-actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .manager-leave-approval-page .leave-mobile-member,
+  .manager-leave-approval-page .leave-mobile-field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .manager-leave-approval-page .leave-mobile-member-name {
+    color: #1e3a8a;
+    font-size: 1rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .manager-leave-approval-page .leave-mobile-member-nik {
+    margin-top: 0.2rem;
+    color: #64748b;
+    font-family: monospace;
+    font-size: 0.75rem;
+  }
+
+  .manager-leave-approval-page .leave-mobile-status {
+    flex: 0 1 auto;
+    max-width: 52%;
+    min-width: 0;
+  }
+
+  .manager-leave-approval-page .leave-mobile-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .manager-leave-approval-page .leave-mobile-period {
+    grid-column: 1 / -1;
+  }
+
+  .manager-leave-approval-page .leave-mobile-extra {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-top: 0.85rem;
+  }
+
+  .manager-leave-approval-page .leave-mobile-label {
+    margin-bottom: 0.2rem;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .manager-leave-approval-page .leave-mobile-field > span:last-child {
+    color: #334155;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .manager-leave-approval-page .leave-mobile-note-input {
+    min-height: 70px;
+  }
+
+  .manager-leave-approval-page .leave-mobile-actions {
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .manager-leave-approval-page .leave-mobile-actions .btn-small {
+    width: auto;
+    min-width: 104px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0 0.8rem;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+  }
+
+  .manager-leave-approval-page .leave-mobile-actions .action-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .manager-leave-approval-page .leave-mobile-processed-status {
+    max-width: 100%;
+  }
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-card {
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-member-name,
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-field > span:last-child {
+  color: var(--text-dark);
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-member-nik,
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-label {
+  color: var(--text-dark-lo);
 }
 
 /* Keep the two approval actions compact and equal-sized. */
@@ -260,3 +428,212 @@
 }
 
 .saved-note{display:block;margin-top:6px;color:var(--text-dark-lo);font-size:12px}
+
+/* Persetujuan Izin Tim status badges follow the Approval Izin & Cuti
+   reference in light and dark mode. */
+.manager-leave-approval-page .leave-approval-table .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid transparent !important;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: normal;
+  text-align: center;
+}
+
+.manager-leave-approval-page .leave-approval-table .status-pill::before {
+  content: '';
+  display: inline-block;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.manager-leave-approval-page .status-pending {
+  background: #fffbeb !important;
+  color: #92400e !important;
+  border-color: #f59e0b !important;
+}
+
+.manager-leave-approval-page .status-manager-approved {
+  background: #eff6ff !important;
+  color: #1e40af !important;
+  border-color: #60a5fa !important;
+}
+
+.manager-leave-approval-page .status-approved {
+  background: #f0fdf4 !important;
+  color: #166534 !important;
+  border-color: #4ade80 !important;
+}
+
+.manager-leave-approval-page .status-rejected {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: #f87171 !important;
+}
+
+.manager-leave-approval-page .status-cancelled,
+.manager-leave-approval-page .status-neutral {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #94a3b8 !important;
+}
+
+.manager-leave-approval-page .leave-mobile-card .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 5px 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: normal;
+  text-align: center;
+}
+
+.manager-leave-approval-page .leave-mobile-card .status-pending {
+  background: #fffbeb;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.manager-leave-approval-page .leave-mobile-card .status-manager-approved {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #60a5fa;
+}
+
+.manager-leave-approval-page .leave-mobile-card .status-approved {
+  background: #f0fdf4;
+  color: #166534;
+  border-color: #4ade80;
+}
+
+.manager-leave-approval-page .leave-mobile-card .status-rejected {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #f87171;
+}
+
+.manager-leave-approval-page .leave-mobile-card .status-cancelled,
+.manager-leave-approval-page .leave-mobile-card .status-neutral {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #94a3b8;
+}
+
+.manager-leave-approval-page .status-pending::before {
+  background: #b45309 !important;
+}
+
+.manager-leave-approval-page .status-manager-approved::before {
+  background: #2563eb !important;
+}
+
+.manager-leave-approval-page .status-approved::before {
+  background: #15803d !important;
+}
+
+.manager-leave-approval-page .status-rejected::before {
+  background: #b91c1c !important;
+}
+
+.manager-leave-approval-page .status-cancelled::before,
+.manager-leave-approval-page .status-neutral::before {
+  background: #64748b !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-pending {
+  background: #78350f !important;
+  color: #fde68a !important;
+  border-color: #f59e0b !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-manager-approved {
+  background: #172554 !important;
+  color: #bfdbfe !important;
+  border-color: #60a5fa !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-approved {
+  background: #14532d !important;
+  color: #bbf7d0 !important;
+  border-color: #22c55e !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-rejected {
+  background: #7f1d1d !important;
+  color: #fecaca !important;
+  border-color: #f87171 !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-cancelled,
+:host-context(body.dark-theme) .manager-leave-approval-page .status-neutral {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-pending::before {
+  background: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-manager-approved::before {
+  background: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-approved::before {
+  background: #86efac !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-rejected::before {
+  background: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .status-cancelled::before,
+:host-context(body.dark-theme) .manager-leave-approval-page .status-neutral::before {
+  background: #cbd5e1 !important;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-card .status-pending {
+  background: #78350f;
+  color: #fde68a;
+  border-color: #f59e0b;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-card .status-manager-approved {
+  background: #172554;
+  color: #bfdbfe;
+  border-color: #60a5fa;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-card .status-approved {
+  background: #14532d;
+  color: #bbf7d0;
+  border-color: #22c55e;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-card .status-rejected {
+  background: #7f1d1d;
+  color: #fecaca;
+  border-color: #f87171;
+}
+
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-card .status-cancelled,
+:host-context(body.dark-theme) .manager-leave-approval-page .leave-mobile-card .status-neutral {
+  background: #334155;
+  color: #e2e8f0;
+  border-color: #94a3b8;
+}
