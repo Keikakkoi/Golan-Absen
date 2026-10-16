@@ -1080,6 +1080,8 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex: 1 1 auto;
+    min-width: 0;
 
     .attachment-icon {
       width: 36px;
@@ -1096,17 +1098,20 @@
     .attachment-text {
       display: flex;
       flex-direction: column;
+      min-width: 0;
 
       .attachment-title {
         font-size: 0.85rem;
         font-weight: 700;
-        color: #0369a1;
+        color: #1f2937;
         overflow-wrap: anywhere;
         word-break: break-word;
       }
       .attachment-sub {
         font-size: 0.75rem;
-        color: #0284c7;
+        color: #475569;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
     }
   }
@@ -1237,16 +1242,24 @@
 :host-context(body.dark-theme) .leave-detail-modal .modal-title-box h3,
 :host-context(body.dark-theme) .leave-detail-modal .employee-name,
 :host-context(body.dark-theme) .leave-detail-modal .grid-value,
-:host-context(body.dark-theme) .leave-detail-modal .section-label,
-:host-context(body.dark-theme) .leave-detail-modal .attachment-title {
+:host-context(body.dark-theme) .leave-detail-modal .section-label {
   color: var(--text-dark) !important;
 }
 
 :host-context(body.dark-theme) .leave-detail-modal .request-id,
 :host-context(body.dark-theme) .leave-detail-modal .grid-label,
-:host-context(body.dark-theme) .leave-detail-modal .dept-tag,
-:host-context(body.dark-theme) .leave-detail-modal .attachment-sub {
+:host-context(body.dark-theme) .leave-detail-modal .dept-tag {
   color: var(--text-dark-lo) !important;
+}
+
+/* The attachment card intentionally keeps its light surface in both themes.
+   Keep its text dark as well so it remains readable in dark mode. */
+:host-context(body.dark-theme) .leave-detail-modal .attachment-title {
+  color: #1f2937 !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .attachment-sub {
+  color: #475569 !important;
 }
 
 :host-context(body.dark-theme) .leave-detail-modal .employee-profile-card,
