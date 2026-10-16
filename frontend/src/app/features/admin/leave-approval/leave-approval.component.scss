@@ -1225,6 +1225,33 @@
   color: #1d4ed8;
 }
 
+/* Match the dark-mode cancel button reference instead of retaining the light
+   white/blue treatment from the legacy modal button. */
+:host-context(body.dark-theme) .leave-detail-modal .btn-modal-secondary.btn-cancel-reference {
+  min-height: 48px;
+  padding: 12px 24px;
+  border: 2px solid #64748b !important;
+  border-radius: 13px;
+  background: #334155 !important;
+  background-color: #334155 !important;
+  color: #e2e8f0 !important;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .btn-modal-secondary.btn-cancel-reference:hover {
+  background: #475569 !important;
+  background-color: #475569 !important;
+  border-color: #94a3b8 !important;
+  color: #f8fafc !important;
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .btn-modal-secondary.btn-cancel-reference:active {
+  transform: translateY(0);
+}
+
 /* Dark mode overrides for the leave detail modal. The modal has legacy light
    surfaces that otherwise make the reason text disappear against the card. */
 :host-context(body.dark-theme) .leave-detail-modal {
