@@ -595,6 +595,19 @@
     }
   }
 
+  .password-hint {
+    margin-top: -2px;
+    color: #6b8299;
+    font-size: 0.75rem;
+    line-height: 1.4;
+
+    code {
+      color: #1769aa;
+      font-family: var(--font-mono, monospace);
+      font-size: 0.95em;
+    }
+  }
+
   .password-toggle {
     position: absolute;
     top: 50%;

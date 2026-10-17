@@ -68,6 +68,9 @@ func validateEmployeeProfile(req *EmployeeRequest) error {
 	if strings.TrimSpace(req.TanggalBergabung) == "" {
 		return fmt.Errorf("tanggal masuk wajib diisi")
 	}
+	if joined, err := parseEmployeeDate(req.TanggalBergabung); err != nil || !validEmployeeJoinYear(joined.Year()) {
+		return fmt.Errorf("tanggal masuk harus menggunakan tanggal yang valid dengan tahun 4 digit")
+	}
 	if _, err := mail.ParseAddress(req.Email); err != nil || !strings.Contains(req.Email, "@") {
 		return fmt.Errorf("format email tidak valid")
 	}
@@ -77,10 +80,10 @@ func validateEmployeeProfile(req *EmployeeRequest) error {
 	if req.NomorTelepon != "" && !regexp.MustCompile(`^\+?[0-9][0-9 .-]{7,19}$`).MatchString(req.NomorTelepon) {
 		return fmt.Errorf("format nomor telepon tidak valid")
 	}
-	for label, value := range map[string]string{"tanggal masuk": req.TanggalBergabung, "tanggal lahir": req.TanggalLahir} {
+	for label, value := range map[string]string{"tanggal lahir": req.TanggalLahir} {
 		if value != "" {
 			if _, err := parseEmployeeDate(value); err != nil {
-				return fmt.Errorf("%s harus menggunakan format DD-MM-YYYY", label)
+				return fmt.Errorf("%s harus menggunakan format tanggal yang valid", label)
 			}
 		}
 	}
@@ -101,6 +104,40 @@ func validateEmployeeProfile(req *EmployeeRequest) error {
 		}
 	}
 	return nil
+}
+
+const minimumEmployeeJoinYear = 1900
+
+func validEmployeeJoinYear(year int) bool {
+	return year >= minimumEmployeeJoinYear && year <= 9999
+}
+
+func defaultEmployeePassword(joined time.Time) string {
+	return fmt.Sprintf("karyawan-%04d", joined.Year())
+}
+
+func hashNewEmployeePassword(requested string, joined time.Time) (string, error) {
+	password := strings.TrimSpace(requested)
+	if password == "" {
+		password = defaultEmployeePassword(joined)
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
+}
+
+func passwordHashForUpdate(existingHash, requested string) (string, error) {
+	requested = strings.TrimSpace(requested)
+	if requested == "" {
+		return existingHash, nil
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(requested), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashed), nil
 }
 
 func parseEmployeeDate(value string) (time.Time, error) {
@@ -745,7 +782,8 @@ func CreateEmployee(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	joinedDate, _ := parseEmployeeDate(req.TanggalBergabung)
+	hashedPassword, err := hashNewEmployeePassword(req.Password, joinedDate)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memproses password. Silakan coba lagi."})
 	}
@@ -764,7 +802,7 @@ func CreateEmployee(c *fiber.Ctx) error {
 		}
 	}
 
-	tglGabung, _ := parseEmployeeDate(req.TanggalBergabung)
+	tglGabung := joinedDate
 	tglLahir, _ := parseDate(req.TanggalLahir)
 
 	tx := config.DB.Begin()
@@ -918,8 +956,12 @@ func UpdateEmployee(c *fiber.Ctx) error {
 	user.InternshipEndDate = parseOptionalDate(req.InternshipEndDate)
 
 	if req.Password != "" {
-		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-		user.PasswordHash = string(hashedPassword)
+		updatedHash, hashErr := passwordHashForUpdate(user.PasswordHash, req.Password)
+		if hashErr != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memproses password. Silakan coba lagi."})
+		}
+		user.PasswordHash = updatedHash
 	}
 
 	if err := tx.Save(&user).Error; err != nil {
@@ -1270,7 +1312,7 @@ func ImportEmployees(c *fiber.Ctx) error {
 		divisionID, errDept := strconv.ParseUint(value("division_id"), 10, 32)
 		positionID, errPosition := strconv.ParseUint(value("position_id"), 10, 32)
 		joined, errDate := parseEmployeeDate(value("tanggal_bergabung"))
-		if value("nik") == "" || value("nama") == "" || value("email") == "" || errDept != nil || errPosition != nil || errDate != nil {
+		if value("nik") == "" || value("nama") == "" || value("email") == "" || errDept != nil || errPosition != nil || errDate != nil || !validEmployeeJoinYear(joined.Year()) {
 			errors = append(errors, fmt.Sprintf("Baris %d: NIK, nama, email, divisi, jabatan, dan tanggal_bergabung wajib valid (format tanggal YYYY-MM-DD)", rowNumber))
 			continue
 		}
@@ -1323,12 +1365,7 @@ func ImportEmployees(c *fiber.Ctx) error {
 				continue
 			}
 		} else {
-			if password == "" {
-				tx.Rollback()
-				errors = append(errors, fmt.Sprintf("Baris %d: password wajib diisi untuk karyawan baru", rowNumber))
-				continue
-			}
-			hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+			hashedPassword, hashErr := hashNewEmployeePassword(password, joined)
 			if hashErr != nil {
 				tx.Rollback()
 				errors = append(errors, fmt.Sprintf("Baris %d: password tidak dapat diproses", rowNumber))

@@ -543,6 +543,10 @@ export class EmployeeListComponent implements OnInit {
       await this.alert.error('Tanggal masuk belum diisi', 'Tanggal masuk wajib diisi untuk membuat kode karyawan.');
       return;
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(this.formData.tanggal_bergabung))) {
+      await this.alert.error('Tanggal masuk tidak valid', 'Gunakan tanggal masuk dengan format tahun 4 digit.');
+      return;
+    }
 
     const nik = String(this.formData.nik || '');
     if (nik.length < 16) {

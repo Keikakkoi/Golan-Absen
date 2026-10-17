@@ -1190,3 +1190,38 @@
 :host-context(body.dark-theme) .employee-export-divider {
   display: none;
 }
+
+/* Detail Karyawan: status badge follows the Approval Izin & Cuti reference
+   with an outlined pill, status dot, and theme-aware contrast. */
+.employee-modal .detail-status {
+  min-height: 32px;
+  padding: 5px 13px;
+  border: 1px solid transparent;
+  font-size: 0.8rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.employee-modal .detail-status-active {
+  background: #f0fdf4;
+  border-color: #4ade80;
+  color: #166534;
+}
+
+.employee-modal .detail-status-inactive {
+  background: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+:host-context(body.dark-theme) .employee-modal .detail-status-active {
+  background: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+:host-context(body.dark-theme) .employee-modal .detail-status-inactive {
+  background: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
+}
