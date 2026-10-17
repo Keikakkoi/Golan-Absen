@@ -112,14 +112,27 @@ func validEmployeeJoinYear(year int) bool {
 	return year >= minimumEmployeeJoinYear && year <= 9999
 }
 
-func defaultEmployeePassword(joined time.Time) string {
-	return fmt.Sprintf("karyawan-%04d", joined.Year())
+func employeePasswordPrefix(role models.Role) string {
+	switch role {
+	case models.RoleMagang:
+		return "magang"
+	case models.RoleManajer:
+		return "manajer"
+	case models.RoleHRD:
+		return "admin"
+	default:
+		return "karyawan"
+	}
 }
 
-func hashNewEmployeePassword(requested string, joined time.Time) (string, error) {
+func defaultEmployeePassword(role models.Role, joined time.Time) string {
+	return fmt.Sprintf("%s-%04d", employeePasswordPrefix(role), joined.Year())
+}
+
+func hashNewEmployeePassword(requested string, role models.Role, joined time.Time) (string, error) {
 	password := strings.TrimSpace(requested)
 	if password == "" {
-		password = defaultEmployeePassword(joined)
+		password = defaultEmployeePassword(role, joined)
 	}
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -783,7 +796,9 @@ func CreateEmployee(c *fiber.Ctx) error {
 	}
 
 	joinedDate, _ := parseEmployeeDate(req.TanggalBergabung)
-	hashedPassword, err := hashNewEmployeePassword(req.Password, joinedDate)
+	// Password akun baru selalu ditentukan oleh role dan tahun masuk. Password
+	// manual hanya tersedia pada alur edit melalui field password.
+	hashedPassword, err := hashNewEmployeePassword("", req.Role, joinedDate)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal memproses password. Silakan coba lagi."})
 	}
@@ -1365,7 +1380,7 @@ func ImportEmployees(c *fiber.Ctx) error {
 				continue
 			}
 		} else {
-			hashedPassword, hashErr := hashNewEmployeePassword(password, joined)
+			hashedPassword, hashErr := hashNewEmployeePassword(password, role, joined)
 			if hashErr != nil {
 				tx.Rollback()
 				errors = append(errors, fmt.Sprintf("Baris %d: password tidak dapat diproses", rowNumber))

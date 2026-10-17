@@ -4,27 +4,39 @@ import (
 	"testing"
 	"time"
 
+	"absensi-golan-backend/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func TestDefaultEmployeePasswordUsesJoinYear(t *testing.T) {
+func TestDefaultEmployeePasswordUsesRoleAndJoinYear(t *testing.T) {
 	joined := time.Date(2027, time.January, 15, 0, 0, 0, 0, time.UTC)
 
-	if got := defaultEmployeePassword(joined); got != "karyawan-2027" {
-		t.Fatalf("default password = %q, want %q", got, "karyawan-2027")
+	tests := []struct {
+		role models.Role
+		want string
+	}{
+		{models.RoleKaryawan, "karyawan-2027"},
+		{models.RoleMagang, "magang-2027"},
+		{models.RoleManajer, "manajer-2027"},
+		{models.RoleHRD, "admin-2027"},
+	}
+	for _, test := range tests {
+		if got := defaultEmployeePassword(test.role, joined); got != test.want {
+			t.Errorf("role %s: default password = %q, want %q", test.role, got, test.want)
+		}
 	}
 }
 
 func TestNewEmployeePasswordIsBcryptHashAndMatchesDefault(t *testing.T) {
 	joined := time.Date(2027, time.January, 15, 0, 0, 0, 0, time.UTC)
-	hash, err := hashNewEmployeePassword("", joined)
+	hash, err := hashNewEmployeePassword("", models.RoleMagang, joined)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if hash == "karyawan-2027" || len(hash) == 0 {
+	if hash == "magang-2027" || len(hash) == 0 {
 		t.Fatalf("password was not stored as a hash: %q", hash)
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte("karyawan-2027")); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte("magang-2027")); err != nil {
 		t.Fatalf("default password does not match its bcrypt hash: %v", err)
 	}
 }

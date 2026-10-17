@@ -229,6 +229,16 @@ export class EmployeeListComponent implements OnInit {
     }
   }
 
+  getDefaultPasswordPattern(): string {
+    const prefixByRole: Record<string, string> = {
+      Karyawan: 'karyawan',
+      MAGANG: 'magang',
+      MANAJER: 'manajer',
+      HRD: 'admin'
+    };
+    return `${prefixByRole[this.formData.role] || 'karyawan'}-yyyy`;
+  }
+
   onManagerChange(): void {
     if (this.formData.role === 'MAGANG') {
       this.syncInternManagerName();

@@ -324,7 +324,7 @@
         </div>
         <div class="form-group" *ngIf="!isEditMode">
           <label>Password awal</label>
-          <small class="form-help">Dibuat otomatis dengan format <code>karyawan-(tahun masuk)</code>. Contoh: tahun masuk 2027 menjadi <code>karyawan-2027</code>.</small>
+          <small class="form-help">Dibuat otomatis sesuai role dengan format <code>{{ getDefaultPasswordPattern() }}</code>. Contoh: role {{ formData.role === 'HRD' ? 'Admin' : formData.role }} tahun 2027 menjadi <code>{{ getDefaultPasswordPattern().replace('yyyy', '2027') }}</code>.</small>
         </div>
 
         <div class="form-group-row">
