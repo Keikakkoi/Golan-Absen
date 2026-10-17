@@ -234,7 +234,7 @@ export class EmployeeListComponent implements OnInit {
       Karyawan: 'karyawan',
       MAGANG: 'magang',
       MANAJER: 'manajer',
-      HRD: 'admin'
+      HRD: 'HRD'
     };
     return `${prefixByRole[this.formData.role] || 'karyawan'}-yyyy`;
   }

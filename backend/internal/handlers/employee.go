@@ -119,7 +119,7 @@ func employeePasswordPrefix(role models.Role) string {
 	case models.RoleManajer:
 		return "manajer"
 	case models.RoleHRD:
-		return "admin"
+		return "HRD"
 	default:
 		return "karyawan"
 	}

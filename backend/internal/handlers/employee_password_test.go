@@ -18,7 +18,7 @@ func TestDefaultEmployeePasswordUsesRoleAndJoinYear(t *testing.T) {
 		{models.RoleKaryawan, "karyawan-2027"},
 		{models.RoleMagang, "magang-2027"},
 		{models.RoleManajer, "manajer-2027"},
-		{models.RoleHRD, "admin-2027"},
+		{models.RoleHRD, "HRD-2027"},
 	}
 	for _, test := range tests {
 		if got := defaultEmployeePassword(test.role, joined); got != test.want {
