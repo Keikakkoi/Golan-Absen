@@ -38,6 +38,26 @@ describe('EmployeeListComponent', () => {
     expect(EMPLOYEE_CSV_HEADERS.at(-1)).toBe('password');
   });
 
+  it('should map employee access roles to readable labels and badge classes', () => {
+    expect(component.getRoleLabel({ Role: 'MAGANG' })).toBe('Magang');
+    expect(component.getRoleClass({ Role: 'MAGANG' })).toBe('role-magang');
+    expect(component.getRoleLabel({ Role: 'Karyawan' })).toBe('Karyawan');
+    expect(component.getRoleClass({ Role: 'Karyawan' })).toBe('role-karyawan');
+    expect(component.getRoleLabel({ Role: 'MANAJER' })).toBe('Manajer');
+    expect(component.getRoleClass({ Role: 'MANAJER' })).toBe('role-manajer');
+    expect(component.getRoleLabel({ Role: 'HRD' })).toBe('Admin');
+    expect(component.getRoleClass({ Role: 'HRD' })).toBe('role-admin');
+  });
+
+  it('should render the role access heading beside the full name heading', () => {
+    component.filteredEmployees = [{ ID: 1, Nama: 'Karyawan', Role: 'Karyawan' }];
+    component.isLoading = false;
+    fixture.detectChanges();
+    const headers = Array.from(fixture.nativeElement.querySelectorAll('thead th') as NodeListOf<HTMLElement>)
+      .map(header => header.textContent?.trim());
+    expect(headers.indexOf('ROLE AKSES')).toBe(headers.indexOf('Nama lengkap') + 1);
+  });
+
   it('should keep CSV selection without rendering the removed import button', () => {
     expect(fixture.nativeElement.textContent).toContain('Pilih CSV');
     expect(fixture.nativeElement.textContent).not.toContain('Import CSV');

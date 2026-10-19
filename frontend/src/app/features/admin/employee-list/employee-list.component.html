@@ -105,6 +105,7 @@
               <th>Foto</th>
               <th>NIK/NIP</th>
               <th>Nama lengkap</th>
+              <th>ROLE AKSES</th>
               <th>Jenis kelamin</th>
               <th>Tempat dan tanggal lahir</th>
               <th>Nomor telepon</th>
@@ -129,6 +130,9 @@
               </td>
               <td data-label="NIK/NIP" class="mono-text"><span class="employee-cell-value">{{ emp.Employee?.NIK || '-' }}</span></td>
               <td data-label="Nama lengkap"><span class="employee-cell-value">{{ emp.Nama || '-' }}</span></td>
+              <td data-label="ROLE AKSES">
+                <span class="role-badge" [ngClass]="getRoleClass(emp)">{{ getRoleLabel(emp) }}</span>
+              </td>
               <td data-label="Jenis kelamin"><span class="employee-cell-value">{{ emp.Employee?.JenisKelamin || '-' }}</span></td>
               <td data-label="Tempat dan tanggal lahir"><span class="employee-cell-value">{{ emp.Employee?.TempatLahir || '-' }}{{ emp.Employee?.TanggalLahir ? ' / ' + (emp.Employee.TanggalLahir | date:'dd-MM-yyyy') : '' }}</span></td>
               <td data-label="Nomor telepon"><span class="employee-cell-value">{{ emp.Employee?.NomorTelepon || '-' }}</span></td>

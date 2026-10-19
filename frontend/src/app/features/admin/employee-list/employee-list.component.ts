@@ -92,6 +92,33 @@ export class EmployeeListComponent implements OnInit {
     return this.getShiftLabel(employee).toLowerCase().replace(/\s+/g, '-');
   }
 
+  getRoleLabel(employee: any): string {
+    const role = this.getRawRole(employee).toUpperCase();
+    switch (role) {
+      case 'MAGANG': return 'Magang';
+      case 'KARYAWAN': return 'Karyawan';
+      case 'MANAJER':
+      case 'MANAGER': return 'Manajer';
+      case 'HRD':
+      case 'ADMIN': return 'Admin';
+      default: return this.getRawRole(employee) || '-';
+    }
+  }
+
+  getRoleClass(employee: any): string {
+    switch (this.getRoleLabel(employee)) {
+      case 'Magang': return 'role-magang';
+      case 'Karyawan': return 'role-karyawan';
+      case 'Manajer': return 'role-manajer';
+      case 'Admin': return 'role-admin';
+      default: return 'role-neutral';
+    }
+  }
+
+  private getRawRole(employee: any): string {
+    return String(employee?.Role ?? employee?.role ?? employee?.User?.Role ?? '').trim();
+  }
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
