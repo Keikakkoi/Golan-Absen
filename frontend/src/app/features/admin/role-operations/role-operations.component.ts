@@ -479,11 +479,19 @@ export class RoleOperationsComponent implements OnInit, OnDestroy {
     this.loadAttendance(1);
   }
 
+  onAttendanceFilterChange(): void {
+    this.applyAttendanceFilters();
+  }
+
   applyReportFilters(): void {
     const validationError = this.validateDateRange(this.start, this.end);
     if (validationError) { this.errorMessage = validationError; return; }
     this.reportsPage = 1;
     this.loadReports(1);
+  }
+
+  onReportFilterChange(): void {
+    this.applyReportFilters();
   }
 
   loadAttendance(page?: number, keepAttendanceVisible = false, background = false): void {

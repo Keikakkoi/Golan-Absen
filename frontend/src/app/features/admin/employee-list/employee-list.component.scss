@@ -31,6 +31,83 @@
   margin: 0;
 }
 
+.employee-list-page .premium-filter {
+  margin-bottom: 18px;
+}
+
+.employee-list-page .premium-grid {
+  align-items: end;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.employee-list-page .filter-date-range {
+  grid-column: span 2;
+}
+
+.employee-list-page .date-range-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.employee-list-page .date-range-fields .input-wrapper {
+  position: relative;
+  min-width: 0;
+}
+
+.employee-list-page .date-range-fields .input-wrapper .icon-left {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 12px;
+  color: #6b7280;
+  font-size: .85rem;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.employee-list-page .date-range-fields .filter-input {
+  min-height: 39px;
+}
+
+.employee-list-page .date-range-fields > span {
+  color: #6b8299;
+  font-size: .78rem;
+  font-weight: 600;
+}
+
+.employee-list-page .filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.employee-list-page .filter-actions button {
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 7px;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.employee-list-page .filter-validation-message {
+  margin-top: 9px;
+  color: #b42318;
+  font-size: .78rem;
+  text-align: right;
+}
+
+:host-context(body.dark-theme) .employee-list-page .date-range-fields > span {
+  color: var(--text-dark-lo);
+}
+
+:host-context(body.dark-theme) .employee-list-page .filter-validation-message {
+  color: #fda4af;
+}
+
 .employee-actions {
   display: flex;
   align-items: center;
@@ -180,6 +257,14 @@
 }
 
 @media (max-width: 900px) {
+  .employee-list-page .premium-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .employee-list-page .filter-date-range {
+    grid-column: span 2;
+  }
+
   .employee-page-header {
     align-items: stretch;
     flex-direction: column;
@@ -884,6 +969,26 @@
 }
 
 @media (max-width: 640px) {
+  .employee-list-page .premium-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-list-page .filter-date-range {
+    grid-column: auto;
+  }
+
+  .employee-list-page .filter-actions {
+    flex-direction: column;
+  }
+
+  .employee-list-page .filter-actions button {
+    width: 100%;
+  }
+
+  .employee-list-page .filter-validation-message {
+    text-align: left;
+  }
+
   .employee-table-toolbar { align-items: stretch; flex-direction: column; }
   .employee-export > .btn-secondary { width: 100%; justify-content: center; }
   .employee-export-menu { right: 0; left: 0; width: auto; }

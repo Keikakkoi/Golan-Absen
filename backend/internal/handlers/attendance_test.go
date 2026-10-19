@@ -20,6 +20,27 @@ func TestAttendanceBusinessDateResetsAtSeven(t *testing.T) {
 	}
 }
 
+func TestAttendanceHistoryDateRangeAllowsOptionalBounds(t *testing.T) {
+	start, end, err := attendanceHistoryDateRange("2026-10-01", "")
+	if err != nil || start == nil || end != nil || start.Format("2006-01-02") != "2026-10-01" {
+		t.Fatalf("unexpected optional range: start=%v end=%v err=%v", start, end, err)
+	}
+
+	start, end, err = attendanceHistoryDateRange("", "2026-10-19")
+	if err != nil || start != nil || end == nil || end.Format("2006-01-02") != "2026-10-19" {
+		t.Fatalf("unexpected optional range: start=%v end=%v err=%v", start, end, err)
+	}
+}
+
+func TestAttendanceHistoryDateRangeRejectsInvalidOrInvertedBounds(t *testing.T) {
+	if _, _, err := attendanceHistoryDateRange("2026-10-20", "2026-10-19"); err == nil {
+		t.Fatal("expected inverted date range to be rejected")
+	}
+	if _, _, err := attendanceHistoryDateRange("19-10-2026", ""); err == nil {
+		t.Fatal("expected non-ISO start date to be rejected")
+	}
+}
+
 func TestAttendanceWindowUsesNineTenGraceAndSixPmDeadline(t *testing.T) {
 	schedule := models.WorkSchedule{JamMulai: "09:00:00", JamSelesai: "17:00:00", ToleransiTerlambatMenit: 10}
 	now := time.Date(2026, 7, 23, 12, 0, 0, 0, jakartaLocation)

@@ -10,15 +10,11 @@
     <!-- Filter & Export Toolbar -->
     <section class="golan-card report-toolbar intern-statistics-filter">
       <label>Mulai
-        <input class="golan-input" type="date" [(ngModel)]="start">
+        <input class="golan-input" type="date" [(ngModel)]="start" (ngModelChange)="load()">
       </label>
       <label>Selesai
-        <input class="golan-input" type="date" [(ngModel)]="end">
+        <input class="golan-input" type="date" [(ngModel)]="end" (ngModelChange)="load()">
       </label>
-      <button type="button" class="btn-primary report-filter-action" (click)="load()">
-        Filter
-      </button>
-
       <div class="export-dropdown" style="position: relative;">
         <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()">
           <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak 

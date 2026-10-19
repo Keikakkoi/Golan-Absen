@@ -8,10 +8,9 @@
     <section class="golan-card team-report-card">
       <div class="team-filter-layout">
         <div class="report-toolbar team-reports-toolbar">
-        <label>Nama/NIK<input class="golan-input" [(ngModel)]="search" placeholder="Cari nama atau NIK..."></label>
-        <label>Dari Tanggal<input type="date" name="team_report_start_date" class="golan-input" [(ngModel)]="start" aria-label="Dari Tanggal" title="Format: dd/mm/yyyy"></label>
-        <label>Sampai Tanggal<input type="date" name="team_report_end_date" class="golan-input" [(ngModel)]="end" aria-label="Sampai Tanggal" title="Format: dd/mm/yyyy"></label>
-        <button type="button" class="btn-primary report-filter-action" (click)="applyFilters()" [disabled]="isLoading || isRefreshing">Filter</button>
+        <label>Nama/NIK<input class="golan-input" [(ngModel)]="search" (ngModelChange)="applyFilters()" placeholder="Cari nama atau NIK..."></label>
+        <label>Dari Tanggal<input type="date" name="team_report_start_date" class="golan-input" [(ngModel)]="start" (ngModelChange)="applyFilters()" aria-label="Dari Tanggal" title="Format: dd/mm/yyyy"></label>
+        <label>Sampai Tanggal<input type="date" name="team_report_end_date" class="golan-input" [(ngModel)]="end" (ngModelChange)="applyFilters()" aria-label="Sampai Tanggal" title="Format: dd/mm/yyyy"></label>
         <button type="button" class="btn-outline-primary report-refresh-action" (click)="refreshReports()" [disabled]="isLoading || isRefreshing" [attr.aria-busy]="isRefreshing">
           <i class="fas fa-sync-alt" [class.fa-spin]="isRefreshing" aria-hidden="true"></i>
           {{ isRefreshing ? 'Memuat...' : 'Segarkan' }}

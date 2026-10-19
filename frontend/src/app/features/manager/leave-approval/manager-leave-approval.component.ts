@@ -51,7 +51,7 @@ export class ManagerLeaveApprovalComponent implements OnInit, OnDestroy {
   load(resetPage = true, background = false): void {
     if (this.destroyed) return;
     if (this.requestInFlight) {
-      if (background) this.refreshPending = true;
+      this.refreshPending = true;
       return;
     }
     if (!background) this.isLoading = true;
@@ -83,6 +83,10 @@ export class ManagerLeaveApprovalComponent implements OnInit, OnDestroy {
         this.error = 'Gagal memuat pengajuan tim: ' + (e.error?.error || 'Unknown error');
       }
     });
+  }
+
+  onFilterChange(): void {
+    this.load();
   }
 
   get displayedRequests(): any[] {

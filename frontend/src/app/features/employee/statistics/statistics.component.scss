@@ -1,5 +1,16 @@
 @import '../dashboard/dashboard.component.scss';
 
+.personal-statistics-filter {
+  margin-bottom: 14px;
+}
+
+.date-filter-error {
+  margin: -4px 0 14px;
+  color: var(--danger, #b42318);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .dashboard-container.personal-statistics-shell {
   min-height: 0 !important;
   align-items: flex-start;
@@ -32,6 +43,29 @@
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .personal-statistics-filter {
+    align-items: stretch;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  .personal-statistics-filter > label {
+    flex: 0 0 auto;
+    gap: 5px;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .personal-statistics-filter .golan-input {
+    box-sizing: border-box;
+    height: 38px;
+    min-height: 38px;
+    width: 100%;
   }
 }
 
@@ -137,6 +171,7 @@
         &.status-hadir { background: var(--green); }
         &.status-terlambat { background: var(--late); }
         &.status-izin { background: var(--info); }
+        &.status-cuti { background: var(--info); }
         &.status-alpha { background: var(--absent); }
       }
 
@@ -161,6 +196,7 @@
       &.fill-hadir { background: var(--green); }
       &.fill-terlambat { background: var(--late); }
       &.fill-izin { background: var(--info); }
+      &.fill-cuti { background: var(--info); }
       &.fill-alpha { background: var(--absent); }
     }
   }

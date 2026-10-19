@@ -1,7 +1,7 @@
 import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { FormsModule } from '@angular/forms';
@@ -36,8 +36,15 @@ export class EmployeeListComponent implements OnInit {
     division_id: '',
     position_id: '',
     project_id: '',
+    role: '',
+    gender: '',
+    status: '',
+    shift: '',
+    start_date: '',
+    end_date: '',
     sort_order: 'name_asc'
   };
+  filterValidationMessage = '';
   isLoading = true;
   errorMessage = '';
   
@@ -57,6 +64,10 @@ export class EmployeeListComponent implements OnInit {
   isManagersLoading = false;
   managerLoadError = '';
   projects: any[] = [];
+  roleOptions: string[] = [];
+  genderOptions: string[] = [];
+  statusOptions: string[] = [];
+  shiftOptions: string[] = [];
   
   // Detail Modal
   isDetailOpen = false;
@@ -184,7 +195,7 @@ export class EmployeeListComponent implements OnInit {
     return { headers, rows, data };
   }
 
-  private statusLabel(value: string): string { return value === 'aktif' ? 'Aktif' : value === 'nonaktif' ? 'Nonaktif' : (value || '-'); }
+  statusLabel(value: string): string { return value === 'aktif' ? 'Aktif' : value === 'nonaktif' ? 'Nonaktif' : (value || '-'); }
 
   private getExportDate(): string {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
@@ -196,6 +207,7 @@ export class EmployeeListComponent implements OnInit {
     this.loadPositions();
     this.loadManagers();
     this.loadProjects();
+    this.loadFilterOptions();
   }
 
   loadDivisions(): void {
@@ -243,6 +255,19 @@ export class EmployeeListComponent implements OnInit {
       .subscribe({
         next: (data) => this.projects = data || [],
         error: (err) => console.error('Gagal memuat project:', err)
+      });
+  }
+
+  loadFilterOptions(): void {
+    this.http.get<any>(`${this.baseUrl}/filter-options`, { headers: this.getHeaders() })
+      .subscribe({
+        next: (options) => {
+          this.roleOptions = Array.isArray(options?.roles) ? options.roles : [];
+          this.genderOptions = Array.isArray(options?.genders) ? options.genders : [];
+          this.statusOptions = Array.isArray(options?.statuses) ? options.statuses : [];
+          this.shiftOptions = Array.isArray(options?.shifts) ? options.shifts : [];
+        },
+        error: (err) => console.error('Gagal memuat pilihan filter karyawan:', err)
       });
   }
 
@@ -300,8 +325,13 @@ export class EmployeeListComponent implements OnInit {
   loadEmployees(): void {
     this.isLoading = true;
     this.errorMessage = '';
-    
-    this.http.get<any[]>(this.baseUrl, { headers: this.getHeaders() })
+
+    let params = new HttpParams();
+    Object.entries(this.filters).forEach(([key, value]) => {
+      if (String(value || '').trim()) params = params.set(key, String(value));
+    });
+
+    this.http.get<any[]>(this.baseUrl, { headers: this.getHeaders(), params })
       .subscribe({
         next: (data) => {
           this.employees = Array.isArray(data) ? data : [];
@@ -313,6 +343,28 @@ export class EmployeeListComponent implements OnInit {
           this.isLoading = false;
         }
       });
+  }
+
+  onFilterChange(): void {
+    this.filterValidationMessage = '';
+    if (this.filters.start_date && this.filters.end_date && this.filters.start_date > this.filters.end_date) {
+      this.filterValidationMessage = 'Tanggal mulai tidak boleh lebih besar dari tanggal akhir.';
+      return;
+    }
+    this.applyFilters();
+  }
+
+  resetFilters(): void {
+    this.filters = {
+      search: '', division_id: '', position_id: '', project_id: '', role: '', gender: '', status: '', shift: '',
+      start_date: '', end_date: '', sort_order: 'name_asc'
+    };
+    this.filterValidationMessage = '';
+    this.loadEmployees();
+  }
+
+  onSortChange(): void {
+    this.onFilterChange();
   }
 
   applyFilters(): void {
@@ -337,6 +389,30 @@ export class EmployeeListComponent implements OnInit {
 
     if (this.filters.project_id) {
       result = result.filter(emp => emp.ProjectID == this.filters.project_id);
+    }
+
+    if (this.filters.role) {
+      result = result.filter(emp => this.getRawRole(emp) === this.filters.role);
+    }
+
+    if (this.filters.gender) {
+      result = result.filter(emp => emp.Employee?.JenisKelamin === this.filters.gender);
+    }
+
+    if (this.filters.status) {
+      result = result.filter(emp => emp.Status === this.filters.status);
+    }
+
+    if (this.filters.shift) {
+      result = result.filter(emp => this.getShiftLabel(emp).trim().toLowerCase() === this.filters.shift.trim().toLowerCase());
+    }
+
+    if (this.filters.start_date) {
+      result = result.filter(emp => this.joinDateOnly(emp.Employee?.TanggalBergabung) >= this.filters.start_date);
+    }
+
+    if (this.filters.end_date) {
+      result = result.filter(emp => this.joinDateOnly(emp.Employee?.TanggalBergabung) <= this.filters.end_date);
     }
 
     this.sortEmployees(result);
@@ -370,6 +446,11 @@ export class EmployeeListComponent implements OnInit {
     return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
   }
 
+  private joinDateOnly(value: string | null | undefined): string {
+    if (!value || String(value).startsWith('0001-01-01')) return '';
+    return String(value).substring(0, 10);
+  }
+
   get paginationStartIndex(): number {
     return this.filteredEmployees.length === 0 ? 0 : (this.currentPage - 1) * this.pageSize;
   }
@@ -380,6 +461,14 @@ export class EmployeeListComponent implements OnInit {
 
   get displayedEmployees(): any[] {
     return this.filteredEmployees.slice(this.paginationStartIndex, this.paginationEndIndex);
+  }
+
+  get hasActiveFilters(): boolean {
+    return [
+      this.filters.search, this.filters.division_id, this.filters.position_id, this.filters.project_id,
+      this.filters.role, this.filters.gender, this.filters.status, this.filters.shift,
+      this.filters.start_date, this.filters.end_date
+    ].some(value => !!String(value || '').trim());
   }
 
   goToPage(page: number): void {

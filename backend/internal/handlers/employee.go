@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/mail"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -210,6 +211,7 @@ func SetupEmployeeRoutes(router fiber.Router) {
 	// Admin only routes
 	admin := router.Group("/admin", middleware.Protected(), middleware.RequireRoles(models.RoleHRD))
 	admin.Get("/employees", GetAllEmployees)
+	admin.Get("/employees/filter-options", GetEmployeeFilterOptions)
 	admin.Get("/employees/:id", GetEmployeeDetail)
 	admin.Post("/employees", CreateEmployee)
 	admin.Post("/employees/import", ImportEmployees)
@@ -672,7 +674,61 @@ func GetAllEmployees(c *fiber.Ctx) error {
 
 	var users []models.User
 	// Include all users so HRD can manage the complete employee directory.
-	if err := config.DB.Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Preload("Project").Preload("Manager").Preload("Manager.Employee").Find(&users).Error; err != nil {
+	// Employee filters are applied in the database. The join is only used for
+	// filtering; the canonical Employee relation is still loaded through the
+	// existing preloads below.
+	query := config.DB.Model(&models.User{}).
+		Joins("LEFT JOIN employees AS employee_filters ON employee_filters.user_id = users.id").
+		Preload("Employee").Preload("Employee.Division").Preload("Employee.Position").Preload("Employee.HomeLocation").Preload("Project").Preload("Manager").Preload("Manager.Employee")
+
+	search := strings.ToLower(strings.TrimSpace(c.Query("search")))
+	if search != "" {
+		term := "%" + search + "%"
+		query = query.Where("LOWER(users.nama) LIKE ? OR LOWER(employee_filters.nik) LIKE ? OR LOWER(employee_filters.employee_code) LIKE ?", term, term, term)
+	}
+	if role := strings.TrimSpace(c.Query("role")); role != "" {
+		query = query.Where("users.role = ?", role)
+	}
+	if status := strings.TrimSpace(c.Query("status")); status != "" {
+		query = query.Where("users.status = ?", status)
+	}
+	if gender := strings.TrimSpace(c.Query("gender")); gender != "" {
+		query = query.Where("employee_filters.jenis_kelamin = ?", gender)
+	}
+	if divisionID, err := optionalEmployeeFilterID(c.Query("division_id"), "division_id"); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	} else if divisionID > 0 {
+		query = query.Where("employee_filters.division_id = ?", divisionID)
+	}
+	if positionID, err := optionalEmployeeFilterID(c.Query("position_id"), "position_id"); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	} else if positionID > 0 {
+		query = query.Where("employee_filters.position_id = ?", positionID)
+	}
+	if projectID, err := optionalEmployeeFilterID(c.Query("project_id"), "project_id"); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	} else if projectID > 0 {
+		query = query.Where("users.project_id = ?", projectID)
+	}
+	startDate, endDate, err := employeeJoinDateRange(c.Query("start_date"), c.Query("end_date"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if startDate != "" {
+		query = query.Where("employee_filters.tanggal_bergabung >= ?", startDate)
+	}
+	if endDate != "" {
+		query = query.Where("employee_filters.tanggal_bergabung <= ?", endDate)
+	}
+	if shift := strings.TrimSpace(c.Query("shift")); shift != "" {
+		// This DB predicate narrows the candidate set. The effective schedule is
+		// resolved below because it can come from a dated/global assignment or
+		// the weekly regular schedule; the final comparison prevents false hits.
+		query = query.Where("LOWER(BTRIM(employee_filters.shift_kerja)) = LOWER(?) OR EXISTS (SELECT 1 FROM work_schedules AS employee_shift_filters WHERE (employee_shift_filters.employee_id = employee_filters.id OR employee_shift_filters.employee_id IS NULL) AND LOWER(BTRIM(employee_shift_filters.nama_shift)) = LOWER(?) )", shift, shift)
+	}
+
+	query = applyEmployeeDirectoryOrder(query, c.Query("sort_order"))
+	if err := query.Find(&users).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch employees"})
 	}
 
@@ -713,8 +769,109 @@ func GetAllEmployees(c *fiber.Ctx) error {
 			IsOvernight:   resolved.IsOvernight,
 		})
 	}
+	if shift := strings.TrimSpace(c.Query("shift")); shift != "" {
+		filtered := entries[:0]
+		for _, entry := range entries {
+			if strings.EqualFold(strings.TrimSpace(entry.ShiftName), shift) {
+				filtered = append(filtered, entry)
+			}
+		}
+		entries = filtered
+	}
 
 	return c.JSON(entries)
+}
+
+func optionalEmployeeFilterID(raw, label string) (uint, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, nil
+	}
+	id, err := strconv.ParseUint(raw, 10, 32)
+	if err != nil || id == 0 {
+		return 0, fmt.Errorf("%s tidak valid", label)
+	}
+	return uint(id), nil
+}
+
+func employeeJoinDateRange(start, end string) (string, string, error) {
+	start = strings.TrimSpace(start)
+	end = strings.TrimSpace(end)
+	for label, value := range map[string]string{"start_date": start, "end_date": end} {
+		if value == "" {
+			continue
+		}
+		if _, err := time.Parse("2006-01-02", value); err != nil {
+			return "", "", fmt.Errorf("%s harus menggunakan format YYYY-MM-DD", label)
+		}
+	}
+	if start != "" && end != "" && start > end {
+		return "", "", fmt.Errorf("tanggal mulai tidak boleh lebih besar dari tanggal akhir")
+	}
+	return start, end, nil
+}
+
+func applyEmployeeDirectoryOrder(query *gorm.DB, order string) *gorm.DB {
+	switch order {
+	case "name_desc":
+		return query.Order("users.nama DESC")
+	case "employee_id_asc":
+		return query.Order("users.id ASC")
+	case "employee_id_desc":
+		return query.Order("users.id DESC")
+	case "join_date_asc":
+		return query.Order("employee_filters.tanggal_bergabung ASC NULLS LAST").Order("users.id ASC")
+	case "join_date_desc":
+		return query.Order("employee_filters.tanggal_bergabung DESC NULLS LAST").Order("users.id DESC")
+	default:
+		return query.Order("users.nama ASC")
+	}
+}
+
+func GetEmployeeFilterOptions(c *fiber.Ctx) error {
+	if !isHRD(c) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
+	}
+	roles := []string{string(models.RoleKaryawan), string(models.RoleHRD), string(models.RoleMagang), string(models.RoleManajer)}
+	var genders []string
+	var statuses []string
+	var employeeShifts []string
+	var scheduleShifts []string
+	if err := config.DB.Model(&models.Employee{}).Where("BTRIM(jenis_kelamin) <> ''").Distinct("jenis_kelamin").Order("jenis_kelamin asc").Pluck("jenis_kelamin", &genders).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch gender options"})
+	}
+	if err := config.DB.Model(&models.User{}).Where("BTRIM(status) <> ''").Distinct("status").Order("status asc").Pluck("status", &statuses).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch status options"})
+	}
+	if err := config.DB.Model(&models.Employee{}).Where("BTRIM(shift_kerja) <> ''").Distinct("shift_kerja").Pluck("shift_kerja", &employeeShifts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch shift options"})
+	}
+	if err := config.DB.Model(&models.WorkSchedule{}).Where("BTRIM(nama_shift) <> ''").Distinct("nama_shift").Pluck("nama_shift", &scheduleShifts).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch shift options"})
+	}
+	shiftSet := make(map[string]string)
+	for _, shift := range append(employeeShifts, scheduleShifts...) {
+		trimmed := strings.TrimSpace(shift)
+		if trimmed != "" {
+			shiftSet[strings.ToLower(trimmed)] = trimmed
+		}
+	}
+	// Reguler is the name exposed by the persisted weekly schedule resolver.
+	var regularCount int64
+	if err := config.DB.Model(&models.RegularWorkSchedule{}).Where("is_working_day = ? AND BTRIM(start_time) <> '' AND BTRIM(end_time) <> ''", true).Count(&regularCount).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch shift options"})
+	}
+	if len(shiftSet) == 0 || regularCount > 0 {
+		shiftSet["reguler"] = "Reguler"
+	}
+	shifts := make([]string, 0, len(shiftSet))
+	for _, shift := range shiftSet {
+		shifts = append(shifts, shift)
+	}
+	sort.Strings(shifts)
+	sort.Strings(genders)
+	sort.Strings(statuses)
+	return c.JSON(fiber.Map{"roles": roles, "genders": genders, "statuses": statuses, "shifts": shifts})
 }
 
 type employeeDirectoryEntry struct {

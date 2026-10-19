@@ -408,6 +408,10 @@ func firstAccuracy(values []float64) float64 {
 
 func GetAttendanceHistory(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
+	startDate, endDate, rangeErr := attendanceHistoryDateRange(c.Query("start_date"), c.Query("end_date"))
+	if rangeErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": rangeErr.Error()})
+	}
 	now := attendanceNow()
 	_ = closeExpiredAttendanceRecords(now)
 
@@ -420,7 +424,14 @@ func GetAttendanceHistory(c *fiber.Ctx) error {
 	// represent a date that has already started, not a planned leave period.
 	currentDate := attendanceBusinessDate(now)
 	var records []models.AttendanceRecord
-	if err := config.DB.Where("employee_id = ? AND tanggal <= ?", employee.ID, currentDate.Format("2006-01-02")).Order("tanggal desc").Find(&records).Error; err != nil {
+	query := config.DB.Where("employee_id = ? AND tanggal <= ?", employee.ID, currentDate.Format("2006-01-02"))
+	if startDate != nil {
+		query = query.Where("tanggal >= ?", startDate.Format("2006-01-02"))
+	}
+	if endDate != nil {
+		query = query.Where("tanggal <= ?", endDate.Format("2006-01-02"))
+	}
+	if err := query.Order("tanggal desc").Find(&records).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to fetch records"})
 	}
 	records = deduplicateAttendanceRecords(records)
@@ -441,6 +452,31 @@ func GetAttendanceHistory(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(records)
+}
+
+func attendanceHistoryDateRange(startValue, endValue string) (start, end *time.Time, err error) {
+	parse := func(value, field string) (*time.Time, error) {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return nil, nil
+		}
+		parsed, parseErr := time.ParseInLocation("2006-01-02", value, jakartaLocation)
+		if parseErr != nil {
+			return nil, fmt.Errorf("Invalid %s; expected YYYY-MM-DD", field)
+		}
+		return &parsed, nil
+	}
+
+	if start, err = parse(startValue, "start_date"); err != nil {
+		return nil, nil, err
+	}
+	if end, err = parse(endValue, "end_date"); err != nil {
+		return nil, nil, err
+	}
+	if start != nil && end != nil && start.After(*end) {
+		return nil, nil, fmt.Errorf("start_date must be on or before end_date")
+	}
+	return start, end, nil
 }
 
 func uploadToMinIO(file *multipart.FileHeader, nik, tipe string) (string, error) {

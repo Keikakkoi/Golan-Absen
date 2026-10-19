@@ -404,6 +404,14 @@ type AlphaDetail struct {
 	Keterangan string    `json:"keterangan"`
 }
 
+// sortAlphaDetailsByDate keeps the API's raw date value as the source of
+// truth. The UI can format Tanggal for display without affecting chronology.
+func sortAlphaDetailsByDate(details []AlphaDetail) {
+	sort.SliceStable(details, func(i, j int) bool {
+		return details[i].Tanggal.After(details[j].Tanggal)
+	})
+}
+
 type AlphaReportSummary struct {
 	EmployeeID uint          `json:"employee_id"`
 	NIK        string        `json:"nik"`
@@ -550,6 +558,9 @@ func GetAlphaReportsSummary(c *fiber.Ctx) error {
 			item.Total++
 			item.Details = append(item.Details, AlphaDetail{Tanggal: day, Keterangan: "Tidak ada absensi atau izin yang disetujui"})
 		}
+	}
+	for _, summary := range resultMap {
+		sortAlphaDetailsByDate(summary.Details)
 	}
 	result := make([]AlphaReportSummary, 0, len(resultMap))
 	for _, summary := range resultMap {

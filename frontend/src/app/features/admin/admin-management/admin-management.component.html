@@ -166,7 +166,7 @@
           <div class="schedule-filters">
             <label class="schedule-field schedule-search-filter">
               <span>Cari Shift / Karyawan</span>
-              <input type="text" class="golan-input" placeholder="Ketik kata kunci lalu enter..." [(ngModel)]="scheduleSearch" name="scheduleSearch" (keyup.enter)="loadSchedules()">
+              <input type="text" class="golan-input" placeholder="Ketik kata kunci..." [(ngModel)]="scheduleSearch" name="scheduleSearch" (ngModelChange)="loadSchedules()">
             </label>
             <label class="schedule-field schedule-date-filter">
               <span>Dari Tanggal</span>
@@ -176,9 +176,6 @@
               <span>Sampai Tanggal</span>
               <input type="date" class="golan-input" name="schedule_shift_end_date" [(ngModel)]="scheduleEndDate" (change)="loadSchedules()">
             </label>
-            <div class="schedule-filter-action">
-              <button class="btn-primary" type="button" (click)="loadSchedules()">Filter</button>
-            </div>
           </div>
 
           <div class="schedule-loading" *ngIf="isLoading">Memuat data shift...</div>

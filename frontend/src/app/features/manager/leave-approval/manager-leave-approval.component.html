@@ -8,14 +8,13 @@
     <p class="alert alert-danger" *ngIf="error">{{ error }}</p>
     <section class="golan-card">
       <div class="toolbar">
-        <label>Nama/NIK <input class="golan-input" [(ngModel)]="search"></label>
-        <select class="golan-input" [(ngModel)]="status">
+        <label>Nama/NIK <input class="golan-input" [(ngModel)]="search" (ngModelChange)="onFilterChange()"></label>
+        <select class="golan-input" [(ngModel)]="status" (ngModelChange)="onFilterChange()">
           <option value="">Semua status</option>
           <option value="pending_manager_approval">Menunggu Persetujuan Manajer</option>
           <option value="manager_approved">Disetujui Manajer</option>
           <option value="manager_rejected">Ditolak Manajer</option>
         </select>
-        <button type="button" class="btn-primary" (click)="load()" [disabled]="isLoading">Filter</button>
       </div>
       <div class="golan-table-responsive leave-approval-table-wrapper">
         <table class="golan-table leave-approval-table">

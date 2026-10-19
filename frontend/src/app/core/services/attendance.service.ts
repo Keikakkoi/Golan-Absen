@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
 
@@ -68,9 +68,14 @@ export class AttendanceService {
     });
   }
 
-  getHistory(): Observable<any[]> {
+  getHistory(startDate?: string, endDate?: string): Observable<any[]> {
+    let params = new HttpParams();
+    if (startDate) params = params.set('start_date', startDate);
+    if (endDate) params = params.set('end_date', endDate);
+
     return this.http.get<any[]>(`${this.apiUrl}/history`, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
+      params
     });
   }
 }

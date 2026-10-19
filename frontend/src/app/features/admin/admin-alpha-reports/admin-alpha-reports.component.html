@@ -15,11 +15,11 @@
         <div class="filter-header">
            <h5><i class="fas fa-filter text-primary"></i> Filter Ketidakhadiran (Alpha)</h5>
         </div>
-        <form (ngSubmit)="loadReports()" class="filter-grid premium-grid" style="margin: 0;">
+        <div class="filter-grid premium-grid" style="margin: 0;">
           <div class="filter-group">
             <label>Divisi</label>
             <div class="input-wrapper select-wrapper">
-              <select [(ngModel)]="filters.department_id" name="department_id" class="filter-input">
+              <select [(ngModel)]="filters.department_id" (ngModelChange)="onFilterChange()" name="department_id" class="filter-input">
                 <option value="">Semua divisi</option>
                 <option *ngFor="let department of departments" [value]="department.ID">{{ department.NamaDepartemen || department.NamaDivisi }}</option>
               </select>
@@ -29,7 +29,7 @@
           <div class="filter-group">
             <label>Project</label>
             <div class="input-wrapper select-wrapper">
-              <select [(ngModel)]="filters.project_id" name="project_id" class="filter-input">
+              <select [(ngModel)]="filters.project_id" (ngModelChange)="onFilterChange()" name="project_id" class="filter-input">
                 <option value="">Semua project</option>
                 <option *ngFor="let project of projects" [value]="project.ID">{{ project.ID }} - {{ project.NamaProject }}</option>
               </select>
@@ -40,13 +40,13 @@
             <label>Nama Karyawan</label>
             <div class="input-wrapper">
               <i class="fas fa-search icon-left"></i>
-              <input type="text" [(ngModel)]="filters.name" name="name" class="filter-input has-icon" placeholder="Cari nama..." />
+              <input type="text" [(ngModel)]="filters.name" (ngModelChange)="onFilterChange()" name="name" class="filter-input has-icon" placeholder="Cari nama..." />
             </div>
           </div>
           <div class="filter-group">
             <label>Urutkan</label>
             <div class="input-wrapper select-wrapper">
-              <select [(ngModel)]="filters.sort_order" name="sort_order" class="filter-input">
+              <select [(ngModel)]="filters.sort_order" (ngModelChange)="onSortChange()" name="sort_order" class="filter-input">
                 <option value="name_asc">Nama (A-Z)</option>
                 <option value="name_desc">Nama (Z-A)</option>
                 <option value="count_desc">Paling Sering Alpha</option>
@@ -55,10 +55,7 @@
               <i class="fas fa-sort icon-right"></i>
             </div>
           </div>
-          <div class="filter-group reset-group">
-            <button type="submit" class="btn-primary" style="width: 100%; height: 39px; border-radius: 8px;">Terapkan Filter</button>
-          </div>
-        </form>
+        </div>
       </div>
       <div class="summary-strip">
         <div><span>Total hari Alpha</span><strong>{{ totalOccurrences() }}</strong></div>

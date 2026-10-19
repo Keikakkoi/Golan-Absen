@@ -21,14 +21,58 @@
           <label>Pencarian Kata Kunci</label>
           <div class="input-wrapper">
              <i class="fas fa-search icon-left"></i>
-             <input type="text" class="filter-input has-icon" [(ngModel)]="filters.search" (ngModelChange)="applyFilters()" placeholder="Cari nama karyawan atau NIK...">
+             <input type="text" class="filter-input has-icon" [(ngModel)]="filters.search" (ngModelChange)="onFilterChange()" placeholder="Cari nama karyawan atau NIK...">
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Role Akses</label>
+          <div class="input-wrapper select-wrapper">
+            <select class="filter-input" [(ngModel)]="filters.role" (ngModelChange)="onFilterChange()">
+              <option value="">Semua Role</option>
+              <option *ngFor="let role of roleOptions" [value]="role">{{ getRoleLabel({ Role: role }) }}</option>
+            </select>
+            <i class="fas fa-chevron-down icon-right"></i>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Jenis Kelamin</label>
+          <div class="input-wrapper select-wrapper">
+            <select class="filter-input" [(ngModel)]="filters.gender" (ngModelChange)="onFilterChange()">
+              <option value="">Semua Jenis Kelamin</option>
+              <option *ngFor="let gender of genderOptions" [value]="gender">{{ gender }}</option>
+            </select>
+            <i class="fas fa-chevron-down icon-right"></i>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Status Karyawan</label>
+          <div class="input-wrapper select-wrapper">
+            <select class="filter-input" [(ngModel)]="filters.status" (ngModelChange)="onFilterChange()">
+              <option value="">Semua Status</option>
+              <option *ngFor="let status of statusOptions" [value]="status">{{ statusLabel(status) }}</option>
+            </select>
+            <i class="fas fa-chevron-down icon-right"></i>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Shift Kerja</label>
+          <div class="input-wrapper select-wrapper">
+            <select class="filter-input" [(ngModel)]="filters.shift" (ngModelChange)="onFilterChange()">
+              <option value="">Semua Shift</option>
+              <option *ngFor="let shift of shiftOptions" [value]="shift">{{ shift }}</option>
+            </select>
+            <i class="fas fa-chevron-down icon-right"></i>
           </div>
         </div>
         
         <div class="filter-group">
           <label>Divisi</label>
           <div class="input-wrapper select-wrapper">
-            <select class="filter-input" [(ngModel)]="filters.division_id" (change)="applyFilters()">
+            <select class="filter-input" [(ngModel)]="filters.division_id" (ngModelChange)="onFilterChange()">
               <option value="">Semua Divisi</option>
               <option *ngFor="let div of divisions" [value]="div.ID">{{ div.NamaDivisi }}</option>
             </select>
@@ -39,7 +83,7 @@
         <div class="filter-group">
           <label>Jabatan</label>
           <div class="input-wrapper select-wrapper">
-            <select class="filter-input" [(ngModel)]="filters.position_id" (change)="applyFilters()">
+            <select class="filter-input" [(ngModel)]="filters.position_id" (ngModelChange)="onFilterChange()">
               <option value="">Semua Jabatan</option>
               <option *ngFor="let pos of positions" [value]="pos.ID">{{ pos.NamaJabatan }}</option>
             </select>
@@ -50,7 +94,7 @@
         <div class="filter-group">
           <label>Project</label>
           <div class="input-wrapper select-wrapper">
-            <select class="filter-input" [(ngModel)]="filters.project_id" (change)="applyFilters()">
+            <select class="filter-input" [(ngModel)]="filters.project_id" (ngModelChange)="onFilterChange()">
               <option value="">Semua Project</option>
               <option *ngFor="let project of projects" [value]="project.ID">{{ project.ID }} - {{ project.NamaProject }}</option>
             </select>
@@ -61,7 +105,7 @@
         <div class="filter-group">
           <label>Urutan</label>
           <div class="input-wrapper select-wrapper">
-            <select class="filter-input" [(ngModel)]="filters.sort_order" (change)="applyFilters()" name="sort_order">
+            <select class="filter-input" [(ngModel)]="filters.sort_order" (ngModelChange)="onFilterChange()" name="sort_order">
               <option value="name_asc">Nama A–Z (Menaik)</option>
               <option value="name_desc">Nama Z–A (Menurun)</option>
               <option value="employee_id_asc">Kode (Menaik)</option>
@@ -72,7 +116,26 @@
             <i class="fas fa-sort icon-right"></i>
           </div>
         </div>
+
+        <div class="filter-group filter-date-range">
+          <label>Tanggal Masuk</label>
+          <div class="date-range-fields">
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left" aria-hidden="true"></i>
+              <input type="date" class="filter-input has-icon" [(ngModel)]="filters.start_date" (ngModelChange)="onFilterChange()" aria-label="Tanggal mulai masuk" />
+            </div>
+            <span aria-hidden="true">s/d</span>
+            <div class="input-wrapper">
+              <i class="fas fa-calendar icon-left" aria-hidden="true"></i>
+              <input type="date" class="filter-input has-icon" [(ngModel)]="filters.end_date" (ngModelChange)="onFilterChange()" aria-label="Tanggal akhir masuk" />
+            </div>
+          </div>
+        </div>
       </div>
+      <div class="filter-actions">
+        <button type="button" class="btn-secondary" (click)="resetFilters()">Reset Filter</button>
+      </div>
+      <div *ngIf="filterValidationMessage" class="filter-validation-message" role="alert">{{ filterValidationMessage }}</div>
     </div>
 
     <div class="golan-card employee-card">
@@ -162,8 +225,11 @@
           Memuat data karyawan...
         </div>
 
-        <div *ngIf="!isLoading && employees.length === 0" class="empty-state">
+        <div *ngIf="!isLoading && employees.length === 0 && !hasActiveFilters" class="empty-state">
           Tidak ada data karyawan yang ditemukan.
+        </div>
+        <div *ngIf="!isLoading && hasActiveFilters && filteredEmployees.length === 0" class="empty-state">
+          Data tidak ditemukan.
         </div>
       </div>
 

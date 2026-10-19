@@ -69,6 +69,14 @@ export class AdminAlphaReportsComponent implements OnInit {
     });
   }
 
+  onFilterChange(): void {
+    this.loadReports();
+  }
+
+  onSortChange(): void {
+    this.applySorting();
+  }
+
   applySorting(): void {
     if (!this.summaries) return;
 

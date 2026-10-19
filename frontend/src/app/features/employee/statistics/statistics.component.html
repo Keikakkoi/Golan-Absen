@@ -7,6 +7,17 @@
       <p class="subtitle text-dark-lo">Analisis performa, durasi kerja, dan kepatuhan absensi harian Anda.</p>
     </div>
 
+    <section class="golan-card report-toolbar personal-statistics-filter" aria-label="Filter statistik berdasarkan tanggal">
+      <label>Mulai
+        <input class="golan-input" type="date" [(ngModel)]="start" (ngModelChange)="onDateFilterChange()" aria-label="Tanggal mulai">
+      </label>
+      <label>Selesai
+        <input class="golan-input" type="date" [(ngModel)]="end" (ngModelChange)="onDateFilterChange()" aria-label="Tanggal selesai">
+      </label>
+    </section>
+    <p *ngIf="validationError" class="date-filter-error" role="alert">{{ validationError }}</p>
+    <p *ngIf="loadError" class="date-filter-error" role="alert">{{ loadError }}</p>
+
     <div *ngIf="isLoading" style="padding: 3rem; text-align: center; color: var(--text-dark-lo);">
       Memuat metrik statistik...
     </div>
@@ -48,12 +59,34 @@
 
             <div class="status-item">
               <div class="status-header">
-                <span class="status-bullet status-izin"></span>
-                <span>Izin & Cuti</span>
-                <span class="mono-text bold ml-auto">{{ countIzin + countCuti }} Hari</span>
+                <span class="status-bullet status-terlambat"></span>
+                <span>Terlambat</span>
+                <span class="mono-text bold ml-auto text-warning">{{ countTerlambat }} Hari</span>
               </div>
               <div class="progress-bar-bg">
-                <div class="progress-bar-fill fill-izin" [style.width.%]="totalDays > 0 ? ((countIzin+countCuti)/totalDays)*100 : 0"></div>
+                <div class="progress-bar-fill fill-terlambat" [style.width.%]="totalDays > 0 ? (countTerlambat/totalDays)*100 : 0"></div>
+              </div>
+            </div>
+
+            <div class="status-item">
+              <div class="status-header">
+                <span class="status-bullet status-izin"></span>
+                <span>Izin</span>
+                <span class="mono-text bold ml-auto">{{ countIzin }} Hari</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill fill-izin" [style.width.%]="totalDays > 0 ? (countIzin/totalDays)*100 : 0"></div>
+              </div>
+            </div>
+
+            <div class="status-item">
+              <div class="status-header">
+                <span class="status-bullet status-cuti"></span>
+                <span>Cuti</span>
+                <span class="mono-text bold ml-auto">{{ countCuti }} Hari</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill fill-cuti" [style.width.%]="totalDays > 0 ? (countCuti/totalDays)*100 : 0"></div>
               </div>
             </div>
 
@@ -83,7 +116,7 @@
           <div class="metric-divider"></div>
 
           <div class="metric-row">
-            <div class="metric-label">Lokasi Rumah Terdaftar</div>
+            <div class="metric-label">Lokasi Absensi Terdaftar</div>
             <div class="worktype-pill-grid">
               <div class="wt-pill"><svg class="worktype-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#building"></use></svg> WFO: {{ workTypeStats.wfo }}x</div>
               <div class="wt-pill"><svg class="worktype-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#home"></use></svg> WFH: {{ workTypeStats.wfh }}x</div>
