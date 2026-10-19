@@ -24,9 +24,9 @@
 
         <div class="calendar-toolbar">
           <button type="button" class="month-nav" (click)="changeMonth(-1)" aria-label="Bulan sebelumnya">‹</button>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <div class="calendar-month-select">
             <strong>{{ currentMonth | date:'MMMM' }}</strong>
-            <select class="golan-input" style="padding: 0.25rem 2rem 0.25rem 0.75rem; height: auto; min-height: 28px; width: auto; font-size: 0.9rem;" [(ngModel)]="selectedYear" (change)="onYearChange()">
+            <select class="golan-input calendar-year-select" [(ngModel)]="selectedYear" (change)="onYearChange()">
               <option *ngFor="let year of availableYears" [value]="year">{{ year }}</option>
             </select>
           </div>
