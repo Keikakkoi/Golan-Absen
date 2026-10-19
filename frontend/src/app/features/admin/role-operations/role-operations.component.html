@@ -23,22 +23,21 @@
         </div>
         <div class="toolbar report-toolbar">
           <label>Nama/NIK
-            <input class="golan-input" [(ngModel)]="internSearch" placeholder="Cari nama peserta...">
+            <input class="golan-input" [(ngModel)]="internSearch" (ngModelChange)="loadInternship()" placeholder="Cari nama peserta...">
           </label>
           <label>Peserta
-            <select class="golan-input" [(ngModel)]="selectedCertInternId">
+            <select class="golan-input" [(ngModel)]="selectedCertInternId" (ngModelChange)="loadInternship()">
               <option value="">Semua peserta</option>
               <option *ngFor="let row of certificates" [value]="row.user_id">{{ row.nama }}</option>
             </select>
           </label>
           <label>Status
-            <select class="golan-input" [(ngModel)]="certificateStatus">
+            <select class="golan-input" [(ngModel)]="certificateStatus" (ngModelChange)="loadInternship()">
               <option value="">Semua status</option>
               <option value="uploaded">Sudah diupload</option>
               <option value="not_uploaded">Belum diupload</option>
             </select>
           </label>
-          <button type="button" class="btn-primary report-filter-action" (click)="loadInternship()">Filter</button>
           <div class="export-dropdown" style="position: relative;">
             <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown('certificates')">
               <i class="fas fa-file-export" style="margin-right: 0.5rem;"></i> Unduh / Cetak
