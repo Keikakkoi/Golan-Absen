@@ -6,11 +6,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-admin-audit',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent],
+  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent, DatePickerComponent],
   templateUrl: './admin-audit.component.html',
   styleUrls: ['./admin-audit.component.scss']
 })

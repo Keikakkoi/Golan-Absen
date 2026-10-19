@@ -7,6 +7,7 @@ import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 interface CompanyEvent {
   ID: number;
@@ -46,7 +47,7 @@ interface PaginatedEventsResponse {
 @Component({
   selector: 'app-admin-events',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminSidebarComponent, PaginationComponent, FilePreviewComponent],
+  imports: [CommonModule, FormsModule, AdminSidebarComponent, PaginationComponent, FilePreviewComponent, DatePickerComponent],
   templateUrl: './admin-events.component.html',
   styleUrls: ['./admin-events.component.scss']
 })

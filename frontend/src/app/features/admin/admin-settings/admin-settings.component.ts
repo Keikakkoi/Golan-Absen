@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { FormsModule } from '@angular/forms';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-admin-settings',
@@ -16,6 +17,7 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
     FormsModule,
     AdminSidebarComponent,
     DatePipe,
+    DatePickerComponent,
   ],
   templateUrl: './admin-settings.component.html',
   styleUrls: ['./admin-settings.component.scss'],

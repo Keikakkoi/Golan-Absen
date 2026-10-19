@@ -1061,7 +1061,7 @@
     margin-bottom: 0;
   }
 
-  .employee-form-modal input[type='date'] {
+  .employee-form-modal app-date-picker .date-picker-input {
     min-width: 0;
     width: 100%;
     min-height: 42px;

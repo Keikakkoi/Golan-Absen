@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 interface ChartBar {
   dayName: string;
@@ -14,7 +15,7 @@ interface ChartBar {
 @Component({
   selector: 'app-statistics',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent],
+  imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, DatePickerComponent],
   templateUrl: './statistics.component.html',
   styleUrls: ['./statistics.component.scss']
 })

@@ -69,12 +69,12 @@
 
             <label class="field-group">
               <span>Tanggal Mulai</span>
-              <input type="date" [(ngModel)]="formData.tanggal_mulai" (ngModelChange)="onDateChange()" name="tanggal_mulai" required class="golan-input" />
+              <app-date-picker [(ngModel)]="formData.tanggal_mulai" (ngModelChange)="onDateChange()" name="tanggal_mulai" [required]="true" class="golan-input" ariaLabel="Tanggal mulai cuti"></app-date-picker>
             </label>
 
             <label class="field-group">
               <span>Tanggal Selesai</span>
-              <input type="date" [(ngModel)]="formData.tanggal_selesai" (ngModelChange)="onDateChange()" name="tanggal_selesai" required class="golan-input" />
+              <app-date-picker [(ngModel)]="formData.tanggal_selesai" (ngModelChange)="onDateChange()" name="tanggal_selesai" [required]="true" class="golan-input" ariaLabel="Tanggal selesai cuti"></app-date-picker>
             </label>
           </div>
 

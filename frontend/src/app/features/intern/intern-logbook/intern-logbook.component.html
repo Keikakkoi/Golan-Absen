@@ -17,13 +17,13 @@
         <div class="field-row">
           <label class="field-group"
             ><span>Tanggal</span
-            ><input
+            ><app-date-picker
               class="golan-input"
-              type="date"
               [(ngModel)]="form.tanggal"
               (change)="loadDeadline()"
               name="tanggal"
-              required /></label
+              [required]="true"
+              ariaLabel="Tanggal laporan"></app-date-picker></label
           ><label class="field-group"
             ><span>Judul Tugas <em>*</em></span
             ><input class="golan-input" [(ngModel)]="form.judul_tugas" name="judul_tugas" required aria-label="Judul Tugas"
@@ -141,15 +141,9 @@
         <h3>Riwayat Logbook</h3>
         <div class="report-toolbar">
           <label
-            >Tanggal mulai<input
-              class="golan-input"
-              type="date"
-              [(ngModel)]="start" /></label
+            >Tanggal mulai<app-date-picker class="golan-input" [(ngModel)]="start" ariaLabel="Tanggal mulai"></app-date-picker></label
           ><label
-            >Tanggal selesai<input
-              class="golan-input"
-              type="date"
-              [(ngModel)]="end" /></label
+            >Tanggal selesai<app-date-picker class="golan-input" [(ngModel)]="end" ariaLabel="Tanggal selesai"></app-date-picker></label
           ><label
             >Status<span class="status-filter-dropdown" [class.is-open]="statusFilterOpen" [class.drop-up]="statusFilterDropUp"
               ><button type="button" class="status-filter-trigger" [attr.aria-expanded]="statusFilterOpen" (click)="toggleStatusFilter($event)">

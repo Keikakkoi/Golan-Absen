@@ -46,7 +46,7 @@
     cursor: pointer;
   }
 
-  input[type="date"].form-control {
+  app-date-picker .date-picker-input.form-control {
     position: relative;
     cursor: pointer;
     &::-webkit-calendar-picker-indicator {

@@ -6,11 +6,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 interface AttendanceMember { Name: string; Hadir: number; Terlambat: number; IzinCuti: number; Alpha: number; BelumAbsen: number; TotalHariKerja: number; TotalHariWajib?: number; PersentaseKehadiran: number; Total?: number; hadirPercentage: number; terlambatPercentage: number; izinCutiPercentage: number; alphaPercentage: number; belumAbsenPercentage: number; manager_id?: number | null; manager_name?: string; }
 interface ManagerGroup { key: string; name: string; members: AttendanceMember[]; totalMembers: number; hadir: number; terlambat: number; izinCuti: number; alpha: number; belumAbsen: number; totalHariKerja: number; }
 
-@Component({ selector: 'app-team-statistics', standalone: true, imports: [CommonModule, FormsModule, SharedSidebarComponent], templateUrl: './team-statistics.component.html', styleUrls: ['./team-statistics.component.scss'] })
+@Component({ selector: 'app-team-statistics', standalone: true, imports: [CommonModule, FormsModule, SharedSidebarComponent, DatePickerComponent], templateUrl: './team-statistics.component.html', styleUrls: ['./team-statistics.component.scss'] })
 export class TeamStatisticsComponent implements OnInit, OnDestroy {
   start = ''; end = ''; data: { members: AttendanceMember[] } = { members: [] }; isExportOpen = false; expandedManagers: Record<string, boolean> = {}; managerGroups: ManagerGroup[] = [];
   private disconnectRealtime?: () => void; private refreshTimer?: ReturnType<typeof setInterval>; private refreshTimerHandle?: ReturnType<typeof setTimeout>; private requestSequence = 0; private requestInFlight = false;

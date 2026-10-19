@@ -21,11 +21,12 @@ import {
 import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
 import { canonicalWorkReportTitle } from '../../../core/utils/work-report-title';
 import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-work-report-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent, PaginationComponent],
+  imports: [CommonModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent, PaginationComponent, DatePickerComponent],
   templateUrl: './work-report-admin.component.html',
   styleUrls: ['./work-report-admin.component.scss']
 })

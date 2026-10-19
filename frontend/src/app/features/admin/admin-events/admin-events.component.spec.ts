@@ -33,6 +33,7 @@ describe('AdminEventsComponent event text validation', () => {
         ...subject.form,
         tanggal: '2026-10-10',
         jam_mulai: '08:00',
+        judul: 'Event valid',
         [field]: value
       };
 

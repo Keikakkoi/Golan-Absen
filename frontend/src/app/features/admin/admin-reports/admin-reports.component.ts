@@ -9,11 +9,12 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReportExportService } from '../../../core/services/report-export.service';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-admin-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, RouterLink, AdminSidebarComponent, PaginationComponent],
+  imports: [CommonModule, FormsModule, DatePipe, RouterLink, AdminSidebarComponent, PaginationComponent, DatePickerComponent],
   templateUrl: './admin-reports.component.html',
   styleUrls: ['./admin-reports.component.scss']
 })

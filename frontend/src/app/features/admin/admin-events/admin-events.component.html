@@ -100,13 +100,13 @@
           <div class="filter-group">
             <label>Dari Tanggal</label>
             <div class="input-wrapper">
-              <input type="date" name="event_start_date" class="golan-input" [(ngModel)]="tableFilters.start_date" (change)="onTableFilterChange()">
+              <app-date-picker name="event_start_date" class="golan-input" [(ngModel)]="tableFilters.start_date" ariaLabel="Dari tanggal" (change)="onTableFilterChange()"></app-date-picker>
             </div>
           </div>
           <div class="filter-group">
             <label>Sampai Tanggal</label>
             <div class="input-wrapper">
-              <input type="date" name="event_end_date" class="golan-input" [(ngModel)]="tableFilters.end_date" (change)="onTableFilterChange()">
+              <app-date-picker name="event_end_date" class="golan-input" [(ngModel)]="tableFilters.end_date" ariaLabel="Sampai tanggal" (change)="onTableFilterChange()"></app-date-picker>
             </div>
           </div>
           <div class="event-filter-summary">
@@ -190,7 +190,7 @@
     </div>
     <form (ngSubmit)="saveEvent()">
       <div class="form-grid">
-        <div class="form-group"><label for="event-date">Tanggal <b>*</b></label><input id="event-date" type="date" class="golan-input" name="tanggal" [(ngModel)]="form.tanggal" required></div>
+        <div class="form-group"><label for="event-date">Tanggal <b>*</b></label><app-date-picker id="event-date" name="tanggal" class="golan-input" [(ngModel)]="form.tanggal" [required]="true" ariaLabel="Tanggal event"></app-date-picker></div>
         <div class="form-group">
           <label id="event-type-label" for="event-type">Tipe Event <b>*</b></label>
           <div class="event-type-picker" [class.is-open]="openEventType" [class.is-error]="!form.tipe">

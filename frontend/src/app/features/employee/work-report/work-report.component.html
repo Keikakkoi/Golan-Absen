@@ -163,7 +163,7 @@
           <div class="form-row">
             <div class="form-group">
               <label>Tanggal <span class="text-danger">*</span></label>
-              <input type="date" class="form-control" formControlName="tanggal" (change)="onReportDateChange($any($event.target).value)">
+              <app-date-picker inputClass="form-control" formControlName="tanggal" (change)="onReportDateChange($event)" ariaLabel="Tanggal laporan"></app-date-picker>
             </div>
             <div class="form-group">
               <label for="work-report-title-task">Judul Tugas <span class="text-danger">*</span></label>

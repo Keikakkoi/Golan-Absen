@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 interface ChartBar {
   dayName: string;
@@ -21,7 +22,7 @@ interface ChartBar {
 @Component({
   selector: 'app-intern-statistics',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent],
+  imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, DatePickerComponent],
   templateUrl: './intern-statistics.component.html',
   styleUrls: ['./intern-statistics.component.scss']
 })

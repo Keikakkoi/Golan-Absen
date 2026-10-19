@@ -11,6 +11,7 @@ type SavedScrollPosition = { left: number; top: number };
 // The active MAGANG entry point is features/employee/work-report.
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 import { AlertService } from '../../../core/services/alert.service';
 import Swal from 'sweetalert2';
 import { requiresReportTitle as resolveRequiresReportTitle } from '../../../core/utils/report-completeness';
@@ -18,7 +19,7 @@ import { canonicalWorkReportTitle } from '../../../core/utils/work-report-title'
 import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
 import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
 
-@Component({ selector: 'app-intern-logbook', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent, FilePreviewComponent], templateUrl: './intern-logbook.component.html', styleUrls: ['./intern-logbook.component.scss'] })
+@Component({ selector: 'app-intern-logbook', standalone: true, imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent, FilePreviewComponent, DatePickerComponent], templateUrl: './intern-logbook.component.html', styleUrls: ['./intern-logbook.component.scss'] })
 export class InternLogbookComponent implements OnInit {
   readonly canonicalWorkReportTitle = canonicalWorkReportTitle;
   @ViewChild('editLogbookForm') editLogbookForm?: ElementRef<HTMLElement>;

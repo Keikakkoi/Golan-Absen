@@ -9,10 +9,10 @@
 
     <section class="golan-card report-toolbar personal-statistics-filter" aria-label="Filter statistik berdasarkan tanggal">
       <label>Mulai
-        <input class="golan-input" type="date" [(ngModel)]="start" (ngModelChange)="onDateFilterChange()" aria-label="Tanggal mulai">
+        <app-date-picker class="golan-input" [(ngModel)]="start" (ngModelChange)="onDateFilterChange()" ariaLabel="Tanggal mulai"></app-date-picker>
       </label>
       <label>Selesai
-        <input class="golan-input" type="date" [(ngModel)]="end" (ngModelChange)="onDateFilterChange()" aria-label="Tanggal selesai">
+        <app-date-picker class="golan-input" [(ngModel)]="end" (ngModelChange)="onDateFilterChange()" ariaLabel="Tanggal selesai"></app-date-picker>
       </label>
     </section>
     <p *ngIf="validationError" class="date-filter-error" role="alert">{{ validationError }}</p>

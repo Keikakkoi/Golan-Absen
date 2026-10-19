@@ -53,7 +53,7 @@
 .team-attendance-toolbar > label { min-width: 0; }
 .team-attendance-toolbar > label:nth-child(2),
 .team-attendance-toolbar > label:nth-child(3) { flex: 1 1 150px; }
-.team-attendance-toolbar input[type='date'] { min-width: 0; }
+.team-attendance-toolbar app-date-picker { min-width: 0; }
 
 .team-attendance-toolbar .export-dropdown {
   position: relative;

@@ -15,11 +15,12 @@ import { RouterLink } from '@angular/router';
 import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
 import { canonicalWorkReportTitle } from '../../../core/utils/work-report-title';
 import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-admin-role-operations',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent, FilePreviewComponent, RouterLink],
+  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, PaginationComponent, FilePreviewComponent, RouterLink, DatePickerComponent],
   templateUrl: './role-operations.component.html',
   styleUrls: ['./role-operations.component.scss']
 })

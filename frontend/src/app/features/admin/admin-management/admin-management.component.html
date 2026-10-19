@@ -77,7 +77,7 @@
 
             <label class="schedule-field schedule-field-wide" for="schedule-tanggal">
               <span>Tanggal Shift</span>
-              <input id="schedule-tanggal" type="date" class="golan-input" [(ngModel)]="scheduleForm.Tanggal" name="Tanggal" required>
+      <app-date-picker id="schedule-tanggal" class="golan-input" [(ngModel)]="scheduleForm.Tanggal" name="Tanggal" [required]="true" ariaLabel="Tanggal jadwal"></app-date-picker>
             </label>
 
             <label class="schedule-field schedule-field-wide" for="schedule-name">
@@ -170,11 +170,11 @@
             </label>
             <label class="schedule-field schedule-date-filter">
               <span>Dari Tanggal</span>
-              <input type="date" class="golan-input" [(ngModel)]="scheduleStartDate" name="schedule_shift_start_date" (change)="loadSchedules()">
+          <app-date-picker class="golan-input" [(ngModel)]="scheduleStartDate" name="schedule_shift_start_date" (change)="loadSchedules()" ariaLabel="Tanggal mulai jadwal"></app-date-picker>
             </label>
             <label class="schedule-field schedule-date-filter">
               <span>Sampai Tanggal</span>
-              <input type="date" class="golan-input" name="schedule_shift_end_date" [(ngModel)]="scheduleEndDate" (change)="loadSchedules()">
+          <app-date-picker class="golan-input" name="schedule_shift_end_date" [(ngModel)]="scheduleEndDate" (change)="loadSchedules()" ariaLabel="Tanggal akhir jadwal"></app-date-picker>
             </label>
           </div>
 

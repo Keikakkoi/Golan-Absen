@@ -1,0 +1,54 @@
+<div class="date-picker-control" [class.is-open]="isOpen">
+  <input
+    [id]="id || null"
+    [name]="name || null"
+    [class]="inputClass"
+    class="date-picker-input"
+    type="text"
+    inputmode="none"
+    readonly
+    autocomplete="off"
+    [value]="displayValue"
+    [placeholder]="placeholder"
+    [required]="required"
+    [disabled]="disabled"
+    [attr.aria-label]="ariaLabel"
+    [attr.aria-haspopup]="'dialog'"
+    [attr.aria-expanded]="isOpen"
+    [attr.aria-controls]="isOpen ? popupId : null"
+    (focus)="onModelTouched()"
+    (keydown)="onInputKeydown($event)"
+    (click)="toggle($event)"
+  >
+  <button type="button" class="date-picker-trigger" [disabled]="disabled" [attr.aria-label]="isOpen ? 'Tutup kalender' : ariaLabel" [attr.aria-expanded]="isOpen" aria-haspopup="dialog" (pointerdown)="$event.preventDefault(); toggle($event)">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 9h16"></path></svg>
+  </button>
+
+  <div *ngIf="isOpen" class="date-picker-popup" [class.opens-up]="opensUp" [class.align-right]="alignsRight" [id]="popupId" role="dialog" [attr.aria-label]="panelLabel" (pointerdown)="$event.stopPropagation()">
+    <div class="date-picker-header">
+      <button type="button" class="date-picker-nav" aria-label="Bulan sebelumnya" (pointerdown)="$event.preventDefault(); previousMonth($event)">‹</button>
+      <button type="button" class="date-picker-month-year" [attr.aria-expanded]="showMonthYear" aria-haspopup="listbox" (pointerdown)="$event.preventDefault(); showMonthYear = !showMonthYear; buildCalendar(); positionPopup()">{{ monthYearLabel }}</button>
+      <button type="button" class="date-picker-nav" aria-label="Bulan berikutnya" (pointerdown)="$event.preventDefault(); nextMonth($event)">›</button>
+    </div>
+
+    <div *ngIf="showMonthYear" class="date-picker-month-year-panel" role="listbox" aria-label="Pilih bulan dan tahun">
+      <div class="date-picker-month-grid">
+        <button *ngFor="let month of months; let index = index" type="button" [class.selected]="index === viewDate.getMonth()" (click)="selectMonth(index)">{{ month }}</button>
+      </div>
+      <div class="date-picker-year-label">Tahun</div>
+      <div class="date-picker-year-grid">
+        <button *ngFor="let year of years" type="button" [class.selected]="year === selectedYear" (click)="selectYear(year)">{{ year }}</button>
+      </div>
+    </div>
+
+    <div class="date-picker-weekdays"><span *ngFor="let weekday of weekdays">{{ weekday }}</span></div>
+    <div class="date-picker-grid" role="grid" aria-label="Tanggal kalender">
+      <button *ngFor="let day of calendarDays" type="button" class="date-picker-day" [class.outside]="day.outside" [class.selected]="day.selected" [class.today]="day.today" [disabled]="day.disabled" [attr.data-date]="day.key || null" [attr.aria-label]="day.key || null" [attr.aria-current]="day.today ? 'date' : null" (click)="selectDate(day.key)" (keydown)="onCalendarKeydown($event, day.key)">{{ day.outside ? '' : day.day }}</button>
+    </div>
+
+    <div class="date-picker-footer">
+      <button type="button" class="date-picker-action" (click)="clear()">Hapus</button>
+      <button type="button" class="date-picker-action primary" (click)="setToday()">Hari ini</button>
+    </div>
+  </div>
+</div>

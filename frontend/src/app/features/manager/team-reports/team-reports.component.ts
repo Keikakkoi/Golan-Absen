@@ -12,11 +12,12 @@ import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../
 import { canonicalWorkReportTitle } from '../../../core/utils/work-report-title';
 import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
 import { NotificationService } from '../../../core/services/notification.service';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-team-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent],
+  imports: [CommonModule, FormsModule, DatePipe, SharedSidebarComponent, PaginationComponent, DatePickerComponent],
   templateUrl: './team-reports.component.html',
   styleUrls: ['./team-reports.component.scss']
 })

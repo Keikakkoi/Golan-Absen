@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-admin-late-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent],
+  imports: [CommonModule, FormsModule, DatePipe, AdminSidebarComponent, DatePickerComponent],
   templateUrl: './admin-late-reports.component.html',
   styleUrls: ['./admin-late-reports.component.scss']
 })

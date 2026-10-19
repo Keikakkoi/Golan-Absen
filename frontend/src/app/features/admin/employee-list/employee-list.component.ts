@@ -11,6 +11,7 @@ import { PaginationComponent } from '../../../shared/pagination/pagination.compo
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
 import { EMPLOYEE_CSV_HEADERS } from './employee-csv.schema';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 interface ManagerOption {
   ID: number;
@@ -20,7 +21,7 @@ interface ManagerOption {
 @Component({
   selector: 'app-employee-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, FormsModule, AdminSidebarComponent, PaginationComponent, FilePreviewComponent],
+  imports: [CommonModule, RouterLink, DatePipe, FormsModule, AdminSidebarComponent, PaginationComponent, FilePreviewComponent, DatePickerComponent],
   templateUrl: './employee-list.component.html',
   styleUrls: ['./employee-list.component.scss']
 })

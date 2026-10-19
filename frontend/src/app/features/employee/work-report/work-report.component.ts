@@ -20,13 +20,14 @@ import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../
 import { canonicalWorkReportTitle, canonicalWorkReportTitlePayload } from '../../../core/utils/work-report-title';
 import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
 import { NotificationService } from '../../../core/services/notification.service';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 type SavedScrollPosition = { left: number; top: number };
 
 @Component({
   selector: 'app-work-report',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent, PaginationComponent, FilePreviewComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, SharedSidebarComponent, UiSkeletonComponent, PaginationComponent, FilePreviewComponent, DatePickerComponent],
   templateUrl: './work-report.component.html',
   styleUrls: ['./work-report.component.scss']
 })

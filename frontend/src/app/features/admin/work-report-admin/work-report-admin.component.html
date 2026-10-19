@@ -44,7 +44,7 @@
               <label>Dari Tanggal</label>
               <div class="input-wrapper">
                 <i class="fas fa-calendar icon-left"></i>
-                 <input type="date" name="work_report_start_date" class="filter-input has-icon" [(ngModel)]="filterOptions.startDate" (ngModelChange)="onFilterChange()">
+                 <app-date-picker name="work_report_start_date" inputClass="filter-input has-icon" [(ngModel)]="filterOptions.startDate" (ngModelChange)="onFilterChange()" ariaLabel="Tanggal mulai"></app-date-picker>
               </div>
             </div>
 
@@ -52,7 +52,7 @@
               <label>Sampai Tanggal</label>
               <div class="input-wrapper">
                 <i class="fas fa-calendar icon-left"></i>
-                 <input type="date" name="work_report_end_date" class="filter-input has-icon" [(ngModel)]="filterOptions.endDate" (ngModelChange)="onFilterChange()">
+                 <app-date-picker name="work_report_end_date" inputClass="filter-input has-icon" [(ngModel)]="filterOptions.endDate" (ngModelChange)="onFilterChange()" ariaLabel="Tanggal selesai"></app-date-picker>
               </div>
             </div>
 

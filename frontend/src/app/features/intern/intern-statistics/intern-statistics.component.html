@@ -10,10 +10,10 @@
     <!-- Filter & Export Toolbar -->
     <section class="golan-card report-toolbar intern-statistics-filter">
       <label>Mulai
-        <input class="golan-input" type="date" [(ngModel)]="start" (ngModelChange)="load()">
+        <app-date-picker class="golan-input" [(ngModel)]="start" (ngModelChange)="load()" ariaLabel="Tanggal mulai"></app-date-picker>
       </label>
       <label>Selesai
-        <input class="golan-input" type="date" [(ngModel)]="end" (ngModelChange)="load()">
+        <app-date-picker class="golan-input" [(ngModel)]="end" (ngModelChange)="load()" ariaLabel="Tanggal selesai"></app-date-picker>
       </label>
       <div class="export-dropdown" style="position: relative;">
         <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()">

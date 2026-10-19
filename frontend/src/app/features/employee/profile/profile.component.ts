@@ -10,6 +10,7 @@ import * as L from 'leaflet';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil, timeout } from 'rxjs/operators';
@@ -25,7 +26,7 @@ interface WeeklyShiftRow {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DatePipe, SharedSidebarComponent, UiSkeletonComponent, FilePreviewComponent],
+  imports: [CommonModule, FormsModule, RouterLink, DatePipe, SharedSidebarComponent, UiSkeletonComponent, FilePreviewComponent, DatePickerComponent],
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss']
 })

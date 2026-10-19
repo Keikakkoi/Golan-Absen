@@ -45,14 +45,14 @@
             <label>Dari Tanggal</label>
             <div class="input-wrapper">
               <i class="fas fa-calendar icon-left"></i>
-              <input type="date" [(ngModel)]="filters.start_date" (ngModelChange)="applyFilters()" name="start_date" class="filter-input has-icon" />
+              <app-date-picker [(ngModel)]="filters.start_date" (ngModelChange)="applyFilters()" name="start_date" inputClass="filter-input has-icon" ariaLabel="Tanggal mulai"></app-date-picker>
             </div>
           </div>
           <div class="filter-group">
             <label>Sampai Tanggal</label>
             <div class="input-wrapper">
               <i class="fas fa-calendar icon-left"></i>
-              <input type="date" [(ngModel)]="filters.end_date" (ngModelChange)="applyFilters()" name="end_date" class="filter-input has-icon" />
+              <app-date-picker [(ngModel)]="filters.end_date" (ngModelChange)="applyFilters()" name="end_date" inputClass="filter-input has-icon" ariaLabel="Tanggal selesai"></app-date-picker>
             </div>
           </div>
         </div>

@@ -7,11 +7,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
 @Component({
   selector: 'app-admin-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminSidebarComponent, PaginationComponent],
+  imports: [CommonModule, FormsModule, AdminSidebarComponent, PaginationComponent, DatePickerComponent],
   templateUrl: './admin-management.component.html',
   styleUrls: ['./admin-management.component.scss']
 })
