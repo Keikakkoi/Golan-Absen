@@ -455,7 +455,10 @@
     right: 0;
     width: 100%;
     max-width: 100%;
-    min-height: 64px;
+    /* Keep the fixed header below the iOS status area while making its full
+       occupied height available to the page layout. */
+    min-height: calc(64px + env(safe-area-inset-top));
+    padding-top: calc(12px + env(safe-area-inset-top));
     box-sizing: border-box;
   }
 

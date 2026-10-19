@@ -1240,7 +1240,10 @@ body.dark-theme .btn-view-detail:hover { background: var(--mint-1); border-color
     max-width: 100% !important;
     min-width: 0 !important;
     box-sizing: border-box !important;
-    padding: 88px 16px calc(40px + env(safe-area-inset-bottom)) !important;
+    /* The mobile topbar is fixed. Reserve its 64px design height, the
+       safe-area inset used by iOS Safari, and a small content gap so the first
+       card cannot render underneath the navbar. */
+    padding: calc(64px + 24px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)) !important;
     overflow-x: hidden !important;
   }
 
