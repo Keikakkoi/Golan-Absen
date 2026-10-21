@@ -1,20 +1,19 @@
-:host { display: block; min-width: 0; position: relative; }
-
-/*
- * The legacy templates still put `golan-input`/`form-control` on the
- * component host for layout. The actual visual control is the input inside
- * this component, so reset the host's form-control styles to avoid a second
- * border and a second layer of padding on mobile browsers.
- */
-:host(.golan-input),
-:host(.form-control) {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+:host {
+  display: block;
+  min-width: 0;
+  min-height: 0 !important;
+  position: relative;
+  box-sizing: border-box;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
+
+/* The actual visual control is the input inside this host. Keeping the host
+ * neutral prevents legacy form-control classes or page-level selectors from
+ * creating a second border/padding layer on mobile browsers. */
 
 :host(.golan-input) .date-picker-input {
   height: 100%;
