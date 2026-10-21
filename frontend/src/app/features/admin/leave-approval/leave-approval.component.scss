@@ -1255,61 +1255,215 @@
   transform: translateY(0);
 }
 
-/* Dark mode overrides for the leave detail modal. The modal has legacy light
-   surfaces that otherwise make the reason text disappear against the card. */
+/* Dark mode overrides are deliberately scoped to this approval dialog. Keep
+   the existing application tokens as the source of truth, while giving the
+   modal a dark attachment surface that cannot fall back to its light card. */
 :host-context(body.dark-theme) .leave-detail-modal {
-  background: var(--surface) !important;
-  border-color: var(--border-strong) !important;
-  color: var(--text-dark) !important;
+  --leave-modal-surface: var(--surface, #1e293b);
+  --leave-modal-raised: var(--surface-raised, #26364d);
+  --leave-modal-deep: #0f172a;
+  --leave-modal-border: var(--border-strong, #475569);
+  --leave-modal-text: var(--text-dark, #e2e8f0);
+  --leave-modal-muted: var(--text-dark-lo, #94a3b8);
+  background: var(--leave-modal-surface) !important;
+  border-color: var(--leave-modal-border) !important;
+  color: var(--leave-modal-text) !important;
+  scrollbar-color: var(--leave-modal-border) var(--leave-modal-deep);
 }
 
 :host-context(body.dark-theme) .leave-detail-modal .modal-header,
 :host-context(body.dark-theme) .leave-detail-modal .modal-footer {
-  background: var(--surface) !important;
-  border-color: var(--border-strong) !important;
+  border-color: var(--leave-modal-border) !important;
+}
+
+:host-context(body.dark-theme) .modal-overlay {
+  background: rgba(2, 6, 23, 0.74);
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .modal-header,
+:host-context(body.dark-theme) .leave-detail-modal .modal-footer {
+  background: var(--leave-modal-surface) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .modal-body {
+  background: var(--leave-modal-surface);
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .modal-icon-badge {
+  background: #e0ecff;
+  color: #1d4ed8;
 }
 
 :host-context(body.dark-theme) .leave-detail-modal .modal-title-box h3,
 :host-context(body.dark-theme) .leave-detail-modal .employee-name,
 :host-context(body.dark-theme) .leave-detail-modal .grid-value,
 :host-context(body.dark-theme) .leave-detail-modal .section-label {
-  color: var(--text-dark) !important;
+  color: var(--leave-modal-text) !important;
 }
 
 :host-context(body.dark-theme) .leave-detail-modal .request-id,
 :host-context(body.dark-theme) .leave-detail-modal .grid-label,
 :host-context(body.dark-theme) .leave-detail-modal .dept-tag {
-  color: var(--text-dark-lo) !important;
-}
-
-/* The attachment card intentionally keeps its light surface in both themes.
-   Keep its text dark as well so it remains readable in dark mode. */
-:host-context(body.dark-theme) .leave-detail-modal .attachment-title {
-  color: #1f2937 !important;
-}
-
-:host-context(body.dark-theme) .leave-detail-modal .attachment-sub {
-  color: #475569 !important;
+  color: var(--leave-modal-muted) !important;
 }
 
 :host-context(body.dark-theme) .leave-detail-modal .employee-profile-card,
-:host-context(body.dark-theme) .leave-detail-modal .detail-grid .grid-item,
+:host-context(body.dark-theme) .leave-detail-modal .detail-grid .grid-item {
+  background: var(--leave-modal-raised) !important;
+  border-color: var(--leave-modal-border) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .nik-tag {
+  background: var(--surface-muted) !important;
+  color: var(--leave-modal-text) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .grid-value.highlight-value {
+  color: #bfdbfe !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .type-badge.type-cuti {
+  background: #082f49;
+  color: #bae6fd;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .type-badge.type-sakit {
+  background: #431407;
+  color: #fed7aa;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .type-badge.type-lainnya {
+  background: #3b0764;
+  color: #e9d5ff;
+}
+
 :host-context(body.dark-theme) .leave-detail-modal .reason-box,
-:host-context(body.dark-theme) .leave-detail-modal .notes-box,
-:host-context(body.dark-theme) .leave-detail-modal .no-attachment-box {
-  background: var(--surface-raised) !important;
-  border-color: var(--border-strong) !important;
+:host-context(body.dark-theme) .leave-detail-modal .notes-box {
+  background: #172033 !important;
+  border-color: var(--leave-modal-border) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .reason-box {
+  border-left-color: #60a5fa !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .rejection-reason-box {
+  border-left-color: #f87171 !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .notes-box {
+  border-left-color: #94a3b8 !important;
 }
 
 :host-context(body.dark-theme) .leave-detail-modal .reason-box p,
-:host-context(body.dark-theme) .leave-detail-modal .notes-box p,
+:host-context(body.dark-theme) .leave-detail-modal .notes-box p {
+  color: var(--leave-modal-text) !important;
+}
+
+/* This card contains the "Dokumen Pendukung / Surat Keterangan" label. It
+   must remain a dark surface in dark mode, including when a generic light
+   card rule is applied elsewhere in the application. */
+:host-context(body.dark-theme) .leave-detail-modal .attachment-card {
+  background: var(--leave-modal-deep) !important;
+  border-color: var(--leave-modal-border) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .attachment-title {
+  color: var(--leave-modal-text) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .attachment-sub {
+  color: var(--leave-modal-muted) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .attachment-icon {
+  background: #0284c7;
+  color: #f8fafc;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .btn-attachment-action {
+  background: #0284c7;
+  color: #f8fafc;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .btn-attachment-action:hover {
+  background: #0369a1;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .image-preview-wrapper {
+  background: var(--leave-modal-deep);
+  border-color: var(--leave-modal-border);
+}
+
 :host-context(body.dark-theme) .leave-detail-modal .no-attachment-box {
-  color: var(--text-dark) !important;
+  background: #172033 !important;
+  border-color: var(--leave-modal-border) !important;
+  color: var(--leave-modal-muted) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .no-attachment-box svg {
+  color: var(--leave-modal-muted) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .detail-note-editor label {
+  color: var(--leave-modal-muted);
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .detail-note-editor textarea {
+  background: #172033 !important;
+  border-color: var(--leave-modal-border) !important;
+  color: var(--leave-modal-text) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .detail-note-editor textarea::placeholder {
+  color: var(--leave-modal-muted) !important;
 }
 
 :host-context(body.dark-theme) .leave-detail-modal .btn-close {
   background: var(--surface-muted) !important;
-  color: var(--text-dark-lo) !important;
+  color: var(--leave-modal-muted) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .btn-close:hover {
+  background: #475569 !important;
+  color: var(--leave-modal-text) !important;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .modal-body {
+  scrollbar-color: var(--leave-modal-border) var(--leave-modal-deep);
+  scrollbar-width: thin;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .modal-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .modal-body::-webkit-scrollbar-track {
+  background: var(--leave-modal-deep);
+}
+
+:host-context(body.dark-theme) .leave-detail-modal .modal-body::-webkit-scrollbar-thumb {
+  background: var(--leave-modal-border);
+  border: 2px solid var(--leave-modal-deep);
+  border-radius: 999px;
+}
+
+.leave-detail-modal button:focus-visible,
+.leave-detail-modal a:focus-visible,
+.leave-detail-modal textarea:focus-visible {
+  outline: 3px solid rgba(96, 165, 250, 0.8);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .leave-detail-modal,
+  .leave-detail-modal * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (max-width: 640px) {
