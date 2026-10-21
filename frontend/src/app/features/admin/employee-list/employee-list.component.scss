@@ -12,6 +12,33 @@
   min-height: 0 !important;
 }
 
+/* The date-picker popup is intentionally allowed to extend beyond the
+   filter card. The shared premium-filter rule clips overflow to contain its
+   decorative top border, which also clips the calendar popup. Keep the page
+   wrapper open as well so the popup is not clipped by the global horizontal
+   overflow guard (especially on narrow screens). */
+.admin-theme.employee-list-shell,
+.admin-theme.employee-list-shell > .main-content.employee-list-page,
+.employee-list-page .premium-filter,
+.employee-list-page .date-range-fields,
+.employee-list-page .date-range-fields .input-wrapper,
+.employee-list-page .date-range-fields app-date-picker {
+  overflow: visible !important;
+}
+
+/* Place the filter above the records card while its popup is open. A child
+   z-index cannot escape a sibling stacking context created by the filter
+   card, so this belongs on the card itself. */
+.employee-list-page .premium-filter {
+  position: relative;
+  /* Keep the popup above the shared pagination component (z-index: 50). */
+  z-index: 60;
+}
+
+.employee-list-page .premium-filter::before {
+  border-radius: 12px 12px 0 0;
+}
+
 .employee-list-page,
 .employee-card,
 .employee-table-container,

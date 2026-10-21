@@ -7,6 +7,34 @@
   min-height: 0 !important;
 }
 
+/* The shared premium filter clips overflow by default. Keep the complete
+   date-picker popup visible outside the filter/card, including when it opens
+   above the table and pagination on smaller screens. */
+.dashboard-container.admin-audit-shell,
+.admin-theme.admin-audit-shell > .main-content.audit-log-page,
+.audit-log-page > .golan-card,
+.audit-log-page .premium-filter,
+.audit-log-page .premium-filter .premium-grid,
+.audit-log-page .premium-filter .filter-group,
+.audit-log-page .premium-filter .input-wrapper,
+.audit-log-page .premium-filter app-date-picker {
+  overflow: visible !important;
+}
+
+.audit-log-page > .golan-card {
+  position: relative;
+}
+
+.audit-log-page .premium-filter {
+  /* app-pagination uses z-index: 50; keep the popup above it while open. */
+  position: relative;
+  z-index: 60;
+}
+
+.audit-log-page .premium-filter::before {
+  border-radius: 12px 12px 0 0;
+}
+
 .filter-bar { 
   display: flex; 
   gap: 12px; 

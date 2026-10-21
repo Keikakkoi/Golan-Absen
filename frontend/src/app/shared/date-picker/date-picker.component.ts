@@ -104,7 +104,6 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
 
   toggle(event?: Event): void {
     event?.preventDefault();
-    event?.stopPropagation();
     if (this.isOpen) this.close(); else this.open();
   }
 

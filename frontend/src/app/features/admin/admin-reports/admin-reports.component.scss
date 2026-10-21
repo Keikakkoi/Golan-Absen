@@ -16,6 +16,30 @@
   box-sizing: border-box;
 }
 
+/* The shared premium-filter clips overflow by default, and this page also
+   has a mobile overflow rule on the same card. Keep the date-picker path open
+   so the popup can extend over the following report/table content. */
+.admin-report-shell,
+.admin-report-page,
+.admin-report-page .premium-filter,
+.admin-report-page .premium-filter .filter-grid,
+.admin-report-page .premium-filter .filter-group,
+.admin-report-page .premium-filter .input-wrapper,
+.admin-report-page .premium-filter app-date-picker {
+  overflow: visible !important;
+}
+
+.admin-report-page .premium-filter {
+  /* app-pagination uses z-index: 50; keep the popup above it but below the
+     mobile sidebar layer. */
+  position: relative;
+  z-index: 60;
+}
+
+.admin-report-page .premium-filter::before {
+  border-radius: 12px 12px 0 0;
+}
+
 /* The export button sits close to the left side of the card on mobile. Keep
    its menu anchored to the button instead of right-aligning it past the card
    and viewport edge. */

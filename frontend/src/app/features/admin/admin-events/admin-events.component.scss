@@ -18,6 +18,32 @@
   align-items: flex-start;
 }
 
+/* Date-picker popups must be able to extend beyond the filter card. The
+   shared premium-filter rule clips overflow for its decorative border, and
+   the mobile all-events card adds another clipping ancestor. Keep this page's
+   popup path open while retaining the existing table overflow behavior. */
+.dashboard-container.admin-theme.events-page-shell,
+.dashboard-container.admin-theme.events-page-shell > .main-content.events-page,
+.events-page .all-events-card,
+.events-page .event-filter-card,
+.events-page .event-filter-grid,
+.events-page .event-filter-grid .filter-group,
+.events-page .event-filter-grid .input-wrapper,
+.events-page .event-filter-grid app-date-picker {
+  overflow: visible !important;
+}
+
+.events-page .event-filter-card {
+  position: relative;
+  /* app-pagination owns z-index: 50. Keep the calendar popup above that
+     sibling stacking context while remaining below the mobile sidebar. */
+  z-index: 60;
+}
+
+.events-page .event-filter-card::before {
+  border-radius: 12px 12px 0 0;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;

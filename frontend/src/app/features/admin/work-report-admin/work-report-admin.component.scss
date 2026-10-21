@@ -13,6 +13,29 @@
   font-family: var(--font-body);
 }
 
+/* Let the date-picker popup escape the filter card and the page's global
+   horizontal overflow guard. The shared pagination component uses z-index:
+   50, so the filter gets a slightly higher stacking level while remaining
+   below the mobile sidebar. */
+.work-report-admin-page,
+.work-report-admin-page > .main-content,
+.work-report-admin-page .premium-filter,
+.work-report-admin-page .premium-filter .premium-grid,
+.work-report-admin-page .premium-filter .filter-group,
+.work-report-admin-page .premium-filter .input-wrapper,
+.work-report-admin-page .premium-filter app-date-picker {
+  overflow: visible !important;
+}
+
+.work-report-admin-page .premium-filter {
+  position: relative;
+  z-index: 60;
+}
+
+.work-report-admin-page .premium-filter::before {
+  border-radius: 12px 12px 0 0;
+}
+
 /* The reports table has many fields. Keep the table wide and readable, while
    allowing the viewport around it to scroll on smaller screens. */
 .work-report-admin-page {
