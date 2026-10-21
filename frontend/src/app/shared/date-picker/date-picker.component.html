@@ -2,8 +2,7 @@
   <input
     [id]="id || null"
     [name]="name || null"
-    [class]="inputClass"
-    class="date-picker-input"
+    [class]="inputClass + ' date-picker-input'"
     type="text"
     inputmode="none"
     readonly
@@ -27,7 +26,7 @@
   <div *ngIf="isOpen" class="date-picker-popup" [class.opens-up]="opensUp" [class.align-right]="alignsRight" [id]="popupId" role="dialog" [attr.aria-label]="panelLabel" (pointerdown)="$event.stopPropagation()">
     <div class="date-picker-header">
       <button type="button" class="date-picker-nav" aria-label="Bulan sebelumnya" (pointerdown)="$event.preventDefault(); previousMonth($event)">‹</button>
-      <button type="button" class="date-picker-month-year" [attr.aria-expanded]="showMonthYear" aria-haspopup="listbox" (pointerdown)="$event.preventDefault(); showMonthYear = !showMonthYear; buildCalendar(); positionPopup()">{{ monthYearLabel }}</button>
+      <button type="button" class="date-picker-month-year" [attr.aria-expanded]="showMonthYear" aria-haspopup="listbox" (pointerdown)="$event.preventDefault(); toggleMonthYear()">{{ monthYearLabel }}</button>
       <button type="button" class="date-picker-nav" aria-label="Bulan berikutnya" (pointerdown)="$event.preventDefault(); nextMonth($event)">›</button>
     </div>
 
@@ -41,14 +40,14 @@
       </div>
     </div>
 
-    <div class="date-picker-weekdays"><span *ngFor="let weekday of weekdays">{{ weekday }}</span></div>
-    <div class="date-picker-grid" role="grid" aria-label="Tanggal kalender">
+    <div *ngIf="mode === 'date'" class="date-picker-weekdays"><span *ngFor="let weekday of weekdays">{{ weekday }}</span></div>
+    <div *ngIf="mode === 'date'" class="date-picker-grid" role="grid" aria-label="Tanggal kalender">
       <button *ngFor="let day of calendarDays" type="button" class="date-picker-day" [class.outside]="day.outside" [class.selected]="day.selected" [class.today]="day.today" [disabled]="day.disabled" [attr.data-date]="day.key || null" [attr.aria-label]="day.key || null" [attr.aria-current]="day.today ? 'date' : null" (click)="selectDate(day.key)" (keydown)="onCalendarKeydown($event, day.key)">{{ day.outside ? '' : day.day }}</button>
     </div>
 
     <div class="date-picker-footer">
       <button type="button" class="date-picker-action" (click)="clear()">Hapus</button>
-      <button type="button" class="date-picker-action primary" (click)="setToday()">Hari ini</button>
+      <button *ngIf="mode === 'date'" type="button" class="date-picker-action primary" (click)="setToday()">Hari ini</button>
     </div>
   </div>
 </div>

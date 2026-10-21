@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.0.0
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/gofiber/fiber/v2 v2.52.0
 	github.com/gofiber/websocket/v2 v2.2.1
 	github.com/golang-jwt/jwt/v5 v5.2.0

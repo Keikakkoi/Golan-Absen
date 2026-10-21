@@ -13,5 +13,6 @@ ENV TZ=Asia/Jakarta
 WORKDIR /app
 COPY --from=build /out/api /app/api
 COPY --from=build /out/seeder /app/seeder
+COPY assets /app/assets
 EXPOSE 8080
 CMD ["/app/api"]

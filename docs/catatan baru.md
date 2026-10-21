@@ -410,3 +410,211 @@ Pengujian yang wajib dilakukan:
 
 Setelah selesai, tampilkan ringkasan file yang diubah, keputusan apakah filter dilakukan melalui API atau setelah mengambil riwayat, serta hasil pengujian.
 ```
+
+## Prompt Implementasi Fitur Penggajian dan Slip Gaji
+
+~~~text
+Tambahkan fitur Penggajian/Slip Gaji pada aplikasi Absensi Golan Digital Kreatif.
+
+Referensi struktur:
+https://www.talenta.co/tool-gratis/slip-gaji-online/
+
+Gunakan juga gambar yang diberikan user sebagai referensi tata letak dan field.
+Jangan menyalin branding, logo, teks promosi, popup marketing, kuota slip,
+input email marketing, atau footer Talenta.
+
+## Batasan
+
+Fokus hanya pada pengelolaan data penggajian dan pembuatan slip gaji. Semua
+nominal gaji diinput manual oleh role HRD/Admin. Karyawan, Manajer, dan Magang
+tidak boleh menginput atau mengubah nominal gajinya sendiri.
+
+Jangan membuat transfer bank, PPh 21 otomatis, BPJS otomatis, lembur/THR/bonus/
+pinjaman berbasis absensi, payroll disbursement, reimbursement, atau
+compensation planning. Sistem hanya menjumlahkan nominal manual; jangan menebak
+tarif pajak atau aturan ketenagakerjaan.
+
+## Hak akses dan alur
+
+HRD/Admin dapat:
+- melihat daftar slip berdasarkan periode, karyawan, divisi, dan status;
+- membuat slip untuk karyawan aktif;
+- menyimpan Draft, Preview, Publish, dan Unduh PDF;
+- mengedit atau menghapus hanya slip Draft;
+- melihat slip Published dan histori perubahan.
+
+Karyawan, Manajer, dan Magang hanya dapat melihat slip miliknya sendiri yang
+sudah Published, membuka Preview, dan mengunduh PDF. Mereka tidak dapat membuat,
+mengedit, menghapus, atau Publish. Pembatasan wajib diterapkan di frontend dan
+backend, bukan hanya dengan menyembunyikan tombol.
+
+## Field slip gaji
+
+Informasi perusahaan:
+- logo opsional JPG/PNG/SVG maksimal 1 MB;
+- nama perusahaan;
+- nomor telepon perusahaan.
+
+Gunakan identitas dari Pengaturan Umum yang sudah ada bila tersedia; jangan
+membuat sumber data perusahaan duplikat tanpa alasan.
+
+Periode:
+- bulan dan tahun slip, format YYYY-MM atau input month;
+- payroll cut-off tanggal mulai dan tanggal selesai;
+- tanggal bayar.
+
+Rincian karyawan, diambil dari master lalu disimpan sebagai snapshot:
+- nama, ID/kode karyawan, NIK bila tersedia;
+- jabatan, departemen/divisi, dan golongan.
+
+Jika golongan belum ada di master, sediakan field golongan di form HRD dan
+simpan sebagai snapshot slip.
+
+Rincian penghasilan:
+- daftar item dinamis berisi nama pendapatan dan nominal Rupiah;
+- item awal Gaji pokok dan Uang makan;
+- tombol Tambah item dan Hapus item.
+
+Rincian pengurangan:
+- daftar item dinamis berisi nama pengurangan dan nominal Rupiah;
+- contoh PPh 21 dan BPJS Kesehatan boleh disediakan, tetapi nominal manual;
+- tombol Tambah item dan Hapus item.
+
+Ringkasan:
+- Total pendapatan = jumlah seluruh pendapatan;
+- Total pengurangan = jumlah seluruh pengurangan;
+- Take Home Pay = Total pendapatan - Total pengurangan.
+
+Hitung ulang total di backend. Tolak nominal negatif, item tanpa nama, nilai
+tidak valid, dan Take Home Pay negatif saat Publish. Formatkan nominal sebagai
+Rupiah Indonesia.
+
+Field tambahan:
+- catatan opsional;
+- disetujui oleh: nama dan jabatan;
+- diterima oleh: nama dan jabatan karyawan;
+- status Draft, Published, dan bila diperlukan Dibatalkan.
+
+## UI/UX
+
+Buat halaman Admin Penggajian dengan pola halaman admin yang sudah ada:
+- route yang disarankan: /admin/payroll;
+- filter periode, karyawan, divisi, dan status;
+- tabel periode, karyawan, divisi, total pendapatan, total pengurangan,
+  take home pay, status, tanggal bayar, dan aksi;
+- tombol Tambah Slip Gaji;
+- form dua kolom desktop dan satu kolom mobile;
+- tabel pendapatan dan pengurangan menyerupai gambar;
+- Take Home Pay menjadi ringkasan paling menonjol;
+- aksi Simpan Draft, Preview, Publish, Edit, Hapus, dan Unduh Slip Gaji;
+- loading, empty, error, validasi, konfirmasi publish/hapus;
+- light mode, dark mode, keyboard navigation, label form, dan responsive;
+- tidak boleh ada horizontal overflow.
+
+Tambahkan menu Penggajian hanya pada navigasi HRD/Admin. Jika diperlukan
+halaman karyawan, gunakan /employee/payroll atau /employee/payslips dan
+tampilkan menu Slip Gaji hanya bagi Karyawan, Manajer, dan Magang.
+
+Preview/PDF harus memuat logo dan identitas perusahaan, periode, data karyawan,
+cut-off, tanggal bayar, pendapatan, pengurangan, total, take home pay, catatan,
+penyetuju, dan penerima. Gunakan kertas A4 dan nama file:
+slip-gaji-{employee_code}-{YYYY-MM}.pdf
+~~~
+
+## Rancangan data dan backend
+
+Ikuti arsitektur Go/Fiber/GORM, PostgreSQL, middleware role, dan audit log yang
+sudah ada. Buat model payroll/slip gaji minimal dengan:
+- ID, employee_id dan/atau user_id;
+- periode_bulan, payroll_cutoff_start, payroll_cutoff_end, payment_date;
+- snapshot nama, kode/ID, NIK, jabatan, divisi, dan golongan;
+- snapshot identitas perusahaan bila diperlukan;
+- total_income, total_deduction, take_home_pay;
+- notes, approved_by_name, approved_by_position;
+- received_by_name, received_by_position;
+- status, published_at, created_by, updated_by, dan timestamp.
+
+Buat tabel anak untuk item pendapatan/pengurangan dengan ID, payroll_id, tipe
+income atau deduction, nama item, nominal Rupiah, urutan tampilan, dan timestamp.
+
+Gunakan numeric/decimal atau integer yang aman untuk uang. Jangan gunakan float.
+Tambahkan unique constraint untuk satu karyawan dan satu periode, kecuali ada
+mekanisme revisi/versioning yang jelas.
+
+Buat migration SQL baru di backend/migrations/. Sesuaikan AutoMigrate hanya
+sesuai pola repository. Migration harus aman dijalankan ulang.
+
+Endpoint boleh mengikuti konvensi repository, minimal mencakup:
+- GET /api/v1/admin/payroll;
+- GET /api/v1/admin/payroll/:id;
+- POST /api/v1/admin/payroll;
+- PUT /api/v1/admin/payroll/:id untuk Draft;
+- DELETE /api/v1/admin/payroll/:id untuk Draft;
+- POST /api/v1/admin/payroll/:id/publish;
+- GET /api/v1/admin/payroll/:id/pdf;
+- GET /api/v1/employee/payroll;
+- GET /api/v1/employee/payroll/:id.
+
+Aturan endpoint:
+- create, edit, publish, dan delete hanya role HRD;
+- endpoint karyawan mengambil user ID dari JWT, bukan ID bebas dari client;
+- Draft tidak boleh dikirim ke endpoint karyawan;
+- kepemilikan slip wajib diverifikasi di backend;
+- create, edit, publish, dan delete dicatat ke audit log;
+- Published tidak boleh diedit/dihapus melalui endpoint biasa.
+
+Validasi backend:
+- karyawan ada dan memenuhi status aktif;
+- periode, cut-off, dan tanggal bayar valid;
+- tanggal mulai cut-off tidak lebih besar dari tanggal selesai;
+- minimal ada satu item pendapatan;
+- nama item tidak kosong dan nominal tidak negatif;
+- total dihitung ulang di backend, bukan mempercayai total frontend;
+- take home pay negatif ditolak saat Publish;
+- duplicate slip karyawan-periode ditolak dengan pesan jelas.
+
+## Integrasi repository
+
+Periksa file yang benar-benar ada dan ikuti pola dari:
+- frontend/src/app/app.routes.ts;
+- frontend/src/app/features/shared/shared-sidebar/shared-sidebar.component.html;
+- komponen halaman admin;
+- frontend/src/app/core/services/;
+- backend/cmd/api/main.go;
+- backend/internal/handlers/;
+- backend/internal/models/;
+- backend/config/database.go;
+- service export/PDF yang sudah tersedia.
+
+Gunakan standalone component dan import Angular yang sesuai. Reuse service HTTP,
+alert, modal, tabel, pagination, token warna, dan export yang sudah ada. Jika
+logo disimpan, gunakan mekanisme storage dan validasi file yang sudah ada.
+Jangan menyimpan token, secret, atau data sensitif ke PDF maupun log.
+
+## Pengujian wajib
+
+Tambahkan atau perbarui unit test dan handler test untuk:
+1. role non-HRD ditolak saat create, edit, publish, dan delete;
+2. HRD dapat membuat Draft dengan pendapatan dan pengurangan;
+3. total pendapatan, total pengurangan, dan take home pay benar;
+4. nominal negatif, item kosong, periode/cut-off/tanggal bayar invalid ditolak;
+5. duplicate slip karyawan-periode ditolak;
+6. Draft dapat diedit/dihapus, Published tidak dapat diubah;
+7. karyawan hanya melihat slip miliknya yang Published;
+8. karyawan tidak dapat membaca Draft atau slip user lain;
+9. snapshot karyawan tetap konsisten setelah master berubah;
+10. filter, pagination, empty state, reload, Preview, dan PDF bekerja;
+11. PDF tidak memotong nominal dan memuat seluruh komponen;
+12. route/menu admin tidak terbuka bagi role non-HRD;
+13. audit log tercatat untuk create, update, publish, dan delete;
+14. tidak ada error TypeScript, Go test, API, atau console browser.
+
+Sebelum selesai:
+- tampilkan ringkasan file yang diubah;
+- tampilkan endpoint yang ditambahkan;
+- jelaskan keputusan penyimpanan nominal uang;
+- jalankan formatter, test relevan, build frontend, dan test backend bila
+  lingkungan mendukung;
+- verifikasi migration pada database uji;
+- tampilkan hasil pengujian dan keterbatasan yang masih tersisa.
+~~~

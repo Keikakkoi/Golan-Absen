@@ -968,7 +968,7 @@ textarea.golan-input {
 
 .home-form-actions .btn-primary,
 .home-form-actions .btn-outline-primary {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 42px;
   border-radius: 10px;
   box-sizing: border-box;
@@ -1200,6 +1200,90 @@ textarea.golan-input {
   background: var(--green) !important;
   border-color: var(--green) !important;
   color: #ffffff !important;
+}
+
+/* Match the shared dark button reference in the home geofence form. */
+:host-context(body.dark-theme) .home-form-actions .btn-outline-primary {
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+:host-context(body.dark-theme) .home-form-actions .btn-primary {
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #60a5fa !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+:host-context(body.dark-theme) .home-form-actions .btn-outline-primary:hover {
+  background: #26364d !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 3px 8px rgba(96, 165, 250, 0.18);
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .home-form-actions .btn-primary:hover {
+  background: #3b82f6 !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .home-form-actions button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+:host-context(body.dark-theme) .home-form-actions .btn-primary:disabled {
+  background: #60a5fa !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+  opacity: 0.6;
+  transform: none;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .home-wfh-detail-close {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .home-wfh-detail-close:hover {
+  background: #26364d !important;
+  background-color: #26364d !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 3px 8px rgba(96, 165, 250, 0.18);
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .home-request-detail-modal .modal-footer .home-wfh-detail-close:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 :host-context(body.dark-theme) .home-request-detail-modal .modal-footer .btn-secondary,

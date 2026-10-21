@@ -14,11 +14,66 @@
 }
 
 .work-report-secondary-action {
-  min-height: 34px;
-  padding: 7px 11px;
+  min-height: 44px;
+  padding: 10px 16px;
   font-family: var(--font-body);
-  font-size: .82rem;
-  font-weight: 600;
+  font-size: .9rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+:host-context(body.dark-theme) .work-report-cancel {
+  box-sizing: border-box;
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+:host-context(body.dark-theme) .work-report-cancel:hover {
+  background: #26364d !important;
+  background-color: #26364d !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 3px 8px rgba(96, 165, 250, 0.18);
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .work-report-primary-action {
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #60a5fa !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+:host-context(body.dark-theme) .work-report-primary-action:hover {
+  background: #3b82f6 !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .work-report-cancel:active,
+:host-context(body.dark-theme) .work-report-primary-action:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+:host-context(body.dark-theme) .work-report-primary-action:disabled {
+  background: #60a5fa !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+  opacity: 0.6;
+  transform: none;
 }
 
 /* Keep this menu inside the viewport on narrow screens. */

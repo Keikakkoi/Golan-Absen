@@ -54,4 +54,24 @@ describe('DatePickerComponent', () => {
     expect(dayOne?.disabled).toBeTrue();
     expect(dayTen?.disabled).toBeFalse();
   });
+
+  it('supports month mode without rendering a day grid', () => {
+    component.mode = 'month';
+    component.writeValue('2026-10');
+    fixture.detectChanges();
+    component.open();
+    component.showMonthYear = true;
+    fixture.detectChanges();
+
+    expect(component.displayValue).toBe('Oktober 2026');
+    expect(fixture.nativeElement.querySelector('.date-picker-grid')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.date-picker-month-grid button.selected')?.textContent?.trim()).toBe('Oktober');
+    expect(fixture.nativeElement.querySelector('.date-picker-year-grid button.selected')?.textContent?.trim()).toBe('2026');
+
+    let modelValue = '';
+    component.registerOnChange(value => modelValue = value);
+    component.selectYear(2027);
+    expect(modelValue).toBe('2027-10');
+    expect(component.isOpen).toBeFalse();
+  });
 });

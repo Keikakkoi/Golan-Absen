@@ -1,0 +1,87 @@
+<div class="employee-payroll-shell">
+  <app-shared-sidebar></app-shared-sidebar>
+
+  <main>
+    <div class="heading">
+      <div>
+        <h1>Slip Gaji Saya</h1>
+        <p>Slip yang dapat dilihat dan diunduh hanya yang sudah diterbitkan.</p>
+      </div>
+    </div>
+
+    <section class="card">
+      <div *ngIf="loading" class="state">Memuat slip gaji...</div>
+      <div *ngIf="!loading && !rows.length" class="state">Belum ada slip gaji Published.</div>
+
+      <div class="table-wrap" *ngIf="!loading && rows.length">
+        <table>
+          <thead>
+            <tr>
+              <th>Periode</th>
+              <th>Total pendapatan</th>
+              <th>Total pengurangan</th>
+              <th>Take Home Pay</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of rows">
+              <td>{{ formatPeriod(row.periode_bulan) }}</td>
+              <td>{{ money(row.total_income) }}</td>
+              <td>{{ money(row.total_deduction) }}</td>
+              <td><strong>{{ money(row.take_home_pay) }}</strong></td>
+              <td class="actions">
+                <button
+                  type="button"
+                  class="icon-button view payroll-view-action"
+                  (click)="preview(row)"
+                  aria-label="Lihat preview slip gaji"
+                  title="Lihat preview slip gaji">
+                  <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
+                </button>
+                <button type="button" (click)="download(row)">Unduh PDF</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="preview-backdrop" *ngIf="selected">
+  <section class="preview card">
+    <button class="close" type="button" (click)="close()">&times;</button>
+    <h2>Slip Gaji {{ formatPeriod(selected.periode_bulan) }}</h2>
+    <p><strong>{{ selected.employee_name_snapshot }}</strong> &middot; {{ selected.employee_code_snapshot }}</p>
+    <hr>
+    <div class="details">
+      <span>Jabatan<strong>{{ selected.position_snapshot || '-' }}</strong></span>
+      <span>Departemen<strong>{{ selected.division_snapshot || '-' }}</strong></span>
+      <span>Total hari kerja<strong>{{ selected.total_hari_kerja }}</strong></span>
+      <span>Tanggal bayar<strong>{{ selected.payment_date | date:'dd/MM/yyyy' }}</strong></span>
+    </div>
+    <div class="take-home">
+      <span>Take Home Pay</span>
+      <strong>{{ money(selected.take_home_pay) }}</strong>
+    </div>
+    <div class="items">
+      <div>
+        <h4>Pendapatan</h4>
+        <p *ngFor="let item of selected.items" [hidden]="item.type !== 'income'">
+          {{ item.name }} <b>{{ money(item.amount) }}</b>
+        </p>
+      </div>
+      <div>
+        <h4>Pengurangan</h4>
+        <p *ngFor="let item of selected.items" [hidden]="item.type !== 'deduction'">
+          {{ item.name }} <b>{{ money(item.amount) }}</b>
+        </p>
+      </div>
+    </div>
+    <div class="preview-actions">
+      <button type="button" (click)="close()">Tutup</button>
+      <button type="button" class="primary" (click)="download(selected)">Unduh PDF</button>
+    </div>
+  </section>
+</div>

@@ -88,6 +88,7 @@ func main() {
 	handlers.SetupInternshipRoutes(api)
 	handlers.SetupManagerRoutes(api)
 	handlers.SetupAdminRoleOperationRoutes(api)
+	handlers.SetupPayrollRoutes(api)
 	handlers.SetupWebSocketRoutes(app) // Note: attaching to root app, not just /api/v1 if we want it outside, but let's keep it clean
 
 	log.Printf("Server listening on port %s", cfg.AppPort)

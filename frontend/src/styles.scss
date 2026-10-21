@@ -3262,13 +3262,13 @@ body.dark-theme .topbar-header .hamburger-btn:hover {
    Component-local rules and inline styles previously left neutral buttons
    with white/light backgrounds in dark mode. Semantic action buttons keep
    their role color; all neutral controls use the shared dark surfaces. */
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn),
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel),
 body.dark-theme .main-content
   a.btn-secondary,
 body.dark-theme .main-content
   a.btn-view-detail,
 body.dark-theme .main-content
-  .btn-outline-primary,
+  .btn-outline-primary:not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel),
 body.dark-theme .main-content
   .btn-detail,
 body.dark-theme .main-content
@@ -3298,10 +3298,10 @@ body.dark-theme .main-content
   text-shadow: none !important;
 }
 
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(:disabled):hover,
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):not(:disabled):hover,
 body.dark-theme .main-content a.btn-secondary:hover,
 body.dark-theme .main-content a.btn-view-detail:hover,
-body.dark-theme .main-content .btn-outline-primary:hover,
+body.dark-theme .main-content .btn-outline-primary:not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):hover,
 body.dark-theme .main-content .btn-detail:hover,
 body.dark-theme .main-content .btn-modal-secondary:hover,
 body.dark-theme .main-content .btn-close:hover,
@@ -3318,10 +3318,10 @@ body.dark-theme .main-content .calendar-header button:hover {
   color: var(--text-dark) !important;
 }
 
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):active,
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):active,
 body.dark-theme .main-content a.btn-secondary:active,
 body.dark-theme .main-content a.btn-view-detail:active,
-body.dark-theme .main-content .btn-outline-primary:active,
+body.dark-theme .main-content .btn-outline-primary:not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):active,
 body.dark-theme .main-content .section-tabs button.active,
 body.dark-theme .main-content .view-toggle button.active {
   background: var(--mint-2) !important;

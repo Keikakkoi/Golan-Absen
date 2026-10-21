@@ -1,0 +1,364 @@
+:host {
+  display: block;
+}
+
+.employee-payroll-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-light);
+}
+
+/* The shared sidebar is fixed, so reserve its actual compact desktop width
+   in the payroll page instead of allowing the main column to start at x=0. */
+.employee-payroll-shell > main {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 100vh;
+  margin-left: var(--compact-sidebar-width, 192px);
+  padding: 24px 28px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 0;
+}
+
+h1 {
+  margin: 0 0 6px;
+  color: var(--blue-dark);
+}
+
+.heading p {
+  color: var(--text-muted);
+}
+
+.card {
+  background: var(--card-bg, #fff);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid #e7edf2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+td button {
+  border: 1px solid #cbd5e1;
+  background: transparent;
+  color: var(--blue-dark);
+  padding: 6px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+.actions .payroll-view-action {
+  flex: 0 0 36px;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+  border: 1px solid #b8d9fb;
+  border-radius: 7px;
+  background: #e8f3ff;
+  color: #175a9d;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.actions .payroll-view-action svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.actions .payroll-view-action:hover {
+  background: #d7eaff;
+  border-color: #8fc2f3;
+  color: #175a9d;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+}
+
+.actions .payroll-view-action:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.state {
+  padding: 45px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: auto;
+  padding: 30px 15px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.preview {
+  width: min(700px, 100%);
+  margin: auto;
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  border: 0;
+  background: transparent;
+  font-size: 1.6rem;
+  cursor: pointer;
+}
+
+.details,
+.items {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.details span {
+  color: var(--text-muted);
+}
+
+.details strong {
+  display: block;
+  color: var(--text-dark);
+  margin-top: 4px;
+}
+
+.items {
+  margin-top: 20px;
+}
+
+.items h4 {
+  margin: 0;
+  padding: 9px;
+  background: #eff2f5;
+}
+
+.items p {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 9px;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.take-home {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px;
+  margin-top: 20px;
+  background: #e6f3e9;
+  font-size: 1.1rem;
+}
+
+.preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.preview-actions button {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 9px 13px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.preview-actions .primary {
+  color: #fff;
+  background: var(--blue-dark);
+}
+
+/* At the drawer breakpoint the sidebar no longer occupies desktop layout
+   space. The topbar is fixed, so add room for it above the page content. */
+@media (max-width: 900px) {
+  .employee-payroll-shell {
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  .employee-payroll-shell > main {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    margin-left: 0;
+    padding: 88px 16px calc(40px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 700px) {
+  .employee-payroll-shell > main {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .details,
+  .items {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The payroll page uses a custom shell rather than the shared .main-content
+   class, so give its light-theme surfaces explicit dark-mode counterparts. */
+:host-context(body.dark-theme) {
+  .employee-payroll-shell {
+    background: var(--bg);
+    color: var(--text-dark);
+  }
+
+  .employee-payroll-shell > main {
+    color: var(--text-dark);
+  }
+
+  h1 {
+    color: #e2e8f0;
+  }
+
+  .heading p,
+  .state,
+  .details span {
+    color: #cbd5e1;
+  }
+
+  .card {
+    background: linear-gradient(135deg, #1e293b 0%, #172033 100%);
+    border-color: #475569;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  th,
+  td {
+    border-bottom-color: #475569;
+    color: #e2e8f0;
+  }
+
+  th {
+    background: #334155;
+    color: #f8fafc;
+  }
+
+  td strong,
+  .details strong {
+    color: #f8fafc;
+  }
+
+  .actions > button:not(.payroll-view-action) {
+    border-color: #64748b;
+    background: #1e293b;
+    color: #e2e8f0;
+  }
+
+  .actions > button:not(.payroll-view-action):hover {
+    border-color: #93c5fd;
+    background: #334155;
+    color: #f8fafc;
+  }
+
+  .actions .payroll-view-action {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+    color: #93c5fd;
+  }
+
+  .actions .payroll-view-action:hover {
+    background: #254d78;
+    border-color: #60a5fa;
+    color: #dbeafe;
+  }
+
+  .preview {
+    color: #e2e8f0;
+  }
+
+  .preview h2,
+  .preview p,
+  .preview .details strong,
+  .preview .take-home,
+  .preview .items p,
+  .preview .preview-actions {
+    color: #e2e8f0;
+  }
+
+  .preview hr {
+    border-color: #475569;
+  }
+
+  .preview .items h4 {
+    background: #334155;
+    color: #f8fafc;
+  }
+
+  .preview .items p {
+    border-bottom-color: #475569;
+  }
+
+  .preview .take-home {
+    background: #14532d;
+  }
+
+  .preview-actions button {
+    border-color: #64748b;
+    background: #1e293b;
+    color: #e2e8f0;
+  }
+
+  .preview-actions button:hover {
+    background: #334155;
+  }
+
+  .preview-actions .primary {
+    background: #2563eb;
+    border-color: #3b82f6;
+    color: #fff;
+  }
+
+  .preview-actions .primary:hover {
+    background: #1d4ed8;
+  }
+
+  .close {
+    color: #cbd5e1;
+  }
+}

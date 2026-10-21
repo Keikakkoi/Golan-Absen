@@ -607,17 +607,66 @@
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin: 28px -32px -30px; padding: 18px 32px 30px; border-top: 1px solid var(--mint-1); background: #fbfdff; }
 .modal-actions .btn-primary, .modal-actions .btn-secondary { min-height: 44px; padding: 10px 20px; }
 .modal-actions .btn-cancel-reference {
-  min-height: 34px;
-  padding: 8px 13px;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 16px;
   border: 1px solid #3b82f6;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #ffffff;
   color: #2563eb;
+  font-weight: 700;
+  line-height: 1.2;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 .modal-actions .btn-cancel-reference:hover {
   background: #eff6ff;
   border-color: #2563eb;
   color: #1d4ed8;
+  transform: translateY(-1px);
+}
+.modal-actions .btn-cancel-reference:active,
+.modal-actions .btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Match the dark button reference used by the event form. These selectors
+   are intentionally scoped to this modal so other primary/secondary buttons
+   in the admin area keep their existing styles. */
+:host-context(body.dark-theme) .event-modal .modal-actions .btn-cancel-reference {
+  border-color: #60a5fa !important;
+  background: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .event-modal .modal-actions .btn-primary {
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #60a5fa !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+:host-context(body.dark-theme) .event-modal .modal-actions .btn-cancel-reference:hover {
+  border-color: #93c5fd !important;
+  background: #26364d !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 8px rgba(96, 165, 250, 0.18);
+}
+
+:host-context(body.dark-theme) .event-modal .modal-actions .btn-primary:hover {
+  border-color: #93c5fd !important;
+  background: #3b82f6 !important;
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .event-modal .modal-actions .btn-primary:disabled {
+  border-color: #60a5fa !important;
+  background: #60a5fa !important;
+  color: #ffffff !important;
+  opacity: 0.6;
+  transform: none;
 }
 
 @media (max-width: 900px) {

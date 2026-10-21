@@ -82,6 +82,8 @@ func ConnectDB(cfg *Config) {
 		&models.InternshipDocument{},
 		&models.CertificateIssuanceLog{},
 		&models.GeneralSetting{},
+		&models.Payroll{},
+		&models.PayrollItem{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schemas: %v", err)

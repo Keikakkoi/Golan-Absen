@@ -1,0 +1,530 @@
+.payroll-shell { display: flex; min-height: 100vh; background: var(--bg-light); }
+.main-content { flex: 1; min-width: 0; padding: 32px 48px; }
+.page-heading { display:flex; justify-content:space-between; gap:20px; align-items:center; margin-bottom:28px; } h1 { margin:0 0 6px; color:var(--blue-dark); } .page-heading p { margin:0; color:var(--text-muted); }
+.page-heading .btn-primary { background:#3b82f6; border-radius:10px; padding:11px 18px; color:#fff; box-shadow:0 1px 2px rgba(37,99,235,.16); transition:background-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.page-heading .btn-primary:hover { background:#2563eb; box-shadow:0 3px 8px rgba(37,99,235,.22); transform:translateY(-1px); }
+.page-heading .btn-primary:active { background:#1d4ed8; box-shadow:0 1px 2px rgba(37,99,235,.16); transform:translateY(0); }
+.golan-card,.modal-card { background:var(--card-bg,#fff); border:1px solid var(--border-color,#e2e8f0); border-radius:12px; box-shadow:0 3px 14px rgba(15,23,42,.06); }
+.filters { display:grid; grid-template-columns:repeat(5,minmax(120px,1fr)) auto; gap:12px; padding:16px; margin-bottom:20px; align-items:end; } label { display:flex; flex-direction:column; gap:6px; color:var(--text-muted); font-size:.82rem; font-weight:600; } input,select,textarea { width:100%; box-sizing:border-box; padding:9px 10px; border:1px solid #cbd5e1; border-radius:7px; color:var(--text-dark); background:var(--card-bg,#fff); font:inherit; font-weight:400; } textarea { resize:vertical; } .filter-actions { display:flex; gap:8px; }
+.btn-primary,.btn-secondary { border:0; border-radius:7px; padding:10px 15px; cursor:pointer; font-weight:700; white-space:nowrap; } .btn-primary { background:var(--blue-dark,#123452); color:white; } .btn-secondary { background:#e8edf3; color:#203247; } .filters .btn-reset-filter { background:#6b7280; border:1px solid #6b7280; border-radius:10px; color:#ffffff; min-width:78px; box-shadow:0 1px 2px rgba(0,0,0,.08); transition:background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease; } .filters .btn-reset-filter:hover { background:#4b5563; border-color:#4b5563; color:#ffffff; transform:translateY(-1px); box-shadow:0 2px 4px rgba(75,85,99,.2); } .filters .btn-reset-filter:active { background:#374151; border-color:#374151; color:#ffffff; transform:translateY(0); } button:disabled { opacity:.55; cursor:not-allowed; }
+.table-card { padding:16px; } .table-wrap { overflow-x:auto; } table { width:100%; border-collapse:collapse; font-size:.82rem; } th,td { padding:12px 9px; border-bottom:1px solid #e8edf2; text-align:left; white-space:nowrap; } th { color:var(--text-muted); font-size:.75rem; } .money { font-weight:700; } .status { background:#fff4d7; color:#8a5a00; border-radius:12px; padding:4px 9px; font-size:.75rem; } .status.published { background:#e4f3e8; color:#21613a; } .actions { display:flex; gap:8px; align-items:center; } .actions button { border:1px solid #cbd5e1; border-radius:5px; background:transparent; color:var(--blue-dark); padding:5px 7px; cursor:pointer; } .actions .danger { color:#b42318; } .actions .payroll-view-action { flex:0 0 36px; width:36px; min-width:36px; height:36px; min-height:36px; padding:0; box-sizing:border-box; border:1px solid #b8d9fb; border-radius:7px; background:#e8f3ff; color:#175a9d; transition:background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease; } .actions .payroll-view-action svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; } .actions .payroll-view-action:hover { background:#d7eaff; border-color:#8fc2f3; color:#175a9d; transform:translateY(-1px); box-shadow:0 3px 8px rgba(15,23,42,.12); } .actions .payroll-view-action:active { transform:translateY(0); box-shadow:none; } .loading-state,.empty-state,.error-state { padding:38px 12px; text-align:center; color:var(--text-muted); } .error-state { color:#b42318; } .pagination { display:flex; justify-content:center; align-items:center; gap:14px; padding-top:16px; } .pagination button { width:32px; height:30px; border:1px solid #cbd5e1; border-radius:5px; background:transparent; }
+.modal-backdrop { position:fixed; inset:0; z-index:1000; overflow:auto; padding:30px 15px; background:rgba(15,23,42,.55); } .modal-card { width:min(980px,100%); margin:auto; padding:22px; } .modal-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; } .modal-title h2 { margin:0; color:var(--blue-dark); } .modal-title button { border:0; background:transparent; font-size:1.7rem; cursor:pointer; } .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; } .wide { grid-column:1/-1; } .items-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:20px; } h3 { font-size:1rem; color:var(--blue-dark); } .item-row { display:grid; grid-template-columns:1fr 150px 30px; gap:7px; margin-bottom:8px; align-items:center; } .item-row button { border:0; color:#b42318; background:transparent; font-size:1.2rem; cursor:pointer; } .add-item { border:0; background:transparent; color:#315fe7; cursor:pointer; padding:5px 0; } .summary { display:flex; justify-content:space-between; gap:12px; padding:15px; margin:20px 0; background:#fff7de; border-radius:8px; } .summary span { display:flex; flex-direction:column; color:var(--text-muted); font-size:.8rem; } .summary strong { color:var(--text-dark); font-size:1rem; margin-top:4px; } .negative { color:#b42318 !important; } .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:20px; }
+.payslip-preview { max-width:780px; margin:auto; padding:28px; background:#fff; color:#293442; border:1px solid #e3e7eb; } .payslip-preview header { display:grid; grid-template-columns:auto 1fr auto; gap:12px; align-items:start; } .payslip-preview header img { width:48px; height:48px; object-fit:contain; } .payslip-preview header strong,.payslip-preview header small { display:block; } .payslip-preview header small { color:#6b7280; margin-top:5px; } .preview-period { text-align:right; } .preview-period span { display:block; color:#6b7280; margin-top:5px; } .payslip-preview h3 { border-bottom:1px solid #e3e7eb; padding:22px 0 10px; } .employee-details { display:grid; grid-template-columns:1fr 1fr; gap:8px 35px; font-size:.8rem; } .employee-details span { color:#6b7280; } .employee-details strong { display:block; color:#253243; margin-top:3px; } .preview-columns { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:22px; } .preview-columns > div { border:1px solid #e4e9ef; } .preview-columns h4,.preview-columns p,.preview-columns > div > strong { display:flex; justify-content:space-between; margin:0; padding:9px 11px; } .preview-columns h4 { background:#eff2f5; font-size:.8rem; } .preview-columns em { font-style:normal; } .preview-columns p { font-size:.78rem; border-top:1px solid #edf0f3; } .preview-columns > div > strong { background:#fff7de; font-size:.78rem; } .preview-take-home { display:flex; justify-content:space-between; padding:16px; margin-top:18px; background:#e8f4eb; font-size:1.1rem; font-weight:700; } .preview-take-home small { display:block; font-size:.7rem; color:#6b7280; font-weight:400; margin-top:5px; } .payslip-preview footer { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:18px; margin-top:28px; font-size:.78rem; } .payslip-preview footer p { color:#6b7280; min-height:35px; }
+@media (max-width:900px) { .main-content { padding:24px 18px; } .filters { grid-template-columns:repeat(2,1fr); } .filter-actions { grid-column:1/-1; } .items-grid { grid-template-columns:1fr; } }
+@media (max-width:600px) { .page-heading { align-items:flex-start; flex-direction:column; } .filters,.form-grid { grid-template-columns:1fr; } .payslip-preview { padding:16px; } .employee-details,.preview-columns,.payslip-preview footer { grid-template-columns:1fr; } .summary { flex-direction:column; } .item-row { grid-template-columns:1fr 1fr 28px; } }
+
+/* Payroll dialogs are rendered inside .main-content, so the shared dark-mode
+   rules also target their generic inputs, labels, headings, and buttons. Keep
+   the dialog as one coherent surface instead of mixing a light card with dark
+   controls and low-contrast text. */
+.payroll-shell .filters .filter-actions > .btn-secondary {
+  background: #6b7280;
+  border: 1px solid #6b7280;
+  border-radius: 10px;
+  color: #ffffff;
+  min-width: 78px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+  transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.payroll-shell .filters .filter-actions > .btn-secondary:hover {
+  background: #4b5563;
+  border-color: #4b5563;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(75, 85, 99, .2);
+}
+
+.payroll-shell .filters .filter-actions > .btn-secondary:active {
+  background: #374151;
+  border-color: #374151;
+  color: #ffffff;
+  transform: translateY(0);
+}
+
+.payroll-shell .modal-card {
+  color: #172b3a;
+  background: #ffffff;
+  border-color: #d7e1eb;
+}
+
+.payroll-shell .modal-card h2,
+.payroll-shell .modal-card h3,
+.payroll-shell .modal-card label,
+.payroll-shell .modal-card .summary span,
+.payroll-shell .modal-card .summary strong {
+  color: #172b3a;
+}
+
+.payroll-shell .modal-card input,
+.payroll-shell .modal-card select,
+.payroll-shell .modal-card textarea {
+  color: #172b3a;
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color-scheme: light;
+}
+
+.payroll-shell .modal-card input::placeholder,
+.payroll-shell .modal-card textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.payroll-shell .modal-card input:focus,
+.payroll-shell .modal-card select:focus,
+.payroll-shell .modal-card textarea:focus {
+  border-color: #3b82f6;
+  outline: 2px solid rgba(59, 130, 246, .18);
+}
+
+.payroll-shell .editor-modal .summary {
+  background: #fff7de;
+  color: #172b3a;
+}
+
+.payroll-shell .modal-card .btn-primary {
+  background: #1e4f85;
+  color: #ffffff;
+}
+
+.payroll-shell .modal-card .btn-secondary {
+  background: #eef2f7;
+  border: 1px solid #cbd5e1;
+  color: #203247;
+}
+
+:host-context(body.dark-theme) .payroll-shell .modal-card {
+  color: #e2e8f0 !important;
+  background: #1e293b !important;
+  border-color: #475569 !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .modal-card h2,
+:host-context(body.dark-theme) .payroll-shell .modal-card h3,
+:host-context(body.dark-theme) .payroll-shell .modal-card label,
+:host-context(body.dark-theme) .payroll-shell .modal-card .summary span,
+:host-context(body.dark-theme) .payroll-shell .modal-card .summary strong {
+  color: #e2e8f0 !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .modal-card input,
+:host-context(body.dark-theme) .payroll-shell .modal-card select,
+:host-context(body.dark-theme) .payroll-shell .modal-card textarea {
+  background: #172033 !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+  color-scheme: dark;
+}
+
+:host-context(body.dark-theme) .payroll-shell .modal-card input::placeholder,
+:host-context(body.dark-theme) .payroll-shell .modal-card textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .editor-modal .summary {
+  background: #3b3421 !important;
+  border: 1px solid #66552b;
+}
+
+:host-context(body.dark-theme) .payroll-shell .editor-modal .summary strong {
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .modal-card .btn-primary {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .modal-card .btn-secondary {
+  background: #334155 !important;
+  border-color: #64748b !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .modal-card .modal-title button {
+  color: #cbd5e1 !important;
+}
+
+/* The dialogs are siblings of .payroll-shell in the template. These rules
+   intentionally target the dialog classes directly so dark-mode overrides
+   and the desktop popup scaling cannot leak outside the dialog surface. */
+.modal-backdrop > .editor-modal,
+.modal-backdrop > .preview-modal {
+  width: min(980px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: calc(100dvh - 32px) !important;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transform: none !important;
+  transform-origin: center center;
+}
+
+/* The backdrop handles form scrolling so the shared picker can extend past
+   the editor card without being clipped by its overflow box. */
+.modal-backdrop > .editor-modal {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.modal-backdrop > .editor-modal {
+  background: #ffffff !important;
+  border-color: #d7e1eb !important;
+  color: #172b3a !important;
+}
+
+.modal-backdrop > .editor-modal h2,
+.modal-backdrop > .editor-modal h3,
+.modal-backdrop > .editor-modal label,
+.modal-backdrop > .editor-modal .summary span,
+.modal-backdrop > .editor-modal .summary strong {
+  color: #172b3a !important;
+}
+
+.modal-backdrop > .editor-modal input,
+.modal-backdrop > .editor-modal select,
+.modal-backdrop > .editor-modal textarea {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #172b3a !important;
+  color-scheme: light;
+}
+
+.modal-backdrop > .editor-modal input::placeholder,
+.modal-backdrop > .editor-modal textarea::placeholder {
+  color: #64748b !important;
+  opacity: 1;
+}
+
+.modal-backdrop > .editor-modal .btn-primary {
+  background: #3b82f6;
+  border-radius: 10px;
+  padding: 11px 18px;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, .16);
+  transition: background-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.modal-backdrop > .editor-modal .btn-primary:hover {
+  background: #2563eb;
+  box-shadow: 0 3px 8px rgba(37, 99, 235, .22);
+  transform: translateY(-1px);
+}
+
+.modal-backdrop > .editor-modal .btn-primary:active {
+  background: #1d4ed8;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, .16);
+  transform: translateY(0);
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal {
+  background: #1e293b !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal h2,
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal h3,
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal label,
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .summary span,
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .summary strong {
+  color: #e2e8f0 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal input,
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal select,
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal textarea {
+  background: #172033 !important;
+  border-color: #64748b !important;
+  color: #f8fafc !important;
+  color-scheme: dark;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal input::placeholder,
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal textarea::placeholder {
+  color: #cbd5e1 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .summary {
+  background: #3b3421 !important;
+  border: 1px solid #66552b;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .summary strong {
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .btn-primary {
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #60a5fa !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .btn-secondary {
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .btn-primary:hover {
+  background: #3b82f6 !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .btn-secondary:hover {
+  background: #26364d !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 3px 8px rgba(96, 165, 250, 0.18);
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .modal-actions button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .btn-primary:disabled {
+  background: #60a5fa !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+  opacity: 0.6;
+  transform: none;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .editor-modal .modal-title button {
+  color: #f8fafc !important;
+}
+
+/* The payroll preview action follows the shared view-action reference in
+   dark mode while retaining the same eye icon and dimensions. */
+:host-context(body.dark-theme) .payroll-shell .table-card .actions .payroll-view-action {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card .actions .payroll-view-action:hover {
+  background: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card .actions .payroll-view-action:active {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+/* Payroll status badges follow the Approval reference in light and dark mode. */
+.payroll-shell .table-card table td .status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 5px 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.payroll-shell .table-card table td .status::before {
+  content: '';
+  display: inline-block;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.payroll-shell .table-card table td .status.status-published {
+  background: #f0fdf4 !important;
+  border-color: #4ade80 !important;
+  color: #166534 !important;
+}
+
+.payroll-shell .table-card table td .status.status-draft {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+
+.payroll-shell .table-card table td .status.status-neutral {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #334155 !important;
+}
+
+.payroll-shell .table-card table td .status.status-published::before {
+  background: #15803d !important;
+}
+
+.payroll-shell .table-card table td .status.status-draft::before {
+  background: #b45309 !important;
+}
+
+.payroll-shell .table-card table td .status.status-neutral::before {
+  background: #64748b !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card table td .status.status-published {
+  background: #14532d !important;
+  border-color: #22c55e !important;
+  color: #bbf7d0 !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card table td .status.status-draft {
+  background: #78350f !important;
+  border-color: #f59e0b !important;
+  color: #fde68a !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card table td .status.status-neutral {
+  background: #334155 !important;
+  border-color: #94a3b8 !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card table td .status.status-published::before {
+  background: #86efac !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card table td .status.status-draft::before {
+  background: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card table td .status.status-neutral::before {
+  background: #cbd5e1 !important;
+}
+
+/* The preview dialog is rendered as a sibling of .payroll-shell, so the
+   existing dark-mode rules for the editor modal do not reach it. Keep the
+   complete payslip preview readable when the application uses dark mode. */
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal {
+  background: #1e293b !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .modal-title h2 {
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .modal-title button {
+  color: #cbd5e1 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .payslip-preview {
+  background: #172033 !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .payslip-preview h3 {
+  border-bottom-color: #475569 !important;
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .payslip-preview header strong,
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .preview-period strong,
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .employee-details strong,
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .preview-columns > div > strong {
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .payslip-preview header small,
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .preview-period span,
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .employee-details span,
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .preview-take-home small,
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal footer p {
+  color: #94a3b8 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .preview-columns > div {
+  border-color: #475569 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .preview-columns h4 {
+  background: #334155 !important;
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .preview-columns p {
+  border-top-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .preview-columns > div > strong {
+  background: #3b3421 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .preview-take-home {
+  background: #14532d !important;
+  color: #f0fdf4 !important;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .modal-actions .btn-secondary {
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .modal-actions .btn-primary {
+  min-height: 44px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border: 1px solid #60a5fa !important;
+  border-radius: 12px;
+  background: #60a5fa !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .modal-actions .btn-secondary:hover {
+  background: #26364d !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 3px 8px rgba(96, 165, 250, 0.18);
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .modal-actions .btn-primary:hover {
+  background: #3b82f6 !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .modal-actions button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}

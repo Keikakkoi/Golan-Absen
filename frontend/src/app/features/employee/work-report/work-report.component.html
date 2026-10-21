@@ -244,11 +244,11 @@
           </div>
 
           <div class="form-actions mt-4" style="display: flex; justify-content: flex-end; gap: 1rem;">
-            <button type="button" class="btn-outline-primary work-report-secondary-action" (click)="cancelForm()">Batal</button>
-            <button type="button" class="btn-outline-primary work-report-secondary-action" (click)="saveDraft()" [disabled]="isSubmitting || !reportForm.get('tanggal')?.value">
+            <button type="button" class="btn-outline-primary work-report-secondary-action work-report-cancel" (click)="cancelForm()">Batal</button>
+            <button type="button" class="btn btn-primary work-report-primary-action" (click)="saveDraft()" [disabled]="isSubmitting || !reportForm.get('tanggal')?.value">
               {{ savingAction === 'draft' ? 'Menyimpan...' : 'Simpan Draft' }}
             </button>
-            <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
+            <button type="submit" class="btn btn-primary work-report-primary-action" [disabled]="isSubmitting">
               {{ savingAction === 'submitted' ? 'Mengirim...' : 'Kirim Laporan' }}
             </button>
           </div>

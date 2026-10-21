@@ -21,6 +21,8 @@ interface DateCell {
   today: boolean;
 }
 
+type DatePickerMode = 'date' | 'month';
+
 @Component({
   selector: 'app-date-picker',
   standalone: true,
@@ -36,6 +38,7 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
   @Input() placeholder = 'Pilih tanggal';
   @Input() min = '';
   @Input() max = '';
+  @Input() mode: DatePickerMode = 'date';
   @Input() required = false;
   @Input() disabled = false;
   @Input() inputClass = 'golan-input';
@@ -62,7 +65,8 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
   constructor(private elementRef: ElementRef<HTMLElement>) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['min'] || changes['max'] || changes['value']) this.buildCalendar();
+    if (changes['mode'] && this.value) this.value = normalizeValue(this.value, this.mode);
+    if (changes['min'] || changes['max'] || changes['mode']) this.buildCalendar();
   }
 
   get popupId(): string {
@@ -70,6 +74,10 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
   }
 
   get displayValue(): string {
+    if (this.mode === 'month') {
+      const date = parseMonth(this.value);
+      return date ? new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' }).format(date) : '';
+    }
     const date = parseDate(this.value);
     return date ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date) : '';
   }
@@ -83,8 +91,11 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
   }
 
   writeValue(value: string | null): void {
-    this.value = normalizeDateValue(value || '');
-    if (this.isOpen && this.value) this.viewDate = this.startOfMonth(parseDate(this.value) || new Date());
+    this.value = normalizeValue(value || '', this.mode);
+    if (this.isOpen && this.value) {
+      const selected = this.mode === 'month' ? parseMonth(this.value) : parseDate(this.value);
+      this.viewDate = this.startOfMonth(selected || new Date());
+    }
     this.buildCalendar();
   }
 
@@ -94,7 +105,7 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
 
   open(): void {
     if (this.disabled) return;
-    const selected = parseDate(this.value) || new Date();
+    const selected = (this.mode === 'month' ? parseMonth(this.value) : parseDate(this.value)) || new Date();
     this.viewDate = this.startOfMonth(selected);
     this.isOpen = true;
     this.showMonthYear = false;
@@ -114,28 +125,47 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
     this.onModelTouched();
   }
 
+  toggleMonthYear(): void {
+    this.showMonthYear = !this.showMonthYear;
+    this.buildCalendar();
+    // The month/year panel changes the popup height. Wait for Angular to
+    // render it before deciding whether the popup should open upward.
+    requestAnimationFrame(() => { if (this.isOpen) this.positionPopup(); });
+  }
+
   previousMonth(event?: Event): void { event?.stopPropagation(); this.viewDate = new Date(this.viewDate.getFullYear(), this.viewDate.getMonth() - 1, 1); this.buildCalendar(); }
   nextMonth(event?: Event): void { event?.stopPropagation(); this.viewDate = new Date(this.viewDate.getFullYear(), this.viewDate.getMonth() + 1, 1); this.buildCalendar(); }
 
   selectMonth(month: number): void {
     this.viewDate = new Date(this.viewDate.getFullYear(), month, 1);
+    if (this.mode === 'month') {
+      this.setValue(formatMonth(this.viewDate));
+      this.close();
+      return;
+    }
     this.showMonthYear = false;
     this.buildCalendar();
   }
 
   selectYear(year: number): void {
     this.viewDate = new Date(year, this.viewDate.getMonth(), 1);
+    if (this.mode === 'month') {
+      this.setValue(formatMonth(this.viewDate));
+      this.close();
+      return;
+    }
     this.showMonthYear = false;
     this.buildCalendar();
   }
 
   selectDate(key: string): void {
-    if (!key || this.isOutOfRange(key)) return;
+    if (this.mode !== 'date' || !key || this.isOutOfRange(key)) return;
     this.setValue(key);
     this.close();
   }
 
   setToday(): void {
+    if (this.mode !== 'date') return;
     const today = formatDate(new Date());
     if (!this.isOutOfRange(today)) this.selectDate(today);
   }
@@ -178,14 +208,21 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
   @HostListener('window:resize')
   onResize(): void { if (this.isOpen) this.positionPopup(); }
 
+  @HostListener('window:scroll')
+  onScroll(): void { if (this.isOpen) this.positionPopup(); }
+
   private setValue(value: string): void {
-    this.value = normalizeDateValue(value);
+    this.value = normalizeValue(value, this.mode);
     this.onModelChange(this.value);
     this.input.emit(this.value);
     this.change.emit(this.value);
   }
 
   buildCalendar(): void {
+    if (this.mode === 'month') {
+      this.calendarDays = [];
+      return;
+    }
     const firstDay = new Date(this.viewDate.getFullYear(), this.viewDate.getMonth(), 1).getDay();
     const daysInMonth = new Date(this.viewDate.getFullYear(), this.viewDate.getMonth() + 1, 0).getDate();
     const today = formatDate(new Date());
@@ -206,9 +243,20 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
     const host = this.elementRef.nativeElement.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    const estimatedHeight = this.showMonthYear ? 390 : 340;
-    this.opensUp = viewportHeight - host.bottom < estimatedHeight && host.top > estimatedHeight;
-    this.alignsRight = host.left + 320 > viewportWidth && host.right - 320 >= 8;
+    const popup = this.elementRef.nativeElement.querySelector<HTMLElement>('.date-picker-popup');
+    const estimatedHeight = this.mode === 'month' ? 390 : this.showMonthYear ? 390 : 340;
+    const popupHeight = popup?.getBoundingClientRect().height || estimatedHeight;
+    const popupWidth = popup?.getBoundingClientRect().width || Math.min(320, viewportWidth - 16);
+    const viewportPadding = 8;
+    const spaceAbove = Math.max(0, host.top - viewportPadding);
+    const spaceBelow = Math.max(0, viewportHeight - host.bottom - viewportPadding);
+
+    // Open toward the side with enough room. When neither side can fit the
+    // complete panel, use the side with more room and let the popup's own
+    // max-height provide the final viewport guardrail.
+    this.opensUp = spaceBelow < popupHeight && spaceAbove > spaceBelow;
+    this.alignsRight = host.left + popupWidth > viewportWidth - viewportPadding
+      && host.right - popupWidth >= viewportPadding;
   }
 
   private startOfMonth(date: Date): Date { return new Date(date.getFullYear(), date.getMonth(), 1); }
@@ -225,4 +273,22 @@ function formatDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function normalizeDateValue(value: string): string { const date = parseDate(value); return date ? formatDate(date) : ''; }
+function parseMonth(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, 1);
+  return date.getFullYear() === Number(match[1]) && date.getMonth() === Number(match[2]) - 1 ? date : null;
+}
+
+function formatMonth(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function normalizeValue(value: string, mode: DatePickerMode): string {
+  if (mode === 'month') {
+    const month = parseMonth(value);
+    return month ? formatMonth(month) : '';
+  }
+  const date = parseDate(value);
+  return date ? formatDate(date) : '';
+}

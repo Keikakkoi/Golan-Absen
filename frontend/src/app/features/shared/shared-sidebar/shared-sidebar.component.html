@@ -106,6 +106,9 @@
       <a routerLink="/employee/profile" [class.active]="isEmployeeProfileActive()" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya
       </a>
+      <a routerLink="/employee/payroll" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Slip Gaji
+      </a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ
       </a>
@@ -123,6 +126,7 @@
       <a routerLink="/intern/certificate" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#save"></use></svg> Sertifikat Magang</a>
       <a class="notification-nav-link" routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg><span>Notifikasi</span><span class="sidebar-notification-badge" *ngIf="unreadCount > 0" [attr.aria-label]="unreadCount + ' notifikasi belum dibaca'">{{ unreadCount }}</span></a>
       <a routerLink="/employee/profile" [class.active]="isEmployeeProfileActive()" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya</a>
+      <a routerLink="/employee/payroll" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Slip Gaji</a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ</a>
     </ng-container>
 
@@ -140,6 +144,7 @@
       <a routerLink="/manager/leaves" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#check"></use></svg> Persetujuan Izin</a>
       <a class="notification-nav-link" routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg><span>Notifikasi</span><span class="sidebar-notification-badge" *ngIf="unreadCount > 0" [attr.aria-label]="unreadCount + ' notifikasi belum dibaca'">{{ unreadCount }}</span></a>
       <a routerLink="/employee/profile" [class.active]="isEmployeeProfileActive()" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya</a>
+      <a routerLink="/employee/payroll" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Slip Gaji</a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ</a>
     </ng-container>
 
@@ -165,6 +170,9 @@
       </a>
       <a routerLink="/admin/work-reports" routerLinkActive="active" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Laporan Kerja
+      </a>
+      <a routerLink="/admin/payroll" routerLinkActive="active" (click)="closeDrawer()">
+        <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Penggajian
       </a>
       <a routerLink="/admin/reports" [class.active]="isAdminReportsActive()" (click)="closeDrawer()">
         <svg class="nav-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Rekap Absensi
