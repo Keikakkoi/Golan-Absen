@@ -122,7 +122,14 @@
   cursor: pointer;
   font: inherit;
 
-  &:hover:not(:disabled) { border-color: var(--green); background: var(--mint-0); }
+  /* Keep the date label readable over the light-blue hover surface. This is
+     scoped to the activity calendar so generic button hover rules cannot turn
+     the label white on a light background. */
+  &:hover:not(:disabled) {
+    border-color: var(--green);
+    background: var(--mint-0);
+    color: var(--green-deep);
+  }
   &.empty { visibility: hidden; }
   &.today {
     border: 2px solid var(--calendar-today, #2563eb);
@@ -130,9 +137,39 @@
     font-weight: 700;
   }
   &.selected { background: var(--green-deep); color: white; }
+  &.selected:hover:not(:disabled) {
+    border-color: var(--green-deep);
+    background: var(--green-deep);
+    color: white;
+  }
   &.holiday:not(.selected) { background: #ffeded; border-color: #ffcccc; color: #c60000; }
+  &.holiday:not(.selected):hover:not(:disabled) {
+    background: #eaf4ff;
+    border-color: var(--green);
+    color: #c60000;
+  }
   i { position: absolute; left: 50%; bottom: 6px; width: 5px; height: 5px; border-radius: 50%; background: var(--stamp); transform: translateX(-50%); }
   &.selected i { background: white; }
+}
+
+/* The shared dark-theme hover rule also targets calendar buttons. Keep the
+   hover contrast explicit here while preserving the existing selected state. */
+:host-context(body.dark-theme) .events-page .calendar-day:hover:not(:disabled) {
+  border-color: #60a5fa !important;
+  background: #294866 !important;
+  color: #bfdbfe !important;
+}
+
+:host-context(body.dark-theme) .events-page .calendar-day.selected:hover:not(:disabled) {
+  border-color: #93c5fd !important;
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+:host-context(body.dark-theme) .events-page .calendar-day.holiday:not(.selected):hover:not(:disabled) {
+  border-color: #60a5fa !important;
+  background: #294866 !important;
+  color: #fecaca !important;
 }
 
 .selected-events-card,
