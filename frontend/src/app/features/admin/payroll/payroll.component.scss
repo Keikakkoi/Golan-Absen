@@ -528,3 +528,55 @@
   transform: translateY(0);
   box-shadow: none;
 }
+
+.employee-section {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.employee-section h3 {
+  margin: 0 0 12px;
+}
+
+.employee-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.employee-grid input[readonly] {
+  background: #eef2f7;
+  color: #334155;
+  cursor: default;
+}
+
+.payroll-shell select:focus-visible,
+.payroll-shell input:focus-visible,
+.payroll-shell textarea:focus-visible,
+.payroll-shell button:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, .35);
+  outline-offset: 2px;
+}
+
+:host-context(body.dark-theme) .employee-section {
+  background: #172033;
+  border-color: #475569;
+}
+
+:host-context(body.dark-theme) .employee-grid input[readonly] {
+  background: #26364d !important;
+  color: #e2e8f0 !important;
+}
+
+@media (max-width: 600px) {
+  .employee-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .employee-section {
+    padding: 12px;
+  }
+}

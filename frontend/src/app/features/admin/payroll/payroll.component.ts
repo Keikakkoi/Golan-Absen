@@ -10,7 +10,7 @@ import { environment } from '../../../../environments/environment';
 import { take } from 'rxjs';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 
-interface DirectoryEmployee { employee_id: number; Nama: string; Employee?: { EmployeeCode?: string; Division?: { NamaDivisi?: string }; Position?: { NamaJabatan?: string }; NIK?: string }; Status: string; }
+interface DirectoryEmployee { employee_id: number; Nama: string; Role?: string; role?: string; Employee?: { employee_code?: string; EmployeeCode?: string; Division?: { NamaDivisi?: string }; Position?: { NamaJabatan?: string }; NIK?: string }; Status: string; }
 
 @Component({ selector: 'app-payroll', standalone: true, imports: [CommonModule, FormsModule, AdminSidebarComponent, DatePickerComponent], templateUrl: './payroll.component.html', styleUrls: ['./payroll.component.scss'] })
 export class PayrollComponent implements OnInit {
@@ -39,6 +39,7 @@ export class PayrollComponent implements OnInit {
   ).reverse();
   isEditorOpen = false; isPreviewOpen = false; editingID: number | null = null; selected?: Payroll;
   form: any = this.emptyForm();
+  employeeDetails = { position: '-', role: '-', code: '-' };
   private currentUser: { name?: string; jabatan?: string } = {};
 
   constructor(private payroll: PayrollService, private http: HttpClient, private auth: AuthService, private alert: AlertService) {}
@@ -57,11 +58,24 @@ export class PayrollComponent implements OnInit {
   resetFilters(): void { this.filters = { month: '', year: '', employee_id: '', division: '', status: '', limit: 10 }; this.applyFilters(); }
   changePage(page: number): void { if (page < 1 || page > this.totalPages) return; this.page = page; this.load(); }
   emptyForm(): any { const now = new Date(); return { employee_id: '', periode_bulan: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, payroll_cutoff_start: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, payroll_cutoff_end: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`, payment_date: '', company_phone: '', total_hari_kerja: 0, notes: '', approved_by_name: '', approved_by_position: '', received_by_name: '', received_by_position: '', incomes: [{ name: 'Gaji pokok', amount: 0 }, { name: 'Uang makan', amount: 0 }], deductions: [{ name: 'PPh 21', amount: 0 }, { name: 'BPJS Kesehatan', amount: 0 }] }; }
-  openCreate(): void { this.editingID = null; this.form = this.emptyForm(); this.syncApproverFields(); this.isEditorOpen = true; this.isPreviewOpen = false; }
+  openCreate(): void { this.editingID = null; this.form = this.emptyForm(); this.resetEmployeeDetails(); this.syncApproverFields(); this.isEditorOpen = true; this.isPreviewOpen = false; }
   edit(row: Payroll): void { this.payroll.detail(row.ID).subscribe({ next: detail => { this.editingID = detail.ID; this.form = this.formFromPayroll(detail); this.syncApproverFields(); this.onEmployeeSelected(this.form.employee_id); this.isEditorOpen = true; this.isPreviewOpen = false; }, error: err => void this.alert.error('Gagal membuka slip', err.error?.error || '') }); }
   formFromPayroll(row: Payroll): any { return { employee_id: row.employee_id, periode_bulan: row.periode_bulan?.slice(0, 7), payroll_cutoff_start: row.payroll_cutoff_start?.slice(0, 10), payroll_cutoff_end: row.payroll_cutoff_end?.slice(0, 10), payment_date: row.payment_date?.slice(0, 10), company_phone: row.company_phone_snapshot || '', total_hari_kerja: row.total_hari_kerja, notes: row.notes || '', approved_by_name: row.approved_by_name || '', approved_by_position: row.approved_by_position || '', received_by_name: row.received_by_name || '', received_by_position: row.received_by_position || '', incomes: (row.items || []).filter(i => i.type === 'income').map(i => ({ name: i.name, amount: i.amount })), deductions: (row.items || []).filter(i => i.type === 'deduction').map(i => ({ name: i.name, amount: i.amount })) }; }
   syncApproverFields(): void { this.form.approved_by_name = this.currentUser.name || localStorage.getItem('name') || ''; this.form.approved_by_position = this.currentUser.jabatan || localStorage.getItem('jabatan') || ''; }
-  onEmployeeSelected(employeeID: number | string): void { const employee = this.employees.find(item => item.employee_id === Number(employeeID)); this.form.received_by_name = employee?.Nama || ''; this.form.received_by_position = employee?.Employee?.Position?.NamaJabatan || ''; this.recalculateWorkDays(); }
+  onEmployeeSelected(employeeID: number | string): void {
+    const employee = this.employees.find(item => item.employee_id === Number(employeeID));
+    this.employeeDetails = {
+      position: this.displayValue(employee?.Employee?.Position?.NamaJabatan),
+      role: this.displayValue(employee?.Role || employee?.role),
+      code: this.employeeCode(employee)
+    };
+    this.form.received_by_name = employee?.Nama || '';
+    this.form.received_by_position = employee?.Employee?.Position?.NamaJabatan || '';
+    this.recalculateWorkDays();
+  }
+  employeeCode(employee?: DirectoryEmployee): string { return this.displayValue(employee?.Employee?.employee_code || employee?.Employee?.EmployeeCode); }
+  private displayValue(value: string | null | undefined): string { const normalized = String(value || '').trim(); return normalized || '-'; }
+  private resetEmployeeDetails(): void { this.employeeDetails = { position: '-', role: '-', code: '-' }; }
   onCutoffChanged(): void { this.recalculateWorkDays(); }
   private recalculateWorkDays(): void {
     const employeeID = Number(this.form.employee_id);
@@ -97,11 +111,11 @@ export class PayrollComponent implements OnInit {
   preview(row: Payroll): void { this.payroll.detail(row.ID).subscribe({ next: detail => { this.selected = detail; this.isPreviewOpen = true; }, error: err => void this.alert.error('Gagal membuka Preview', err.error?.error || '') }); }
   previewEditor(): void {
     const employee = this.employees.find(item => item.employee_id === Number(this.form.employee_id));
-    this.selected = { ...this.payload(), ID: this.editingID || 0, employee_name_snapshot: employee?.Nama || '-', employee_code_snapshot: employee?.Employee?.EmployeeCode || '-', nik_snapshot: employee?.Employee?.NIK || '', position_snapshot: employee?.Employee?.Position?.NamaJabatan || '', division_snapshot: employee?.Employee?.Division?.NamaDivisi || '', company_name_snapshot: 'PT Golan Digital Kreatif', company_phone_snapshot: '', total_income: this.totalIncome, total_deduction: this.totalDeduction, take_home_pay: this.takeHomePay, status: 'Draft', items: this.payload().items } as Payroll;
+    this.selected = { ...this.payload(), ID: this.editingID || 0, employee_name_snapshot: employee?.Nama || '-', employee_code_snapshot: this.employeeCode(employee), nik_snapshot: employee?.Employee?.NIK || '', position_snapshot: employee?.Employee?.Position?.NamaJabatan || '', division_snapshot: employee?.Employee?.Division?.NamaDivisi || '', company_name_snapshot: 'PT Golan Digital Kreatif', company_phone_snapshot: '', total_income: this.totalIncome, total_deduction: this.totalDeduction, take_home_pay: this.takeHomePay, status: 'Draft', items: this.payload().items } as Payroll;
     this.isPreviewOpen = true;
   }
   download(row: Payroll): void { this.payroll.pdf(row.ID).subscribe({ next: blob => { const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `slip-gaji-${row.employee_code_snapshot}-${row.periode_bulan.slice(0, 7)}.pdf`; link.click(); URL.revokeObjectURL(link.href); }, error: err => void this.alert.error('Gagal mengunduh PDF', err.error?.error || '') }); }
-  employeeLabel(employeeID: number): string { const employee = this.employees.find(e => e.employee_id === employeeID); return employee ? `${employee.Nama} (${employee.Employee?.EmployeeCode || '-'})` : '-'; }
+  employeeLabel(employeeID: number): string { const employee = this.employees.find(e => e.employee_id === employeeID); return employee ? `${employee.Nama} (${this.employeeCode(employee)})` : '-'; }
   formatMoney(value: number): string { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0); }
   formatPeriod(value: string | undefined | null): string {
     const match = String(value || '').match(/^(\d{4})-(\d{2})/);
