@@ -646,6 +646,11 @@ export class EmployeeListComponent implements OnInit {
     if (this.formData.role === 'MANAJER') {
       this.formData.manager_id = null;
     }
+    const internshipPeriodError = this.getInternshipPeriodValidationError();
+    if (internshipPeriodError) {
+      await this.alert.error(internshipPeriodError.title, internshipPeriodError.message);
+      return;
+    }
     if (this.isPhotoValidationPending) {
       await this.alert.error('Validasi pas foto belum selesai', 'Tunggu sampai pemeriksaan dimensi foto selesai sebelum menyimpan.');
       return;
@@ -740,6 +745,26 @@ export class EmployeeListComponent implements OnInit {
           }
         });
     }
+  }
+
+  private getInternshipPeriodValidationError(): { title: string; message: string } | null {
+    if (this.formData.role !== 'MAGANG') return null;
+
+    const start = String(this.formData.internship_start_date || '').trim();
+    const end = String(this.formData.internship_end_date || '').trim();
+    if (!start || !end) {
+      return {
+        title: 'Periode magang wajib diisi',
+        message: 'Silakan lengkapi tanggal mulai dan tanggal selesai magang.'
+      };
+    }
+    if (start > end) {
+      return {
+        title: 'Tanggal periode magang tidak valid',
+        message: 'Tanggal selesai magang tidak boleh lebih awal dari tanggal mulai magang.'
+      };
+    }
+    return null;
   }
 
   /** The directory endpoint identifies an employee by User.ID (emp.ID). */

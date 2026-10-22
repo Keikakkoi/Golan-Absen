@@ -174,4 +174,53 @@ describe('EmployeeListComponent', () => {
     httpTesting.expectNone(req => req.method === 'DELETE');
     expect(alert.confirm).toHaveBeenCalled();
   });
+
+  it('should show an alert and stop saving a MAGANG employee with an incomplete period', async () => {
+    const alert = (component as any).alert;
+    spyOn(alert, 'error').and.resolveTo();
+    component.formData = { ...component.formData, role: 'MAGANG', internship_start_date: '', internship_end_date: '2027-02-15' };
+
+    await component.saveEmployee();
+
+    expect(alert.error).toHaveBeenCalledWith(
+      'Periode magang wajib diisi',
+      'Silakan lengkapi tanggal mulai dan tanggal selesai magang.'
+    );
+    httpTesting.expectNone(req => req.method === 'POST' || req.method === 'PUT');
+  });
+
+  it('should reject an internship period whose end date is earlier than its start date', async () => {
+    const alert = (component as any).alert;
+    spyOn(alert, 'error').and.resolveTo();
+    component.formData = { ...component.formData, role: 'MAGANG', internship_start_date: '2027-02-15', internship_end_date: '2027-01-15' };
+
+    await component.saveEmployee();
+
+    expect(alert.error).toHaveBeenCalledWith(
+      'Tanggal periode magang tidak valid',
+      'Tanggal selesai magang tidak boleh lebih awal dari tanggal mulai magang.'
+    );
+    httpTesting.expectNone(req => req.method === 'POST' || req.method === 'PUT');
+  });
+
+  it('should leave the internship period optional for non-MAGANG roles', () => {
+    component.formData = { ...component.formData, role: 'Karyawan', internship_start_date: '', internship_end_date: '' };
+
+    expect((component as any).getInternshipPeriodValidationError()).toBeNull();
+  });
+
+  it('should preserve the saved internship period when opening the edit form', () => {
+    component.openEditModal({
+      ID: 12,
+      Nama: 'Peserta Magang',
+      Email: 'magang@example.com',
+      Role: 'MAGANG',
+      Status: 'aktif',
+      InternshipStartDate: '2027-01-15T00:00:00Z',
+      InternshipEndDate: '2027-02-15T00:00:00Z'
+    });
+
+    expect(component.formData.internship_start_date).toBe('2027-01-15');
+    expect(component.formData.internship_end_date).toBe('2027-02-15');
+  });
 });

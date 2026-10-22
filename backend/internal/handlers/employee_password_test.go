@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -81,6 +82,50 @@ func TestValidateEmployeeProfileRejectsMissingOrInvalidJoinYear(t *testing.T) {
 		req.TanggalBergabung = value
 		if err := validateEmployeeProfile(&req); err == nil {
 			t.Fatalf("join date %q was accepted", value)
+		}
+	}
+}
+
+func TestValidateInternshipPeriod(t *testing.T) {
+	base := EmployeeRequest{
+		Role:                models.RoleMagang,
+		InternshipStartDate: "2027-01-15",
+		InternshipEndDate:   "2027-02-15",
+	}
+	if err := validateInternshipPeriod(&base); err != nil {
+		t.Fatalf("valid internship period rejected: %v", err)
+	}
+
+	tests := []struct {
+		name    string
+		start   string
+		end     string
+		wantErr string
+	}{
+		{name: "missing start", start: "", end: "2027-02-15", wantErr: "periode magang wajib diisi"},
+		{name: "missing end", start: "2027-01-15", end: "", wantErr: "periode magang wajib diisi"},
+		{name: "missing both", start: "", end: "", wantErr: "periode magang wajib diisi"},
+		{name: "invalid start", start: "2027-02-30", end: "2027-03-15", wantErr: "tanggal mulai magang tidak valid"},
+		{name: "invalid end", start: "2027-02-15", end: "2027-02-30", wantErr: "tanggal selesai magang tidak valid"},
+		{name: "end before start", start: "2027-02-15", end: "2027-01-15", wantErr: "tidak boleh lebih awal"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := base
+			req.InternshipStartDate = test.start
+			req.InternshipEndDate = test.end
+			err := validateInternshipPeriod(&req)
+			if err == nil || !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("error = %v, want text containing %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateInternshipPeriodAllowsOtherRolesWithoutDates(t *testing.T) {
+	for _, role := range []models.Role{models.RoleKaryawan, models.RoleManajer, models.RoleHRD} {
+		if err := validateInternshipPeriod(&EmployeeRequest{Role: role}); err != nil {
+			t.Fatalf("role %s unexpectedly rejected: %v", role, err)
 		}
 	}
 }

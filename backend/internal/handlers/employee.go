@@ -64,6 +64,9 @@ func validateEmployeeProfile(req *EmployeeRequest) error {
 	req.Nama = strings.TrimSpace(req.Nama)
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.NIK = strings.TrimSpace(req.NIK)
+	if err := validateInternshipPeriod(req); err != nil {
+		return err
+	}
 	if req.Nama == "" || req.Email == "" || req.NIK == "" {
 		return fmt.Errorf("NIK/NIP, nama lengkap, dan email wajib diisi")
 	}
@@ -104,6 +107,31 @@ func validateEmployeeProfile(req *EmployeeRequest) error {
 		if err := validateProfilePhotoDimensions(decoded); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func validateInternshipPeriod(req *EmployeeRequest) error {
+	if req.Role != models.RoleMagang {
+		return nil
+	}
+
+	startValue := strings.TrimSpace(req.InternshipStartDate)
+	endValue := strings.TrimSpace(req.InternshipEndDate)
+	if startValue == "" || endValue == "" {
+		return fmt.Errorf("periode magang wajib diisi: tanggal mulai dan tanggal selesai magang harus diisi")
+	}
+
+	start, err := parseEmployeeDate(startValue)
+	if err != nil {
+		return fmt.Errorf("tanggal mulai magang tidak valid")
+	}
+	end, err := parseEmployeeDate(endValue)
+	if err != nil {
+		return fmt.Errorf("tanggal selesai magang tidak valid")
+	}
+	if end.Before(start) {
+		return fmt.Errorf("tanggal selesai magang tidak boleh lebih awal dari tanggal mulai magang")
 	}
 	return nil
 }
@@ -1247,10 +1275,11 @@ func UpdateEmployee(c *fiber.Ctx) error {
 }
 
 func parseOptionalDate(value string) *time.Time {
+	value = strings.TrimSpace(value)
 	if value == "" {
 		return nil
 	}
-	date, err := time.Parse("2006-01-02", value)
+	date, err := parseEmployeeDate(value)
 	if err != nil {
 		return nil
 	}
