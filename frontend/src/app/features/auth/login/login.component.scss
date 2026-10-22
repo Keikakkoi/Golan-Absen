@@ -3,15 +3,23 @@
 // so that margin would make the card unnecessarily tall.
 :host {
   display: block;
+  box-sizing: border-box;
   height: 100%;
+  min-height: 100%;
   overflow: hidden;
 }
 
 .split-layout {
   display: flex;
+  /* Keep a fallback for browsers without dynamic/small viewport units. */
+  height: 100vh;
+  min-height: 100vh;
+  height: 100svh;
+  min-height: 100svh;
   height: 100dvh;
   min-height: 100dvh;
   width: 100%;
+  box-sizing: border-box;
   overflow: hidden;
 
   @media (max-width: 900px) {
@@ -611,12 +619,12 @@
   .password-toggle {
     position: absolute;
     top: 50%;
-    right: 10px;
+    right: 4px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border: 0;
     border-radius: 6px;
@@ -698,8 +706,10 @@
   }
 
   .btn-primary {
+    box-sizing: border-box;
     margin-top: 10px;
     width: 100%;
+    min-height: 44px;
     padding: 14px;
     font-size: 1.0625rem;
     background-color: #3b82f6;
@@ -713,10 +723,6 @@
 /* Mobile login is intentionally compact so the brand panel reads as a
    header instead of being squeezed by the taller form panel. */
 @media (max-width: 900px) {
-  .split-layout {
-    min-height: 100svh;
-  }
-
   .brand-panel {
     flex: 0 0 126px;
     box-sizing: border-box;
@@ -838,11 +844,17 @@
   }
 
   .form-panel {
-    flex: 1 0 auto;
+    flex: 1 1 auto;
     box-sizing: border-box;
-    min-height: calc(100svh - 126px);
+    min-height: 0;
     align-items: flex-start;
-    padding: 28px 20px 34px !important;
+    padding: 28px 20px calc(34px + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scroll-padding-block: 24px calc(34px + env(safe-area-inset-bottom));
 
     .login-grid-overlay {
       height: 42%;
@@ -867,6 +879,7 @@
 
     .login-card {
       box-sizing: border-box;
+      transform: none;
     }
   }
 }
@@ -888,13 +901,13 @@
   }
 
   .form-panel {
-    min-height: calc(100svh - 112px);
-    padding: 24px 16px 30px !important;
+    padding: 24px 16px calc(30px + env(safe-area-inset-bottom)) !important;
   }
 
   .login-card {
     padding: 30px 20px 28px;
     border-radius: 14px;
+    transform: none;
   }
 
   .brand-header {
