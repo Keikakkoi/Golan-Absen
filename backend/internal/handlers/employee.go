@@ -27,6 +27,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type EmployeeRequest struct {
@@ -160,6 +161,13 @@ func parseEmployeeDate(value string) (time.Time, error) {
 		return date, nil
 	}
 	return time.Parse("02-01-2006", value)
+}
+
+func employeeJoinDateChanged(previous, current time.Time) bool {
+	if previous.IsZero() || current.IsZero() {
+		return previous.IsZero() != current.IsZero()
+	}
+	return previous.Year() != current.Year() || previous.Month() != current.Month() || previous.Day() != current.Day()
 }
 
 func parseDate(value string) (*time.Time, error) {
@@ -1091,6 +1099,9 @@ func UpdateEmployee(c *fiber.Ctx) error {
 		tx.Rollback()
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "User not found"})
 	}
+	oldRole := user.Role
+	oldDivisionID := user.Employee.DivisionID
+	oldJoinDate := user.Employee.TanggalBergabung
 	// Cek ketersediaan Email
 	var emailOwner models.User
 	if err := tx.Where("LOWER(email) = ? AND id <> ?", strings.ToLower(req.Email), id).First(&emailOwner).Error; err == nil {
@@ -1162,8 +1173,14 @@ func UpdateEmployee(c *fiber.Ctx) error {
 			fmt.Println("Error saving employee:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
-		manualCode := strings.TrimSpace(req.EmployeeCode)
-		if manualCode != "" && manualCode != user.Employee.EmployeeCode {
+		codeInputsChanged := oldRole != user.Role || oldDivisionID != user.Employee.DivisionID || employeeJoinDateChanged(oldJoinDate, tglGabung)
+		if codeInputsChanged {
+			if err := services.RegenerateEmployeeCode(tx, &user.Employee, user.Role); err != nil {
+				tx.Rollback()
+				return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Gagal membuat ulang kode karyawan", "details": err.Error()})
+			}
+		} else if strings.TrimSpace(req.EmployeeCode) != "" && strings.TrimSpace(req.EmployeeCode) != user.Employee.EmployeeCode {
+			manualCode := strings.TrimSpace(req.EmployeeCode)
 			var codeOwner models.Employee
 			if err := tx.Where("employee_code = ? AND id <> ?", manualCode, user.Employee.ID).First(&codeOwner).Error; err == nil {
 				tx.Rollback()
@@ -1510,13 +1527,21 @@ func ImportEmployees(c *fiber.Ctx) error {
 		projectID := csvOptionalUint(value("project_id"))
 		tx := config.DB.Begin()
 		var employee models.Employee
-		existing := config.DB.Preload("User").Where("nik = ?", value("nik")).First(&employee).Error == nil
+		existing := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("User").Where("nik = ?", value("nik")).First(&employee).Error == nil
+		oldRole := models.Role("")
+		oldDivisionID := uint(0)
+		oldJoinDate := time.Time{}
+		oldEmployeeCode := ""
 		if existing {
 			if employee.User == nil {
 				tx.Rollback()
 				errors = append(errors, fmt.Sprintf("Baris %d: user karyawan tidak ditemukan", rowNumber))
 				continue
 			}
+			oldRole = employee.User.Role
+			oldDivisionID = employee.DivisionID
+			oldJoinDate = employee.TanggalBergabung
+			oldEmployeeCode = employee.EmployeeCode
 			user := employee.User
 			user.Nama, user.Email, user.Role, user.Status = value("nama"), strings.ToLower(value("email")), role, status
 			user.ManagerID, user.ProjectID, user.TeamID = managerID, projectID, value("team_id")
@@ -1551,7 +1576,8 @@ func ImportEmployees(c *fiber.Ctx) error {
 			}
 			employee = models.Employee{UserID: user.ID, NIK: value("nik")}
 		}
-		employee.EmployeeCode, employee.JenisKelamin, employee.TempatLahir, employee.TanggalLahir = value("employee_code"), value("jenis_kelamin"), value("tempat_lahir"), birthDate
+		requestedEmployeeCode := value("employee_code")
+		employee.JenisKelamin, employee.TempatLahir, employee.TanggalLahir = value("jenis_kelamin"), value("tempat_lahir"), birthDate
 		employee.NomorTelepon, employee.Alamat, employee.ShiftKerja = value("nomor_telepon"), value("alamat"), value("shift_kerja")
 		if employee.ShiftKerja == "" {
 			employee.ShiftKerja = "Reguler"
@@ -1560,6 +1586,7 @@ func ImportEmployees(c *fiber.Ctx) error {
 		if existing {
 			err = tx.Save(&employee).Error
 		} else {
+			employee.EmployeeCode = requestedEmployeeCode
 			err = tx.Create(&employee).Error
 		}
 		if err != nil {
@@ -1567,7 +1594,33 @@ func ImportEmployees(c *fiber.Ctx) error {
 			errors = append(errors, fmt.Sprintf("Baris %d: NIK/divisi/jabatan tidak valid", rowNumber))
 			continue
 		}
-		if !existing && employee.EmployeeCode == "" {
+		if existing {
+			codeInputsChanged := oldRole != role || oldDivisionID != employee.DivisionID || employeeJoinDateChanged(oldJoinDate, employee.TanggalBergabung)
+			if codeInputsChanged {
+				if err = services.RegenerateEmployeeCode(tx, &employee, role); err != nil {
+					tx.Rollback()
+					errors = append(errors, fmt.Sprintf("Baris %d: kode karyawan gagal dibuat ulang", rowNumber))
+					continue
+				}
+			} else if requestedEmployeeCode != "" && requestedEmployeeCode != oldEmployeeCode {
+				var codeOwner models.Employee
+				if lookupErr := tx.Where("employee_code = ? AND id <> ?", requestedEmployeeCode, employee.ID).First(&codeOwner).Error; lookupErr == nil {
+					tx.Rollback()
+					errors = append(errors, fmt.Sprintf("Baris %d: kode karyawan sudah digunakan", rowNumber))
+					continue
+				} else if lookupErr != gorm.ErrRecordNotFound {
+					tx.Rollback()
+					errors = append(errors, fmt.Sprintf("Baris %d: kode karyawan gagal diperiksa", rowNumber))
+					continue
+				}
+				if err = tx.Model(&employee).Update("employee_code", requestedEmployeeCode).Error; err != nil {
+					tx.Rollback()
+					errors = append(errors, fmt.Sprintf("Baris %d: kode karyawan gagal disimpan", rowNumber))
+					continue
+				}
+				employee.EmployeeCode = requestedEmployeeCode
+			}
+		} else if employee.EmployeeCode == "" {
 			if err = services.AssignEmployeeCode(tx, &employee, role); err != nil {
 				tx.Rollback()
 				errors = append(errors, fmt.Sprintf("Baris %d: kode karyawan gagal dibuat", rowNumber))

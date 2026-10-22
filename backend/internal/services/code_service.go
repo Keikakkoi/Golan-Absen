@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"absensi-golan-backend/internal/models"
 	"gorm.io/gorm"
@@ -77,6 +78,71 @@ func AssignEmployeeCode(tx *gorm.DB, employee *models.Employee, role models.Role
 	}
 	employee.EmployeeCode = code
 	return tx.Model(employee).Update("employee_code", code).Error
+}
+
+// RegenerateEmployeeCode replaces an employee code using the canonical
+// generator. The temporary value prevents a unique-index collision when the
+// new code happens to be owned by another employee that is being re-keyed in
+// the same transaction.
+func RegenerateEmployeeCode(tx *gorm.DB, employee *models.Employee, role models.Role) error {
+	if employee == nil || employee.ID == 0 {
+		return fmt.Errorf("karyawan tidak valid untuk membuat ulang kode")
+	}
+	var lockedEmployee models.Employee
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&lockedEmployee, employee.ID).Error; err != nil {
+		return err
+	}
+	if err := stageEmployeeCodes(tx, []models.Employee{*employee}); err != nil {
+		return err
+	}
+	return AssignEmployeeCode(tx, employee, role)
+}
+
+// RegenerateEmployeeCodesForDivision regenerates every employee in a
+// division after its division code changes. All staging and generated values
+// are written through the caller's transaction, so a single conflict rolls
+// the division update and every employee-code update back together.
+func RegenerateEmployeeCodesForDivision(tx *gorm.DB, divisionID uint) error {
+	if divisionID == 0 {
+		return fmt.Errorf("divisi tidak valid untuk membuat ulang kode karyawan")
+	}
+
+	var employees []models.Employee
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("User").Preload("Division").Where("division_id = ?", divisionID).Order("id asc").Find(&employees).Error; err != nil {
+		return err
+	}
+	if len(employees) == 0 {
+		return nil
+	}
+	if err := stageEmployeeCodes(tx, employees); err != nil {
+		return err
+	}
+	for i := range employees {
+		if employees[i].User == nil {
+			return fmt.Errorf("karyawan %d tidak memiliki user", employees[i].ID)
+		}
+		if err := AssignEmployeeCode(tx, &employees[i], employees[i].User.Role); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func stageEmployeeCodes(tx *gorm.DB, employees []models.Employee) error {
+	for _, employee := range employees {
+		candidate := fmt.Sprintf("__pending_%d_%d", employee.ID, time.Now().UnixNano())
+		var existing models.Employee
+		if err := tx.Where("employee_code = ? AND id <> ?", candidate, employee.ID).First(&existing).Error; err != gorm.ErrRecordNotFound {
+			if err == nil {
+				return fmt.Errorf("kode sementara karyawan %d sudah digunakan", employee.ID)
+			}
+			return err
+		}
+		if err := tx.Model(&models.Employee{}).Where("id = ?", employee.ID).Update("employee_code", candidate).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func RebuildEmployeeCodes(tx *gorm.DB, employeeIDs ...uint) error {

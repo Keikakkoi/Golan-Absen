@@ -12,6 +12,8 @@ import (
 	"absensi-golan-backend/internal/utils"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func SetupOrganizationRoutes(router fiber.Router) {
@@ -155,34 +157,69 @@ func CreateDivision(c *fiber.Ctx) error {
 
 func UpdateDivision(c *fiber.Ctx) error {
 	idParam := c.Params("id")
-	id, _ := strconv.Atoi(idParam)
-
-	var dept models.Division
-	if err := config.DB.First(&dept, id).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Division not found"})
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil || id == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid division id"})
 	}
-	oldCode := dept.DivisionCode
 
-	if err := c.BodyParser(&dept); err != nil {
+	var input struct {
+		NamaDivisi   *string `json:"NamaDivisi"`
+		DivisionCode *string `json:"division_code"`
+		Deskripsi    *string `json:"Deskripsi"`
+	}
+	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
-	}
-	if strings.TrimSpace(dept.DivisionCode) == "" {
-		dept.DivisionCode = oldCode
-	}
-	if dept.DivisionCode != oldCode {
-		var conflict models.Division
-		if err := config.DB.Where("division_code = ? AND id <> ?", dept.DivisionCode, dept.ID).First(&conflict).Error; err == nil {
-			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Division code sudah digunakan"})
-		}
 	}
 
 	tx := config.DB.Begin()
+	if tx.Error != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to start transaction"})
+	}
+	var dept models.Division
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&dept, uint(id)).Error; err != nil {
+		tx.Rollback()
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Division not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to load division"})
+	}
+	oldCode := dept.DivisionCode
+	newCode := oldCode
+	if input.DivisionCode != nil {
+		newCode = strings.TrimSpace(*input.DivisionCode)
+	}
+	if newCode == "" {
+		newCode = oldCode
+	}
+	if input.NamaDivisi != nil {
+		dept.NamaDivisi = *input.NamaDivisi
+	}
+	dept.DivisionCode = newCode
+	if input.Deskripsi != nil {
+		dept.Deskripsi = *input.Deskripsi
+	}
+	if dept.DivisionCode != oldCode {
+		var conflict models.Division
+		err := tx.Where("division_code = ? AND id <> ?", dept.DivisionCode, dept.ID).First(&conflict).Error
+		if err == nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Division code sudah digunakan"})
+		}
+		if err != gorm.ErrRecordNotFound {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to check division code"})
+		}
+	}
 	if err := tx.Save(&dept).Error; err != nil {
 		tx.Rollback()
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update division"})
 	}
-	// Employee codes are historical identifiers. Changing a division must not
-	// silently change them; an HRD admin may edit one manually.
+	if dept.DivisionCode != oldCode {
+		if err := services.RegenerateEmployeeCodesForDivision(tx, dept.ID); err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Gagal membuat ulang kode karyawan pada divisi ini", "details": err.Error()})
+		}
+	}
 	if err := tx.Commit().Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to update division"})
 	}
