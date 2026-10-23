@@ -11,7 +11,7 @@ export interface Payroll {
   total_hari_kerja: number; company_name_snapshot: string; company_phone_snapshot?: string; total_income: number; total_deduction: number; take_home_pay: number;
   notes?: string; approved_by_name?: string; approved_by_position?: string; received_by_name?: string; received_by_position?: string; status: 'Draft' | 'Published' | 'Dibatalkan'; published_at?: string; items: PayrollItem[];
 }
-export interface PayrollPage { data: Payroll[]; total: number; page: number; limit: number; total_pages: number; }
+export interface PayrollPage { data: Payroll[]; total: number; page: number; limit: number; per_page?: number; total_pages: number; }
 
 @Injectable({ providedIn: 'root' })
 export class PayrollService {
@@ -33,5 +33,8 @@ export class PayrollService {
   remove(id: number): Observable<unknown> { return this.http.delete(`${this.adminUrl}/${id}`, { headers: this.headers() }); }
   publish(id: number): Observable<Payroll> { return this.http.post<Payroll>(`${this.adminUrl}/${id}/publish`, {}, { headers: this.headers() }); }
   pdf(id: number, employee = false): Observable<Blob> { const base = employee ? this.employeeUrl : this.adminUrl; return this.http.get(`${base}/${id}/pdf`, { headers: this.headers(), responseType: 'blob' }); }
-  mine(): Observable<Payroll[]> { return this.http.get<Payroll[]>(this.employeeUrl, { headers: this.headers() }); }
+  mine(page = 1, limit = 10): Observable<PayrollPage> {
+    const params = new HttpParams().set('page', String(page)).set('limit', String(limit));
+    return this.http.get<PayrollPage>(this.employeeUrl, { headers: this.headers(), params });
+  }
 }

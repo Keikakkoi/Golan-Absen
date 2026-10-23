@@ -10,10 +10,11 @@
     </div>
 
     <section class="card">
-      <div *ngIf="loading" class="state">Memuat slip gaji...</div>
-      <div *ngIf="!loading && !rows.length" class="state">Belum ada slip gaji Published.</div>
+      <div *ngIf="loading" class="state" aria-live="polite">Memuat slip gaji...</div>
+      <div *ngIf="!loading && errorMessage" class="state error-state" role="alert">{{ errorMessage }}</div>
+      <div *ngIf="!loading && !errorMessage && !rows.length && total === 0" class="state">Belum ada slip gaji Published.</div>
 
-      <div class="table-wrap" *ngIf="!loading && rows.length">
+      <div class="table-wrap" *ngIf="!loading && !errorMessage && rows.length">
         <table>
           <thead>
             <tr>
@@ -45,6 +46,17 @@
           </tbody>
         </table>
       </div>
+      <app-pagination
+        *ngIf="!errorMessage || loading"
+        [totalItems]="total"
+        [currentPage]="page"
+        [pageSize]="limit"
+        [pageSizeOptions]="pageSizeOptions"
+        [loading]="loading"
+        [showEmpty]="false"
+        (pageChange)="pageChanged($event)"
+        (pageSizeChange)="pageSizeChanged($event)">
+      </app-pagination>
     </section>
   </main>
 </div>

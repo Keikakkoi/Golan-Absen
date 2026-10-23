@@ -5,6 +5,7 @@ describe('PayrollComponent employee details', () => {
   let component: PayrollComponent;
   const payroll = {
     attendanceDays: jasmine.createSpy('attendanceDays').and.returnValue(of({ total_hari_kerja: 12 })),
+    list: jasmine.createSpy('list'),
   };
   const auth = { currentUser$: of({}), getToken: () => 'token' };
   const http = {};
@@ -110,5 +111,29 @@ describe('PayrollComponent employee details', () => {
     expect(component.selected?.employee_name_snapshot).toBe('Ayu');
     expect(component.selected?.employee_code_snapshot).toBe('GDK-007');
     expect(component.selected?.position_snapshot).toBe('Manajer Operasional');
+  });
+
+  it('loads the active page and updates rows and pagination metadata', () => {
+    payroll.list.and.returnValue(of({ data: [{ ID: 11 }], total: 35, page: 2, limit: 10, per_page: 10, total_pages: 4 }));
+    component.page = 2;
+
+    component.load();
+
+    expect(payroll.list).toHaveBeenCalledWith(jasmine.objectContaining({ page: 2, limit: 10 }));
+    expect(component.rows.length).toBe(1);
+    expect(component.totalRows).toBe(35);
+    expect(component.totalPages).toBe(4);
+    expect(component.page).toBe(2);
+  });
+
+  it('resets to page one when the page size changes', () => {
+    payroll.list.and.returnValue(of({ data: [], total: 0, page: 1, limit: 25, per_page: 25, total_pages: 0 }));
+    component.page = 3;
+    component.isLoading = false;
+
+    component.pageSizeChanged(25);
+
+    expect(component.page).toBe(1);
+    expect(payroll.list).toHaveBeenCalledWith(jasmine.objectContaining({ page: 1, limit: 25 }));
   });
 });

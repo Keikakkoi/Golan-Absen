@@ -294,16 +294,14 @@ func ListAdminPayroll(c *fiber.Ctx) error {
 	if division := strings.TrimSpace(c.Query("division")); division != "" {
 		query = query.Where("LOWER(division_snapshot) LIKE LOWER(?)", "%"+division+"%")
 	}
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Gagal menghitung slip gaji"})
-	}
-	page, limit := readPagination(c).Page, readPagination(c).Limit
 	var rows []models.Payroll
-	if err := query.Offset((page - 1) * limit).Limit(limit).Find(&rows).Error; err != nil {
+	if err := paginatedQuery(c, query, &rows); err != nil {
+		if strings.Contains(err.Error(), "count") {
+			return c.Status(500).JSON(fiber.Map{"error": "Gagal menghitung slip gaji"})
+		}
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal memuat slip gaji"})
 	}
-	return c.JSON(fiber.Map{"data": rows, "total": total, "page": page, "limit": limit, "total_pages": (total + int64(limit) - 1) / int64(limit)})
+	return nil
 }
 
 func payrollFilterNumber(value, field string, minimum, maximum int) (*int, error) {
@@ -464,10 +462,13 @@ func PublishPayroll(c *fiber.Ctx) error {
 func ListEmployeePayroll(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 	var rows []models.Payroll
-	if err := preloadPayroll(config.DB).Where("user_id = ? AND status = ?", userID, "Published").Order("periode_bulan desc").Find(&rows).Error; err != nil {
+	query := preloadPayroll(config.DB).Model(&models.Payroll{}).
+		Where("user_id = ? AND status = ?", userID, "Published").
+		Order("periode_bulan desc, id desc")
+	if err := paginatedQuery(c, query, &rows); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal memuat slip gaji"})
 	}
-	return c.JSON(rows)
+	return nil
 }
 
 func getOwnedPublishedPayroll(c *fiber.Ctx) (*models.Payroll, error) {

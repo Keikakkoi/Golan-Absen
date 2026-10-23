@@ -28,7 +28,7 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
         <button type="button" class="pagination-button" (click)="goToPage(currentPage - 1)" [disabled]="loading || currentPage <= 1">Previous</button>
         <ng-container *ngFor="let page of pages">
           <span *ngIf="page === '...'" class="pagination-ellipsis">...</span>
-          <button *ngIf="page !== '...'" type="button" class="pagination-button page-number" [class.active]="page === currentPage" [attr.aria-current]="page === currentPage ? 'page' : null" (click)="goToPage(page)" [disabled]="loading">{{ page }}</button>
+          <button *ngIf="page !== '...'" type="button" class="pagination-button page-number" [class.active]="page === currentPage" [attr.aria-current]="page === currentPage ? 'page' : null" [attr.aria-label]="'Halaman ' + page" (click)="goToPage(page)" [disabled]="loading">{{ page }}</button>
         </ng-container>
         <button type="button" class="pagination-button" (click)="goToPage(currentPage + 1)" [disabled]="loading || currentPage >= totalPages">Next</button>
       </nav>
@@ -59,6 +59,15 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
     .pagination-ellipsis { padding:0 5px; color:#70879a; }
     .pagination-loading { color:#1269e3; }
     .pagination-empty { padding:16px; color:#70879a; text-align:center; }
+    :host-context(body.dark-theme) .app-pagination { background:#1e293b; border-color:#475569; color:#cbd5e1; }
+    :host-context(body.dark-theme) .page-size-trigger { background:#172033; border-color:#475569; color:#e2e8f0; }
+    :host-context(body.dark-theme) .page-size-menu { background:#1e293b; border-color:#475569; box-shadow:0 5px 14px rgba(0,0,0,.35); }
+    :host-context(body.dark-theme) .page-size-option { color:#e2e8f0; }
+    :host-context(body.dark-theme) .page-size-option:hover, :host-context(body.dark-theme) .page-size-option.selected { background:#26364d; color:#bfdbfe; }
+    :host-context(body.dark-theme) .page-size-chevron { border-right-color:#cbd5e1; border-bottom-color:#cbd5e1; }
+    :host-context(body.dark-theme) .pagination-button { background:#334155; border-color:#475569; color:#e2e8f0; }
+    :host-context(body.dark-theme) .pagination-button:hover:not(:disabled), :host-context(body.dark-theme) .pagination-button.active { background:#2563eb; border-color:#60a5fa; color:#fff; }
+    :host-context(body.dark-theme) .pagination-ellipsis, :host-context(body.dark-theme) .pagination-empty, :host-context(body.dark-theme) .pagination-loading { color:#94a3b8; }
     @media (max-width: 768px) {
       .app-pagination { align-items:stretch; flex-direction:column; gap:10px; padding:10px 12px; }
       .pagination-summary { justify-content:space-between; width:100%; white-space:normal; gap:10px; padding-right:12px; box-sizing:border-box; }

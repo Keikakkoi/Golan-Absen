@@ -9,13 +9,15 @@ import { Payroll, PayrollItem, PayrollService } from '../../../core/services/pay
 import { environment } from '../../../../environments/environment';
 import { take } from 'rxjs';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
+import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 interface DirectoryEmployee { employee_id: number; Nama: string; Role?: string; role?: string; Employee?: { employee_code?: string; EmployeeCode?: string; Division?: { NamaDivisi?: string }; Position?: { NamaJabatan?: string }; NIK?: string }; Status: string; }
 
-@Component({ selector: 'app-payroll', standalone: true, imports: [CommonModule, FormsModule, AdminSidebarComponent, DatePickerComponent], templateUrl: './payroll.component.html', styleUrls: ['./payroll.component.scss'] })
+@Component({ selector: 'app-payroll', standalone: true, imports: [CommonModule, FormsModule, AdminSidebarComponent, DatePickerComponent, PaginationComponent], templateUrl: './payroll.component.html', styleUrls: ['./payroll.component.scss'] })
 export class PayrollComponent implements OnInit {
   rows: Payroll[] = []; employees: DirectoryEmployee[] = []; divisions: string[] = [];
   isLoading = true; isSaving = false; errorMessage = ''; page = 1; totalPages = 1; totalRows = 0;
+  readonly pageSizeOptions = [10, 25, 50, 100];
   isCalculatingWorkDays = false;
   filters = { month: '', year: '', employee_id: '', division: '', status: '', limit: 10 };
 
@@ -52,11 +54,29 @@ export class PayrollComponent implements OnInit {
     this.load();
   }
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }
-  load(): void { this.isLoading = true; this.errorMessage = ''; this.payroll.list({ ...this.filters, page: this.page }).subscribe({ next: data => { this.rows = data.data || []; this.totalRows = data.total || 0; this.totalPages = data.total_pages || 1; this.isLoading = false; }, error: err => { this.errorMessage = err.error?.error || 'Gagal memuat daftar slip gaji.'; this.isLoading = false; } }); }
+  load(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.payroll.list({ ...this.filters, page: this.page }).subscribe({
+      next: data => {
+        this.rows = data.data || [];
+        this.totalRows = Number(data.total) || 0;
+        this.page = Number(data.page) || 1;
+        this.filters.limit = Number(data.limit || data.per_page) || this.filters.limit;
+        this.totalPages = Number(data.total_pages) || 0;
+        this.isLoading = false;
+      },
+      error: err => {
+        this.errorMessage = err.error?.error || 'Gagal memuat daftar slip gaji.';
+        this.isLoading = false;
+      }
+    });
+  }
   loadEmployees(): void { this.http.get<DirectoryEmployee[]>(`${environment.apiUrl}/admin/employees`, { headers: this.headers() }).subscribe({ next: employees => { this.employees = (employees || []).filter(employee => employee.employee_id && String(employee.Status || '').toLowerCase() === 'aktif'); this.divisions = [...new Set(this.employees.map(e => e.Employee?.Division?.NamaDivisi || '').filter(Boolean))].sort(); if (this.form.employee_id) this.onEmployeeSelected(this.form.employee_id); }, error: () => undefined }); }
   applyFilters(): void { this.page = 1; this.load(); }
   resetFilters(): void { this.filters = { month: '', year: '', employee_id: '', division: '', status: '', limit: 10 }; this.applyFilters(); }
-  changePage(page: number): void { if (page < 1 || page > this.totalPages) return; this.page = page; this.load(); }
+  changePage(page: number): void { if (this.isLoading || page < 1 || page > this.totalPages || page === this.page) return; this.page = page; this.load(); }
+  pageSizeChanged(limit: number): void { if (this.isLoading || limit === this.filters.limit) return; this.filters.limit = Number(limit); this.page = 1; this.load(); }
   emptyForm(): any { const now = new Date(); return { employee_id: '', periode_bulan: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, payroll_cutoff_start: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, payroll_cutoff_end: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`, payment_date: '', company_phone: '', total_hari_kerja: 0, notes: '', approved_by_name: '', approved_by_position: '', received_by_name: '', received_by_position: '', incomes: [{ name: 'Gaji pokok', amount: 0 }, { name: 'Uang makan', amount: 0 }], deductions: [{ name: 'PPh 21', amount: 0 }, { name: 'BPJS Kesehatan', amount: 0 }] }; }
   openCreate(): void { this.editingID = null; this.form = this.emptyForm(); this.resetEmployeeDetails(); this.syncApproverFields(); this.isEditorOpen = true; this.isPreviewOpen = false; }
   edit(row: Payroll): void { this.payroll.detail(row.ID).subscribe({ next: detail => { this.editingID = detail.ID; this.form = this.formFromPayroll(detail); this.syncApproverFields(); this.onEmployeeSelected(this.form.employee_id); this.isEditorOpen = true; this.isPreviewOpen = false; }, error: err => void this.alert.error('Gagal membuka slip', err.error?.error || '') }); }
