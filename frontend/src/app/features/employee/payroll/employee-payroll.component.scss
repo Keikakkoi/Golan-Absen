@@ -147,6 +147,37 @@ td button {
   cursor: pointer;
 }
 
+.preview-company-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding-right: 25px;
+  margin-bottom: 18px;
+}
+
+.preview-company-header img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.preview-company-header strong,
+.preview-company-header small {
+  display: block;
+}
+
+.preview-company-header small,
+.preview-period span {
+  display: block;
+  color: var(--text-muted);
+  margin-top: 5px;
+}
+
+.preview-period {
+  text-align: right;
+}
+
 .details,
 .items {
   display: grid;

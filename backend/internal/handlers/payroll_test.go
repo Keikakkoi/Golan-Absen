@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"testing"
+
+	"absensi-golan-backend/internal/models"
 )
 
 func TestPayrollFilterNumber(t *testing.T) {
@@ -59,5 +61,18 @@ func TestRupiahUsesWholeRupiahSeparators(t *testing.T) {
 	}
 	if got := rupiah(-1); got != "-Rp1" {
 		t.Fatalf("unexpected negative Rupiah format: %s", got)
+	}
+}
+
+func TestNormalizePayrollCompanySnapshotUsesServerOwnedCode(t *testing.T) {
+	payroll := &models.Payroll{}
+
+	normalizePayrollCompanySnapshot(payroll)
+
+	if payroll.CompanyNameSnapshot != "PT Golan Digital Kreatif" {
+		t.Fatalf("unexpected company name: %q", payroll.CompanyNameSnapshot)
+	}
+	if payroll.CompanyPhoneSnapshot != "02145678" {
+		t.Fatalf("unexpected company code: %q", payroll.CompanyPhoneSnapshot)
 	}
 }

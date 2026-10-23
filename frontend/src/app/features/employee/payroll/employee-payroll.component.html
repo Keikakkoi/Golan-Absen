@@ -64,6 +64,7 @@
 <div class="preview-backdrop" *ngIf="selected">
   <section class="preview card">
     <button class="close" type="button" (click)="close()">&times;</button>
+    <div class="preview-company-header"><img src="assets/icon_golan.png" alt="Logo PT Golan"><div><strong>{{ companyName }}</strong><small>{{ companyCodeValue(selected) }}</small></div><div class="preview-period"><strong>SLIP GAJI</strong><span>Untuk bulan {{ formatPeriod(selected.periode_bulan) }}</span></div></div>
     <h2>Slip Gaji {{ formatPeriod(selected.periode_bulan) }}</h2>
     <p><strong>{{ selected.employee_name_snapshot }}</strong> &middot; {{ selected.employee_code_snapshot }}</p>
     <hr>

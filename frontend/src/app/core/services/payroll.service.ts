@@ -4,6 +4,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 
+export const PAYROLL_COMPANY_NAME = 'PT Golan Digital Kreatif';
+export const PAYROLL_COMPANY_CODE = '02145678';
+
 export interface PayrollItem { ID?: number; type: 'income' | 'deduction'; name: string; amount: number; sort_order?: number; }
 export interface Payroll {
   ID: number; employee_id: number; user_id: number; periode_bulan: string; payroll_cutoff_start: string; payroll_cutoff_end: string; payment_date: string;

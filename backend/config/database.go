@@ -88,6 +88,12 @@ func ConnectDB(cfg *Config) {
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schemas: %v", err)
 	}
+	// Older payroll rows may have been created while the company code was
+	// incorrectly accepted from the frontend. Repair blank snapshots without
+	// adding another company column.
+	if err := DB.Exec("UPDATE payrolls SET company_phone_snapshot = '02145678' WHERE company_phone_snapshot IS NULL OR BTRIM(company_phone_snapshot) = ''").Error; err != nil {
+		log.Printf("Failed to backfill payroll company code: %v", err)
+	}
 	// Keep runtime startup compatible with installations that apply SQL
 	// migrations separately. Existing NULL/blank values are historical
 	// submissions; only an explicit Draft remains hidden from Admin views.

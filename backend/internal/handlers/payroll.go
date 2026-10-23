@@ -18,7 +18,10 @@ import (
 	"gorm.io/gorm"
 )
 
-const defaultCompanyName = "PT Golan Digital Kreatif"
+const (
+	defaultCompanyName = "PT Golan Digital Kreatif"
+	defaultCompanyCode = "02145678"
+)
 
 type payrollItemInput struct {
 	Type      string `json:"type"`
@@ -220,8 +223,7 @@ func buildPayroll(input *payrollInput, employee models.Employee, actor uint, exi
 		return nil, fmt.Errorf("gagal menghitung total hari kerja dari absensi: %w", err)
 	}
 	payroll.TotalHariKerja = workDays
-	payroll.CompanyNameSnapshot = defaultCompanyName
-	payroll.CompanyPhoneSnapshot = strings.TrimSpace(input.CompanyPhone)
+	normalizePayrollCompanySnapshot(payroll)
 	payroll.Notes = strings.TrimSpace(input.Notes)
 	payroll.ApprovedByName = strings.TrimSpace(input.ApprovedByName)
 	payroll.ApprovedByPosition = strings.TrimSpace(input.ApprovedByPosition)
@@ -295,7 +297,7 @@ func ListAdminPayroll(c *fiber.Ctx) error {
 		query = query.Where("LOWER(division_snapshot) LIKE LOWER(?)", "%"+division+"%")
 	}
 	var rows []models.Payroll
-	if err := paginatedQuery(c, query, &rows); err != nil {
+	if err := paginatedQuery(c, query, &rows, func() { normalizePayrollCompanySnapshots(rows) }); err != nil {
 		if strings.Contains(err.Error(), "count") {
 			return c.Status(500).JSON(fiber.Map{"error": "Gagal menghitung slip gaji"})
 		}
@@ -325,6 +327,7 @@ func GetAdminPayroll(c *fiber.Ctx) error {
 	if err := preloadPayroll(config.DB).First(&payroll, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Slip gaji tidak ditemukan"})
 	}
+	normalizePayrollCompanySnapshot(&payroll)
 	return c.JSON(payroll)
 }
 
@@ -361,6 +364,7 @@ func CreatePayroll(c *fiber.Ctx) error {
 }
 
 func payrollWithItems(payroll *models.Payroll, inputs []payrollItemInput) *models.Payroll {
+	normalizePayrollCompanySnapshot(payroll)
 	payroll.Items = make([]models.PayrollItem, 0, len(inputs))
 	for index, item := range inputs {
 		payroll.Items = append(payroll.Items, models.PayrollItem{PayrollID: payroll.ID, Type: item.Type, Name: item.Name, Amount: item.Amount, SortOrder: index})
@@ -440,6 +444,7 @@ func PublishPayroll(c *fiber.Ctx) error {
 	if payroll.TakeHomePay < 0 {
 		return c.Status(400).JSON(fiber.Map{"error": "Take Home Pay tidak boleh negatif saat Publish"})
 	}
+	normalizePayrollCompanySnapshot(&payroll)
 	now := time.Now()
 	payroll.Status, payroll.PublishedAt, payroll.UpdatedBy = "Published", &now, c.Locals("user_id").(uint)
 	if err := config.DB.Save(&payroll).Error; err != nil {
@@ -465,7 +470,7 @@ func ListEmployeePayroll(c *fiber.Ctx) error {
 	query := preloadPayroll(config.DB).Model(&models.Payroll{}).
 		Where("user_id = ? AND status = ?", userID, "Published").
 		Order("periode_bulan desc, id desc")
-	if err := paginatedQuery(c, query, &rows); err != nil {
+	if err := paginatedQuery(c, query, &rows, func() { normalizePayrollCompanySnapshots(rows) }); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal memuat slip gaji"})
 	}
 	return nil
@@ -480,6 +485,7 @@ func getOwnedPublishedPayroll(c *fiber.Ctx) (*models.Payroll, error) {
 	if err := preloadPayroll(config.DB).Where("id = ? AND user_id = ? AND status = ?", id, c.Locals("user_id").(uint), "Published").First(&payroll).Error; err != nil {
 		return nil, err
 	}
+	normalizePayrollCompanySnapshot(&payroll)
 	return &payroll, nil
 }
 func GetEmployeePayroll(c *fiber.Ctx) error {
@@ -505,7 +511,24 @@ func DownloadPayrollPDF(c *fiber.Ctx) error {
 	if err := preloadPayroll(config.DB).First(&payroll, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Slip gaji tidak ditemukan"})
 	}
+	normalizePayrollCompanySnapshot(&payroll)
 	return sendPayrollPDF(c, &payroll)
+}
+
+func normalizePayrollCompanySnapshot(payroll *models.Payroll) {
+	if payroll == nil {
+		return
+	}
+	// General Settings currently has no company identity field. Keep this
+	// server-owned so a blank or forged frontend value cannot reach a payslip.
+	payroll.CompanyNameSnapshot = defaultCompanyName
+	payroll.CompanyPhoneSnapshot = defaultCompanyCode
+}
+
+func normalizePayrollCompanySnapshots(payrolls []models.Payroll) {
+	for index := range payrolls {
+		normalizePayrollCompanySnapshot(&payrolls[index])
+	}
 }
 
 func rupiah(value int64) string {
@@ -542,6 +565,7 @@ func firstExisting(paths ...string) string {
 }
 
 func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
+	normalizePayrollCompanySnapshot(payroll)
 	bytesPDF := &bytes.Buffer{}
 	pdf := fpdf.New("P", "mm", "A4", "")
 	pdf.SetTitle("Slip Gaji - "+payroll.EmployeeCodeSnapshot, false)
@@ -554,10 +578,10 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 	}
 	pdf.SetFont("Arial", "B", 12)
 	pdf.SetXY(40, 15)
-	pdf.CellFormat(90, 6, defaultCompanyName, "", 1, "L", false, 0, "")
+	pdf.CellFormat(90, 6, payroll.CompanyNameSnapshot, "", 1, "L", false, 0, "")
 	pdf.SetFont("Arial", "", 8)
 	pdf.SetX(40)
-	pdf.CellFormat(90, 5, pdfText(payroll.CompanyPhoneSnapshot), "", 1, "L", false, 0, "")
+	pdf.CellFormat(90, 5, payroll.CompanyPhoneSnapshot, "", 1, "L", false, 0, "")
 	pdf.SetFont("Arial", "B", 13)
 	pdf.SetXY(128, 15)
 	pdf.CellFormat(66, 6, "SLIP GAJI", "", 1, "R", false, 0, "")
