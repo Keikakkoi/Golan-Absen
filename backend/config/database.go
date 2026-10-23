@@ -398,6 +398,10 @@ func seedNotificationSettings() {
 		{TipeNotifikasi: "Kehadiran WFH", Role: models.RoleHRD, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Revisi Laporan Kerja", Role: models.RoleHRD, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Laporan Mingguan", Role: models.RoleManajer, IsEmailEnabled: true, IsInAppEnabled: false},
+		{TipeNotifikasi: "Slip Gaji", Role: models.RoleKaryawan, IsEmailEnabled: false, IsInAppEnabled: true},
+		{TipeNotifikasi: "Slip Gaji", Role: models.RoleManajer, IsEmailEnabled: false, IsInAppEnabled: true},
+		{TipeNotifikasi: "Slip Gaji", Role: models.RoleMagang, IsEmailEnabled: false, IsInAppEnabled: true},
+		{TipeNotifikasi: "Sertifikat Magang", Role: models.RoleMagang, IsEmailEnabled: false, IsInAppEnabled: true},
 	}
 	for _, setting := range defaults {
 		var existing models.NotificationSetting

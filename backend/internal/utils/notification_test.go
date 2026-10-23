@@ -102,6 +102,32 @@ func TestCreateWorkReportRevisionNotificationTreatsRetryAsAlreadyDelivered(t *te
 	}
 }
 
+func TestCreateNotificationWithIdempotencyKeyUsesTheNormalInAppFlow(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: db}), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "notification_settings" WHERE tipe_notifikasi = $1 AND role = $2 ORDER BY "notification_settings"."id" LIMIT 1`)).
+		WithArgs("Slip Gaji", models.RoleMagang).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "is_in_app_enabled"}).AddRow(1, true))
+	mock.ExpectBegin()
+	mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO "notifications"`)).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(11))
+	mock.ExpectCommit()
+
+	if err := CreateNotificationWithIdempotencyKey(gormDB, 7, models.RoleMagang, "Slip Gaji", "Slip Gaji Baru", "message", "payroll-published:42"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 type assertDuplicateError struct{}
 
 func (assertDuplicateError) Error() string { return "duplicate key value violates unique constraint" }

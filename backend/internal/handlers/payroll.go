@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -447,6 +448,16 @@ func PublishPayroll(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal menerbitkan slip gaji"})
 	}
 	_ = utils.LogAction(payroll.UpdatedBy, "PUBLISH", "Payroll", id, "Menerbitkan slip gaji")
+	var recipient models.User
+	if err := config.DB.Select("id", "role").First(&recipient, payroll.UserID).Error; err != nil {
+		log.Printf("notification payroll publish: recipient lookup failed for payroll %d/user %d: %v", payroll.ID, payroll.UserID, err)
+	} else if recipient.Role == models.RoleKaryawan || recipient.Role == models.RoleManajer || recipient.Role == models.RoleMagang {
+		message := fmt.Sprintf("Slip gaji untuk periode %s telah diterbitkan dan dapat dilihat.", payroll.PeriodeBulan.Format("2006-01"))
+		key := fmt.Sprintf("payroll-published:%d", payroll.ID)
+		if err := utils.CreateNotificationWithIdempotencyKey(config.DB, recipient.ID, recipient.Role, "Slip Gaji", "Slip Gaji Baru", message, key); err != nil {
+			log.Printf("notification payroll publish: failed for payroll %d/user %d: %v", payroll.ID, recipient.ID, err)
+		}
+	}
 	return c.JSON(payroll)
 }
 

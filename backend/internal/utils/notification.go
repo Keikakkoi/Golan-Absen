@@ -31,6 +31,18 @@ func CreateNotification(db *gorm.DB, userID uint, role models.Role, notification
 	return createNotification(db, userID, role, notificationType, title, message, nil)
 }
 
+// CreateNotificationWithIdempotencyKey stores one in-app notification for a
+// stable business event. The unique database index makes retries and
+// concurrent requests safe while preserving the normal notification settings,
+// realtime event, and best-effort push delivery behavior.
+func CreateNotificationWithIdempotencyKey(db *gorm.DB, userID uint, role models.Role, notificationType, title, message, idempotencyKey string) error {
+	idempotencyKey = strings.TrimSpace(idempotencyKey)
+	if idempotencyKey == "" {
+		return createNotification(db, userID, role, notificationType, title, message, nil)
+	}
+	return createNotificationWithTarget(db, userID, role, notificationType, title, message, nil, nil, &idempotencyKey, false)
+}
+
 // CreateAdminAnnouncementNotification stores an administrator announcement
 // regardless of the recipient's optional notification preferences. An admin
 // announcement is an explicit dashboard message and must be visible to every

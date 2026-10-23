@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/middleware"
 	"absensi-golan-backend/internal/models"
+	"absensi-golan-backend/internal/utils"
 	storage "absensi-golan-backend/pkg/minio"
 
 	"github.com/gofiber/fiber/v2"
@@ -245,6 +248,10 @@ func UploadAdminInternshipCertificate(c *fiber.Ctx) error {
 	if storage.Client == nil {
 		return c.Status(503).JSON(fiber.Map{"error": "Storage sertifikat belum tersedia"})
 	}
+	notificationKey, err := certificateUploadIdempotencyKey(c, user.ID, file)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "File sertifikat tidak dapat diproses"})
+	}
 	safeName := safeCertificateFilename(file.Filename)
 	key := fmt.Sprintf("certificates/%d/%d-%s", user.ID, time.Now().UnixNano(), safeName)
 	src, err := file.Open()
@@ -277,7 +284,30 @@ func UploadAdminInternshipCertificate(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Metadata sertifikat gagal disimpan"})
 	}
 	recordCertificateIssuance(user.ID, certificate.CertificateNo, "MANUAL_UPLOAD")
+	if err := utils.CreateNotificationWithIdempotencyKey(config.DB, user.ID, user.Role, "Sertifikat Magang", "Sertifikat Magang Tersedia", "Sertifikat magang Anda telah diunggah dan dapat diunduh.", notificationKey); err != nil {
+		log.Printf("notification certificate upload: failed for user %d: %v", user.ID, err)
+	}
 	return c.JSON(fiber.Map{"message": "Sertifikat berhasil diunggah", "user_id": user.ID, "file_name": certificate.FileName, "file_url": certificate.FileURL, "mime_type": certificate.MimeType, "file_size": certificate.FileSize})
+}
+
+// certificateUploadIdempotencyKey uses an explicit request key when the
+// client provides one. For older clients, the content digest makes a retry of
+// the same upload safe while a changed certificate receives a new notification.
+func certificateUploadIdempotencyKey(c *fiber.Ctx, userID uint, file *multipart.FileHeader) (string, error) {
+	requestKey := strings.TrimSpace(c.Get("Idempotency-Key"))
+	if requestKey != "" {
+		return fmt.Sprintf("certificate-upload:%d:%x", userID, sha256.Sum256([]byte(requestKey))), nil
+	}
+	src, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer src.Close()
+	digest := sha256.New()
+	if _, err := io.Copy(digest, src); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("certificate-upload:%d:%x", userID, digest.Sum(nil)), nil
 }
 
 func DeleteAdminInternshipCertificate(c *fiber.Ctx) error {
