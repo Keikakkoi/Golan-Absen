@@ -1,13 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
-import { PAYROLL_COMPANY_CODE, PAYROLL_COMPANY_NAME, Payroll, PayrollService } from '../../../core/services/payroll.service';
+import { PAYROLL_COMPANY_CODE, PAYROLL_COMPANY_NAME, PAYROLL_TAKE_HOME_PAY_SUBTITLE, Payroll, PayrollService } from '../../../core/services/payroll.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 @Component({ selector: 'app-employee-payroll', standalone: true, imports: [CommonModule, SharedSidebarComponent, PaginationComponent], templateUrl: './employee-payroll.component.html', styleUrls: ['./employee-payroll.component.scss'] })
 export class EmployeePayrollComponent implements OnInit {
   readonly companyName = PAYROLL_COMPANY_NAME;
+  readonly takeHomePaySubtitle = PAYROLL_TAKE_HOME_PAY_SUBTITLE;
   rows: Payroll[] = []; selected?: Payroll; loading = true; errorMessage = '';
   page = 1; limit = 10; total = 0; totalPages = 0;
   readonly pageSizeOptions = [10, 25, 50, 100];

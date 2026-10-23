@@ -5,7 +5,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
-import { PAYROLL_COMPANY_CODE, PAYROLL_COMPANY_NAME, Payroll, PayrollItem, PayrollService } from '../../../core/services/payroll.service';
+import { PAYROLL_COMPANY_CODE, PAYROLL_COMPANY_NAME, PAYROLL_TAKE_HOME_PAY_SUBTITLE, Payroll, PayrollItem, PayrollService } from '../../../core/services/payroll.service';
 import { environment } from '../../../../environments/environment';
 import { take } from 'rxjs';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
@@ -16,6 +16,7 @@ interface DirectoryEmployee { employee_id: number; Nama: string; Role?: string; 
 @Component({ selector: 'app-payroll', standalone: true, imports: [CommonModule, FormsModule, AdminSidebarComponent, DatePickerComponent, PaginationComponent], templateUrl: './payroll.component.html', styleUrls: ['./payroll.component.scss'] })
 export class PayrollComponent implements OnInit {
   readonly companyName = PAYROLL_COMPANY_NAME;
+  readonly takeHomePaySubtitle = PAYROLL_TAKE_HOME_PAY_SUBTITLE;
   rows: Payroll[] = []; employees: DirectoryEmployee[] = []; divisions: string[] = [];
   isLoading = true; isSaving = false; errorMessage = ''; page = 1; totalPages = 1; totalRows = 0;
   readonly pageSizeOptions = [10, 25, 50, 100];

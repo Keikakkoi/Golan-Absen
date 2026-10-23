@@ -75,7 +75,7 @@
       <span>Tanggal bayar<strong>{{ selected.payment_date | date:'dd/MM/yyyy' }}</strong></span>
     </div>
     <div class="take-home">
-      <span>Take Home Pay</span>
+      <span>Take Home Pay<small>{{ takeHomePaySubtitle }}</small></span>
       <strong>{{ money(selected.take_home_pay) }}</strong>
     </div>
     <div class="items">

@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	defaultCompanyName = "PT Golan Digital Kreatif"
-	defaultCompanyCode = "02145678"
+	defaultCompanyName  = "PT Golan Digital Kreatif"
+	defaultCompanyCode  = "02145678"
+	takeHomePaySubtitle = "Total pendapatan - Total pengurangan"
 )
 
 type payrollItemInput struct {
@@ -705,7 +706,10 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 		}
 		y += 6
 	}
-	if y > 225 {
+	// Reserve enough space for the totals, the two-line Take Home Pay block,
+	// and the footer. This keeps the footer on the same page only when the
+	// actual layout has room for it.
+	if y > 204 {
 		pdf.AddPage()
 		y = 25
 	}
@@ -721,13 +725,31 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 	pdf.CellFormat(28, 9, rupiah(payroll.TotalDeduction), "", 1, "R", true, 0, "")
 	y += 18
 	pdf.SetFillColor(232, 245, 235)
+	// Build the block as an invisible-border table: the left column has two
+	// rows, while the right amount cell spans both rows.
+	pdf.SetDrawColor(232, 245, 235)
 	pdf.SetXY(16, y)
 	pdf.SetFont("Arial", "B", 11)
-	pdf.CellFormat(150, 17, "Take Home Pay", "", 0, "L", true, 0, "")
+	pdf.CellFormat(150, 10, "Take Home Pay", "1", 0, "LB", true, 0, "")
+	pdf.SetFont("Arial", "", 7)
+	pdf.SetXY(16, y+10)
+	pdf.CellFormat(150, 10, takeHomePaySubtitle, "1", 0, "LT", true, 0, "")
 	pdf.SetFont("Arial", "B", 12)
-	pdf.SetX(166)
-	pdf.CellFormat(28, 17, rupiah(payroll.TakeHomePay), "", 1, "R", true, 0, "")
-	y += 28
+	pdf.SetXY(166, y)
+	pdf.CellFormat(28, 20, rupiah(payroll.TakeHomePay), "1", 1, "R", true, 0, "")
+	y += 31
+	// Notes use MultiCell, so move the footer to a new page if the wrapped
+	// note would otherwise run past the A4 bottom margin.
+	pdf.SetFont("Arial", "", 8)
+	noteLines := len(pdf.SplitLines([]byte(pdfText(payroll.Notes)), 80))
+	footerContentHeight := 10
+	if noteLines*5 > footerContentHeight {
+		footerContentHeight = noteLines * 5
+	}
+	if y+7+float64(footerContentHeight) > 283 {
+		pdf.AddPage()
+		y = 20
+	}
 	pdf.SetFont("Arial", "B", 9)
 	pdf.SetXY(16, y)
 	pdf.Cell(80, 5, "Catatan")

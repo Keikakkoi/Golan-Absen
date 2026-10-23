@@ -46,4 +46,8 @@ describe('EmployeePayrollComponent pagination', () => {
     expect(component.selected).toBe(row);
     expect(payroll.mine).not.toHaveBeenCalled();
   });
+
+  it('uses the same Take Home Pay subtitle as the PDF layout', () => {
+    expect(component.takeHomePaySubtitle).toBe('Total pendapatan - Total pengurangan');
+  });
 });

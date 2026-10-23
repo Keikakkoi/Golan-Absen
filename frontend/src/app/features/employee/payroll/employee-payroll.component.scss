@@ -215,10 +215,25 @@ td button {
 .take-home {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 15px;
   margin-top: 20px;
   background: #e6f3e9;
   font-size: 1.1rem;
+}
+
+.take-home span {
+  display: block;
+  font-weight: 700;
+}
+
+.take-home small {
+  display: block;
+  margin-top: 0;
+  line-height: 1.1;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 400;
 }
 
 .preview-actions {
