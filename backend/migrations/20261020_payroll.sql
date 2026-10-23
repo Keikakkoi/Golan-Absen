@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS payrolls (
     total_hari_kerja INTEGER NOT NULL CHECK (total_hari_kerja >= 0),
     company_name_snapshot VARCHAR(150) NOT NULL,
     company_phone_snapshot VARCHAR(40),
+    uang_transportasi BIGINT NOT NULL DEFAULT 0 CHECK (uang_transportasi >= 0),
+    bpjs_ketenagakerjaan BIGINT NOT NULL DEFAULT 0 CHECK (bpjs_ketenagakerjaan >= 0),
     total_income BIGINT NOT NULL DEFAULT 0 CHECK (total_income >= 0),
     total_deduction BIGINT NOT NULL DEFAULT 0 CHECK (total_deduction >= 0),
     take_home_pay BIGINT NOT NULL DEFAULT 0,

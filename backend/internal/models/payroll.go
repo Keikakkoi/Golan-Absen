@@ -20,6 +20,8 @@ type Payroll struct {
 	TotalHariKerja       int           `gorm:"not null" json:"total_hari_kerja"`
 	CompanyNameSnapshot  string        `gorm:"size:150;not null" json:"company_name_snapshot"`
 	CompanyPhoneSnapshot string        `gorm:"size:40" json:"company_phone_snapshot"`
+	UangTransportasi     int64         `gorm:"column:uang_transportasi;type:bigint;not null;default:0" json:"uang_transportasi"`
+	BPJSKetenagakerjaan  int64         `gorm:"column:bpjs_ketenagakerjaan;type:bigint;not null;default:0" json:"bpjs_ketenagakerjaan"`
 	TotalIncome          int64         `gorm:"type:bigint;not null;default:0" json:"total_income"`
 	TotalDeduction       int64         `gorm:"type:bigint;not null;default:0" json:"total_deduction"`
 	TakeHomePay          int64         `gorm:"type:bigint;not null;default:0" json:"take_home_pay"`

@@ -11,7 +11,7 @@ export interface PayrollItem { ID?: number; type: 'income' | 'deduction'; name: 
 export interface Payroll {
   ID: number; employee_id: number; user_id: number; periode_bulan: string; payroll_cutoff_start: string; payroll_cutoff_end: string; payment_date: string;
   employee_name_snapshot: string; employee_code_snapshot: string; nik_snapshot?: string; position_snapshot?: string; division_snapshot?: string;
-  total_hari_kerja: number; company_name_snapshot: string; company_phone_snapshot?: string; total_income: number; total_deduction: number; take_home_pay: number;
+  total_hari_kerja: number; company_name_snapshot: string; company_phone_snapshot?: string; uang_transportasi: number; bpjs_ketenagakerjaan: number; total_income: number; total_deduction: number; take_home_pay: number;
   notes?: string; approved_by_name?: string; approved_by_position?: string; received_by_name?: string; received_by_position?: string; status: 'Draft' | 'Published' | 'Dibatalkan'; published_at?: string; items: PayrollItem[];
 }
 export interface PayrollPage { data: Payroll[]; total: number; page: number; limit: number; per_page?: number; total_pages: number; }

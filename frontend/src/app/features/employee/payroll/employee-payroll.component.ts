@@ -42,5 +42,6 @@ export class EmployeePayrollComponent implements OnInit {
   companyCodeValue(row?: Payroll): string { return row?.company_phone_snapshot?.trim() || PAYROLL_COMPANY_CODE; }
   download(row: Payroll): void { this.payroll.pdf(row.ID, true).subscribe({ next: blob => { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `slip-gaji-${row.employee_code_snapshot}-${row.periode_bulan.slice(0, 7)}.pdf`; link.click(); URL.revokeObjectURL(url); }, error: err => void this.alert.error('Gagal mengunduh PDF', err.error?.error || '') }); }
   money(value: number): string { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0); }
+  hasPayrollComponent(row: Payroll | undefined, type: 'income' | 'deduction', name: string): boolean { return !!row?.items?.some(item => item.type === type && String(item.name || '').trim().toLowerCase() === name.toLowerCase()); }
   formatPeriod(value: string | undefined | null): string { const match = String(value || '').match(/^(\d{4})-(\d{2})/); if (!match) return '-'; const month = Number(match[2]); return month >= 1 && month <= 12 ? `${this.monthNames[month - 1]} ${match[1]}` : '-'; }
 }

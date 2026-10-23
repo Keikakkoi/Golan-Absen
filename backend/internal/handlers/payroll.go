@@ -31,19 +31,21 @@ type payrollItemInput struct {
 }
 
 type payrollInput struct {
-	EmployeeID         uint               `json:"employee_id"`
-	PeriodeBulan       string             `json:"periode_bulan"`
-	PayrollCutoffStart string             `json:"payroll_cutoff_start"`
-	PayrollCutoffEnd   string             `json:"payroll_cutoff_end"`
-	PaymentDate        string             `json:"payment_date"`
-	CompanyPhone       string             `json:"company_phone"`
-	TotalHariKerja     *int               `json:"total_hari_kerja"`
-	Notes              string             `json:"notes"`
-	ApprovedByName     string             `json:"approved_by_name"`
-	ApprovedByPosition string             `json:"approved_by_position"`
-	ReceivedByName     string             `json:"received_by_name"`
-	ReceivedByPosition string             `json:"received_by_position"`
-	Items              []payrollItemInput `json:"items"`
+	EmployeeID          uint               `json:"employee_id"`
+	PeriodeBulan        string             `json:"periode_bulan"`
+	PayrollCutoffStart  string             `json:"payroll_cutoff_start"`
+	PayrollCutoffEnd    string             `json:"payroll_cutoff_end"`
+	PaymentDate         string             `json:"payment_date"`
+	CompanyPhone        string             `json:"company_phone"`
+	TotalHariKerja      *int               `json:"total_hari_kerja"`
+	UangTransportasi    *int64             `json:"uang_transportasi"`
+	BPJSKetenagakerjaan *int64             `json:"bpjs_ketenagakerjaan"`
+	Notes               string             `json:"notes"`
+	ApprovedByName      string             `json:"approved_by_name"`
+	ApprovedByPosition  string             `json:"approved_by_position"`
+	ReceivedByName      string             `json:"received_by_name"`
+	ReceivedByPosition  string             `json:"received_by_position"`
+	Items               []payrollItemInput `json:"items"`
 }
 
 func SetupPayrollRoutes(router fiber.Router) {
@@ -116,6 +118,12 @@ func validatePayrollInput(input *payrollInput) (time.Time, time.Time, time.Time,
 	}
 	if input.TotalHariKerja != nil && *input.TotalHariKerja < 0 {
 		return time.Time{}, time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("total hari kerja tidak boleh negatif")
+	}
+	if input.UangTransportasi != nil && *input.UangTransportasi < 0 {
+		return time.Time{}, time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("uang transportasi tidak boleh negatif")
+	}
+	if input.BPJSKetenagakerjaan != nil && *input.BPJSKetenagakerjaan < 0 {
+		return time.Time{}, time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("BPJS Ketenagakerjaan tidak boleh negatif")
 	}
 	if len(input.Items) == 0 {
 		return time.Time{}, time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("minimal satu item pendapatan wajib diisi")
@@ -230,19 +238,52 @@ func buildPayroll(input *payrollInput, employee models.Employee, actor uint, exi
 	payroll.ReceivedByName = strings.TrimSpace(input.ReceivedByName)
 	payroll.ReceivedByPosition = strings.TrimSpace(input.ReceivedByPosition)
 	payroll.UpdatedBy = actor
+	payroll.UangTransportasi = payrollComponentAmount(input.UangTransportasi)
+	if amount, ok := payrollInputComponentAmount(input.Items, "income", "Uang Transportasi"); ok {
+		payroll.UangTransportasi = amount
+	}
+	payroll.BPJSKetenagakerjaan = payrollComponentAmount(input.BPJSKetenagakerjaan)
+	if amount, ok := payrollInputComponentAmount(input.Items, "deduction", "BPJS Ketenagakerjaan"); ok {
+		payroll.BPJSKetenagakerjaan = amount
+	}
 	payroll.TotalIncome, payroll.TotalDeduction = 0, 0
 	for _, item := range input.Items {
+		if payrollInputComponent(item, "income", "Uang Transportasi") || payrollInputComponent(item, "deduction", "BPJS Ketenagakerjaan") {
+			continue
+		}
 		if item.Type == "income" {
 			payroll.TotalIncome += item.Amount
 		} else {
 			payroll.TotalDeduction += item.Amount
 		}
 	}
+	payroll.TotalIncome += payroll.UangTransportasi
+	payroll.TotalDeduction += payroll.BPJSKetenagakerjaan
 	payroll.TakeHomePay = payroll.TotalIncome - payroll.TotalDeduction
 	if existing == nil {
 		payroll.Status = "Draft"
 	}
 	return payroll, nil
+}
+
+func payrollComponentAmount(value *int64) int64 {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
+
+func payrollInputComponentAmount(items []payrollItemInput, itemType, name string) (int64, bool) {
+	for _, item := range items {
+		if payrollInputComponent(item, itemType, name) {
+			return item.Amount, true
+		}
+	}
+	return 0, false
+}
+
+func payrollInputComponent(item payrollItemInput, itemType, name string) bool {
+	return item.Type == itemType && strings.EqualFold(strings.TrimSpace(item.Name), name)
 }
 
 func savePayroll(tx *gorm.DB, payroll *models.Payroll, inputs []payrollItemInput) error {
@@ -629,6 +670,14 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 			deductions = append(deductions, item)
 		}
 	}
+	// These two components are stored as named payroll columns so they remain
+	// available even when the dynamic item list is edited or reordered.
+	if !payrollHasComponent(incomes, "Uang Transportasi") {
+		incomes = append(incomes, models.PayrollItem{Name: "Uang Transportasi", Amount: payroll.UangTransportasi})
+	}
+	if !payrollHasComponent(deductions, "BPJS Ketenagakerjaan") {
+		deductions = append(deductions, models.PayrollItem{Name: "BPJS Ketenagakerjaan", Amount: payroll.BPJSKetenagakerjaan})
+	}
 	rows := len(incomes)
 	if len(deductions) > rows {
 		rows = len(deductions)
@@ -702,4 +751,13 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 	c.Set("Content-Type", "application/pdf")
 	c.Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 	return c.Send(bytesPDF.Bytes())
+}
+
+func payrollHasComponent(items []models.PayrollItem, name string) bool {
+	for _, item := range items {
+		if strings.EqualFold(strings.TrimSpace(item.Name), name) {
+			return true
+		}
+	}
+	return false
 }
