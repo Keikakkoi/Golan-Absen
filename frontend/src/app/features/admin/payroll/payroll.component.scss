@@ -741,7 +741,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  position: relative;
+  min-width: 128px;
+  gap: 0;
   min-height: 42px;
   padding: 10px 14px;
   border: 0;
@@ -753,6 +755,21 @@
   white-space: nowrap;
   transition: background-color 0.2s ease, box-shadow 0.2s ease,
     transform 0.2s ease;
+}
+
+.payroll-shell .table-card .actions .payroll-publish-action span {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.payroll-shell .table-card .actions .payroll-publish-action svg {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  width: 17px;
+  height: 17px;
+  transform: translateY(-50%);
 }
 
 .payroll-shell .table-card .actions .payroll-publish-action:hover {
