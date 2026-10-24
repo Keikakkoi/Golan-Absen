@@ -124,6 +124,20 @@ func TestSendPayrollPDFPaginatesLongItemListsWithoutDroppingFooter(t *testing.T)
 	}
 }
 
+func TestSendPayrollPDFWrapsUnbrokenNotesAndPreservesParagraphs(t *testing.T) {
+	payroll := testPayroll(0)
+	payroll.Notes = strings.Repeat("A", 1000) + "\nParagraf kedua tetap ditampilkan"
+	pdf := renderPayrollPDFForTest(t, payroll)
+	text := extractPDFText(pdf)
+
+	if !strings.Contains(text, "Paragraf kedua tetap ditampilkan") {
+		t.Fatal("expected the second note paragraph in the PDF")
+	}
+	if pages := bytes.Count(pdf, []byte("/Type /Page\n")); pages < 2 {
+		t.Fatalf("expected an unbroken long note to wrap and paginate, got %d page(s)", pages)
+	}
+}
+
 func renderPayrollPDFForTest(t *testing.T, payroll *models.Payroll) []byte {
 	t.Helper()
 	app := fiber.New()
