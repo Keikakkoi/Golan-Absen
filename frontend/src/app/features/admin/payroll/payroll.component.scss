@@ -736,3 +736,45 @@
   background: #4f93e8 !important;
   color: #ffffff !important;
 }
+
+.payroll-shell .table-card .actions .payroll-publish-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #60a5fa;
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.payroll-shell .table-card .actions .payroll-publish-action:hover {
+  background: #4f93e8;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
+}
+
+.payroll-shell .table-card .actions .payroll-publish-action:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card .actions .payroll-publish-action {
+  border-color: transparent !important;
+  background: #60a5fa !important;
+  color: #ffffff !important;
+}
+
+:host-context(body.dark-theme) .payroll-shell .table-card .actions .payroll-publish-action:hover {
+  border-color: transparent !important;
+  background: #4f93e8 !important;
+  color: #ffffff !important;
+}
