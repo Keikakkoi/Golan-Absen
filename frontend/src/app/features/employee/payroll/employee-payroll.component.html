@@ -85,16 +85,16 @@
       <div>
         <h4>Pendapatan</h4>
         <p *ngFor="let item of selected.items" [hidden]="item.type !== 'income'">
-          {{ item.name }} <b>{{ money(item.amount) }}</b>
+          <span>{{ item.name }}</span> <b>{{ money(item.amount) }}</b>
         </p>
-        <p *ngIf="!hasPayrollComponent(selected, 'income', 'Uang Transportasi')">Uang Transportasi <b>{{ money(selected.uang_transportasi) }}</b></p>
+        <p *ngIf="!hasPayrollComponent(selected, 'income', 'Uang Transportasi')"><span>Uang Transportasi</span> <b>{{ money(selected.uang_transportasi) }}</b></p>
       </div>
       <div>
         <h4>Pengurangan</h4>
         <p *ngFor="let item of selected.items" [hidden]="item.type !== 'deduction'">
-          {{ item.name }} <b>{{ money(item.amount) }}</b>
+          <span>{{ item.name }}</span> <b>{{ money(item.amount) }}</b>
         </p>
-        <p *ngIf="!hasPayrollComponent(selected, 'deduction', 'BPJS Ketenagakerjaan')">BPJS Ketenagakerjaan <b>{{ money(selected.bpjs_ketenagakerjaan) }}</b></p>
+        <p *ngIf="!hasPayrollComponent(selected, 'deduction', 'BPJS Ketenagakerjaan')"><span>BPJS Ketenagakerjaan</span> <b>{{ money(selected.bpjs_ketenagakerjaan) }}</b></p>
       </div>
     </div>
     <div class="preview-actions">
