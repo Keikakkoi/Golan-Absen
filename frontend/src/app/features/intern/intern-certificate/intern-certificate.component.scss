@@ -18,4 +18,48 @@
 .intern-document-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .intern-document-actions a{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
 .intern-document-row button{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+
+/* View action: compact button shared by both theme references. */
+.intern-document-actions > .intern-document-view {
+  width:36px;
+  height:36px;
+  min-width:36px;
+  min-height:36px;
+  padding:0;
+  border:1px solid #b8d9fb;
+  border-radius:7px;
+  background:#eaf4ff;
+  color:#175a9d;
+  box-sizing:border-box;
+  gap:0;
+  transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,box-shadow .2s ease;
+}
+.intern-document-actions > .intern-document-view i {
+  width:auto;
+  height:auto;
+  font-size:18px;
+}
+.intern-document-actions > .intern-document-view:hover {
+  background:#d7eaff;
+  border-color:#8fc2f3;
+  color:#0f4f8e;
+  transform:translateY(-1px);
+  box-shadow:0 3px 8px rgba(15,23,42,.22);
+}
+
+/* Dark-mode reference: navy surface with a blue outline and light-blue eye. */
+:host-context(body.dark-theme) .intern-document-actions > .intern-document-view {
+  background:#1e3a62 !important;
+  border-color:#2f86ed !important;
+  color:#9bc9ff !important;
+}
+:host-context(body.dark-theme) .intern-document-actions > .intern-document-view:hover {
+  background:#244977 !important;
+  border-color:#5da4ff !important;
+  color:#c7e2ff !important;
+}
+.intern-document-actions > .intern-document-view:focus-visible {
+  outline:3px solid rgba(93,164,255,.45);
+  outline-offset:2px;
+}
 @media(max-width:600px){.intern-document-row{align-items:flex-start;flex-direction:column}.intern-document-actions{width:100%}.intern-document-actions a,.intern-document-actions button{flex:1;justify-content:center}}
