@@ -581,6 +581,51 @@
   }
 }
 
+/* Keep the preview's PDF action aligned with the download-button reference. */
+.modal-backdrop > .preview-modal .modal-actions .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 0 !important;
+  border-radius: 12px;
+  background: #60a5fa !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.modal-backdrop > .preview-modal .modal-actions .btn-primary::before {
+  content: '\f019';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 1rem;
+}
+
+.modal-backdrop > .preview-modal .modal-actions .btn-primary:hover {
+  background: #4f93e8 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
+}
+
+.modal-backdrop > .preview-modal .modal-actions .btn-primary:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .modal-actions .btn-primary,
+:host-context(body.dark-theme) .modal-backdrop > .preview-modal .modal-actions .btn-primary:hover {
+  border-color: transparent !important;
+  background: #60a5fa !important;
+  color: #ffffff !important;
+}
+
 .payroll-shell .table-card .actions .payroll-pdf-action {
   display: inline-flex;
   align-items: center;
