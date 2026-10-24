@@ -742,29 +742,37 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 	// note would otherwise run past the A4 bottom margin.
 	pdf.SetFont("Arial", "", 8)
 	noteLines := len(pdf.SplitLines([]byte(pdfText(payroll.Notes)), 80))
-	footerContentHeight := 10
-	if noteLines*5 > footerContentHeight {
-		footerContentHeight = noteLines * 5
+	// Keep the signature block visually consistent with the GDK reference:
+	// leave roughly four blank text lines between each label and the signer
+	// name, then place the position directly below the name.
+	const (
+		signatureNameOffset     = 25.0
+		signaturePositionOffset = 31.0
+		pageContentBottom       = 280.0
+	)
+	footerContentHeight := signaturePositionOffset + 5 - 7
+	if float64(noteLines*5) > footerContentHeight {
+		footerContentHeight = float64(noteLines * 5)
 	}
-	if y+7+float64(footerContentHeight) > 283 {
+	if y+7+float64(footerContentHeight) > pageContentBottom {
 		pdf.AddPage()
 		y = 20
 	}
 	pdf.SetFont("Arial", "B", 9)
 	pdf.SetXY(16, y)
 	pdf.Cell(80, 5, "Catatan")
-	pdf.Cell(50, 5, "Disetujui oleh:")
-	pdf.Cell(48, 5, "Diterima oleh:")
+	pdf.Cell(48, 5, "Disetujui oleh:")
+	pdf.Cell(50, 5, "Diterima oleh:")
 	pdf.SetFont("Arial", "", 8)
 	pdf.SetXY(16, y+7)
 	pdf.MultiCell(80, 5, pdfText(payroll.Notes), "", "L", false)
-	pdf.SetXY(96, y+7)
+	pdf.SetXY(96, y+signatureNameOffset)
 	pdf.CellFormat(48, 5, pdfText(payroll.ApprovedByName), "", 1, "L", false, 0, "")
-	pdf.SetX(96)
+	pdf.SetXY(96, y+signaturePositionOffset)
 	pdf.CellFormat(48, 5, pdfText(payroll.ApprovedByPosition), "", 1, "L", false, 0, "")
-	pdf.SetXY(144, y+7)
+	pdf.SetXY(144, y+signatureNameOffset)
 	pdf.CellFormat(50, 5, pdfText(payroll.ReceivedByName), "", 1, "L", false, 0, "")
-	pdf.SetX(144)
+	pdf.SetXY(144, y+signaturePositionOffset)
 	pdf.CellFormat(50, 5, pdfText(payroll.ReceivedByPosition), "", 1, "L", false, 0, "")
 	if err := pdf.Output(bytesPDF); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal membuat PDF slip gaji"})
