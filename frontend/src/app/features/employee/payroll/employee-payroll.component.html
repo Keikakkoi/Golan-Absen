@@ -40,7 +40,10 @@
                   title="Lihat preview slip gaji">
                   <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg>
                 </button>
-                <button type="button" (click)="download(row)">Unduh PDF</button>
+                <button type="button" class="payroll-download-action" (click)="download(row)">
+                  <i class="fas fa-download" aria-hidden="true"></i>
+                  <span>Unduh PDF</span>
+                </button>
               </td>
             </tr>
           </tbody>
@@ -96,7 +99,10 @@
     </div>
     <div class="preview-actions">
       <button type="button" (click)="close()">Tutup</button>
-      <button type="button" class="primary" (click)="download(selected)">Unduh PDF</button>
+      <button type="button" class="primary payroll-download-action" (click)="download(selected)">
+        <i class="fas fa-download" aria-hidden="true"></i>
+        <span>Unduh PDF</span>
+      </button>
     </div>
   </section>
 </div>

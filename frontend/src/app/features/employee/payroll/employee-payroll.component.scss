@@ -76,6 +76,44 @@ td button {
   margin-right: 5px;
 }
 
+.actions .payroll-download-action,
+.preview-actions .payroll-download-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 14px;
+  margin-right: 0;
+  border: 0;
+  border-radius: 12px;
+  background: #60a5fa;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.actions .payroll-download-action:hover,
+.preview-actions .payroll-download-action:hover {
+  background: #4f93e8;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.18);
+}
+
+.actions .payroll-download-action:active,
+.preview-actions .payroll-download-action:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.payroll-download-action i {
+  font-size: 1rem;
+}
+
 .actions .payroll-view-action {
   flex: 0 0 36px;
   width: 36px;
@@ -330,16 +368,25 @@ td button {
     color: #f8fafc;
   }
 
-  .actions > button:not(.payroll-view-action) {
+  .actions > button:not(.payroll-view-action):not(.payroll-download-action) {
     border-color: #64748b;
     background: #1e293b;
     color: #e2e8f0;
   }
 
-  .actions > button:not(.payroll-view-action):hover {
+  .actions > button:not(.payroll-view-action):not(.payroll-download-action):hover {
     border-color: #93c5fd;
     background: #334155;
     color: #f8fafc;
+  }
+
+  .actions .payroll-download-action,
+  .actions .payroll-download-action:hover,
+  .preview-actions .payroll-download-action,
+  .preview-actions .payroll-download-action:hover {
+    border-color: transparent;
+    background: #60a5fa;
+    color: #fff;
   }
 
   .actions .payroll-view-action {
@@ -394,13 +441,13 @@ td button {
     background: #334155;
   }
 
-  .preview-actions .primary {
+  .preview-actions .primary:not(.payroll-download-action) {
     background: #2563eb;
     border-color: #3b82f6;
     color: #fff;
   }
 
-  .preview-actions .primary:hover {
+  .preview-actions .primary:not(.payroll-download-action):hover {
     background: #1d4ed8;
   }
 
