@@ -8,11 +8,10 @@
     <section class="golan-card team-report-card">
       <div class="team-filter-layout">
         <div class="report-toolbar team-attendance-toolbar">
-          <label>Nama/NIK<input class="golan-input" [(ngModel)]="search"></label>
-          <label>Dari tanggal<app-date-picker name="team_attendance_start_date" class="golan-input" [(ngModel)]="startDate" [max]="endDate || ''" ariaLabel="Dari tanggal"></app-date-picker></label>
-          <label>Sampai tanggal<app-date-picker name="team_attendance_end_date" class="golan-input" [(ngModel)]="endDate" [min]="startDate || ''" ariaLabel="Sampai tanggal"></app-date-picker></label>
-          <label>Status<select class="golan-input" [(ngModel)]="status"><option value="">Semua status</option><option>Hadir</option><option>Terlambat</option><option value="Tidak hadir">Alpha</option></select></label>
-          <button type="button" class="btn-primary report-filter-action" (click)="load()" [disabled]="isLoading">{{ isLoading ? 'Memuat...' : 'Filter' }}</button>
+          <label>Nama/NIK<input class="golan-input" [(ngModel)]="search" (ngModelChange)="onSearchChange()"></label>
+          <label>Dari tanggal<app-date-picker name="team_attendance_start_date" class="golan-input" [(ngModel)]="startDate" (ngModelChange)="onFilterChange()" [max]="endDate || ''" ariaLabel="Dari tanggal"></app-date-picker></label>
+          <label>Sampai tanggal<app-date-picker name="team_attendance_end_date" class="golan-input" [(ngModel)]="endDate" (ngModelChange)="onFilterChange()" [min]="startDate || ''" ariaLabel="Sampai tanggal"></app-date-picker></label>
+          <label>Status<select class="golan-input" [(ngModel)]="status" (ngModelChange)="onFilterChange()"><option value="">Semua status</option><option>Hadir</option><option>Terlambat</option><option value="Tidak hadir">Alpha</option></select></label>
           <div class="export-dropdown">
             <button type="button" class="btn btn-secondary" (click)="toggleExportDropdown()"><i class="fas fa-file-export" aria-hidden="true"></i> Unduh / Cetak <i class="fas fa-chevron-down" aria-hidden="true"></i></button>
             <div class="dropdown-menu-custom" *ngIf="isExportOpen">

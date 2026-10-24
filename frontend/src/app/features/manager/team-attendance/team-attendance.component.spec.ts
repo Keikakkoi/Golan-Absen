@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TeamAttendanceComponent } from './team-attendance.component';
 
@@ -57,4 +57,35 @@ describe('TeamAttendanceComponent pagination', () => {
     request.flush({ data: [], total: 0, page: 1, limit: 50, total_pages: 0 });
     expect(component.page).toBe(1);
   });
+
+  it('loads immediately when a non-search filter changes', () => {
+    component.startDate = '2026-10-01';
+    component.endDate = '2026-10-24';
+    component.status = 'Hadir';
+    component.onFilterChange();
+
+    const request = httpMock.expectOne(req => req.url.endsWith('/manager/team/attendance'));
+    expect(request.request.params.get('start_date')).toBe('2026-10-01');
+    expect(request.request.params.get('end_date')).toBe('2026-10-24');
+    expect(request.request.params.get('status')).toBe('Hadir');
+    expect(request.request.params.get('page')).toBe('1');
+    request.flush({ data: [], total: 0, page: 1, limit: 25, total_pages: 0 });
+    expect(component.totalItems).toBe(0);
+    expect(component.isLoading).toBeFalse();
+  });
+
+  it('debounces Nama/NIK searches and only requests the latest value', fakeAsync(() => {
+    component.search = 'Ri';
+    component.onSearchChange();
+    tick(200);
+    component.search = 'Rina';
+    component.onSearchChange();
+    tick(299);
+    httpMock.expectNone(req => req.url.endsWith('/manager/team/attendance'));
+
+    tick(1);
+    const request = httpMock.expectOne(req => req.url.endsWith('/manager/team/attendance'));
+    expect(request.request.params.get('search')).toBe('Rina');
+    request.flush({ data: [], total: 0, page: 1, limit: 25, total_pages: 0 });
+  }));
 });

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
@@ -9,9 +9,10 @@ import { ReportExportService } from '../../../core/services/report-export.servic
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 @Component({ selector: 'app-team-attendance', standalone: true, imports: [CommonModule, FormsModule, SharedSidebarComponent, PaginationComponent, DatePickerComponent], templateUrl: './team-attendance.component.html', styleUrls: ['./team-attendance.component.scss'] })
-export class TeamAttendanceComponent implements OnInit {
+export class TeamAttendanceComponent implements OnDestroy, OnInit {
   startDate = this.todayBusinessDate(); endDate = this.startDate; search = ''; status = ''; rows: any[] = []; private serverPaginated = false; private requestSequence = 0;
   error = ''; isExportOpen = false; page = 1; pageSize = 25; pageSizeOptions = [10, 25, 50, 100]; totalItems = 0; isLoading = false;
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   constructor(private http: HttpClient, private auth: AuthService, private reportExport: ReportExportService, private route: ActivatedRoute, private router: Router) {}
   ngOnInit(): void {
     const query = this.route.snapshot.queryParamMap;
@@ -24,12 +25,23 @@ export class TeamAttendanceComponent implements OnInit {
     if (!this.pageSizeOptions.includes(this.pageSize)) this.pageSize = 25;
     this.load(this.page, false);
   }
+  ngOnDestroy(): void {
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+  }
+  onSearchChange(): void {
+    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+    this.searchDebounceTimer = setTimeout(() => {
+      this.searchDebounceTimer = null;
+      this.load(1);
+    }, 300);
+  }
+  onFilterChange(): void { this.load(1); }
   load(page = 1, updateUrl = true): void {
+    const requestId = ++this.requestSequence;
     this.error = this.validateDateRange();
     if (this.error) { this.rows = []; this.totalItems = 0; this.isLoading = false; return; }
     this.isLoading = true; this.page = page;
     if (updateUrl) void this.router.navigate([], { relativeTo: this.route, queryParams: this.attendanceQueryParams(), replaceUrl: true });
-    const requestId = ++this.requestSequence;
     let params = new HttpParams().set('start_date', this.startDate).set('end_date', this.endDate).set('page', page).set('limit', this.pageSize); if (this.search) params = params.set('search', this.search); if (this.status) params = params.set('status', this.status);
     this.http.get<any>('http://localhost:8080/api/v1/manager/team/attendance', { params, headers: this.headers() }).subscribe({ next: response => {
       if (requestId !== this.requestSequence) return;
