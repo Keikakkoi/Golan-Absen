@@ -135,17 +135,8 @@ export class AuthService {
 
     const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
     const context = new HttpContext().set(PROFILE_VALIDATION, true);
-    return this.http.get<any>(`http://localhost:8080/api/v1/employee/profile`, { headers, context }).pipe(
-      tap(profile => {
-        if (profile.permissions) {
-          localStorage.setItem('permissions', JSON.stringify(profile.permissions));
-          
-          const current = this.currentUserSubject.value;
-          if (current) {
-            this.currentUserSubject.next({ ...current, permissions: profile.permissions });
-          }
-        }
-      }),
+    return this.http.get<any>(`${environment.apiUrl}/employee/profile`, { headers, context }).pipe(
+      tap(profile => this.applyProfileToCurrentUser(profile)),
       catchError(error => {
         // A profile check can run during bootstrap. Remove stale credentials
         // without navigating here; the interceptor decides whether the current
@@ -154,6 +145,79 @@ export class AuthService {
         return throwError(() => error);
       })
     );
+  }
+
+  /** Apply an updated directory user when it is the account in this session. */
+  syncCurrentUser(profile: any): void {
+    const current = this.currentUserSubject.value;
+    const currentUserId = Number(current?.user_id ?? localStorage.getItem('user_id'));
+    const profileUserId = this.profileUserId(profile);
+    if (!currentUserId || !profileUserId || currentUserId !== profileUserId) return;
+
+    this.applyProfileToCurrentUser(profile);
+  }
+
+  private applyProfileToCurrentUser(profile: any): void {
+    const current = this.currentUserSubject.value;
+    const employee = profile?.Employee ?? profile?.employee;
+    const division = employee?.Division ?? employee?.division;
+    const position = employee?.Position ?? employee?.position;
+    const userId = this.profileUserId(profile) || Number(current?.user_id ?? localStorage.getItem('user_id'));
+    const name = this.profileValue(profile, 'Nama', 'name');
+    const role = this.profileValue(profile, 'Role', 'role') || current?.role || localStorage.getItem('role');
+    const email = this.profileValue(profile, 'Email', 'email');
+    const divisi = this.profileValue(profile, 'Divisi', 'divisi')
+      || this.profileValue(division, 'NamaDivisi', 'nama_divisi')
+      || current?.divisi || localStorage.getItem('divisi');
+    const jabatan = this.profileValue(profile, 'Jabatan', 'jabatan')
+      || this.profileValue(position, 'NamaJabatan', 'nama_jabatan')
+      || current?.jabatan || localStorage.getItem('jabatan');
+    const permissions = Array.isArray(profile?.permissions)
+      ? profile.permissions
+      : current?.permissions || this.readStoredPermissions();
+
+    if (userId) localStorage.setItem('user_id', String(userId));
+    if (name) localStorage.setItem('name', name);
+    if (role) localStorage.setItem('role', role);
+    if (divisi) localStorage.setItem('divisi', divisi);
+    if (jabatan) localStorage.setItem('jabatan', jabatan);
+    if (Array.isArray(permissions)) localStorage.setItem('permissions', JSON.stringify(permissions));
+    if (userId) this.themeService.setUserContext(userId);
+
+    this.currentUserSubject.next({
+      ...current,
+      token: current?.token || this.getToken(),
+      user_id: userId || current?.user_id,
+      role,
+      name: name || current?.name || localStorage.getItem('name'),
+      email: email || current?.email,
+      divisi,
+      jabatan,
+      permissions
+    });
+  }
+
+  private profileUserId(profile: any): number | null {
+    const value = profile?.ID ?? profile?.id ?? profile?.user_id;
+    const userId = Number(value);
+    return Number.isFinite(userId) && userId > 0 ? userId : null;
+  }
+
+  private profileValue(profile: any, ...keys: string[]): string {
+    for (const key of keys) {
+      const value = profile?.[key];
+      if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();
+    }
+    return '';
+  }
+
+  private readStoredPermissions(): string[] {
+    try {
+      const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
+      return Array.isArray(permissions) ? permissions : [];
+    } catch {
+      return [];
+    }
   }
 
   getRole(): string | null {
@@ -192,6 +256,7 @@ export class AuthService {
     localStorage.removeItem('user_id');
     localStorage.removeItem('role');
     localStorage.removeItem('name');
+    localStorage.removeItem('email');
     localStorage.removeItem('divisi');
     localStorage.removeItem('jabatan');
     localStorage.removeItem('permissions');

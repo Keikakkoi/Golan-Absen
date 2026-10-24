@@ -53,8 +53,9 @@
   </div>
 
   <div class="current-role-badge" *ngIf="!isMenuLoading; else roleSkeleton">
-    <span class="role-caption">Akses akun</span>
-    <strong>{{ roleLabel }}</strong>
+    <span class="role-caption">Akun aktif</span>
+    <strong>{{ userName || 'Memuat...' }}</strong>
+    <small>{{ roleLabel }}</small>
   </div>
   <ng-template #roleSkeleton>
     <app-ui-skeleton type="text" ariaLabel="Memuat akun"></app-ui-skeleton>

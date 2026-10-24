@@ -719,8 +719,9 @@ export class EmployeeListComponent implements OnInit {
     if (this.isEditMode) {
       this.http.put<any>(`${this.baseUrl}/${this.formData.id}`, this.formData, { headers })
         .subscribe({
-          next: () => {
+          next: (updatedUser) => {
             this.isSaving = false;
+            this.authService.syncCurrentUser(updatedUser);
             this.closeModal();
             this.loadEmployees();
             this.alert.success('Data karyawan diperbarui');

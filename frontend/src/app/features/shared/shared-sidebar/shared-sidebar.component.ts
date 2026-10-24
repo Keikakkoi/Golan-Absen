@@ -4,7 +4,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { ThemeService } from '../../../core/services/theme.service';
-import { Subscription, filter, take } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 
 @Component({
@@ -18,6 +18,7 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
   @ViewChild('sidebar') private sidebarElement?: ElementRef<HTMLElement>;
 
   userRole: string | null = null;
+  userName = localStorage.getItem('name') || '';
   isDrawerOpen = false;
   darkModeEnabled = false;
   isDarkMode = false;
@@ -52,12 +53,13 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
     this.notificationSubscription = this.notificationService.notifications$.subscribe(notifications => {
       this.notifications = notifications;
     });
-    this.userSubscription = this.authService.currentUser$.pipe(
-      filter(user => !!user),
-      take(1)
-    ).subscribe(user => {
+    this.userSubscription = this.authService.currentUser$.subscribe(user => {
+      if (!user) return;
+      this.userRole = user.role || this.userRole;
+      this.userName = user.name || this.userName;
+      const firstUserUpdate = this.isMenuLoading;
       this.isMenuLoading = false;
-      if (user) {
+      if (firstUserUpdate) {
         this.loadNotifications();
         this.disconnectRealtime = this.notificationService.connectRealtime(() => this.loadNotifications(true));
       }

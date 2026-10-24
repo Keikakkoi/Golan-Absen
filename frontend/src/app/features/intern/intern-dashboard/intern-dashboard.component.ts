@@ -8,7 +8,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
-import { EMPTY, Subject, Subscription, filter, take, switchMap, takeUntil, timer, catchError } from 'rxjs';
+import { EMPTY, Subject, Subscription, filter, switchMap, takeUntil, timer, catchError } from 'rxjs';
 
 interface CompanyEvent {
   date: string;
@@ -67,7 +67,7 @@ export class InternDashboardComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.userSubscription = this.auth.currentUser$.pipe(filter(user => !!user), take(1)).subscribe(user => {
+    this.userSubscription = this.auth.currentUser$.pipe(filter(user => !!user)).subscribe(user => {
       if (user) {
         this.userName = user.name || this.userName;
       }

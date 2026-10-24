@@ -82,9 +82,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.userSubscription = this.authService.currentUser$.subscribe(user => {
       if (user) {
+        this.userName = user.name || '';
         if (this.initialized) return;
         this.initialized = true;
-        this.userName = user.name;
         this.loadProfileEmail(true);
         this.loadStats(true);
         this.loadNotifications(true);

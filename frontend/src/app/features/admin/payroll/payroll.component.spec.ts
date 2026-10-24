@@ -1,17 +1,21 @@
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { PayrollComponent } from './payroll.component';
 
 describe('PayrollComponent employee details', () => {
   let component: PayrollComponent;
+  let currentUser$: BehaviorSubject<any>;
   const payroll = {
     attendanceDays: jasmine.createSpy('attendanceDays').and.returnValue(of({ total_hari_kerja: 12 })),
     list: jasmine.createSpy('list'),
   };
-  const auth = { currentUser$: of({}), getToken: () => 'token' };
-  const http = {};
+  let auth: any;
+  const http = { get: jasmine.createSpy('get').and.returnValue(of([])) };
   const alert = {};
 
   beforeEach(() => {
+    currentUser$ = new BehaviorSubject<any>({ name: 'Nama Lama', jabatan: 'HRD' });
+    auth = { currentUser$: currentUser$.asObservable(), getToken: () => 'token' };
+    payroll.list.and.returnValue(of({ data: [], total: 0, page: 1, limit: 10, total_pages: 0 }));
     component = new PayrollComponent(payroll as any, http as any, auth as any, alert as any);
     component.employees = [
       {
@@ -135,5 +139,14 @@ describe('PayrollComponent employee details', () => {
 
     expect(component.page).toBe(1);
     expect(payroll.list).toHaveBeenCalledWith(jasmine.objectContaining({ page: 1, limit: 25 }));
+  });
+
+  it('uses the refreshed current user name in payroll approver fields', () => {
+    component.ngOnInit();
+    expect(component.form.approved_by_name).toBe('Nama Lama');
+
+    currentUser$.next({ name: 'Nama Terbaru', jabatan: 'HRD' });
+    expect(component.form.approved_by_name).toBe('Nama Terbaru');
+    component.ngOnDestroy();
   });
 });

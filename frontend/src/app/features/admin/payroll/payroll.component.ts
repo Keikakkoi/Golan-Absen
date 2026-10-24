@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -7,14 +7,14 @@ import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { PAYROLL_COMPANY_CODE, PAYROLL_COMPANY_NAME, PAYROLL_TAKE_HOME_PAY_SUBTITLE, Payroll, PayrollItem, PayrollService } from '../../../core/services/payroll.service';
 import { environment } from '../../../../environments/environment';
-import { take } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 
 interface DirectoryEmployee { employee_id: number; Nama: string; Role?: string; role?: string; Employee?: { employee_code?: string; EmployeeCode?: string; Division?: { NamaDivisi?: string }; Position?: { NamaJabatan?: string }; NIK?: string }; Status: string; }
 
 @Component({ selector: 'app-payroll', standalone: true, imports: [CommonModule, FormsModule, AdminSidebarComponent, DatePickerComponent, PaginationComponent], templateUrl: './payroll.component.html', styleUrls: ['./payroll.component.scss'] })
-export class PayrollComponent implements OnInit {
+export class PayrollComponent implements OnInit, OnDestroy {
   readonly companyName = PAYROLL_COMPANY_NAME;
   readonly takeHomePaySubtitle = PAYROLL_TAKE_HOME_PAY_SUBTITLE;
   rows: Payroll[] = []; employees: DirectoryEmployee[] = []; divisions: string[] = [];
@@ -45,16 +45,18 @@ export class PayrollComponent implements OnInit {
   form: any = this.emptyForm();
   employeeDetails = { position: '-', role: '-', code: '-' };
   private currentUser: { name?: string; jabatan?: string } = {};
+  private userSubscription?: Subscription;
 
   constructor(private payroll: PayrollService, private http: HttpClient, private auth: AuthService, private alert: AlertService) {}
   ngOnInit(): void {
-    this.auth.currentUser$.pipe(take(1)).subscribe(user => {
+    this.userSubscription = this.auth.currentUser$.subscribe(user => {
       this.currentUser = user || {};
       this.syncApproverFields();
     });
     this.loadEmployees();
     this.load();
   }
+  ngOnDestroy(): void { this.userSubscription?.unsubscribe(); }
   private headers(): HttpHeaders { return new HttpHeaders().set('Authorization', `Bearer ${this.auth.getToken()}`); }
   load(): void {
     this.isLoading = true;

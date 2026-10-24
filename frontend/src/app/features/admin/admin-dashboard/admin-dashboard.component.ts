@@ -8,7 +8,7 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
 import { Router, RouterLink } from '@angular/router';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { DashboardChartsComponent } from '../../shared/dashboard-charts/dashboard-charts.component';
-import { Subscription, filter, take } from 'rxjs';
+import { Subscription, filter } from 'rxjs';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -49,16 +49,17 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.notifications = notifications;
     });
     this.userSubscription = this.authService.currentUser$.pipe(
-      filter(user => user?.role === 'HRD'),
-      take(1)
+      filter(user => user?.role === 'HRD')
     ).subscribe(user => {
       // This component can only be used by HRD. Without this guard, a stale
       // component instance can repeatedly call the HRD-only endpoint and get
       // 403 responses for employee/intern/manager sessions.
-      if (user?.role !== 'HRD' || this.initialized) return;
+      if (user) {
+        this.adminName = user.name || '';
+      }
+      if (this.initialized) return;
       this.initialized = true;
       if (user) {
-        this.adminName = user.name;
         this.loadStats();
         this.loadNotifications();
         this.notificationService.enablePush(false).catch(() => undefined);
