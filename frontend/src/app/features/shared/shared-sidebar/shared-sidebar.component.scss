@@ -488,6 +488,10 @@
     left: -280px;
     transition: left 0.3s ease-in-out;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+    /* Safari's bottom toolbar is outside the web page and may overlap the
+       drawer. Keep a scrollable tail below the final navigation item. */
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 
     .sidebar-close-btn {
       position: absolute;
