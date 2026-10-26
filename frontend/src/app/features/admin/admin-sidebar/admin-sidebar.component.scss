@@ -7,9 +7,15 @@
   flex-direction: column;
   position: fixed;
   height: 100vh;
+  min-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   top: 0;
   left: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   box-shadow: 2px 0 10px rgba(0,0,0,0.1);
 
   .brand {

@@ -848,13 +848,13 @@
     box-sizing: border-box;
     min-height: 0;
     align-items: flex-start;
-    padding: 28px 20px calc(34px + env(safe-area-inset-bottom)) !important;
+    padding: 28px 20px calc(34px + env(safe-area-inset-bottom, 0px)) !important;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
-    scroll-padding-block: 24px calc(34px + env(safe-area-inset-bottom));
+    scroll-padding-block: 24px calc(34px + env(safe-area-inset-bottom, 0px));
 
     .login-grid-overlay {
       height: 42%;
@@ -901,7 +901,7 @@
   }
 
   .form-panel {
-    padding: 24px 16px calc(30px + env(safe-area-inset-bottom)) !important;
+    padding: 24px 16px calc(30px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   .login-card {

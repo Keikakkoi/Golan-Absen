@@ -1064,7 +1064,7 @@
 
   .employee-form-modal-overlay {
     align-items: flex-start;
-    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+    padding: max(8px, env(safe-area-inset-top, 0px)) 8px max(8px, env(safe-area-inset-bottom, 0px));
   }
 
   .employee-form-modal .modal-body,

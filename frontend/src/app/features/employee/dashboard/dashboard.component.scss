@@ -47,25 +47,29 @@
 
 @media (max-width: 900px) {
   :host {
-    min-height: 0 !important;
-    height: 100dvh !important;
-    overflow: hidden;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   // The fixed topbar/sidebar stay outside the flow while the main column
   // remains the single scroll owner for long dashboard content.
   .dashboard-container.employee-dashboard-shell {
-    height: 100dvh !important;
-    min-height: 0 !important;
-    overflow: hidden;
+    height: auto !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 
   .dashboard-container.employee-dashboard-shell > .main-content.employee-dashboard-page {
-    height: 100dvh !important;
+    height: auto !important;
     min-height: 0 !important;
-    padding-bottom: env(safe-area-inset-bottom) !important;
-    overflow-x: clip;
-    overflow-y: auto;
+    max-height: none !important;
+    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
   }
 }
 

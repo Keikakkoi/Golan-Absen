@@ -47,7 +47,7 @@
   .dashboard-container.manager-dashboard-shell > .main-content.manager-dashboard-page {
     height: auto !important;
     min-height: 0 !important;
-    padding-bottom: env(safe-area-inset-bottom) !important;
+    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
     overflow: visible !important;
   }
 }

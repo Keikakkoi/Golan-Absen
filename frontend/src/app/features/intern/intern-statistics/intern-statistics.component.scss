@@ -492,6 +492,6 @@
     overflow: visible !important;
     overscroll-behavior: auto;
     scrollbar-gutter: auto;
-    padding-bottom: env(safe-area-inset-bottom) !important;
+    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }

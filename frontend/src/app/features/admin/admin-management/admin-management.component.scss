@@ -812,7 +812,7 @@
   .home-request-detail-modal .modal-header,
   .home-request-detail-modal .modal-body { padding-left: 16px; padding-right: 16px; }
   .home-request-detail-modal .modal-footer {
-    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
     flex-wrap: wrap;
     min-width: 0;
   }
