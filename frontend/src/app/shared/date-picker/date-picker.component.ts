@@ -52,6 +52,10 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
   showMonthYear = false;
   opensUp = false;
   alignsRight = false;
+  // These are only populated for the mobile fixed-position popup. Keeping
+  // them null on desktop preserves the existing absolute positioning rules.
+  popupTop: number | null = null;
+  popupLeft: number | null = null;
   calendarDays: DateCell[] = [];
   readonly weekdays = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
   readonly months = Array.from({ length: 12 }, (_, month) =>
@@ -122,6 +126,8 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
     if (!this.isOpen) return;
     this.isOpen = false;
     this.showMonthYear = false;
+    this.popupTop = null;
+    this.popupLeft = null;
     this.onModelTouched();
   }
 
@@ -243,11 +249,13 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
     const host = this.elementRef.nativeElement.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
+    const isMobile = viewportWidth <= 768;
     const popup = this.elementRef.nativeElement.querySelector<HTMLElement>('.date-picker-popup');
     const estimatedHeight = this.mode === 'month' ? 390 : this.showMonthYear ? 390 : 340;
-    const popupHeight = popup?.getBoundingClientRect().height || estimatedHeight;
-    const popupWidth = popup?.getBoundingClientRect().width || Math.min(320, viewportWidth - 16);
-    const viewportPadding = 8;
+    const popupRect = popup?.getBoundingClientRect();
+    const popupHeight = popupRect?.height || estimatedHeight;
+    const popupWidth = popupRect?.width || Math.min(320, viewportWidth - (isMobile ? 24 : 16));
+    const viewportPadding = isMobile ? 12 : 8;
     const spaceAbove = Math.max(0, host.top - viewportPadding);
     const spaceBelow = Math.max(0, viewportHeight - host.bottom - viewportPadding);
 
@@ -257,6 +265,25 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
     this.opensUp = spaceBelow < popupHeight && spaceAbove > spaceBelow;
     this.alignsRight = host.left + popupWidth > viewportWidth - viewportPadding
       && host.right - popupWidth >= viewportPadding;
+
+    if (!isMobile) {
+      this.popupTop = null;
+      this.popupLeft = null;
+      return;
+    }
+
+    // On small screens the panel is fixed to the viewport so it cannot be
+    // clipped by a card, table, or another ancestor with overflow hidden.
+    // Clamp both coordinates to the same safe 12px viewport gutter.
+    const desiredLeft = host.left;
+    const maxLeft = Math.max(viewportPadding, viewportWidth - popupWidth - viewportPadding);
+    this.popupLeft = Math.round(Math.min(Math.max(desiredLeft, viewportPadding), maxLeft));
+
+    const desiredTop = this.opensUp
+      ? host.top - popupHeight - 6
+      : host.bottom + 6;
+    const maxTop = Math.max(viewportPadding, viewportHeight - popupHeight - viewportPadding);
+    this.popupTop = Math.round(Math.min(Math.max(desiredTop, viewportPadding), maxTop));
   }
 
   private startOfMonth(date: Date): Date { return new Date(date.getFullYear(), date.getMonth(), 1); }

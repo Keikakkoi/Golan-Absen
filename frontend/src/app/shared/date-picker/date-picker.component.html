@@ -23,7 +23,7 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 9h16"></path></svg>
   </button>
 
-  <div *ngIf="isOpen" class="date-picker-popup" [class.opens-up]="opensUp" [class.align-right]="alignsRight" [id]="popupId" role="dialog" [attr.aria-label]="panelLabel" (pointerdown)="$event.stopPropagation()">
+  <div *ngIf="isOpen" class="date-picker-popup" [class.opens-up]="opensUp" [class.align-right]="alignsRight" [id]="popupId" role="dialog" [attr.aria-label]="panelLabel" [style.top.px]="popupTop" [style.left.px]="popupLeft" (pointerdown)="$event.stopPropagation()">
     <div class="date-picker-header">
       <button type="button" class="date-picker-nav" aria-label="Bulan sebelumnya" (pointerdown)="$event.preventDefault(); previousMonth($event)">‹</button>
       <button type="button" class="date-picker-month-year" [attr.aria-expanded]="showMonthYear" aria-haspopup="listbox" (pointerdown)="$event.preventDefault(); toggleMonthYear()">{{ monthYearLabel }}</button>
