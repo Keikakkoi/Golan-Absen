@@ -359,9 +359,37 @@ td button {
   cursor: pointer;
 }
 
-.preview-actions .primary {
+.preview-actions .primary:not(.payroll-download-action) {
   color: #fff;
   background: var(--blue-dark);
+}
+
+/* Match the light-mode preview close button to the provided reference. */
+.preview-actions .preview-close-action {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #2f6fff;
+  border-radius: 12px;
+  background: #fff;
+  color: #2f6fff;
+  font-weight: 700;
+  line-height: 1.2;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.preview-actions .preview-close-action:hover {
+  background: #f0f5ff;
+  border-color: #1d5ce5;
+  color: #1d5ce5;
+  box-shadow: 0 3px 8px rgba(47, 111, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.preview-actions .preview-close-action:active {
+  background: #e4edff;
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 /* At the drawer breakpoint the sidebar no longer occupies desktop layout
@@ -559,4 +587,20 @@ td button {
   .close {
     color: #cbd5e1;
   }
+}
+
+/* Keep both employee PDF buttons on the reference blue, including when
+   shared dark-theme button rules are loaded after this component stylesheet. */
+.actions .payroll-download-action,
+.preview-actions .payroll-download-action {
+  background: #60a5fa !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+.actions .payroll-download-action:hover,
+.preview-actions .payroll-download-action:hover {
+  background: #4f93e8 !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
 }
