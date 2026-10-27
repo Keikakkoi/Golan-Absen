@@ -562,6 +562,12 @@ type WorkReport struct {
 	RejectedBy             *uint                      `gorm:"index" json:"rejected_by"`
 	RejectedAt             *time.Time                 `gorm:"type:timestamp" json:"rejected_at"`
 	RejectionSource        string                     `gorm:"size:20" json:"rejection_source"` // manager/admin
+	RevisionSubmittedBy    *uint                      `gorm:"index" json:"revision_submitted_by,omitempty"`
+	RevisionSubmittedAt    *time.Time                 `gorm:"type:timestamp" json:"revision_submitted_at,omitempty"`
+	RevisionPending        bool                       `gorm:"default:false;index" json:"revision_pending"`
+	RevisionDeadlineAt     *time.Time                 `gorm:"-" json:"revision_deadline_at,omitempty"`
+	RevisionAllowed        bool                       `gorm:"-" json:"revision_allowed"`
+	RevisionAudits         []WorkReportRevisionAudit  `gorm:"foreignKey:WorkReportID" json:"revision_audits,omitempty"`
 	ManagerReviewNote      string                     `gorm:"-" json:"manager_review_note,omitempty"`
 	CustomFields           string                     `gorm:"type:text" json:"custom_fields"` // JSON representation of custom headers
 	IsLateSubmission       bool                       `gorm:"default:false;index" json:"is_late_submission"`
@@ -589,6 +595,21 @@ type WorkReportAttachment struct {
 	FileName     string     `gorm:"size:255;not null" json:"file_name"`
 	MimeType     string     `gorm:"size:80;not null" json:"mime_type"`
 	FileSize     int64      `gorm:"not null" json:"file_size"`
+}
+
+// WorkReportRevisionAudit stores each rejection/revision cycle. The current
+// rejection fields on WorkReport remain the fast read model for the active
+// workflow; this history keeps older rejection and resubmission decisions
+// available for audit purposes.
+type WorkReportRevisionAudit struct {
+	Model
+	WorkReportID        uint       `gorm:"not null;index" json:"work_report_id"`
+	RejectedBy          *uint      `gorm:"index" json:"rejected_by"`
+	RejectedAt          *time.Time `gorm:"type:timestamp;index" json:"rejected_at"`
+	RejectionSource     string     `gorm:"size:20" json:"rejection_source"`
+	RejectionReason     string     `gorm:"type:text" json:"rejection_reason"`
+	RevisionSubmittedBy *uint      `gorm:"index" json:"revision_submitted_by"`
+	RevisionSubmittedAt *time.Time `gorm:"type:timestamp" json:"revision_submitted_at"`
 }
 
 // WorkReportDeletion prevents the automatic missing-report generator from

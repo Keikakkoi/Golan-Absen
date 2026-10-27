@@ -523,7 +523,7 @@ func ReviewManagerWorkReport(c *fiber.Ctx) error {
 	if effectiveManagerReviewStatus(report) != models.WorkReportDecisionPending {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Laporan kerja belum atau sudah tidak menunggu review Manager"})
 	}
-	now := time.Now()
+	now := attendanceNow()
 	legacyWorkflow := report.ReportKind == models.WorkReportKindLegacyLogbook
 	managerStatus, adminStatus := managerReviewDecision(input.Status)
 	updates := map[string]interface{}{
@@ -541,19 +541,15 @@ func ReviewManagerWorkReport(c *fiber.Ctx) error {
 	}
 	if input.Status == "rejected" {
 		updates["manager_rejection_reason"] = rejectionReason
-	} else {
-		updates["manager_rejection_reason"] = ""
 	}
 	if input.Status == "rejected" {
 		updates["rejection_reason"] = rejectionReason
 		updates["rejected_by"] = managerID
 		updates["rejected_at"] = now
 		updates["rejection_source"] = "manager"
-	} else {
-		updates["rejection_reason"] = ""
-		updates["rejected_by"] = nil
-		updates["rejected_at"] = nil
-		updates["rejection_source"] = ""
+		updates["revision_pending"] = true
+		updates["revision_submitted_by"] = nil
+		updates["revision_submitted_at"] = nil
 	}
 	if legacyWorkflow {
 		updates["status_logbook"] = input.Status
@@ -566,6 +562,9 @@ func ReviewManagerWorkReport(c *fiber.Ctx) error {
 	}
 	if result.RowsAffected == 0 {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Laporan kerja sudah diproses atau tidak lagi berstatus Submitted"})
+	}
+	if input.Status == "rejected" {
+		recordWorkReportRejectionAudit(report.ID, managerID, &now, "manager", rejectionReason)
 	}
 	WsHub.Broadcast <- fiber.Map{"event": "work_report_status_updated", "report_id": report.ID, "user_id": report.Employee.UserID, "manager_review_status": managerStatus, "admin_validation_status": updates["admin_validation_status"]}
 	if report.Employee.User != nil {

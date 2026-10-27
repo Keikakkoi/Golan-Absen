@@ -28,14 +28,6 @@ export function jakartaDateString(date = new Date()): string {
   return `${values['year']}-${values['month']}-${values['day']}`;
 }
 
-/** Revision uses the report's date, never a request/review timestamp. */
-export function isSameJakartaDate(reportDate: string | Date, now = new Date()): boolean {
-  const reportDateText = typeof reportDate === 'string'
-    ? reportDate.slice(0, 10)
-    : jakartaDateString(reportDate);
-  return reportDateText === jakartaDateString(now);
-}
-
 export function monthRange(month: string): ReportMonthRange {
   const [year, monthNumber] = month.split('-').map(Number);
   // Use UTC only for month arithmetic. The values returned by this helper

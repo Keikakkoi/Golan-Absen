@@ -13,7 +13,7 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { FilePreviewComponent } from '../../../shared/file-preview/file-preview.component';
 import { ReportExportService, ReportImageCell } from '../../../core/services/report-export.service';
-import { dateOnly, isSameJakartaDate, jakartaDateString, monthRange, reportDayStatus } from './work-report-date.utils';
+import { dateOnly, jakartaDateString, monthRange, reportDayStatus } from './work-report-date.utils';
 import { isValidRealisasiKegiatan, REALISASI_KEGIATAN_ERROR } from './work-report-validation';
 import { requiresReportTitle as resolveRequiresReportTitle } from '../../../core/utils/report-completeness';
 import { normalizeWorkReportContract, WORK_REPORT_NO_REPORT_LABEL } from '../../../core/utils/work-report-contract';
@@ -21,6 +21,7 @@ import { canonicalWorkReportTitle, canonicalWorkReportTitlePayload } from '../..
 import { canonicalWorkReportExportRecord } from '../../../core/utils/work-report-export';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
+import { formatWorkReportRevisionDeadline, isWorkReportRevisionWithinDeadline, workReportRevisionDeadline } from './work-report-revision.utils';
 
 type SavedScrollPosition = { left: number; top: number };
 
@@ -300,18 +301,40 @@ export class WorkReportComponent implements OnDestroy, OnInit {
   canModifyReport(report: WorkReport): boolean {
     const contract = normalizeWorkReportContract(report);
     if (contract.status === 'no_report') return false;
+    if (this.isRejectedReport(report)) return this.canReviseReport(report);
     // A legacy MAGANG Draft is recoverable through the canonical endpoint.
-    // Submitted/approved/rejected legacy history remains view-only.
+    // Submitted/approved legacy history remains view-only unless rejected and
+    // still inside its timestamp-based revision window.
     if (contract.report_kind === 'legacy_logbook') return contract.status === 'draft';
-    if (contract.status === 'rejected' && !isSameJakartaDate(report.tanggal)) return false;
-    return contract.status !== 'approved';
+    return contract.status === 'draft';
   }
 
   canReviseReport(report: WorkReport): boolean {
     const contract = normalizeWorkReportContract(report);
-    return contract.report_kind === 'work_report'
-      && contract.status === 'rejected'
-      && isSameJakartaDate(report.tanggal);
+    return (contract.report_kind === 'work_report' || contract.report_kind === 'legacy_logbook')
+      && this.isRejectedReport(report)
+      && isWorkReportRevisionWithinDeadline(report.rejected_at, new Date());
+  }
+
+  isRejectedReport(report: WorkReport): boolean {
+    const managerStatus = String(report.manager_review_status || report.ManagerReviewStatus || '').trim().toLowerCase();
+    const adminStatus = String(report.admin_validation_status || report.AdminValidationStatus || '').trim().toLowerCase();
+    const legacyStatus = String(report.status_sesuai || report.StatusSesuai || '').trim().toLowerCase();
+    return report.revision_pending === true || managerStatus === 'rejected' || adminStatus === 'rejected'
+      || ['tidak sesuai', 'ditolak', 'minta perbaikan', 'minta_perbaikan'].includes(legacyStatus);
+  }
+
+  revisionDeadline(report: WorkReport): Date | null {
+    const value = report.revision_deadline_at;
+    if (value) {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+    return workReportRevisionDeadline(report.rejected_at);
+  }
+
+  revisionDeadlineLabel(report: WorkReport): string {
+    return formatWorkReportRevisionDeadline(report.rejected_at);
   }
 
   reportFillingStatus(report: WorkReport): 'late' | 'draft' | 'submitted' | 'no_report' {

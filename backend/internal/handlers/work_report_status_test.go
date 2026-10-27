@@ -42,7 +42,8 @@ func TestIsAdminRejectedWorkReportOnlyMatchesAdminRejection(t *testing.T) {
 }
 
 func TestWorkReportRevisionSubmissionRequiresRejectedPreviousState(t *testing.T) {
-	adminRejected := models.WorkReport{StatusLaporan: "submitted", StatusSesuai: "Tidak Sesuai", RejectionSource: "admin"}
+	rejectedAt := time.Date(2026, 10, 3, 10, 0, 0, 0, jakartaLocation)
+	adminRejected := models.WorkReport{StatusLaporan: "submitted", StatusSesuai: "Tidak Sesuai", AdminValidationStatus: models.WorkReportDecisionRejected, RejectionSource: "admin", RejectedAt: &rejectedAt}
 	if !isWorkReportRevisionSubmission(adminRejected, "submitted") {
 		t.Fatal("an admin-rejected report submitted again should be a revision")
 	}
@@ -54,27 +55,72 @@ func TestWorkReportRevisionSubmissionRequiresRejectedPreviousState(t *testing.T)
 	}
 }
 
-func TestWorkReportRevisionDateUsesReportDateInJakarta(t *testing.T) {
-	date := time.Date(2026, 10, 3, 0, 0, 0, 0, jakartaLocation)
-	if !isWorkReportRevisionDateAllowed(date, time.Date(2026, 10, 3, 23, 59, 59, 0, jakartaLocation)) {
-		t.Fatal("revision should be allowed throughout the report date in Jakarta")
+func TestWorkReportRevisionDeadlineUsesRejectionTimestampToTheSecond(t *testing.T) {
+	rejectedAt := time.Date(2026, 10, 3, 23, 59, 59, 123000000, jakartaLocation)
+	report := models.WorkReport{
+		StatusLaporan:       "submitted",
+		ManagerReviewStatus: models.WorkReportDecisionRejected,
+		RejectionSource:     "manager",
+		RejectedAt:          &rejectedAt,
 	}
-	if isWorkReportRevisionDateAllowed(date, time.Date(2026, 10, 4, 0, 0, 0, 0, jakartaLocation)) {
-		t.Fatal("revision should be rejected after the report date has passed")
+	deadline := rejectedAt.Add(24 * time.Hour)
+	if got := workReportRevisionDeadline(report.RejectedAt); got == nil || !got.Equal(deadline) {
+		t.Fatalf("deadline = %v, want %v", got, deadline)
 	}
-	// 16:59:59Z is 23:59:59 WIB; 17:00:00Z is the next Jakarta date.
-	if !isWorkReportRevisionDateAllowed(date, time.Date(2026, 10, 3, 16, 59, 59, 0, time.UTC)) {
-		t.Fatal("revision date comparison must use Asia/Jakarta")
+	if !isWorkReportRevisionAllowed(report, deadline) {
+		t.Fatal("revision must be allowed exactly at rejected_at + 24 hours")
 	}
-	if isWorkReportRevisionDateAllowed(date, time.Date(2026, 10, 3, 17, 0, 0, 0, time.UTC)) {
-		t.Fatal("revision date comparison must reject the next Jakarta date")
+	if isWorkReportRevisionAllowed(report, deadline.Add(time.Nanosecond)) {
+		t.Fatal("revision must be rejected after the exact deadline")
+	}
+	// The report date is irrelevant: a rejection shortly before midnight may
+	// still be revised on the following Jakarta date.
+	if !isWorkReportRevisionAllowed(report, rejectedAt.Add(23*time.Hour)) {
+		t.Fatal("revision must not be restricted to the report date")
 	}
 }
 
-func TestWorkReportRevisionDateErrorIsExplicit(t *testing.T) {
-	errorText := workReportRevisionDateError(time.Date(2026, 10, 1, 0, 0, 0, 0, jakartaLocation))
-	if !strings.Contains(errorText, "Revisi laporan") || !strings.Contains(errorText, "2026-10-01") || !strings.Contains(errorText, "sudah lewat") {
+func TestWorkReportRevisionErrorUsesJakartaDeadline(t *testing.T) {
+	rejectedAt := time.Date(2026, 10, 1, 15, 4, 5, 0, jakartaLocation)
+	errorText := workReportRevisionError(models.WorkReport{RejectedAt: &rejectedAt, AdminValidationStatus: models.WorkReportDecisionRejected})
+	if !strings.Contains(errorText, "Batas revisi laporan") || !strings.Contains(errorText, "02-10-2026 15:04:05") {
 		t.Fatalf("revision error is not actionable: %q", errorText)
+	}
+}
+
+func TestRevisionPendingKeepsDraftInsideTheSameDeadlineCycle(t *testing.T) {
+	rejectedAt := time.Now().Add(-time.Hour)
+	report := models.WorkReport{
+		StatusLaporan:   "draft",
+		RejectedAt:      &rejectedAt,
+		RevisionPending: true,
+		RejectionSource: "manager",
+	}
+	if !isWorkReportRevisionState(report) || !isWorkReportRevisionAllowed(report, time.Now()) {
+		t.Fatal("a rejected report saved as draft must remain in its active revision cycle")
+	}
+	report.RevisionPending = false
+	if isWorkReportRevisionState(report) {
+		t.Fatal("a resubmitted report must leave the active revision cycle")
+	}
+}
+
+func TestLegacyRevisionBypassesExpiredAttendanceFillingDeadline(t *testing.T) {
+	rejectedAt := time.Now().Add(-time.Hour)
+	report := models.WorkReport{
+		ReportKind:            models.WorkReportKindLegacyLogbook,
+		StatusLogbook:         "submitted",
+		StatusLaporan:         "submitted",
+		AdminValidationStatus: models.WorkReportDecisionRejected,
+		StatusSesuai:          "Tidak Sesuai",
+		RejectionSource:       "admin",
+		RejectedAt:            &rejectedAt,
+		DeskripsiKegiatan:     "Isi laporan revisi",
+	}
+	// The date is deliberately arbitrary/old. An active revision is governed
+	// by rejected_at, so this must not query or enforce the attendance deadline.
+	if err := validateWorkReportSubmissionForReport(999999, time.Date(2020, 1, 1, 0, 0, 0, 0, jakartaLocation), time.Now(), &report); err != nil {
+		t.Fatalf("legacy revision should bypass the expired attendance filling deadline: %v", err)
 	}
 }
 
@@ -173,6 +219,19 @@ func TestWorkReportOwnerScopeNeverAllowsMissingOrDifferentEmployee(t *testing.T)
 	}
 	if ownsWorkReport(&owner, other) || ownsWorkReport(nil, owner) || ownsWorkReport(&owner, 0) {
 		t.Fatal("missing or different employee identity must not pass ownership authorization")
+	}
+}
+
+func TestOnlyKaryawanAndMagangCanSubmitRevisions(t *testing.T) {
+	for _, role := range []models.Role{models.RoleKaryawan, models.RoleMagang} {
+		if !isWorkReportRevisionOwnerRole(role) {
+			t.Fatalf("role %q should be allowed to revise its own report", role)
+		}
+	}
+	for _, role := range []models.Role{models.RoleManajer, models.RoleHRD} {
+		if isWorkReportRevisionOwnerRole(role) {
+			t.Fatalf("role %q must not be allowed to submit an employee revision", role)
+		}
 	}
 }
 

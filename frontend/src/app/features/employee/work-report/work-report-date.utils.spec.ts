@@ -1,4 +1,4 @@
-import { dateOnly, isSameJakartaDate, jakartaDateString, localDateString, monthRange, reportDayStatus } from './work-report-date.utils';
+import { dateOnly, jakartaDateString, localDateString, monthRange, reportDayStatus } from './work-report-date.utils';
 
 describe('work report date helpers', () => {
   it('returns the exact number of days, including leap-year February', () => {
@@ -23,12 +23,10 @@ describe('work report date helpers', () => {
     expect(reportDayStatus('2027-01-01', false, '2026-12-31')).toBe('future');
   });
 
-  it('compares revision dates in Asia/Jakarta', () => {
+  it('formats report calendar dates in Asia/Jakarta', () => {
     const justBeforeJakartaMidnight = new Date('2026-10-02T16:59:59.000Z');
     const justAfterJakartaMidnight = new Date('2026-10-02T17:00:01.000Z');
     expect(jakartaDateString(justBeforeJakartaMidnight)).toBe('2026-10-02');
     expect(jakartaDateString(justAfterJakartaMidnight)).toBe('2026-10-03');
-    expect(isSameJakartaDate('2026-10-03T00:00:00Z', justAfterJakartaMidnight)).toBeTrue();
-    expect(isSameJakartaDate('2026-10-02', justAfterJakartaMidnight)).toBeFalse();
   });
 });

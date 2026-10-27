@@ -76,6 +76,7 @@ func ConnectDB(cfg *Config) {
 		&models.HelpdeskContact{},
 		&models.WorkReport{},
 		&models.WorkReportAttachment{},
+		&models.WorkReportRevisionAudit{},
 		&models.WorkReportDeletion{},
 		&models.WorkReportColumn{},
 		&models.InternshipCertificate{},
@@ -131,6 +132,9 @@ func ConnectDB(cfg *Config) {
 		"ALTER TABLE work_reports ADD COLUMN IF NOT EXISTS admin_validated_by BIGINT",
 		"ALTER TABLE work_reports ADD COLUMN IF NOT EXISTS admin_validated_at TIMESTAMP",
 		"ALTER TABLE work_reports ADD COLUMN IF NOT EXISTS admin_rejection_reason TEXT",
+		"ALTER TABLE work_reports ADD COLUMN IF NOT EXISTS revision_submitted_by BIGINT",
+		"ALTER TABLE work_reports ADD COLUMN IF NOT EXISTS revision_submitted_at TIMESTAMP",
+		"ALTER TABLE work_reports ADD COLUMN IF NOT EXISTS revision_pending BOOLEAN NOT NULL DEFAULT FALSE",
 		`UPDATE work_reports SET manager_review_status = CASE
 			WHEN COALESCE(NULLIF(BTRIM(report_kind), ''), 'work_report') = 'legacy_logbook' AND LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted')) = 'approved' THEN 'approved'
 			WHEN COALESCE(NULLIF(BTRIM(report_kind), ''), 'work_report') = 'legacy_logbook' AND LOWER(COALESCE(NULLIF(BTRIM(status_logbook), ''), 'submitted')) = 'rejected' THEN 'rejected'

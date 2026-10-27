@@ -62,6 +62,12 @@ export interface WorkReport extends Partial<WorkReportContract> {
   rejected_by?: number;
   rejected_at?: string;
   rejection_source?: 'manager' | 'admin' | string;
+  revision_submitted_by?: number;
+  revision_submitted_at?: string;
+  revision_pending?: boolean;
+  revision_deadline_at?: string;
+  revision_allowed?: boolean;
+  revision_audits?: WorkReportRevisionAudit[];
   validasi_oleh_hr?: boolean;
   custom_fields: string; // JSON string
   CreatedAt?: string;
@@ -74,6 +80,17 @@ export interface WorkReportAttachment {
   file_name: string;
   mime_type: string;
   file_size: number;
+}
+
+export interface WorkReportRevisionAudit {
+  ID?: number;
+  work_report_id: number;
+  rejected_by?: number;
+  rejected_at?: string;
+  rejection_source: string;
+  rejection_reason: string;
+  revision_submitted_by?: number;
+  revision_submitted_at?: string;
 }
 
 export interface ComplianceResult {

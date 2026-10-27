@@ -66,7 +66,7 @@ func GetWorkReports(c *fiber.Ctx) error {
 	reports := make([]models.WorkReport, 0)
 	// Count is executed before Find by the pagination helper, so the model
 	// must be explicit instead of relying on Find to infer it from reports.
-	query := config.DB.Model(&models.WorkReport{}).Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").Order("tanggal desc").Order("work_reports.id desc")
+	query := config.DB.Model(&models.WorkReport{}).Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").Preload("RevisionAudits").Order("tanggal desc").Order("work_reports.id desc")
 
 	if userRole != string(models.RoleHRD) {
 		var emp models.Employee
@@ -153,6 +153,7 @@ func GetWorkReports(c *fiber.Ctx) error {
 // while returning URLs that a browser can actually request in production.
 func normalizeWorkReportAttachmentURLs(reports []models.WorkReport) {
 	for reportIndex := range reports {
+		decorateWorkReportRevisionInfo(&reports[reportIndex], attendanceNow())
 		for attachmentIndex := range reports[reportIndex].Attachments {
 			reports[reportIndex].Attachments[attachmentIndex].FileURL = minio.RewriteObjectURL(
 				reports[reportIndex].Attachments[attachmentIndex].FileURL,
@@ -193,15 +194,18 @@ func CreateWorkReport(c *fiber.Ctx) error {
 	}
 
 	// Check the existing row before the generic submission deadline. A rejected
-	// report is a special revision action: its original report date, rather than
-	// the request timestamp or a client-supplied replacement date, is the date
-	// that controls whether the revision is allowed.
+	// report is a special revision action: rejected_at + 24 hours, rather than
+	// the report date or a client-supplied replacement date, controls access.
 	var existing models.WorkReport
 	existingErr := config.DB.Preload("Employee.User").Where("employee_id = ? AND tanggal = ?", emp.ID, t).First(&existing).Error
-	if existingErr == nil && isWorkReportRevisionSubmission(existing, statusLaporan) && !isWorkReportRevisionDateAllowed(existing.Tanggal, attendanceNow()) {
-		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": workReportRevisionDateError(existing.Tanggal)})
+	var existingReport *models.WorkReport
+	if existingErr == nil {
+		existingReport = &existing
 	}
-	if err := validateWorkReportSubmission(emp.ID, t, attendanceNow()); err != nil {
+	if existingErr == nil && isWorkReportRevisionState(existing) && !isWorkReportRevisionAllowed(existing, attendanceNow()) {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": workReportRevisionError(existing)})
+	}
+	if err := validateWorkReportSubmissionForReport(emp.ID, t, attendanceNow(), existingReport); err != nil {
 		return c.Status(err.Code).JSON(fiber.Map{"error": err.Message})
 	}
 
@@ -214,12 +218,15 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			actorRole = string(emp.User.Role)
 		}
 		recoveringLegacyDraft := isRecoverableLegacyDraft(existing, actorRole, true)
-		if existing.ReportKind == models.WorkReportKindLegacyLogbook && !recoveringLegacyDraft {
+		if existing.ReportKind == models.WorkReportKindLegacyLogbook && !recoveringLegacyDraft && !isWorkReportRevisionState(existing) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Riwayat logbook lama sudah diajukan. Gunakan endpoint kompatibilitas untuk melihat detailnya."})
 		}
 		wasSubmitted := !isWorkReportDraft(existing)
 		isRevisionSubmission := isWorkReportRevisionSubmission(existing, statusLaporan)
 		revisionSource := existing.RejectionSource
+		if isRevisionSubmission && emp.User != nil && !isWorkReportRevisionOwnerRole(emp.User.Role) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Hanya pemilik laporan dengan role Karyawan atau MAGANG yang dapat mengirim revisi"})
+		}
 		updates := map[string]interface{}{
 			"deskripsi_kegiatan":   input.DeskripsiKegiatan,
 			"realisasi_kegiatan":   input.RealisasiKegiatan,
@@ -249,6 +256,9 @@ func CreateWorkReport(c *fiber.Ctx) error {
 			// review state must return to pending when the employee resubmits it.
 			updates["status_sesuai"] = ""
 			updates["validasi_oleh_hr"] = false
+			updates["revision_submitted_by"] = userID
+			updates["revision_submitted_at"] = attendanceNow()
+			updates["revision_pending"] = false
 		}
 		if statusLaporan == "submitted" && (isRevisionSubmission || !wasSubmitted) {
 			rejectedBy := ""
@@ -279,7 +289,13 @@ func CreateWorkReport(c *fiber.Ctx) error {
 		if len(files) > 0 {
 			saveWorkReportAttachments(existing.ID, emp.NIK, files)
 		}
-		config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").First(&existing, existing.ID)
+		config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").Preload("RevisionAudits").First(&existing, existing.ID)
+		decorateWorkReportRevisionInfo(&existing, attendanceNow())
+		if isRevisionSubmission {
+			recordWorkReportRevisionSubmission(existing.ID, userID, existing.RevisionSubmittedAt)
+			config.DB.Preload("RevisionAudits").First(&existing, existing.ID)
+			decorateWorkReportRevisionInfo(&existing, attendanceNow())
+		}
 		message := "Laporan kerja disimpan melalui endpoint canonical"
 		if recoveringLegacyDraft {
 			message = "Draft legacy_logbook dipulihkan menjadi work_report melalui endpoint canonical"
@@ -338,7 +354,8 @@ func CreateWorkReport(c *fiber.Ctx) error {
 	if err := saveWorkReportAttachments(report.ID, emp.NIK, files); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").First(&report, report.ID)
+	config.DB.Preload("Employee").Preload("Employee.User").Preload("Employee.Division").Preload("Employee.Position").Preload("Attachments").Preload("RevisionAudits").First(&report, report.ID)
+	decorateWorkReportRevisionInfo(&report, attendanceNow())
 	_ = utils.LogAction(userID, "CREATE", "WorkReport", report.ID, "Laporan kerja dibuat melalui endpoint canonical")
 	if statusLaporan == "submitted" {
 		WsHub.Broadcast <- fiber.Map{"event": "new_work_report"}
@@ -375,12 +392,18 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 
 	if userRole != string(models.RoleHRD) {
 		var emp models.Employee
-		if err := config.DB.Where("user_id = ?", userID).First(&emp).Error; err != nil {
+		if err := config.DB.Preload("User").Where("user_id = ?", userID).First(&emp).Error; err != nil {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Report ownership could not be verified"})
 		}
 		ownsReport := ownsWorkReport(report.EmployeeID, emp.ID)
 		if !ownsReport {
 			return c.Status(403).JSON(fiber.Map{"error": "Not your report"})
+		}
+		if isWorkReportRevisionState(report) && !isWorkReportRevisionOwnerRole(emp.User.Role) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Hanya pemilik laporan dengan role Karyawan atau MAGANG yang dapat merevisi laporan"})
+		}
+		if isWorkReportRevisionState(report) && !isWorkReportRevisionAllowed(report, attendanceNow()) {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": workReportRevisionError(report)})
 		}
 		if !canUseCanonicalWorkReportMutation(report, userRole, ownsReport) {
 			if report.ReportKind == models.WorkReportKindLegacyLogbook {
@@ -417,8 +440,8 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		if err := validateRealisasiKegiatan(input.RealisasiKegiatan, statusLaporan == "submitted"); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 		}
-		if isWorkReportRevisionSubmission(report, statusLaporan) && !isWorkReportRevisionDateAllowed(report.Tanggal, attendanceNow()) {
-			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": workReportRevisionDateError(report.Tanggal)})
+		if isWorkReportRevisionState(report) && !isWorkReportRevisionAllowed(report, attendanceNow()) {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": workReportRevisionError(report)})
 		}
 	}
 	if userRole != string(models.RoleHRD) && report.EmployeeID != nil {
@@ -430,7 +453,7 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 			}
 			targetDate = parsed
 		}
-		if err := validateWorkReportSubmission(*report.EmployeeID, targetDate, attendanceNow()); err != nil {
+		if err := validateWorkReportSubmissionForReport(*report.EmployeeID, targetDate, attendanceNow(), &report); err != nil {
 			return c.Status(err.Code).JSON(fiber.Map{"error": err.Message})
 		}
 	}
@@ -490,6 +513,11 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		updates["admin_validation_status"] = adminStatus
 		updates["admin_validated_by"] = nil
 		updates["admin_validated_at"] = nil
+		if isRevisionSubmission {
+			updates["revision_submitted_by"] = userID
+			updates["revision_submitted_at"] = attendanceNow()
+			updates["revision_pending"] = false
+		}
 	}
 	if userRole != string(models.RoleHRD) && statusLaporan == "draft" {
 		updates["manager_review_status"] = models.WorkReportDecisionNotRequired
@@ -522,12 +550,13 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 			}
 			updates["rejection_reason"] = reason
 			updates["rejected_by"] = userID
-			now := time.Now()
+			now := attendanceNow()
 			updates["rejected_at"] = now
 			updates["rejection_source"] = "admin"
 			updates["admin_rejection_reason"] = reason
-		} else if input.StatusSesuai == "Sesuai" {
-			updates["admin_rejection_reason"] = ""
+			updates["revision_pending"] = true
+			updates["revision_submitted_by"] = nil
+			updates["revision_submitted_at"] = nil
 		}
 		if input.StatusSesuai != "" {
 			for key, value := range adminValidationStatusUpdates(report, input.StatusSesuai) {
@@ -550,7 +579,13 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
 	}
-	config.DB.Preload("Attachments").First(&report, report.ID)
+	config.DB.Preload("Attachments").Preload("RevisionAudits").First(&report, report.ID)
+	decorateWorkReportRevisionInfo(&report, attendanceNow())
+	if isRevisionSubmission {
+		recordWorkReportRevisionSubmission(report.ID, userID, report.RevisionSubmittedAt)
+		config.DB.Preload("RevisionAudits").First(&report, report.ID)
+		decorateWorkReportRevisionInfo(&report, attendanceNow())
+	}
 	message := "Laporan kerja diperbarui"
 	if recoveringLegacyDraft {
 		message = "Draft legacy_logbook dipulihkan menjadi work_report melalui endpoint canonical"
@@ -584,6 +619,9 @@ func UpdateWorkReport(c *fiber.Ctx) error {
 		}
 		utils.CreateNotification(config.DB, report.Employee.UserID, recipientRole, "Laporan Kerja", "Status Laporan Diperbarui", message)
 		WsHub.Broadcast <- fiber.Map{"event": "work_report_status_updated", "user_id": report.Employee.UserID}
+	}
+	if userRole == string(models.RoleHRD) && input.StatusSesuai == "Tidak Sesuai" {
+		recordWorkReportRejectionAudit(report.ID, userID, report.RejectedAt, "admin", input.RejectionReason)
 	}
 
 	return c.JSON(report)
@@ -677,6 +715,9 @@ func canUseCanonicalWorkReportMutation(report models.WorkReport, actorRole strin
 		return false
 	}
 	if report.ReportKind == models.WorkReportKindLegacyLogbook {
+		if isWorkReportRevisionState(report) {
+			return isWorkReportRevisionOwnerRole(models.Role(actorRole)) && ownsReport && isWorkReportRevisionAllowed(report, attendanceNow())
+		}
 		return isRecoverableLegacyDraft(report, actorRole, ownsReport)
 	}
 	if actorRole == string(models.RoleHRD) {
@@ -688,13 +729,16 @@ func canUseCanonicalWorkReportMutation(report models.WorkReport, actorRole strin
 	// A submitted report is immutable while it is in either approval queue.
 	// The employee may edit it only as a Draft or after an explicit Manager or
 	// HRD/Admin rejection, which is the same repair cycle used by logbooks.
+	if isWorkReportRevisionState(report) {
+		return isWorkReportRevisionOwnerRole(models.Role(actorRole)) && isWorkReportRevisionAllowed(report, attendanceNow())
+	}
 	if isWorkReportDraft(report) {
 		return true
 	}
 	if isWorkReportLocked(report.StatusSesuai) {
 		return false
 	}
-	return isWorkReportRejectedState(report)
+	return isWorkReportRejectedState(report) && isWorkReportRevisionAllowed(report, attendanceNow())
 }
 
 func isWorkReportRejectedState(report models.WorkReport) bool {
@@ -779,7 +823,7 @@ func adminValidationStatusUpdates(report models.WorkReport, status string) map[s
 	if status == "Tidak Sesuai" {
 		decision = models.WorkReportDecisionRejected
 	}
-	now := time.Now()
+	now := attendanceNow()
 	updates := map[string]interface{}{
 		"status_sesuai":           status,
 		"validasi_oleh_hr":        true,
@@ -1028,6 +1072,16 @@ func normalizeWorkReportStatus(value string) string {
 	return string(models.NormalizeWorkReportFillingStatus(value))
 }
 
+// Existing rejected reports use their own 24-hour revision window. The
+// original attendance-filling deadline must not block either saving a draft
+// revision or resubmitting it.
+func validateWorkReportSubmissionForReport(employeeID uint, date, now time.Time, report *models.WorkReport) *fiber.Error {
+	if report != nil && isWorkReportRevisionState(*report) && isWorkReportRevisionAllowed(*report, now) {
+		return nil
+	}
+	return validateWorkReportSubmission(employeeID, date, now)
+}
+
 // isAdminRejectedWorkReport is deliberately based on the persisted admin
 // review fields. A submitted report with an empty review status is pending;
 // only an explicit admin rejection can enter the revision notification path.
@@ -1050,18 +1104,95 @@ func isWorkReportRevisionSubmission(report models.WorkReport, targetStatus strin
 	if targetStatus != "submitted" {
 		return false
 	}
-	return isAdminRejectedWorkReport(report) || strings.EqualFold(strings.TrimSpace(report.RejectionSource), "manager") || effectiveManagerReviewStatus(report) == models.WorkReportDecisionRejected
+	return isWorkReportRevisionState(report)
 }
 
-// isWorkReportRevisionDateAllowed deliberately compares date-only values in
-// Asia/Jakarta. The report's Tanggal is the source of truth; CreatedAt,
-// ReviewedAt, RejectedAt, and the request timestamp must not affect this rule.
-func isWorkReportRevisionDateAllowed(reportDate, now time.Time) bool {
-	return reportDate.In(jakartaLocation).Format("2006-01-02") == now.In(jakartaLocation).Format("2006-01-02")
+const workReportRevisionWindow = 24 * time.Hour
+
+func isWorkReportRevisionOwnerRole(role models.Role) bool {
+	return role == models.RoleKaryawan || role == models.RoleMagang
 }
 
-func workReportRevisionDateError(reportDate time.Time) string {
-	return fmt.Sprintf("Revisi laporan hanya dapat dilakukan pada tanggal laporan kerja (%s WIB). Tanggal laporan sudah lewat.", reportDate.In(jakartaLocation).Format("2006-01-02"))
+func isWorkReportRevisionState(report models.WorkReport) bool {
+	if report.RejectedAt == nil {
+		return false
+	}
+	if report.RevisionPending {
+		return true
+	}
+	return effectiveManagerReviewStatus(report) == models.WorkReportDecisionRejected ||
+		effectiveAdminValidationStatus(report) == models.WorkReportDecisionRejected
+}
+
+func workReportRevisionDeadline(rejectedAt *time.Time) *time.Time {
+	if rejectedAt == nil {
+		return nil
+	}
+	deadline := rejectedAt.Add(workReportRevisionWindow).In(jakartaLocation)
+	return &deadline
+}
+
+// The comparison is intentionally inclusive: a revision submitted at exactly
+// rejected_at + 24h is still accepted. Subsecond precision is retained.
+func isWorkReportRevisionAllowed(report models.WorkReport, now time.Time) bool {
+	deadline := workReportRevisionDeadline(report.RejectedAt)
+	if deadline == nil || !isWorkReportRevisionState(report) {
+		return false
+	}
+	return !now.After(*deadline)
+}
+
+func workReportRevisionError(report models.WorkReport) string {
+	deadline := workReportRevisionDeadline(report.RejectedAt)
+	if deadline == nil {
+		return "Revisi laporan tidak dapat dilakukan karena waktu penolakan tidak tercatat."
+	}
+	return fmt.Sprintf("Batas revisi laporan telah berakhir pada %s WIB. Revisi harus dikirim maksimal 24 jam sejak waktu penolakan.", deadline.Format("02-01-2006 15:04:05"))
+}
+
+func decorateWorkReportRevisionInfo(report *models.WorkReport, now time.Time) {
+	if report == nil || !isWorkReportRevisionState(*report) {
+		if report != nil {
+			report.RevisionDeadlineAt = nil
+			report.RevisionAllowed = false
+		}
+		return
+	}
+	report.RevisionDeadlineAt = workReportRevisionDeadline(report.RejectedAt)
+	report.RevisionAllowed = isWorkReportRevisionAllowed(*report, now)
+}
+
+func recordWorkReportRejectionAudit(reportID, userID uint, rejectedAt *time.Time, source, reason string) {
+	if reportID == 0 || userID == 0 || rejectedAt == nil {
+		return
+	}
+	entry := models.WorkReportRevisionAudit{
+		WorkReportID: reportID, RejectedBy: &userID, RejectedAt: rejectedAt,
+		RejectionSource: source, RejectionReason: strings.TrimSpace(reason),
+	}
+	if err := config.DB.Create(&entry).Error; err != nil {
+		log.Printf("work report rejection audit failed: report_id=%d: %v", reportID, err)
+	}
+}
+
+func recordWorkReportRevisionSubmission(reportID, userID uint, submittedAt *time.Time) {
+	if reportID == 0 || userID == 0 || submittedAt == nil {
+		return
+	}
+	var entry models.WorkReportRevisionAudit
+	query := config.DB.Where("work_report_id = ? AND revision_submitted_at IS NULL", reportID).Order("id DESC").First(&entry)
+	if query.Error == nil {
+		if err := config.DB.Model(&entry).Updates(map[string]interface{}{"revision_submitted_by": userID, "revision_submitted_at": submittedAt}).Error; err != nil {
+			log.Printf("work report revision audit update failed: report_id=%d: %v", reportID, err)
+		}
+		return
+	}
+	// Preserve the submission audit even for historical rejection rows created
+	// before the cycle table existed.
+	entry = models.WorkReportRevisionAudit{WorkReportID: reportID, RevisionSubmittedBy: &userID, RevisionSubmittedAt: submittedAt}
+	if err := config.DB.Create(&entry).Error; err != nil {
+		log.Printf("work report revision audit failed: report_id=%d: %v", reportID, err)
+	}
 }
 
 func notifyNewWorkReport(employee models.Employee, report models.WorkReport) {

@@ -274,6 +274,12 @@
             <span class="status-badge" [ngClass]="validationStatusClass(detail)">Status validasi: {{ validationStatusLabel(detail) }}</span>
           </div>
 
+          <div class="report-revision-info" *ngIf="isRejectedReport(detail)" role="status">
+            <strong>Batas waktu revisi</strong>
+            <span *ngIf="canReviseReport(detail); else revisionExpired">Revisi dapat dikirim sampai {{ revisionDeadlineLabel(detail) }}.</span>
+            <ng-template #revisionExpired>Revisi sudah tidak dapat diedit atau dikirim ulang. Batas terakhir: {{ revisionDeadlineLabel(detail) }}.</ng-template>
+          </div>
+
           <dl class="report-detail-grid">
             <div><dt>Judul Tugas</dt><dd>{{ canonicalWorkReportTitle(detail) || '-' }}</dd></div>
             <div class="wide"><dt>Deskripsi Kegiatan</dt><dd>{{ detail.deskripsi_kegiatan || '-' }}</dd></div>

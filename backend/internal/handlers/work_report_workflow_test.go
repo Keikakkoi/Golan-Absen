@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"testing"
+	"time"
 
 	"absensi-golan-backend/internal/models"
 )
@@ -99,11 +100,13 @@ func TestAdminValidationRequiresManagerApprovalForKaryawan(t *testing.T) {
 }
 
 func TestRejectedCanonicalReportCanEnterEmployeeRevisionCycle(t *testing.T) {
+	rejectedAt := time.Now().Add(-time.Hour)
 	report := models.WorkReport{
 		ReportKind:          models.WorkReportKindCanonical,
 		StatusLaporan:       "submitted",
 		ManagerReviewStatus: models.WorkReportDecisionRejected,
 		RejectionSource:     "manager",
+		RejectedAt:          &rejectedAt,
 		StatusSesuai:        "",
 		DeskripsiKegiatan:   "Isi laporan",
 		RealisasiKegiatan:   "100%",
@@ -118,6 +121,23 @@ func TestRejectedCanonicalReportCanEnterEmployeeRevisionCycle(t *testing.T) {
 	report.StatusSesuai = "Tidak Sesuai"
 	if !canUseCanonicalWorkReportMutation(report, string(models.RoleKaryawan), true) {
 		t.Fatal("an HRD/Admin-rejected report should be editable by its owner")
+	}
+}
+
+func TestRejectedLegacyLogbookCanEnterEmployeeRevisionCycle(t *testing.T) {
+	rejectedAt := time.Now().Add(-time.Hour)
+	report := models.WorkReport{
+		ReportKind:            models.WorkReportKindLegacyLogbook,
+		StatusLogbook:         "submitted",
+		StatusLaporan:         "submitted",
+		AdminValidationStatus: models.WorkReportDecisionRejected,
+		StatusSesuai:          "Tidak Sesuai",
+		RejectionSource:       "admin",
+		RejectedAt:            &rejectedAt,
+		DeskripsiKegiatan:     "Isi laporan",
+	}
+	if !canUseCanonicalWorkReportMutation(report, string(models.RoleMagang), true) {
+		t.Fatal("an HRD/Admin-rejected legacy logbook should be revisable by its MAGANG owner")
 	}
 }
 
@@ -139,10 +159,12 @@ func TestWorkReportReviewEligibilityDoesNotDependOnReportKind(t *testing.T) {
 }
 
 func TestManagerRejectedReportIsRecognizedForResubmission(t *testing.T) {
+	rejectedAt := time.Now().Add(-time.Hour)
 	report := models.WorkReport{
 		StatusLaporan:       "submitted",
 		ManagerReviewStatus: models.WorkReportDecisionRejected,
 		RejectionSource:     "manager",
+		RejectedAt:          &rejectedAt,
 	}
 	if !isWorkReportRevisionSubmission(report, "submitted") {
 		t.Fatal("Manager-rejected reports must return to the appropriate stage on resubmission")
