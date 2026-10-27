@@ -222,13 +222,25 @@ func TestWorkReportOwnerScopeNeverAllowsMissingOrDifferentEmployee(t *testing.T)
 	}
 }
 
-func TestOnlyKaryawanAndMagangCanSubmitRevisions(t *testing.T) {
-	for _, role := range []models.Role{models.RoleKaryawan, models.RoleMagang} {
+func TestOnlyReportOwnerRolesCanSubmitRevisions(t *testing.T) {
+	for _, role := range []models.Role{models.RoleKaryawan, models.RoleMagang, models.RoleManajer} {
 		if !isWorkReportRevisionOwnerRole(role) {
 			t.Fatalf("role %q should be allowed to revise its own report", role)
 		}
 	}
-	for _, role := range []models.Role{models.RoleManajer, models.RoleHRD} {
+	if isWorkReportRevisionOwnerRole(models.RoleHRD) {
+		t.Fatal("HRD must not be treated as an employee report owner role")
+	}
+	if canUseCanonicalWorkReportMutation(models.WorkReport{
+		ReportKind:          models.WorkReportKindCanonical,
+		StatusLaporan:       "submitted",
+		ManagerReviewStatus: models.WorkReportDecisionRejected,
+		RejectedAt:          func() *time.Time { value := time.Now().Add(-time.Hour); return &value }(),
+		DeskripsiKegiatan:   "Laporan Manager",
+	}, string(models.RoleManajer), false) {
+		t.Fatal("Manager must not revise a report owned by another employee")
+	}
+	for _, role := range []models.Role{models.RoleHRD} {
 		if isWorkReportRevisionOwnerRole(role) {
 			t.Fatalf("role %q must not be allowed to submit an employee revision", role)
 		}

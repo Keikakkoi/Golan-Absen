@@ -114,6 +114,9 @@ func TestRejectedCanonicalReportCanEnterEmployeeRevisionCycle(t *testing.T) {
 	if !canUseCanonicalWorkReportMutation(report, string(models.RoleKaryawan), true) {
 		t.Fatal("a Manager-rejected report should be editable by its owner")
 	}
+	if !canUseCanonicalWorkReportMutation(report, string(models.RoleManajer), true) {
+		t.Fatal("a Manager-owned rejected report should be editable by its Manager owner")
+	}
 
 	report.ManagerReviewStatus = models.WorkReportDecisionApproved
 	report.AdminValidationStatus = models.WorkReportDecisionRejected

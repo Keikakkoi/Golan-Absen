@@ -1110,7 +1110,7 @@ func isWorkReportRevisionSubmission(report models.WorkReport, targetStatus strin
 const workReportRevisionWindow = 24 * time.Hour
 
 func isWorkReportRevisionOwnerRole(role models.Role) bool {
-	return role == models.RoleKaryawan || role == models.RoleMagang
+	return role == models.RoleKaryawan || role == models.RoleMagang || role == models.RoleManajer
 }
 
 func isWorkReportRevisionState(report models.WorkReport) bool {
