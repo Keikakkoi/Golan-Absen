@@ -274,16 +274,12 @@ export class DatePickerComponent implements ControlValueAccessor, OnChanges {
 
     // On small screens the panel is fixed to the viewport so it cannot be
     // clipped by a card, table, or another ancestor with overflow hidden.
-    // Clamp both coordinates to the same safe 12px viewport gutter.
-    const desiredLeft = host.left;
-    const maxLeft = Math.max(viewportPadding, viewportWidth - popupWidth - viewportPadding);
-    this.popupLeft = Math.round(Math.min(Math.max(desiredLeft, viewportPadding), maxLeft));
-
-    const desiredTop = this.opensUp
-      ? host.top - popupHeight - 6
-      : host.bottom + 6;
-    const maxTop = Math.max(viewportPadding, viewportHeight - popupHeight - viewportPadding);
-    this.popupTop = Math.round(Math.min(Math.max(desiredTop, viewportPadding), maxTop));
+    // Its horizontal position is controlled by CSS so it stays centered at
+    // every mobile viewport width. Keep the top coordinate tied to the input.
+    this.popupLeft = null;
+    this.opensUp = false;
+    const desiredTop = host.bottom + 6;
+    this.popupTop = Math.round(Math.max(desiredTop, viewportPadding));
   }
 
   private startOfMonth(date: Date): Date { return new Date(date.getFullYear(), date.getMonth(), 1); }

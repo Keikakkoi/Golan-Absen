@@ -62,16 +62,22 @@
     top: 12px;
     right: auto;
     bottom: auto;
-    left: 12px;
+    left: 50%;
+    transform: translateX(-50%);
     width: calc(100vw - 24px);
-    max-width: calc(100vw - 24px);
+    max-width: 360px;
     max-height: calc(100dvh - 24px);
     padding: 10px;
     box-sizing: border-box;
+    z-index: 9999;
   }
 
   .date-picker-popup.opens-up { top: 12px; bottom: auto; }
-  .date-picker-popup.align-right { right: auto; }
+  .date-picker-popup.align-right {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
   .date-picker-header, .date-picker-footer { gap: 5px; }
   .date-picker-nav { flex: 0 0 34px; width: 34px; height: 34px; }
   .date-picker-month-year { padding-inline: 2px; font-size: clamp(.875rem, 4vw, 1rem); }
