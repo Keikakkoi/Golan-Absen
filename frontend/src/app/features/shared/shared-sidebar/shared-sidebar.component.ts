@@ -4,6 +4,7 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { AppNotification, NotificationService } from '../../../core/services/notification.service';
 import { ThemeService } from '../../../core/services/theme.service';
+import { AlertService } from '../../../core/services/alert.service';
 import { Subscription } from 'rxjs';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 
@@ -45,7 +46,8 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
     private authService: AuthService,
     private themeService: ThemeService,
     private notificationService: NotificationService,
-    private router: Router
+    private router: Router,
+    private alert: AlertService
   ) {}
 
   ngOnInit(): void {
@@ -160,6 +162,15 @@ export class SharedSidebarComponent implements AfterViewInit, OnDestroy, OnInit 
 
   isEmployeeProfileActive(): boolean {
     return this.router.url.split(/[?#]/, 1)[0] === '/employee/profile';
+  }
+
+  showLockedInternPayroll(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    void this.alert.info(
+      'Slip Gaji Terkunci',
+      'Fitur slip gaji untuk peserta magang masih dikunci dan belum tersedia pada versi sekarang.'
+    );
   }
 
   toggleTheme(): void {

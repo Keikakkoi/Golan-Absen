@@ -127,7 +127,7 @@
       <a routerLink="/intern/certificate" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#save"></use></svg> Sertifikat Magang</a>
       <a class="notification-nav-link" routerLink="/employee/notifications" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#bell"></use></svg><span>Notifikasi</span><span class="sidebar-notification-badge" *ngIf="unreadCount > 0" [attr.aria-label]="unreadCount + ' notifikasi belum dibaca'">{{ unreadCount }}</span></a>
       <a routerLink="/employee/profile" [class.active]="isEmployeeProfileActive()" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#user"></use></svg> Profil Saya</a>
-      <a routerLink="/employee/payroll" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#clipboard"></use></svg> Slip Gaji</a>
+      <a href="/employee/payroll" class="locked-payroll-link" (click)="showLockedInternPayroll($event)" aria-disabled="true" title="Segera Hadir"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#lock"></use></svg><span>Slip Gaji</span><small class="locked-payroll-badge">Segera Hadir</small></a>
       <a routerLink="/help" routerLinkActive="active" (click)="closeDrawer()"><svg class="nav-icon"><use href="assets/sidebar-icons.svg#help"></use></svg> Bantuan &amp; FAQ</a>
     </ng-container>
 

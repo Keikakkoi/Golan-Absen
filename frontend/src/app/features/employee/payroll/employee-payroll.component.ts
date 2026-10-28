@@ -4,17 +4,26 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 import { PAYROLL_COMPANY_CODE, PAYROLL_COMPANY_NAME, PAYROLL_TAKE_HOME_PAY_SUBTITLE, Payroll, PayrollService } from '../../../core/services/payroll.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { normalizeRole } from '../../../core/auth/role';
 
 @Component({ selector: 'app-employee-payroll', standalone: true, imports: [CommonModule, SharedSidebarComponent, PaginationComponent], templateUrl: './employee-payroll.component.html', styleUrls: ['./employee-payroll.component.scss'] })
 export class EmployeePayrollComponent implements OnInit {
   readonly companyName = PAYROLL_COMPANY_NAME;
   readonly takeHomePaySubtitle = PAYROLL_TAKE_HOME_PAY_SUBTITLE;
   rows: Payroll[] = []; selected?: Payroll; loading = true; errorMessage = '';
+  readonly internPayrollMessage = 'Peserta magang belum dapat diproses dalam penggajian karena status penggajiannya belum ditetapkan oleh perusahaan.';
+  readonly isInternPayrollLocked = normalizeRole(localStorage.getItem('role')) === 'MAGANG';
   page = 1; limit = 10; total = 0; totalPages = 0;
   readonly pageSizeOptions = [10, 25, 50, 100];
   private readonly monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   constructor(private payroll: PayrollService, private alert: AlertService) {}
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    if (this.isInternPayrollLocked) {
+      this.loading = false;
+      return;
+    }
+    this.load();
+  }
   load(): void {
     this.loading = true;
     this.errorMessage = '';

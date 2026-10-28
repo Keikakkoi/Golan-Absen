@@ -175,6 +175,25 @@
       transition: all 0.2s ease;
       font-family: var(--font-body);
 
+      &.locked-payroll-link {
+        color: var(--text-dark-lo);
+        opacity: 0.78;
+        cursor: not-allowed;
+
+        .locked-payroll-badge {
+          margin-left: auto;
+          color: #9a6700;
+          font-size: 0.62rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        &:hover {
+          background: transparent;
+          color: var(--text-dark-lo);
+        }
+      }
+
       .nav-icon {
         display: inline-block;
         align-items: center;

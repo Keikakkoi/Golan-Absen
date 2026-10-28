@@ -10,11 +10,18 @@
     </div>
 
     <section class="card">
+      <div *ngIf="isInternPayrollLocked" class="intern-payroll-locked" role="status">
+        <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#lock"></use></svg>
+        <div>
+          <strong>Slip Gaji Terkunci</strong>
+          <p>{{ internPayrollMessage }}</p>
+        </div>
+      </div>
       <div *ngIf="loading" class="state" aria-live="polite">Memuat slip gaji...</div>
-      <div *ngIf="!loading && errorMessage" class="state error-state" role="alert">{{ errorMessage }}</div>
-      <div *ngIf="!loading && !errorMessage && !rows.length && total === 0" class="state">Belum ada slip gaji Published.</div>
+      <div *ngIf="!isInternPayrollLocked && !loading && errorMessage" class="state error-state" role="alert">{{ errorMessage }}</div>
+      <div *ngIf="!isInternPayrollLocked && !loading && !errorMessage && !rows.length && total === 0" class="state">Belum ada slip gaji Published.</div>
 
-      <div class="table-wrap" *ngIf="!loading && !errorMessage && rows.length">
+      <div class="table-wrap" *ngIf="!isInternPayrollLocked && !loading && !errorMessage && rows.length">
         <table>
           <thead>
             <tr>
@@ -50,7 +57,7 @@
         </table>
       </div>
       <app-pagination
-        *ngIf="!errorMessage || loading"
+        *ngIf="!isInternPayrollLocked && (!errorMessage || loading)"
         [totalItems]="total"
         [currentPage]="page"
         [pageSize]="limit"

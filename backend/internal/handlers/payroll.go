@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -19,10 +20,13 @@ import (
 )
 
 const (
-	defaultCompanyName  = "PT Golan Digital Kreatif"
-	defaultCompanyCode  = "02145678"
-	takeHomePaySubtitle = "Total pendapatan - Total pengurangan"
+	defaultCompanyName         = "PT Golan Digital Kreatif"
+	defaultCompanyCode         = "02145678"
+	takeHomePaySubtitle        = "Total pendapatan - Total pengurangan"
+	internPayrollLockedMessage = "Peserta magang belum dapat diproses dalam penggajian karena status penggajiannya belum tersedia pada versi sekarang."
 )
+
+var errInternPayrollLocked = errors.New(internPayrollLockedMessage)
 
 type payrollItemInput struct {
 	Type      string `json:"type"`
@@ -183,6 +187,9 @@ func GetPayrollAttendanceDays(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "payroll cut-off mulai tidak boleh lebih besar dari selesai"})
 	}
 	if _, err := payrollEmployee(config.DB, uint(employeeID)); err != nil {
+		if errors.Is(err, errInternPayrollLocked) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": internPayrollLockedMessage})
+		}
 		if err == gorm.ErrRecordNotFound {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Karyawan tidak ditemukan"})
 		}
@@ -203,6 +210,9 @@ func payrollEmployee(db *gorm.DB, employeeID uint) (models.Employee, error) {
 	}
 	if err == nil && !strings.EqualFold(strings.TrimSpace(employee.User.Status), "aktif") {
 		return employee, fmt.Errorf("karyawan harus berstatus aktif")
+	}
+	if err == nil && employee.User.Role == models.RoleMagang {
+		return employee, errInternPayrollLocked
 	}
 	return employee, err
 }
@@ -380,6 +390,9 @@ func CreatePayroll(c *fiber.Ctx) error {
 	}
 	employee, err := payrollEmployee(config.DB, input.EmployeeID)
 	if err != nil {
+		if errors.Is(err, errInternPayrollLocked) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": internPayrollLockedMessage})
+		}
 		if err == gorm.ErrRecordNotFound {
 			return c.Status(404).JSON(fiber.Map{"error": "Karyawan tidak ditemukan"})
 		}
@@ -423,6 +436,9 @@ func UpdatePayroll(c *fiber.Ctx) error {
 	if err := config.DB.First(&payroll, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Slip gaji tidak ditemukan"})
 	}
+	if _, err := payrollEmployee(config.DB, payroll.EmployeeID); errors.Is(err, errInternPayrollLocked) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": internPayrollLockedMessage})
+	}
 	if payroll.Status != "Draft" {
 		return c.Status(409).JSON(fiber.Map{"error": "Slip Published tidak dapat diubah"})
 	}
@@ -432,6 +448,9 @@ func UpdatePayroll(c *fiber.Ctx) error {
 	}
 	employee, err := payrollEmployee(config.DB, input.EmployeeID)
 	if err != nil {
+		if errors.Is(err, errInternPayrollLocked) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": internPayrollLockedMessage})
+		}
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	actor := c.Locals("user_id").(uint)
@@ -460,6 +479,9 @@ func DeletePayroll(c *fiber.Ctx) error {
 	if err := config.DB.First(&payroll, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Slip gaji tidak ditemukan"})
 	}
+	if _, err := payrollEmployee(config.DB, payroll.EmployeeID); errors.Is(err, errInternPayrollLocked) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": internPayrollLockedMessage})
+	}
 	if payroll.Status != "Draft" {
 		return c.Status(409).JSON(fiber.Map{"error": "Slip Published tidak dapat dihapus"})
 	}
@@ -479,6 +501,9 @@ func PublishPayroll(c *fiber.Ctx) error {
 	var payroll models.Payroll
 	if err := preloadPayroll(config.DB).First(&payroll, id).Error; err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Slip gaji tidak ditemukan"})
+	}
+	if _, err := payrollEmployee(config.DB, payroll.EmployeeID); errors.Is(err, errInternPayrollLocked) {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": internPayrollLockedMessage})
 	}
 	if payroll.Status != "Draft" {
 		return c.Status(409).JSON(fiber.Map{"error": "Slip sudah diterbitkan"})
@@ -507,6 +532,9 @@ func PublishPayroll(c *fiber.Ctx) error {
 }
 
 func ListEmployeePayroll(c *fiber.Ctx) error {
+	if c.Locals("role") == models.RoleMagang {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": internPayrollLockedMessage})
+	}
 	userID := c.Locals("user_id").(uint)
 	var rows []models.Payroll
 	query := preloadPayroll(config.DB).Model(&models.Payroll{}).
@@ -519,6 +547,9 @@ func ListEmployeePayroll(c *fiber.Ctx) error {
 }
 
 func getOwnedPublishedPayroll(c *fiber.Ctx) (*models.Payroll, error) {
+	if c.Locals("role") == models.RoleMagang {
+		return nil, errInternPayrollLocked
+	}
 	id, err := payrollID(c)
 	if err != nil {
 		return nil, err
@@ -533,6 +564,9 @@ func getOwnedPublishedPayroll(c *fiber.Ctx) (*models.Payroll, error) {
 func GetEmployeePayroll(c *fiber.Ctx) error {
 	payroll, err := getOwnedPublishedPayroll(c)
 	if err != nil {
+		if errors.Is(err, errInternPayrollLocked) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": internPayrollLockedMessage})
+		}
 		return c.Status(404).JSON(fiber.Map{"error": "Slip gaji tidak ditemukan"})
 	}
 	return c.JSON(payroll)
@@ -540,6 +574,9 @@ func GetEmployeePayroll(c *fiber.Ctx) error {
 func DownloadEmployeePayrollPDF(c *fiber.Ctx) error {
 	payroll, err := getOwnedPublishedPayroll(c)
 	if err != nil {
+		if errors.Is(err, errInternPayrollLocked) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": internPayrollLockedMessage})
+		}
 		return c.Status(404).JSON(fiber.Map{"error": "Slip gaji tidak ditemukan"})
 	}
 	return sendPayrollPDF(c, payroll)
