@@ -24,9 +24,7 @@ export class AttendanceService {
 
   checkIn(latitude: number, longitude: number, accuracy: number, selfieBlob: Blob | null, tipeKerja: string = 'WFO'): Observable<CheckInResponse> {
     const formData = new FormData();
-    formData.append('latitude', latitude.toString());
-    formData.append('longitude', longitude.toString());
-    formData.append('accuracy', accuracy.toString());
+    this.appendLocation(formData, latitude, longitude, accuracy);
     formData.append('location_timestamp', new Date().toISOString());
     formData.append('location_source', 'browser-geolocation');
     if (selfieBlob) {
@@ -41,9 +39,7 @@ export class AttendanceService {
 
   checkOut(latitude: number, longitude: number, accuracy: number, selfieBlob: Blob | null, tipeKerja: string = 'WFO'): Observable<any> {
     const formData = new FormData();
-    formData.append('latitude', latitude.toString());
-    formData.append('longitude', longitude.toString());
-    formData.append('accuracy', accuracy.toString());
+    this.appendLocation(formData, latitude, longitude, accuracy);
     formData.append('location_timestamp', new Date().toISOString());
     formData.append('location_source', 'browser-geolocation');
     if (selfieBlob) {
@@ -54,6 +50,17 @@ export class AttendanceService {
     return this.http.post<any>(`${this.apiUrl}/checkout`, formData, {
       headers: this.getHeaders()
     });
+  }
+
+  private appendLocation(formData: FormData, latitude: number, longitude: number, accuracy: number): void {
+    // No-validation work types may be submitted without a GPS fix. When a
+    // fix exists, keep all metadata for attendance audit purposes.
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (latitude === 0 && longitude === 0)) return;
+    formData.append('latitude', latitude.toString());
+    formData.append('longitude', longitude.toString());
+    if (Number.isFinite(accuracy) && accuracy >= 0) {
+      formData.append('accuracy', accuracy.toString());
+    }
   }
 
   getOfficeInfo(): Observable<any> {

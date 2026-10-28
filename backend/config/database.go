@@ -89,6 +89,31 @@ func ConnectDB(cfg *Config) {
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schemas: %v", err)
 	}
+	// Normalize legacy work-type location rules without touching attendance
+	// history. Older rows used IsHomeBase and sometimes stored the default
+	// kantor value for every custom type; new rows use RadiusYangBerlaku as the
+	// canonical mode.
+	for _, statement := range []string{
+		`UPDATE work_types
+		 SET radius_yang_berlaku = CASE
+		   WHEN is_home_base THEN 'rumah'
+		   WHEN LOWER(BTRIM(nama)) = 'wfo' THEN 'kantor'
+		   WHEN LOWER(BTRIM(COALESCE(radius_yang_berlaku, ''))) = 'rumah' THEN 'rumah'
+		   ELSE 'tanpa_validasi'
+		 END
+		 WHERE LOWER(BTRIM(COALESCE(radius_yang_berlaku, ''))) NOT IN ('kantor', 'rumah', 'tanpa_validasi')
+		    OR (is_home_base AND LOWER(BTRIM(COALESCE(radius_yang_berlaku, ''))) = 'kantor')
+		    OR (created_at < TIMESTAMPTZ '2026-10-28 00:00:00+07'
+		        AND NOT is_home_base AND LOWER(BTRIM(COALESCE(nama, ''))) <> 'wfo'
+		        AND LOWER(BTRIM(COALESCE(radius_yang_berlaku, ''))) = 'kantor')`,
+		`UPDATE work_types
+		 SET butuh_validasi_geofence = (LOWER(BTRIM(radius_yang_berlaku)) <> 'tanpa_validasi'),
+		     is_home_base = (LOWER(BTRIM(radius_yang_berlaku)) = 'rumah')`,
+	} {
+		if err := DB.Exec(statement).Error; err != nil {
+			log.Printf("Work-type location migration statement failed: %v", err)
+		}
+	}
 	// Older payroll rows may have been created while the company code was
 	// incorrectly accepted from the frontend. Repair blank snapshots without
 	// adding another company column.
@@ -282,7 +307,7 @@ func ConnectDB(cfg *Config) {
 			IsDefault:             false,
 			IsHomeBase:            false,
 			ButuhValidasiGeofence: false,
-			RadiusYangBerlaku:     "kombinasi",
+			RadiusYangBerlaku:     "tanpa_validasi",
 			WajibSelfie:           true,
 			WarnaLabel:            "#F59E0B",
 			StatusAktif:           true,

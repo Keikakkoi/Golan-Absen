@@ -7,6 +7,7 @@ import { AlertService } from '../../../core/services/alert.service';
 import { FormsModule } from '@angular/forms';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
+import { WorktypeListComponent } from '../worktype-list/worktype-list.component';
 
 @Component({
   selector: 'app-admin-settings',
@@ -18,12 +19,13 @@ import { DatePickerComponent } from '../../../shared/date-picker/date-picker.com
     AdminSidebarComponent,
     DatePipe,
     DatePickerComponent,
+    WorktypeListComponent,
   ],
   templateUrl: './admin-settings.component.html',
   styleUrls: ['./admin-settings.component.scss'],
 })
 export class AdminSettingsComponent implements OnInit {
-  activeTab: 'general' | 'holidays' = 'general';
+  activeTab: 'general' | 'holidays' | 'worktypes' = 'general';
 
   // General Settings
   office: any = {

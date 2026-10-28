@@ -26,14 +26,14 @@
             class="punch-btn-large" 
             [class.checkin-pending]="!hasCheckedIn"
             [class.checkout-mode]="hasCheckedIn && !hasCheckedOut"
-            [disabled]="!canPunchBySchedule || !isGpsActive || !isLocationValid || !capturedBlob || isSubmitting || attendanceClosed || (isCheckoutPage && !hasCheckedIn)"
+            [disabled]="!canPunchBySchedule || (isLocationRequired && !isGpsActive) || !isLocationValid || !capturedBlob || isSubmitting || attendanceClosed || (isCheckoutPage && !hasCheckedIn)"
             (click)="triggerPunch()">
             <span class="punch-title">{{ hasCheckedIn ? 'PUNCH OUT' : (isCheckoutPage ? 'PUNCH OUT' : 'PUNCH IN') }}</span>
             <span class="punch-time">{{ currentTime | date:'HH:mm:ss' }}</span>
           </button>
         </div>
-        <p class="punch-instructions text-center" [class.text-green]="isGpsActive && isLocationValid" [class.text-absent]="!isGpsActive || !isLocationValid">
-          {{ scheduleMessage || ((!hasCheckedIn && isCheckoutPage) ? 'Belum ada check-in hari ini.' : ((isGpsActive && isLocationValid && capturedBlob) ? 'Klik tombol di atas untuk melakukan absensi' : (locationError || (!capturedBlob ? 'Ambil foto selfie sebagai bukti absensi.' : 'Aktifkan GPS & pastikan berada di radius absensi.')))) }}
+        <p class="punch-instructions text-center" [class.text-green]="isLocationValid && (isGpsActive || !isLocationRequired)" [class.text-absent]="(isLocationRequired && !isGpsActive) || !isLocationValid">
+          {{ scheduleMessage || ((!hasCheckedIn && isCheckoutPage) ? 'Belum ada check-in hari ini.' : ((isLocationValid && (isGpsActive || !isLocationRequired) && capturedBlob) ? 'Klik tombol di atas untuk melakukan absensi' : (locationError || (!capturedBlob ? 'Ambil foto selfie sebagai bukti absensi.' : 'Aktifkan GPS & pastikan berada di radius absensi.')))) }}
         </p>
       </div>
 

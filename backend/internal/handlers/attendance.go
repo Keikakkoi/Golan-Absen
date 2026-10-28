@@ -97,53 +97,30 @@ func CheckIn(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Anda memiliki status " + string(leaveStatus) + " untuk hari ini, sehingga tidak dapat melakukan check-in."})
 	}
 
-	latStr := c.FormValue("latitude")
-	lonStr := c.FormValue("longitude")
-	accStr := c.FormValue("accuracy")
 	logLocationMetadata(c.FormValue("location_timestamp"), c.FormValue("location_source"))
 
-	lat, lon, acc, locationErr := parseAttendanceLocation(latStr, lonStr, accStr)
-	if locationErr != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": locationErr.Error()})
-	}
-
-	tipeKerja := c.FormValue("tipe_kerja")
+	tipeKerja := strings.TrimSpace(c.FormValue("tipe_kerja"))
 	if tipeKerja == "" {
 		tipeKerja = "WFO"
 	}
 
-	// Fetch WorkType details
 	var wt models.WorkType
 	if err := config.DB.Where("nama = ?", tipeKerja).First(&wt).Error; err != nil {
-		// fallback to defaults if not found in db
+		// Keep legacy clients usable when a built-in type is not yet seeded.
 		wt.Nama = tipeKerja
-		wt.IsHomeBase = (tipeKerja == "WFH")
+		wt.IsHomeBase = strings.EqualFold(tipeKerja, "WFH")
+		wt.ButuhValidasiGeofence = !wt.IsHomeBase
 	}
 
-	var dalamRadius bool
-	radiusTervalidasi := "tidak_tervalidasi"
-
-	if wt.IsHomeBase {
-		var validationErr error
-		dalamRadius, radiusTervalidasi, validationErr = validateHomeAttendanceLocation(employee.ID, lat, lon, acc)
-		if validationErr != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Error()})
-		}
-	} else if wt.Nama == "WFO" {
-		var office models.OfficeLocation
-		if err := config.DB.First(&office).Error; err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Office location not configured"})
-		}
-		// Use office coordinates
-		dalamRadius = validateCoordinatesAgainstRadius("WFO", lat, lon, acc, office.Latitude, office.Longitude, office.RadiusMeter)
-		radiusTervalidasi = "kantor"
-		if !dalamRadius {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Location outside of allowed radius for WFO"})
-		}
-	} else {
-		// Custom work type (e.g. Dinas Luar) - bypass radius check
-		dalamRadius = true
-		radiusTervalidasi = "custom"
+	lat, lon, acc, dalamRadius, radiusTervalidasi, locationErr := resolveAttendanceLocation(
+		employee.ID,
+		wt,
+		c.FormValue("latitude"),
+		c.FormValue("longitude"),
+		c.FormValue("accuracy"),
+	)
+	if locationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": locationErr.Error()})
 	}
 
 	// Selfie is a mandatory attendance proof for both check-in and check-out.
@@ -191,6 +168,9 @@ func CheckIn(c *fiber.Ctx) error {
 		RadiusTervalidasi:   radiusTervalidasi,
 		TipeKerja:           tipeKerja,
 	}
+	if wt.ID != 0 {
+		record.TipeKerjaID = &wt.ID
+	}
 
 	if err := config.DB.Create(&record).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save attendance record"})
@@ -232,7 +212,7 @@ func notifyWFHAttendance(hrd models.User, employee models.Employee, record model
 }
 
 func shouldSendWFHAttendanceNotification(workType models.WorkType) bool {
-	return workType.IsHomeBase
+	return workTypeValidationMode(workType) == workTypeValidationHome
 }
 
 func wfhAttendanceNotificationPayload(employee models.Employee, record models.AttendanceRecord, at time.Time, location string) (string, string) {
@@ -243,7 +223,11 @@ func wfhAttendanceNotificationPayload(employee models.Employee, record models.At
 	if strings.TrimSpace(location) == "" {
 		location = "Lokasi rumah tervalidasi"
 	}
-	message := fmt.Sprintf("%s melakukan absensi pada %s. Jenis: WFH. Status: %s. Lokasi: %s.", name, at.Format("02 Jan 2006 15:04"), record.Status, location)
+	workType := strings.TrimSpace(record.TipeKerja)
+	if workType == "" {
+		workType = "WFH"
+	}
+	message := fmt.Sprintf("%s melakukan absensi pada %s. Jenis: %s. Status: %s. Lokasi: %s.", name, at.Format("02 Jan 2006 15:04"), workType, record.Status, location)
 	return "Kehadiran WFH Karyawan", message
 }
 
@@ -286,44 +270,24 @@ func CheckOut(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Batas check-out pukul " + checkoutDeadline.Format("15:04") + " sudah lewat. Sistem melakukan check-out otomatis."})
 	}
 
-	latStr := c.FormValue("latitude")
-	lonStr := c.FormValue("longitude")
-	accStr := c.FormValue("accuracy")
 	logLocationMetadata(c.FormValue("location_timestamp"), c.FormValue("location_source"))
-
-	lat, lon, acc, locationErr := parseAttendanceLocation(latStr, lonStr, accStr)
-	if locationErr != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": locationErr.Error()})
-	}
 
 	var wt models.WorkType
 	if err := config.DB.Where("nama = ?", record.TipeKerja).First(&wt).Error; err != nil {
 		wt.Nama = record.TipeKerja
-		wt.IsHomeBase = (record.TipeKerja == "WFH")
+		wt.IsHomeBase = strings.EqualFold(record.TipeKerja, "WFH")
+		wt.ButuhValidasiGeofence = !wt.IsHomeBase
 	}
 
-	var dalamRadius bool
-	radiusTervalidasi := "tidak_tervalidasi"
-
-	if wt.IsHomeBase {
-		var validationErr error
-		dalamRadius, radiusTervalidasi, validationErr = validateHomeAttendanceLocation(employee.ID, lat, lon, acc)
-		if validationErr != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": validationErr.Error()})
-		}
-	} else if wt.Nama == "WFO" {
-		var office models.OfficeLocation
-		if err := config.DB.First(&office).Error; err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Office location not configured"})
-		}
-		dalamRadius = validateCoordinatesAgainstRadius("WFO", lat, lon, acc, office.Latitude, office.Longitude, office.RadiusMeter)
-		radiusTervalidasi = "kantor"
-		if !dalamRadius {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Location outside of allowed radius for WFO"})
-		}
-	} else {
-		dalamRadius = true
-		radiusTervalidasi = "custom"
+	lat, lon, acc, dalamRadius, radiusTervalidasi, locationErr := resolveAttendanceLocation(
+		employee.ID,
+		wt,
+		c.FormValue("latitude"),
+		c.FormValue("longitude"),
+		c.FormValue("accuracy"),
+	)
+	if locationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": locationErr.Error()})
 	}
 
 	// Selfie is a mandatory attendance proof for both check-in and check-out.
@@ -373,30 +337,72 @@ func CheckOut(c *fiber.Ctx) error {
 	})
 }
 
+// resolveAttendanceLocation is shared by check-in and check-out so both
+// endpoints always apply the same configured work-type rule.
+func resolveAttendanceLocation(employeeID uint, workType models.WorkType, latitudeText, longitudeText, accuracyText string) (float64, float64, float64, bool, string, error) {
+	mode := workTypeValidationMode(workType)
+	if mode == workTypeValidationNone {
+		lat, lon, accuracy, err := parseOptionalAttendanceLocation(latitudeText, longitudeText, accuracyText)
+		if err != nil {
+			return 0, 0, 0, false, workTypeValidationNone, err
+		}
+		return lat, lon, accuracy, true, workTypeValidationNone, nil
+	}
+
+	lat, lon, accuracy, err := parseAttendanceLocation(latitudeText, longitudeText, accuracyText)
+	if err != nil {
+		return 0, 0, 0, false, mode, err
+	}
+	if mode == workTypeValidationHome {
+		valid, source, validationErr := validateHomeAttendanceLocation(employeeID, lat, lon, accuracy)
+		return lat, lon, accuracy, valid, source, validationErr
+	}
+
+	var office models.OfficeLocation
+	if err := config.DB.First(&office).Error; err != nil || office.RadiusMeter <= 0 {
+		return 0, 0, 0, false, workTypeValidationOffice, fmt.Errorf("Lokasi kantor belum dikonfigurasi.")
+	}
+	valid := validateCoordinatesAgainstRadius(workTypeValidationOffice, lat, lon, accuracy, office.Latitude, office.Longitude, office.RadiusMeter)
+	if !valid {
+		return lat, lon, accuracy, false, workTypeValidationOffice, fmt.Errorf("Absensi harus berada dalam radius kantor.")
+	}
+	return lat, lon, accuracy, true, workTypeValidationOffice, nil
+}
+
+func parseOptionalAttendanceLocation(latText, lonText, accuracyText string) (float64, float64, float64, error) {
+	if strings.TrimSpace(latText) == "" && strings.TrimSpace(lonText) == "" && strings.TrimSpace(accuracyText) == "" {
+		return 0, 0, 0, nil
+	}
+	if strings.TrimSpace(latText) == "" || strings.TrimSpace(lonText) == "" {
+		return 0, 0, 0, fmt.Errorf("koordinat GPS tidak lengkap")
+	}
+	if strings.TrimSpace(accuracyText) == "" {
+		accuracyText = "0"
+	}
+	return parseAttendanceLocation(latText, lonText, accuracyText)
+}
+
 // validateHomeAttendanceLocation is the single WFH geofence rule used by
-// check-in and check-out. The link is required; coordinates are the values
-// resolved from that link when the home location was saved.
+// check-in and check-out. The coordinates and radius come from the effective
+// employee_home_locations row.
 func validateHomeAttendanceLocation(employeeID uint, latitude, longitude float64, accuracyValues ...float64) (bool, string, error) {
 	accuracy := firstAccuracy(accuracyValues)
 	home, err := effectiveHomeLocation(config.DB, employeeID, attendanceNow())
-	if err != nil || strings.TrimSpace(home.GoogleMapsURL) == "" {
-		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
+	if err != nil {
+		return false, workTypeValidationNone, fmt.Errorf("Lokasi rumah untuk absensi WFH belum diatur oleh HRD.")
 	}
 	return validateConfiguredHomeLocation(home, latitude, longitude, accuracy)
 }
 
 func validateConfiguredHomeLocation(home models.EmployeeHomeLocation, latitude, longitude float64, accuracyValues ...float64) (bool, string, error) {
 	accuracy := firstAccuracy(accuracyValues)
-	if strings.TrimSpace(home.GoogleMapsURL) == "" {
-		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
-	}
 	if home.LatitudeRumah == 0 || home.LongitudeRumah == 0 || home.RadiusMeter <= 0 {
-		return false, "tidak_tervalidasi", fmt.Errorf("Anda belum mengatur lokasi rumah untuk absensi WFH")
+		return false, workTypeValidationNone, fmt.Errorf("Lokasi rumah untuk absensi WFH belum diatur oleh HRD.")
 	}
-	if !validateCoordinatesAgainstRadius("WFH", latitude, longitude, accuracy, home.LatitudeRumah, home.LongitudeRumah, home.RadiusMeter) {
-		return false, "rumah", fmt.Errorf("Lokasi berada di luar radius rumah")
+	if !validateCoordinatesAgainstRadius(workTypeValidationHome, latitude, longitude, accuracy, home.LatitudeRumah, home.LongitudeRumah, home.RadiusMeter) {
+		return false, workTypeValidationHome, fmt.Errorf("Absensi harus berada dalam radius rumah karyawan.")
 	}
-	return true, "rumah", nil
+	return true, workTypeValidationHome, nil
 }
 
 func firstAccuracy(values []float64) float64 {
@@ -510,7 +516,7 @@ func uploadToMinIO(file *multipart.FileHeader, nik, tipe string) (string, error)
 func GetOfficeInfo(c *fiber.Ctx) error {
 	var office models.OfficeLocation
 	if err := config.DB.First(&office).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Office location not configured"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Lokasi kantor belum dikonfigurasi."})
 	}
 	return c.JSON(office)
 }

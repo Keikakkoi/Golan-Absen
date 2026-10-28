@@ -177,17 +177,47 @@ func TestValidateConfiguredHomeLocationUsesGoogleMapsHomePoint(t *testing.T) {
 	}
 
 	valid, _, err = validateConfiguredHomeLocation(home, -6.210000, 106.800000)
-	if err == nil || valid || err.Error() != "Lokasi berada di luar radius rumah" {
+	if err == nil || valid || err.Error() != "Absensi harus berada dalam radius rumah karyawan." {
 		t.Fatalf("outside home radius should fail: valid=%v err=%v", valid, err)
 	}
 }
 
-func TestValidateConfiguredHomeLocationRequiresGoogleMapsLink(t *testing.T) {
+func TestValidateConfiguredHomeLocationRequiresCoordinatesAndRadius(t *testing.T) {
 	valid, source, err := validateConfiguredHomeLocation(models.EmployeeHomeLocation{
-		LatitudeRumah: -6.2, LongitudeRumah: 106.8, RadiusMeter: 100,
+		RadiusMeter: 100,
 	}, -6.2, 106.8)
-	if err == nil || valid || source != "tidak_tervalidasi" || err.Error() != "Anda belum mengatur lokasi rumah untuk absensi WFH" {
-		t.Fatalf("missing home link should fail as unconfigured: valid=%v source=%s err=%v", valid, source, err)
+	if err == nil || valid || source != "tanpa_validasi" || err.Error() != "Lokasi rumah untuk absensi WFH belum diatur oleh HRD." {
+		t.Fatalf("missing home coordinates should fail as unconfigured: valid=%v source=%s err=%v", valid, source, err)
+	}
+}
+
+func TestWorkTypeValidationModesPreferCanonicalConfigurationWithLegacyFallbacks(t *testing.T) {
+	cases := []struct {
+		name     string
+		workType models.WorkType
+		want     string
+	}{
+		{name: "canonical office", workType: models.WorkType{Nama: "Remote Office", RadiusYangBerlaku: "kantor"}, want: workTypeValidationOffice},
+		{name: "canonical home", workType: models.WorkType{Nama: "WFH Custom", RadiusYangBerlaku: "rumah"}, want: workTypeValidationHome},
+		{name: "canonical none", workType: models.WorkType{Nama: "Dinas", RadiusYangBerlaku: "tanpa_validasi"}, want: workTypeValidationNone},
+		{name: "legacy home flag", workType: models.WorkType{Nama: "WFH", IsHomeBase: true, RadiusYangBerlaku: "kantor"}, want: workTypeValidationHome},
+		{name: "legacy WFO name", workType: models.WorkType{Nama: "WFO"}, want: workTypeValidationOffice},
+		{name: "legacy custom", workType: models.WorkType{Nama: "Dinas Luar", ButuhValidasiGeofence: true}, want: workTypeValidationNone},
+	}
+	for _, testCase := range cases {
+		if got := workTypeValidationMode(testCase.workType); got != testCase.want {
+			t.Errorf("%s: got %q, want %q", testCase.name, got, testCase.want)
+		}
+	}
+}
+
+func TestOptionalAttendanceLocationAllowsMissingCoordinatesOnlyForNoValidation(t *testing.T) {
+	lat, lon, accuracy, err := parseOptionalAttendanceLocation("", "", "")
+	if err != nil || lat != 0 || lon != 0 || accuracy != 0 {
+		t.Fatalf("missing coordinates should be accepted for no-validation mode: %.2f %.2f %.2f %v", lat, lon, accuracy, err)
+	}
+	if _, _, _, err := parseOptionalAttendanceLocation("-6.2", "", ""); err == nil {
+		t.Fatal("partial coordinates should still be rejected")
 	}
 }
 

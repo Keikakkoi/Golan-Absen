@@ -24,7 +24,18 @@
       >
         Hari Libur
       </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'worktypes'"
+        (click)="activeTab = 'worktypes'"
+      >
+        Manajemen Tipe Kerja
+      </button>
     </div>
+
+    <section class="worktype-settings-panel" *ngIf="activeTab === 'worktypes'">
+      <app-worktype-list [embedded]="true"></app-worktype-list>
+    </section>
 
     <div class="settings-grid" *ngIf="activeTab === 'general'">
       <section class="golan-card panel-card">

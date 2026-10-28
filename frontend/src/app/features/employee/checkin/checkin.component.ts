@@ -70,6 +70,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   officeLat = -6.1202471;
   officeLng = 106.7118952;
   radius = 100; // meters
+  officeConfigured = false;
 
   currentLat = 0;
   currentLng = 0;
@@ -84,6 +85,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   employeeProfile: any = null;
   
   isLocationValid = false;
+  isLocationRequired = true;
   locationError = '';
   cameraError = '';
   isCameraReady = false;
@@ -95,9 +97,9 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   
   tipeKerja: string = 'WFO';
   private readonly fallbackWorkTypes = [
-    { Nama: 'WFO', IsHomeBase: false },
-    { Nama: 'WFH', IsHomeBase: true },
-    { Nama: 'Dinas Luar', IsHomeBase: false }
+    { Nama: 'WFO', RadiusYangBerlaku: 'kantor' },
+    { Nama: 'WFH', RadiusYangBerlaku: 'rumah' },
+    { Nama: 'Dinas Luar', RadiusYangBerlaku: 'tanpa_validasi' }
   ];
   // Keep the selector usable even before the API response arrives.
   workTypes: any[] = this.fallbackWorkTypes.map(workType => ({ ...workType }));
@@ -193,6 +195,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
           this.leaveStatus = this.hasLeaveToday ? todayRecord.Status : '';
           if (this.hasCheckedIn && !this.hasCheckedOut) {
             this.tipeKerja = todayRecord.TipeKerja;
+            this.updateOfficeGeofence();
             this.updateMapGeofences();
             this.checkRadius();
           }
@@ -449,7 +452,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     // Keep its option visible even if an administrator removed that type later.
     const recordedType = this.todayRecord?.TipeKerja;
     if (this.hasCheckedIn && recordedType && !merged.some(workType => workType.Nama === recordedType)) {
-      merged.push({ Nama: recordedType, IsHomeBase: recordedType === 'WFH' });
+      merged.push({
+        Nama: recordedType,
+        RadiusYangBerlaku: recordedType === 'WFH' ? 'rumah' : (recordedType === 'WFO' ? 'kantor' : 'tanpa_validasi')
+      });
     }
 
     this.workTypes = merged;
@@ -458,6 +464,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     } else {
       this.tipeKerja = merged.find(workType => workType.Nama === 'WFO')?.Nama || merged[0]?.Nama || 'WFO';
     }
+    this.updateOfficeGeofence();
     this.updateMapGeofences();
     this.checkRadius();
   }
@@ -465,15 +472,24 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   private loadOfficeInfo(): void {
     this.attendanceService.getOfficeInfo().subscribe({
       next: (office) => {
-        if (office) {
-          this.officeLat = office.Latitude || -6.1202471;
-          this.officeLng = office.Longitude || 106.7118952;
-          this.radius = office.RadiusMeter || 100;
+        const lat = Number(office?.Latitude ?? office?.latitude);
+        const lng = Number(office?.Longitude ?? office?.longitude);
+        const radius = Number(office?.RadiusMeter ?? office?.radius_meter);
+        this.officeConfigured = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0 && radius > 0;
+        if (this.officeConfigured) {
+          this.officeLat = lat;
+          this.officeLng = lng;
+          this.radius = radius;
           this.updateOfficeGeofence();
           this.checkRadius();
         }
       },
-      error: (err) => console.error('Failed to load office location', err)
+      error: (err) => {
+        this.officeConfigured = false;
+        this.updateOfficeGeofence();
+        this.checkRadius();
+        console.error('Failed to load office location', err);
+      }
     });
   }
 
@@ -509,6 +525,9 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       this.map.removeLayer(this.officeMarker);
     }
 
+    const selectedWorkType = this.workTypes.find(w => w.Nama === this.tipeKerja);
+    if (!this.officeConfigured || this.validationMode(selectedWorkType) !== 'kantor') return;
+
     this.circle = L.circle([this.officeLat, this.officeLng], {
       color: '#1769AA',
       fillColor: '#2F80ED',
@@ -537,19 +556,18 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const selectedWorkType = this.workTypes.find(w => w.Nama === this.tipeKerja);
-    if (selectedWorkType && selectedWorkType.IsHomeBase && this.employeeProfile?.Employee) {
+    if (this.validationMode(selectedWorkType) === 'rumah' && this.employeeProfile?.Employee) {
       const home = this.employeeProfile.Employee.HomeLocation || this.employeeProfile.Employee.home_location;
       const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.employeeProfile.Employee.HomeLatitude ?? 0);
       const hLng = Number(home?.LongitudeRumah ?? home?.longitude_rumah ?? this.employeeProfile.Employee.HomeLongitude ?? 0);
-      const homeUrl = home?.GoogleMapsURL || home?.google_maps_url;
-      
-      if (homeUrl && hLat !== 0 && hLng !== 0) {
+      const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 0);
+      if (hLat !== 0 && hLng !== 0 && homeRadius > 0) {
         this.homeCircle = L.circle([hLat, hLng], {
           color: '#3B82F6',
           fillColor: '#3B82F6',
           fillOpacity: 0.15,
           weight: 2,
-          radius: Number(home?.RadiusMeter ?? home?.radius_meter ?? 100)
+          radius: homeRadius
         }).addTo(this.map);
         
         this.homeMarker = L.marker([hLat, hLng], { icon: blueIcon }).addTo(this.map).bindPopup('Lokasi Rumah Anda');
@@ -557,7 +575,17 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private validationMode(workType: any): 'kantor' | 'rumah' | 'tanpa_validasi' {
+    const configured = String(workType?.RadiusYangBerlaku || '').trim().toLowerCase();
+    if (configured === 'rumah' || configured === 'tanpa_validasi') return configured;
+    // Compatibility for work types returned by an older API/cache.
+    if (workType?.IsHomeBase) return 'rumah';
+    if (configured === 'kantor' || String(workType?.Nama || '').trim().toUpperCase() === 'WFO') return 'kantor';
+    return 'tanpa_validasi';
+  }
+
   onTipeKerjaChange(): void {
+    this.updateOfficeGeofence();
     this.updateMapGeofences();
     this.checkRadius();
   }
@@ -647,6 +675,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         this.isGpsActive = false;
         this.isLocationValid = false;
         this.locationError = `Aktifkan GPS untuk melanjutkan absensi. (Err: ${error.message || error.code})`;
+        this.checkRadius();
         this.statusText = `GPS Tidak Aktif · Err: ${error.message || error.code}`;
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
@@ -677,32 +706,64 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   private checkRadius(): void {
     this.locationDistanceText = '';
 
+    const selectedWorkType = this.workTypes.find(w => w.Nama === this.tipeKerja);
+    const mode = this.validationMode(selectedWorkType);
+    this.isLocationRequired = mode !== 'tanpa_validasi';
+
+    if (mode === 'tanpa_validasi') {
+      this.isLocationValid = true;
+      this.locationError = '';
+      this.statusText = 'Lokasi tidak memerlukan validasi radius untuk tipe kerja ini';
+      if (this.isGpsActive && (this.currentLat !== 0 || this.currentLng !== 0)) {
+        this.locationDistanceText = 'Koordinat GPS akan disimpan jika tersedia';
+      }
+      return;
+    }
+
+    if (mode === 'kantor' && !this.officeConfigured) {
+      this.isLocationValid = false;
+      this.locationError = 'Lokasi kantor belum dikonfigurasi.';
+      this.statusText = 'Lokasi kantor belum dikonfigurasi';
+      return;
+    }
+
+    if (mode === 'rumah' && this.employeeProfile?.Employee) {
+      const home = this.employeeProfile.Employee.HomeLocation || this.employeeProfile.Employee.home_location;
+      const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.employeeProfile.Employee.HomeLatitude ?? 0);
+      const hLng = Number(home?.LongitudeRumah ?? home?.longitude_rumah ?? this.employeeProfile.Employee.HomeLongitude ?? 0);
+      const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 0);
+      if (hLat === 0 || hLng === 0 || homeRadius <= 0) {
+        this.isLocationValid = false;
+        this.locationError = 'Lokasi rumah untuk absensi WFH belum diatur oleh HRD.';
+        this.statusText = 'Lokasi rumah belum diatur';
+        return;
+      }
+    }
+
     if (!this.isGpsActive || (this.currentLat === 0 && this.currentLng === 0)) {
       this.isLocationValid = false;
       this.statusText = 'GPS Tidak Aktif · Silakan aktifkan GPS perangkat Anda';
       return;
     }
 
-    const selectedWorkType = this.workTypes.find(w => w.Nama === this.tipeKerja);
     const userLatLng = L.latLng(this.currentLat, this.currentLng);
     const officeLatLng = L.latLng(this.officeLat, this.officeLng);
     this.distanceToOffice = Math.round(userLatLng.distanceTo(officeLatLng));
     
-    if (selectedWorkType?.IsHomeBase) {
+    if (mode === 'rumah') {
       if (this.employeeProfile?.Employee) {
         const home = this.employeeProfile.Employee.HomeLocation || this.employeeProfile.Employee.home_location;
         const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.employeeProfile.Employee.HomeLatitude ?? 0);
         const hLng = Number(home?.LongitudeRumah ?? home?.longitude_rumah ?? this.employeeProfile.Employee.HomeLongitude ?? 0);
-        const homeUrl = home?.GoogleMapsURL || home?.google_maps_url;
-        if (!homeUrl || hLat === 0 || hLng === 0) {
+        const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 0);
+        if (hLat === 0 || hLng === 0 || homeRadius <= 0) {
           this.isLocationValid = false;
-          this.locationError = 'Anda belum mengatur lokasi rumah untuk absensi WFH.';
+          this.locationError = 'Lokasi rumah untuk absensi WFH belum diatur oleh HRD.';
           this.statusText = 'Lokasi rumah belum diatur';
           return;
         }
         const homeLatLng = L.latLng(hLat, hLng);
         const homeDistance = Math.round(userLatLng.distanceTo(homeLatLng));
-        const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 100);
         this.isLocationValid = homeDistance <= homeRadius + Math.min(this.currentAccuracy, 50);
         if (!this.isLocationValid) {
           this.locationError = 'Posisi Anda di luar radius rumah.';
@@ -718,7 +779,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         this.locationError = 'Memuat profil karyawan...';
         this.statusText = 'Memuat profil karyawan...';
       }
-    } else if (this.tipeKerja === 'WFO') {
+    } else if (mode === 'kantor') {
       this.isLocationValid = this.distanceToOffice <= this.radius + Math.min(this.currentAccuracy, 50);
       if (!this.isLocationValid) {
           this.locationError = 'Posisi Anda di luar radius kantor.';
@@ -729,12 +790,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         ? 'Lokasi terverifikasi'
         : 'Lokasi di luar radius';
       this.locationDistanceText = `${this.isLocationValid ? 'Radius' : 'Jarak'} ${this.formatDistance(this.distanceToOffice)} meter dari kantor`;
-    } else {
-      this.isLocationValid = true;
-      this.locationError = '';
-      this.statusText = 'Lokasi tidak memerlukan validasi radius untuk tipe kerja ini';
     }
-
   }
 
   private formatDistance(distance: number): string {
@@ -791,7 +847,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async triggerPunch(): Promise<void> {
-    if (!this.canPunchBySchedule || !this.isGpsActive || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
+    if (!this.canPunchBySchedule || (this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
     if (this.isCheckoutPage && !this.hasCheckedIn) return;
     const isCheckout = this.hasCheckedIn;
     if (!await this.alert.confirm(isCheckout ? 'Konfirmasi check-out' : 'Konfirmasi check-in', isCheckout ? 'Simpan waktu check-out sekarang?' : 'Simpan absensi check-in sekarang?', isCheckout ? 'Ya, check-out' : 'Ya, check-in')) return;
@@ -803,7 +859,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   submitCheckin(): void {
-    if (!this.isGpsActive || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
+    if ((this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
 
     this.isSubmitting = true;
 
@@ -828,7 +884,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   submitCheckout(): void {
-    if (!this.isGpsActive || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
+    if ((this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
 
     this.isSubmitting = true;
 

@@ -203,7 +203,7 @@ type AttendanceRecord struct {
 	Longitude            float64          // General / Masuk Longitude
 	AkurasiGPS           float64          // General / Masuk GPS Accuracy (meter)
 	DalamRadius          bool             // General / Masuk within radius boolean
-	RadiusTervalidasi    string           `gorm:"size:50;default:'kantor'"` // kantor/rumah/tidak_tervalidasi
+	RadiusTervalidasi    string           `gorm:"size:50;default:'kantor'"` // kantor/rumah/tanpa_validasi
 	LatitudeMasuk        float64
 	LongitudeMasuk       float64
 	AkurasiGPSMasuk      float64
@@ -223,7 +223,7 @@ type WorkType struct {
 	IsDefault             bool   `gorm:"default:false"`
 	IsHomeBase            bool   `gorm:"default:false"`
 	ButuhValidasiGeofence bool   `gorm:"default:true"`
-	RadiusYangBerlaku     string `gorm:"size:50;default:'kantor'"` // kantor/rumah/kombinasi
+	RadiusYangBerlaku     string `gorm:"size:50;default:'kantor'"` // kantor/rumah/tanpa_validasi
 	WajibSelfie           bool   `gorm:"default:true"`
 	WarnaLabel            string `gorm:"size:20;default:'#3B82F6'"`
 	StatusAktif           bool   `gorm:"default:true"`

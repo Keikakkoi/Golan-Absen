@@ -15,14 +15,16 @@ describe('CheckinComponent', () => {
     (component as any).applyWorkTypes([]);
 
     expect(component.workTypes.map(type => type.Nama)).toEqual(['WFO', 'WFH', 'Dinas Luar']);
-    expect(component.workTypes.find(type => type.Nama === 'Dinas Luar').IsHomeBase).toBeFalse();
+    expect(component.workTypes.find(type => type.Nama === 'WFO').RadiusYangBerlaku).toBe('kantor');
+    expect(component.workTypes.find(type => type.Nama === 'WFH').RadiusYangBerlaku).toBe('rumah');
+    expect(component.workTypes.find(type => type.Nama === 'Dinas Luar').RadiusYangBerlaku).toBe('tanpa_validasi');
   });
 
   it('does not replace the work type stored on today\'s attendance record', () => {
     component.hasCheckedIn = true;
     component.todayRecord = { TipeKerja: 'Dinas Luar' };
 
-    (component as any).applyWorkTypes([{ Nama: 'WFO', IsHomeBase: false }, { Nama: 'WFH', IsHomeBase: true }]);
+    (component as any).applyWorkTypes([{ Nama: 'WFO', RadiusYangBerlaku: 'kantor' }, { Nama: 'WFH', RadiusYangBerlaku: 'rumah' }]);
 
     expect(component.tipeKerja).toBe('Dinas Luar');
     expect(component.workTypes.some(type => type.Nama === 'Dinas Luar')).toBeTrue();

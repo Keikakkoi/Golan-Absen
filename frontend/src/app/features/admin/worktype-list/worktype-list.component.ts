@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -15,6 +15,8 @@ import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component'
   styleUrls: ['./worktype-list.component.scss']
 })
 export class WorktypeListComponent implements OnInit {
+  @Input() embedded = false;
+
   workTypes: any[] = [];
   isLoading = true;
   errorMessage = '';
@@ -26,7 +28,7 @@ export class WorktypeListComponent implements OnInit {
   formData: any = {
     id: null,
     Nama: '',
-    IsHomeBase: false
+    RadiusYangBerlaku: 'kantor'
   };
 
   private baseUrl = 'http://localhost:8080/api/v1/admin/worktypes';
@@ -58,13 +60,17 @@ export class WorktypeListComponent implements OnInit {
 
   openAddModal(): void {
     this.isEditMode = false;
-    this.formData = { id: null, Nama: '', IsHomeBase: false };
+    this.formData = { id: null, Nama: '', RadiusYangBerlaku: 'kantor' };
     this.isModalOpen = true;
   }
 
   openEditModal(wt: any): void {
     this.isEditMode = true;
-    this.formData = { id: wt.ID, Nama: wt.Nama, IsHomeBase: wt.IsHomeBase };
+    this.formData = {
+      id: wt.ID,
+      Nama: wt.Nama,
+      RadiusYangBerlaku: this.validationMode(wt)
+    };
     this.isModalOpen = true;
   }
 
@@ -73,12 +79,20 @@ export class WorktypeListComponent implements OnInit {
   }
 
   async saveWorkType(): Promise<void> {
+    if (!this.formData.Nama?.trim()) {
+      await this.alert.error('Data belum lengkap', 'Nama tipe kerja wajib diisi.');
+      return;
+    }
+    if (!this.formData.RadiusYangBerlaku) {
+      await this.alert.error('Data belum lengkap', 'Mode validasi lokasi wajib dipilih.');
+      return;
+    }
     const action = this.isEditMode ? 'mengubah tipe kerja ini' : 'menyimpan tipe kerja baru';
     if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.isSaving = true;
     const body = {
-      Nama: this.formData.Nama,
-      IsHomeBase: this.formData.IsHomeBase
+      Nama: this.formData.Nama.trim(),
+      RadiusYangBerlaku: this.formData.RadiusYangBerlaku
     };
 
     const req = this.isEditMode 
@@ -97,6 +111,22 @@ export class WorktypeListComponent implements OnInit {
         this.isSaving = false;
       }
     });
+  }
+
+  validationMode(workType: any): string {
+    const configured = String(workType?.RadiusYangBerlaku || '').trim().toLowerCase();
+    if (configured === 'rumah' || configured === 'tanpa_validasi') return configured;
+    if (workType?.IsHomeBase) return 'rumah';
+    if (configured === 'kantor' || String(workType?.Nama || '').trim().toUpperCase() === 'WFO') return 'kantor';
+    return 'tanpa_validasi';
+  }
+
+  validationLabel(workType: any): string {
+    switch (this.validationMode(workType)) {
+      case 'kantor': return 'Kantor';
+      case 'rumah': return 'Rumah';
+      default: return 'Tidak ada';
+    }
   }
 
   async deleteWorkType(id: number): Promise<void> {

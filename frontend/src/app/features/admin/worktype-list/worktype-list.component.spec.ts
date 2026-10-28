@@ -23,4 +23,10 @@ describe('WorktypeListComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('normalizes legacy and canonical location modes for the table and edit form', () => {
+    expect(component.validationLabel({ Nama: 'WFO', IsHomeBase: false, RadiusYangBerlaku: 'kantor' })).toBe('Kantor');
+    expect(component.validationLabel({ Nama: 'WFH', IsHomeBase: true, RadiusYangBerlaku: 'kantor' })).toBe('Rumah');
+    expect(component.validationLabel({ Nama: 'Dinas Luar', RadiusYangBerlaku: 'tanpa_validasi' })).toBe('Tidak ada');
+  });
 });
