@@ -30,13 +30,28 @@
   max-width: 100%;
 }
 
+.payslip-preview header > div {
+  min-width: 0;
+}
+
+.payslip-preview header .company-contact small {
+  margin-top: 3px;
+  font-size: .68rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.payslip-preview header .company-contact .company-address {
+  max-width: 100%;
+}
+
 .payslip-preview .preview-note {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 @media (max-width:900px) { .main-content { padding:24px 18px; } .filters { grid-template-columns:repeat(2,1fr); } .filter-actions { grid-column:1/-1; } .items-grid { grid-template-columns:1fr; } }
-@media (max-width:600px) { .page-heading { align-items:flex-start; flex-direction:column; } .filters,.form-grid { grid-template-columns:1fr; } .payslip-preview { padding:16px; } .employee-details,.preview-columns,.payslip-preview footer { grid-template-columns:1fr; } .summary { flex-direction:column; } .item-row { grid-template-columns:1fr 1fr 28px; } }
+@media (max-width:600px) { .page-heading { align-items:flex-start; flex-direction:column; } .filters,.form-grid { grid-template-columns:1fr; } .payslip-preview { padding:16px; } .payslip-preview header { grid-template-columns:auto minmax(0,1fr); } .payslip-preview header .preview-period { grid-column:1/-1; text-align:left; } .employee-details,.preview-columns,.payslip-preview footer { grid-template-columns:1fr; } .summary { flex-direction:column; } .item-row { grid-template-columns:1fr 1fr 28px; } }
 
 /* Payroll dialogs are rendered inside .main-content, so the shared dark-mode
    rules also target their generic inputs, labels, headings, and buttons. Keep

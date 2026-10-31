@@ -5,7 +5,12 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 
 export const PAYROLL_COMPANY_NAME = 'PT Golan Digital Kreatif';
-export const PAYROLL_COMPANY_CODE = '02145678';
+export const PAYROLL_COMPANY_CONTACT = {
+  phone: '6281324937038/+6285319094079',
+  email: 'info@golandigital.com',
+  website: 'golandigital.com',
+  address: 'Jalan Manyar II RT.002 RW.011, Tegal Alur, Kalideres, Jakarta Barat, DKI Jakarta'
+} as const;
 export const PAYROLL_TAKE_HOME_PAY_SUBTITLE = 'Total pendapatan - Total pengurangan';
 
 export interface PayrollItem { ID?: number; type: 'income' | 'deduction'; name: string; amount: number; sort_order?: number; }

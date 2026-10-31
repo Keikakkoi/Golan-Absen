@@ -73,7 +73,7 @@ func TestRupiahUsesWholeRupiahSeparators(t *testing.T) {
 	}
 }
 
-func TestNormalizePayrollCompanySnapshotUsesServerOwnedCode(t *testing.T) {
+func TestNormalizePayrollCompanySnapshotUsesServerOwnedContact(t *testing.T) {
 	payroll := &models.Payroll{}
 
 	normalizePayrollCompanySnapshot(payroll)
@@ -81,8 +81,30 @@ func TestNormalizePayrollCompanySnapshotUsesServerOwnedCode(t *testing.T) {
 	if payroll.CompanyNameSnapshot != "PT Golan Digital Kreatif" {
 		t.Fatalf("unexpected company name: %q", payroll.CompanyNameSnapshot)
 	}
-	if payroll.CompanyPhoneSnapshot != "02145678" {
-		t.Fatalf("unexpected company code: %q", payroll.CompanyPhoneSnapshot)
+	if payroll.CompanyPhoneSnapshot != defaultCompanyPhone {
+		t.Fatalf("unexpected company phone: %q", payroll.CompanyPhoneSnapshot)
+	}
+}
+
+func TestSendPayrollPDFIncludesCompanyContactLinks(t *testing.T) {
+	pdf := renderPayrollPDFForTest(t, testPayroll(1))
+	text := extractPDFText(pdf)
+
+	for _, value := range []string{defaultCompanyPhone, defaultCompanyEmail, defaultCompanyWebsite} {
+		if !strings.Contains(text, value) {
+			t.Fatalf("expected %q in PDF text", value)
+		}
+	}
+	for _, fragment := range []string{"Jalan Manyar II", "RT.002 RW.011", "Tegal Alur", "Kalideres", "Jakarta Barat", "DKI Jakarta"} {
+		if !strings.Contains(text, fragment) {
+			t.Fatalf("expected address fragment %q in PDF text", fragment)
+		}
+	}
+	if !bytes.Contains(pdf, []byte("mailto:"+defaultCompanyEmail)) {
+		t.Fatal("expected email hyperlink in PDF")
+	}
+	if !bytes.Contains(pdf, []byte("https://"+defaultCompanyWebsite)) {
+		t.Fatal("expected website hyperlink in PDF")
 	}
 }
 

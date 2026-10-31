@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
-import { PAYROLL_COMPANY_CODE, PAYROLL_COMPANY_NAME, PAYROLL_TAKE_HOME_PAY_SUBTITLE, Payroll, PayrollService } from '../../../core/services/payroll.service';
+import { PAYROLL_COMPANY_CONTACT, PAYROLL_COMPANY_NAME, PAYROLL_TAKE_HOME_PAY_SUBTITLE, Payroll, PayrollService } from '../../../core/services/payroll.service';
 import { AlertService } from '../../../core/services/alert.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { normalizeRole } from '../../../core/auth/role';
@@ -9,6 +9,7 @@ import { normalizeRole } from '../../../core/auth/role';
 @Component({ selector: 'app-employee-payroll', standalone: true, imports: [CommonModule, SharedSidebarComponent, PaginationComponent], templateUrl: './employee-payroll.component.html', styleUrls: ['./employee-payroll.component.scss'] })
 export class EmployeePayrollComponent implements OnInit {
   readonly companyName = PAYROLL_COMPANY_NAME;
+  readonly companyContact = PAYROLL_COMPANY_CONTACT;
   readonly takeHomePaySubtitle = PAYROLL_TAKE_HOME_PAY_SUBTITLE;
   rows: Payroll[] = []; selected?: Payroll; loading = true; errorMessage = '';
   readonly internPayrollMessage = 'Peserta magang belum dapat diproses dalam penggajian karena status penggajiannya belum ditetapkan oleh perusahaan.';
@@ -49,7 +50,6 @@ export class EmployeePayrollComponent implements OnInit {
   pageSizeChanged(limit: number): void { if (this.loading || limit === this.limit) return; this.limit = Number(limit); this.page = 1; this.load(); }
   preview(row: Payroll): void { this.selected = row; }
   close(): void { this.selected = undefined; }
-  companyCodeValue(row?: Payroll): string { return row?.company_phone_snapshot?.trim() || PAYROLL_COMPANY_CODE; }
   download(row: Payroll): void { this.payroll.pdf(row.ID, true).subscribe({ next: blob => { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `slip-gaji-${row.employee_code_snapshot}-${row.periode_bulan.slice(0, 7)}.pdf`; link.click(); URL.revokeObjectURL(url); }, error: err => void this.alert.error('Gagal mengunduh PDF', err.error?.error || '') }); }
   money(value: number): string { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0); }
   hasPayrollComponent(row: Payroll | undefined, type: 'income' | 'deduction', name: string): boolean { return !!row?.items?.some(item => item.type === type && String(item.name || '').trim().toLowerCase() === name.toLowerCase()); }

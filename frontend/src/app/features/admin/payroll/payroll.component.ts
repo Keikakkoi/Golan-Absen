@@ -5,7 +5,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { AlertService } from '../../../core/services/alert.service';
-import { PAYROLL_COMPANY_CODE, PAYROLL_COMPANY_NAME, PAYROLL_TAKE_HOME_PAY_SUBTITLE, Payroll, PayrollItem, PayrollService } from '../../../core/services/payroll.service';
+import { PAYROLL_COMPANY_CONTACT, PAYROLL_COMPANY_NAME, PAYROLL_TAKE_HOME_PAY_SUBTITLE, Payroll, PayrollItem, PayrollService } from '../../../core/services/payroll.service';
 import { environment } from '../../../../environments/environment';
 import { Subscription } from 'rxjs';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
@@ -16,6 +16,7 @@ interface DirectoryEmployee { employee_id: number; Nama: string; Role?: string; 
 @Component({ selector: 'app-payroll', standalone: true, imports: [CommonModule, FormsModule, AdminSidebarComponent, DatePickerComponent, PaginationComponent], templateUrl: './payroll.component.html', styleUrls: ['./payroll.component.scss'] })
 export class PayrollComponent implements OnInit, OnDestroy {
   readonly companyName = PAYROLL_COMPANY_NAME;
+  readonly companyContact = PAYROLL_COMPANY_CONTACT;
   readonly takeHomePaySubtitle = PAYROLL_TAKE_HOME_PAY_SUBTITLE;
   readonly internPayrollMessage = 'Peserta magang belum dapat diproses dalam penggajian karena status penggajiannya belum tersedia pada versi sekarang.';
   rows: Payroll[] = []; employees: DirectoryEmployee[] = []; divisions: string[] = [];
@@ -82,7 +83,7 @@ export class PayrollComponent implements OnInit, OnDestroy {
   resetFilters(): void { this.filters = { month: '', year: '', employee_id: '', division: '', status: '', limit: 10 }; this.applyFilters(); }
   changePage(page: number): void { if (this.isLoading || page < 1 || page > this.totalPages || page === this.page) return; this.page = page; this.load(); }
   pageSizeChanged(limit: number): void { if (this.isLoading || limit === this.filters.limit) return; this.filters.limit = Number(limit); this.page = 1; this.load(); }
-  emptyForm(): any { const now = new Date(); return { employee_id: '', periode_bulan: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, payroll_cutoff_start: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, payroll_cutoff_end: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`, payment_date: '', company_phone: PAYROLL_COMPANY_CODE, total_hari_kerja: 0, notes: '', approved_by_name: '', approved_by_position: '', received_by_name: '', received_by_position: '', incomes: [{ name: 'Gaji pokok', amount: 0 }, { name: 'Uang makan', amount: 0 }, { name: 'Uang Transportasi', amount: 0 }], deductions: [{ name: 'PPh 21', amount: 0 }, { name: 'BPJS Kesehatan', amount: 0 }, { name: 'BPJS Ketenagakerjaan', amount: 0 }] }; }
+  emptyForm(): any { const now = new Date(); return { employee_id: '', periode_bulan: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, payroll_cutoff_start: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`, payroll_cutoff_end: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`, payment_date: '', company_phone: PAYROLL_COMPANY_CONTACT.phone, total_hari_kerja: 0, notes: '', approved_by_name: '', approved_by_position: '', received_by_name: '', received_by_position: '', incomes: [{ name: 'Gaji pokok', amount: 0 }, { name: 'Uang makan', amount: 0 }, { name: 'Uang Transportasi', amount: 0 }], deductions: [{ name: 'PPh 21', amount: 0 }, { name: 'BPJS Kesehatan', amount: 0 }, { name: 'BPJS Ketenagakerjaan', amount: 0 }] }; }
   openCreate(): void { this.editingID = null; this.form = this.emptyForm(); this.resetEmployeeDetails(); this.syncApproverFields(); this.isEditorOpen = true; this.isPreviewOpen = false; }
   edit(row: Payroll): void {
     if (this.isInternEmployee(this.employees.find(employee => employee.employee_id === row.employee_id))) {
@@ -94,7 +95,7 @@ export class PayrollComponent implements OnInit, OnDestroy {
   formFromPayroll(row: Payroll): any {
     const incomes = this.ensureComponent((row.items || []).filter(i => i.type === 'income').map(i => ({ name: i.name, amount: i.amount })), 'Uang Transportasi', Number(row.uang_transportasi) || 0);
     const deductions = this.ensureComponent((row.items || []).filter(i => i.type === 'deduction').map(i => ({ name: i.name, amount: i.amount })), 'BPJS Ketenagakerjaan', Number(row.bpjs_ketenagakerjaan) || 0);
-    return { employee_id: row.employee_id, periode_bulan: row.periode_bulan?.slice(0, 7), payroll_cutoff_start: row.payroll_cutoff_start?.slice(0, 10), payroll_cutoff_end: row.payroll_cutoff_end?.slice(0, 10), payment_date: row.payment_date?.slice(0, 10), company_phone: PAYROLL_COMPANY_CODE, total_hari_kerja: row.total_hari_kerja, notes: row.notes || '', approved_by_name: row.approved_by_name || '', approved_by_position: row.approved_by_position || '', received_by_name: row.received_by_name || '', received_by_position: row.received_by_position || '', incomes, deductions };
+    return { employee_id: row.employee_id, periode_bulan: row.periode_bulan?.slice(0, 7), payroll_cutoff_start: row.payroll_cutoff_start?.slice(0, 10), payroll_cutoff_end: row.payroll_cutoff_end?.slice(0, 10), payment_date: row.payment_date?.slice(0, 10), company_phone: PAYROLL_COMPANY_CONTACT.phone, total_hari_kerja: row.total_hari_kerja, notes: row.notes || '', approved_by_name: row.approved_by_name || '', approved_by_position: row.approved_by_position || '', received_by_name: row.received_by_name || '', received_by_position: row.received_by_position || '', incomes, deductions };
   }
   private ensureComponent(items: any[], name: string, amount: number): any[] { return items.some(item => String(item.name || '').trim().toLowerCase() === name.toLowerCase()) ? items : [...items, { name, amount }]; }
   syncApproverFields(): void { this.form.approved_by_name = this.currentUser.name || localStorage.getItem('name') || ''; this.form.approved_by_position = this.currentUser.jabatan || localStorage.getItem('jabatan') || ''; }
@@ -154,7 +155,7 @@ export class PayrollComponent implements OnInit, OnDestroy {
     return !start || !end || start > end;
   }
   private componentAmount(items: any[], name: string): number { const item = (items || []).find(candidate => String(candidate.name || '').trim().toLowerCase() === name.toLowerCase()); return Number(item?.amount) || 0; }
-  private payload(): any { return { employee_id: Number(this.form.employee_id), periode_bulan: this.form.periode_bulan, payroll_cutoff_start: this.form.payroll_cutoff_start, payroll_cutoff_end: this.form.payroll_cutoff_end, payment_date: this.form.payment_date, company_phone: PAYROLL_COMPANY_CODE, total_hari_kerja: Number(this.form.total_hari_kerja), uang_transportasi: this.componentAmount(this.form.incomes, 'Uang Transportasi'), bpjs_ketenagakerjaan: this.componentAmount(this.form.deductions, 'BPJS Ketenagakerjaan'), notes: this.form.notes, approved_by_name: this.form.approved_by_name, approved_by_position: this.form.approved_by_position, received_by_name: this.form.received_by_name, received_by_position: this.form.received_by_position, items: [...this.form.incomes.map((i: any) => ({ type: 'income', name: i.name, amount: Number(i.amount) || 0 })), ...this.form.deductions.map((i: any) => ({ type: 'deduction', name: i.name, amount: Number(i.amount) || 0 }))] }; }
+  private payload(): any { return { employee_id: Number(this.form.employee_id), periode_bulan: this.form.periode_bulan, payroll_cutoff_start: this.form.payroll_cutoff_start, payroll_cutoff_end: this.form.payroll_cutoff_end, payment_date: this.form.payment_date, company_phone: PAYROLL_COMPANY_CONTACT.phone, total_hari_kerja: Number(this.form.total_hari_kerja), uang_transportasi: this.componentAmount(this.form.incomes, 'Uang Transportasi'), bpjs_ketenagakerjaan: this.componentAmount(this.form.deductions, 'BPJS Ketenagakerjaan'), notes: this.form.notes, approved_by_name: this.form.approved_by_name, approved_by_position: this.form.approved_by_position, received_by_name: this.form.received_by_name, received_by_position: this.form.received_by_position, items: [...this.form.incomes.map((i: any) => ({ type: 'income', name: i.name, amount: Number(i.amount) || 0 })), ...this.form.deductions.map((i: any) => ({ type: 'deduction', name: i.name, amount: Number(i.amount) || 0 }))] }; }
   async save(): Promise<void> {
     if (this.selectedEmployeeIsIntern) {
       await this.alert.info('Penggajian Peserta Magang Dikunci', this.internPayrollMessage);
@@ -177,14 +178,13 @@ export class PayrollComponent implements OnInit, OnDestroy {
       return;
     }
     const employee = this.employees.find(item => item.employee_id === Number(this.form.employee_id));
-     this.selected = { ...this.payload(), ID: this.editingID || 0, employee_name_snapshot: employee?.Nama || '-', employee_code_snapshot: this.employeeCode(employee), nik_snapshot: employee?.Employee?.NIK || '', position_snapshot: employee?.Employee?.Position?.NamaJabatan || '', division_snapshot: employee?.Employee?.Division?.NamaDivisi || '', company_name_snapshot: PAYROLL_COMPANY_NAME, company_phone_snapshot: PAYROLL_COMPANY_CODE, uang_transportasi: this.componentAmount(this.form.incomes, 'Uang Transportasi'), bpjs_ketenagakerjaan: this.componentAmount(this.form.deductions, 'BPJS Ketenagakerjaan'), total_income: this.totalIncome, total_deduction: this.totalDeduction, take_home_pay: this.takeHomePay, status: 'Draft', items: this.payload().items } as Payroll;
+     this.selected = { ...this.payload(), ID: this.editingID || 0, employee_name_snapshot: employee?.Nama || '-', employee_code_snapshot: this.employeeCode(employee), nik_snapshot: employee?.Employee?.NIK || '', position_snapshot: employee?.Employee?.Position?.NamaJabatan || '', division_snapshot: employee?.Employee?.Division?.NamaDivisi || '', company_name_snapshot: PAYROLL_COMPANY_NAME, company_phone_snapshot: PAYROLL_COMPANY_CONTACT.phone, uang_transportasi: this.componentAmount(this.form.incomes, 'Uang Transportasi'), bpjs_ketenagakerjaan: this.componentAmount(this.form.deductions, 'BPJS Ketenagakerjaan'), total_income: this.totalIncome, total_deduction: this.totalDeduction, take_home_pay: this.takeHomePay, status: 'Draft', items: this.payload().items } as Payroll;
     this.isPreviewOpen = true;
   }
   download(row: Payroll): void { this.payroll.pdf(row.ID).subscribe({ next: blob => { const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `slip-gaji-${row.employee_code_snapshot}-${row.periode_bulan.slice(0, 7)}.pdf`; link.click(); URL.revokeObjectURL(link.href); }, error: err => void this.alert.error('Gagal mengunduh PDF', err.error?.error || '') }); }
   employeeLabel(employeeID: number): string { const employee = this.employees.find(e => e.employee_id === employeeID); return employee ? `${employee.Nama} (${this.employeeCode(employee)})` : '-'; }
   formatMoney(value: number): string { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0); }
   hasPayrollComponent(row: Payroll | undefined, type: 'income' | 'deduction', name: string): boolean { return !!row?.items?.some(item => item.type === type && String(item.name || '').trim().toLowerCase() === name.toLowerCase()); }
-  companyCodeValue(row?: Payroll): string { return row?.company_phone_snapshot?.trim() || PAYROLL_COMPANY_CODE; }
   formatPeriod(value: string | undefined | null): string {
     const match = String(value || '').match(/^(\d{4})-(\d{2})/);
     if (!match) return '-';

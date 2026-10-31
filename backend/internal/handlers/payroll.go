@@ -21,7 +21,10 @@ import (
 
 const (
 	defaultCompanyName         = "PT Golan Digital Kreatif"
-	defaultCompanyCode         = "02145678"
+	defaultCompanyPhone        = "6281324937038/+6285319094079"
+	defaultCompanyEmail        = "info@golandigital.com"
+	defaultCompanyWebsite      = "golandigital.com"
+	defaultCompanyAddress      = "Jalan Manyar II RT.002 RW.011, Tegal Alur, Kalideres, Jakarta Barat, DKI Jakarta"
 	takeHomePaySubtitle        = "Total pendapatan - Total pengurangan"
 	internPayrollLockedMessage = "Peserta magang belum dapat diproses dalam penggajian karena status penggajiannya belum tersedia pada versi sekarang."
 )
@@ -601,7 +604,7 @@ func normalizePayrollCompanySnapshot(payroll *models.Payroll) {
 	// General Settings currently has no company identity field. Keep this
 	// server-owned so a blank or forged frontend value cannot reach a payslip.
 	payroll.CompanyNameSnapshot = defaultCompanyName
-	payroll.CompanyPhoneSnapshot = defaultCompanyCode
+	payroll.CompanyPhoneSnapshot = defaultCompanyPhone
 }
 
 func normalizePayrollCompanySnapshots(payrolls []models.Payroll) {
@@ -658,9 +661,20 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 	pdf.SetFont("Arial", "B", 12)
 	pdf.SetXY(40, 15)
 	pdf.CellFormat(90, 6, payroll.CompanyNameSnapshot, "", 1, "L", false, 0, "")
-	pdf.SetFont("Arial", "", 8)
+	pdf.SetFont("Arial", "", 7)
 	pdf.SetX(40)
-	pdf.CellFormat(90, 5, payroll.CompanyPhoneSnapshot, "", 1, "L", false, 0, "")
+	pdf.CellFormat(82, 4, payroll.CompanyPhoneSnapshot, "", 1, "L", false, 0, "")
+	pdf.SetX(40)
+	emailWidth := pdf.GetStringWidth(defaultCompanyEmail)
+	pdf.CellFormat(emailWidth, 4, defaultCompanyEmail, "", 0, "L", false, 0, "")
+	pdf.LinkString(40, 25, emailWidth, 4, "mailto:"+defaultCompanyEmail)
+	pdf.CellFormat(5, 4, " | ", "", 0, "L", false, 0, "")
+	websiteX := 40 + emailWidth + 5
+	websiteWidth := pdf.GetStringWidth(defaultCompanyWebsite)
+	pdf.CellFormat(websiteWidth, 4, defaultCompanyWebsite, "", 1, "L", false, 0, "")
+	pdf.LinkString(websiteX, 25, websiteWidth, 4, "https://"+defaultCompanyWebsite)
+	pdf.SetXY(40, 29)
+	pdf.MultiCell(82, 3.5, defaultCompanyAddress, "", "L", false)
 	pdf.SetFont("Arial", "B", 13)
 	pdf.SetXY(128, 15)
 	pdf.CellFormat(66, 6, "Slip gaji untuk bulan", "", 1, "R", false, 0, "")
@@ -668,12 +682,12 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 	pdf.SetX(128)
 	pdf.CellFormat(66, 5, payroll.PeriodeBulan.Format("January 2006"), "", 1, "R", false, 0, "")
 	pdf.SetDrawColor(220, 224, 230)
-	pdf.Line(16, 40, 194, 40)
+	pdf.Line(16, 44, 194, 44)
 	pdf.SetFont("Arial", "B", 10)
-	pdf.SetXY(16, 47)
+	pdf.SetXY(16, 51)
 	pdf.Cell(178, 6, "Rincian karyawan")
 	pdf.SetFont("Arial", "", 8)
-	y := float64(57)
+	y := float64(61)
 	left := [][2]string{{"Nama karyawan", payroll.EmployeeNameSnapshot}, {"ID karyawan", payroll.EmployeeCodeSnapshot}, {"Jabatan", payroll.PositionSnapshot}, {"Departemen", payroll.DivisionSnapshot}}
 	right := [][2]string{{"Total hari kerja", strconv.Itoa(payroll.TotalHariKerja)}, {"Payroll cut off", payroll.PayrollCutoffStart.Format("02/01/2006") + " - " + payroll.PayrollCutoffEnd.Format("02/01/2006")}, {"Tanggal bayar", payroll.PaymentDate.Format("02/01/2006")}}
 	for i := 0; i < len(left); i++ {
@@ -691,12 +705,12 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 		}
 		y += 6
 	}
-	pdf.Line(16, 84, 194, 84)
+	pdf.Line(16, 88, 194, 88)
 	pdf.SetFont("Arial", "B", 10)
-	pdf.SetXY(16, 91)
+	pdf.SetXY(16, 95)
 	pdf.Cell(178, 6, "Rincian penghasilan")
 	pdf.SetFillColor(239, 242, 245)
-	pdf.SetXY(16, 100)
+	pdf.SetXY(16, 104)
 	pdf.CellFormat(88, 8, "Pendapatan                                      Jumlah", "", 0, "L", true, 0, "")
 	pdf.SetX(106)
 	pdf.CellFormat(88, 8, "Pengurangan                                Jumlah", "", 1, "L", true, 0, "")
@@ -720,7 +734,7 @@ func sendPayrollPDF(c *fiber.Ctx, payroll *models.Payroll) error {
 	if len(deductions) > rows {
 		rows = len(deductions)
 	}
-	y = 108
+	y = 112
 	for i := 0; i < rows; i++ {
 		if y > 248 {
 			pdf.AddPage()

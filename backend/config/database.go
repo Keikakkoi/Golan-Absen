@@ -114,11 +114,11 @@ func ConnectDB(cfg *Config) {
 			log.Printf("Work-type location migration statement failed: %v", err)
 		}
 	}
-	// Older payroll rows may have been created while the company code was
-	// incorrectly accepted from the frontend. Repair blank snapshots without
-	// adding another company column.
-	if err := DB.Exec("UPDATE payrolls SET company_phone_snapshot = '02145678' WHERE company_phone_snapshot IS NULL OR BTRIM(company_phone_snapshot) = ''").Error; err != nil {
-		log.Printf("Failed to backfill payroll company code: %v", err)
+	// Keep the company contact in existing payroll snapshots aligned with the
+	// server-owned payslip template. The runtime normalizer also protects rows
+	// when the application starts before this compatibility update runs.
+	if err := DB.Exec("UPDATE payrolls SET company_phone_snapshot = '6281324937038/+6285319094079' WHERE company_phone_snapshot IS NULL OR BTRIM(company_phone_snapshot) <> '6281324937038/+6285319094079'").Error; err != nil {
+		log.Printf("Failed to backfill payroll company contact: %v", err)
 	}
 	// Keep runtime startup compatible with installations that apply SQL
 	// migrations separately. Existing NULL/blank values are historical
