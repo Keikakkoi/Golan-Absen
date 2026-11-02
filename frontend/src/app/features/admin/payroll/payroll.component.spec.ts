@@ -1,5 +1,18 @@
 import { BehaviorSubject, of } from 'rxjs';
-import { PayrollComponent } from './payroll.component';
+import { PayrollComponent, payrollCutoffDefaults } from './payroll.component';
+
+describe('payrollCutoffDefaults', () => {
+  it('uses the 29th of the previous month and the 28th of the selected month', () => {
+    expect(payrollCutoffDefaults('2026-11')).toEqual({ start: '2026-10-29', end: '2026-11-28' });
+  });
+
+  it('handles year changes and February without relying on the current date', () => {
+    expect(payrollCutoffDefaults('2027-01')).toEqual({ start: '2026-12-29', end: '2027-01-28' });
+    expect(payrollCutoffDefaults('2026-02')).toEqual({ start: '2026-01-29', end: '2026-02-28' });
+    expect(payrollCutoffDefaults('2026-03')).toEqual({ start: '2026-02-28', end: '2026-03-28' });
+    expect(payrollCutoffDefaults('2024-03')).toEqual({ start: '2024-02-29', end: '2024-03-28' });
+  });
+});
 
 describe('PayrollComponent employee details', () => {
   let component: PayrollComponent;
@@ -54,6 +67,24 @@ describe('PayrollComponent employee details', () => {
     });
     expect(component.form.received_by_name).toBe('Ayu');
     expect(component.form.received_by_position).toBe('Manajer Operasional');
+  });
+
+  it('updates a new form cutoff when its period changes and keeps manual dates editable', () => {
+    component.form = component.emptyForm();
+    (component as any).lastPeriod = '2026-10';
+    component.form.payroll_cutoff_start = '2026-09-29';
+    component.form.payroll_cutoff_end = '2026-10-28';
+    component.form.periode_bulan = '2026-11';
+    component.onPeriodChanged();
+    expect(component.form.payroll_cutoff_start).toBe('2026-10-29');
+    expect(component.form.payroll_cutoff_end).toBe('2026-11-28');
+
+    component.form.payroll_cutoff_start = '2026-10-15';
+    component.form.payroll_cutoff_end = '2026-11-20';
+    component.form.periode_bulan = '2026-12';
+    component.onPeriodChanged();
+    expect(component.form.payroll_cutoff_start).toBe('2026-10-15');
+    expect(component.form.payroll_cutoff_end).toBe('2026-11-20');
   });
 
   it('updates all details when the selected employee changes', () => {

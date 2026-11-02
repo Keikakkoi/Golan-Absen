@@ -12,7 +12,7 @@ export class EmployeePayrollComponent implements OnInit {
   readonly companyContact = PAYROLL_COMPANY_CONTACT;
   readonly takeHomePaySubtitle = PAYROLL_TAKE_HOME_PAY_SUBTITLE;
   rows: Payroll[] = []; selected?: Payroll; loading = true; errorMessage = '';
-  readonly internPayrollMessage = 'Peserta magang belum dapat diproses dalam penggajian karena status penggajiannya belum ditetapkan oleh perusahaan.';
+  readonly internPayrollMessage = 'Peserta magang belum dapat diproses dalam slip gaji karena status slip gajinya belum ditetapkan oleh perusahaan.';
   readonly isInternPayrollLocked = normalizeRole(localStorage.getItem('role')) === 'MAGANG';
   page = 1; limit = 10; total = 0; totalPages = 0;
   readonly pageSizeOptions = [10, 25, 50, 100];

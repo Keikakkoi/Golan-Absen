@@ -26,7 +26,7 @@ const (
 	defaultCompanyWebsite      = "golandigital.com"
 	defaultCompanyAddress      = "Jalan Manyar II RT.002 RW.011, Tegal Alur, Kalideres, Jakarta Barat, DKI Jakarta"
 	takeHomePaySubtitle        = "Total pendapatan - Total pengurangan"
-	internPayrollLockedMessage = "Peserta magang belum dapat diproses dalam penggajian karena status penggajiannya belum tersedia pada versi sekarang."
+	internPayrollLockedMessage = "Peserta magang belum dapat diproses dalam slip gaji karena status slip gajinya belum tersedia pada versi sekarang."
 )
 
 var errInternPayrollLocked = errors.New(internPayrollLockedMessage)
@@ -91,6 +91,33 @@ func parsePayrollPeriod(value string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("periode bulan harus menggunakan format YYYY-MM")
 	}
 	return time.Date(parsed.Year(), parsed.Month(), 1, 0, 0, 0, 0, time.UTC), nil
+}
+
+func defaultPayrollCutoff(period time.Time) (time.Time, time.Time) {
+	period = time.Date(period.Year(), period.Month(), 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(period.Year(), period.Month(), 28, 0, 0, 0, 0, time.UTC)
+	previousMonth := period.AddDate(0, -1, 0)
+	lastDayOfPreviousMonth := time.Date(period.Year(), period.Month(), 0, 0, 0, 0, 0, time.UTC).Day()
+	startDay := 29
+	if lastDayOfPreviousMonth < startDay {
+		startDay = lastDayOfPreviousMonth
+	}
+	start := time.Date(previousMonth.Year(), previousMonth.Month(), startDay, 0, 0, 0, 0, time.UTC)
+	return start, end
+}
+
+func applyDefaultPayrollCutoff(input *payrollInput) error {
+	if strings.TrimSpace(input.PayrollCutoffStart) != "" || strings.TrimSpace(input.PayrollCutoffEnd) != "" {
+		return nil
+	}
+	period, err := parsePayrollPeriod(input.PeriodeBulan)
+	if err != nil {
+		return err
+	}
+	start, end := defaultPayrollCutoff(period)
+	input.PayrollCutoffStart = start.Format("2006-01-02")
+	input.PayrollCutoffEnd = end.Format("2006-01-02")
+	return nil
 }
 
 func payrollID(c *fiber.Ctx) (uint, error) {
@@ -221,6 +248,11 @@ func payrollEmployee(db *gorm.DB, employeeID uint) (models.Employee, error) {
 }
 
 func buildPayroll(input *payrollInput, employee models.Employee, actor uint, existing *models.Payroll) (*models.Payroll, error) {
+	if existing == nil {
+		if err := applyDefaultPayrollCutoff(input); err != nil {
+			return nil, err
+		}
+	}
 	period, start, end, payment, err := validatePayrollInput(input)
 	if err != nil {
 		return nil, err

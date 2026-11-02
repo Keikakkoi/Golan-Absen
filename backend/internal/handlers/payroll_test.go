@@ -28,6 +28,53 @@ func TestPayrollFilterNumber(t *testing.T) {
 	}
 }
 
+func TestDefaultPayrollCutoffUsesCompanyPeriod(t *testing.T) {
+	tests := []struct {
+		name      string
+		period    time.Time
+		wantStart string
+		wantEnd   string
+	}{
+		{name: "November", period: time.Date(2026, time.November, 1, 0, 0, 0, 0, time.UTC), wantStart: "2026-10-29", wantEnd: "2026-11-28"},
+		{name: "year change", period: time.Date(2027, time.January, 1, 0, 0, 0, 0, time.UTC), wantStart: "2026-12-29", wantEnd: "2027-01-28"},
+		{name: "February", period: time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC), wantStart: "2026-01-29", wantEnd: "2026-02-28"},
+		{name: "March after non leap February", period: time.Date(2026, time.March, 1, 0, 0, 0, 0, time.UTC), wantStart: "2026-02-28", wantEnd: "2026-03-28"},
+		{name: "March after leap February", period: time.Date(2024, time.March, 1, 0, 0, 0, 0, time.UTC), wantStart: "2024-02-29", wantEnd: "2024-03-28"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			start, end := defaultPayrollCutoff(test.period)
+			if got := start.Format("2006-01-02"); got != test.wantStart {
+				t.Fatalf("expected start %s, got %s", test.wantStart, got)
+			}
+			if got := end.Format("2006-01-02"); got != test.wantEnd {
+				t.Fatalf("expected end %s, got %s", test.wantEnd, got)
+			}
+		})
+	}
+}
+
+func TestApplyDefaultPayrollCutoffKeepsManualDates(t *testing.T) {
+	input := &payrollInput{PeriodeBulan: "2026-11", PayrollCutoffStart: "2026-10-15", PayrollCutoffEnd: "2026-11-20"}
+	if err := applyDefaultPayrollCutoff(input); err != nil {
+		t.Fatalf("applying defaults: %v", err)
+	}
+	if input.PayrollCutoffStart != "2026-10-15" || input.PayrollCutoffEnd != "2026-11-20" {
+		t.Fatalf("manual cut-off dates were changed: %s - %s", input.PayrollCutoffStart, input.PayrollCutoffEnd)
+	}
+}
+
+func TestApplyDefaultPayrollCutoffFillsNewSlipDates(t *testing.T) {
+	input := &payrollInput{PeriodeBulan: "2026-11"}
+	if err := applyDefaultPayrollCutoff(input); err != nil {
+		t.Fatalf("applying defaults: %v", err)
+	}
+	if input.PayrollCutoffStart != "2026-10-29" || input.PayrollCutoffEnd != "2026-11-28" {
+		t.Fatalf("unexpected default cut-off: %s - %s", input.PayrollCutoffStart, input.PayrollCutoffEnd)
+	}
+}
+
 func TestValidatePayrollInputRequiresWholeWorkDaysAndIncome(t *testing.T) {
 	workDays := 0
 	input := &payrollInput{

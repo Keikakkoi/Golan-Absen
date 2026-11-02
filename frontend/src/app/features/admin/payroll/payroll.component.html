@@ -1,7 +1,7 @@
 <div class="admin-theme payroll-shell">
   <app-admin-sidebar></app-admin-sidebar>
   <main class="main-content">
-    <div class="page-heading"><div><h1>Penggajian</h1><p>Kelola slip gaji manual dan terbitkan PDF dengan template GDK.</p></div><button class="btn-primary" type="button" (click)="openCreate()">+ Tambah Slip Gaji</button></div>
+    <div class="page-heading"><div><h1>Slip Gaji</h1><p>Kelola slip gaji manual dan terbitkan PDF dengan template GDK.</p></div><button class="btn-primary" type="button" (click)="openCreate()">+ Tambah Slip Gaji</button></div>
     <section class="golan-card filters"><label>Bulan<select [(ngModel)]="filters.month" (change)="applyFilters()" [disabled]="isLoading"><option value="">Semua bulan</option><option *ngFor="let month of monthOptions" [value]="month.value">{{ month.label }}</option></select></label><label>Tahun<select [(ngModel)]="filters.year" (change)="applyFilters()" [disabled]="isLoading"><option value="">Semua tahun</option><option *ngFor="let year of yearOptions" [value]="year">{{ year }}</option></select></label><label>Karyawan<select [(ngModel)]="filters.employee_id" (change)="applyFilters()" [disabled]="isLoading"><option value="">Semua karyawan</option><option *ngFor="let employee of employees" [value]="employee.employee_id">{{ employee.Nama }}{{ isInternEmployee(employee) ? ' · MAGANG' : '' }}</option></select></label><label>Divisi<select [(ngModel)]="filters.division" (change)="applyFilters()" [disabled]="isLoading"><option value="">Semua divisi</option><option *ngFor="let division of divisions" [value]="division">{{ division }}</option></select></label><label>Status<select [(ngModel)]="filters.status" (change)="applyFilters()" [disabled]="isLoading"><option value="">Semua status</option><option>Draft</option><option>Published</option></select></label></section>
     <section class="golan-card table-card">
       <div *ngIf="errorMessage" class="error-state" role="alert">{{ errorMessage }}</div>
@@ -43,9 +43,9 @@
           </div>
           <p *ngIf="selectedEmployeeIsIntern" class="intern-payroll-warning" role="alert">{{ internPayrollMessage }}</p>
         </section>
-        <label>Periode bulan *<app-date-picker name="periode_bulan" mode="month" inputClass="golan-input payroll-date-input" [(ngModel)]="form.periode_bulan" [required]="true" ariaLabel="Periode bulan" panelLabel="Pilih periode bulan"></app-date-picker></label>
-        <label>Payroll cut-off mulai *<app-date-picker name="payroll_cutoff_start" mode="date" inputClass="golan-input payroll-date-input" [(ngModel)]="form.payroll_cutoff_start" (ngModelChange)="onCutoffChanged()" [required]="true" ariaLabel="Payroll cut-off mulai"></app-date-picker></label>
-        <label>Payroll cut-off selesai *<app-date-picker name="payroll_cutoff_end" mode="date" inputClass="golan-input payroll-date-input" [(ngModel)]="form.payroll_cutoff_end" (ngModelChange)="onCutoffChanged()" [required]="true" ariaLabel="Payroll cut-off selesai"></app-date-picker></label>
+        <label>Periode bulan *<app-date-picker name="periode_bulan" mode="month" inputClass="golan-input payroll-date-input" [(ngModel)]="form.periode_bulan" (ngModelChange)="onPeriodChanged()" [required]="true" ariaLabel="Periode bulan" panelLabel="Pilih periode bulan"></app-date-picker></label>
+        <label>Cut-off mulai *<app-date-picker name="payroll_cutoff_start" mode="date" inputClass="golan-input payroll-date-input" [(ngModel)]="form.payroll_cutoff_start" (ngModelChange)="onCutoffChanged()" [required]="true" ariaLabel="Cut-off mulai"></app-date-picker></label>
+        <label>Cut-off selesai *<app-date-picker name="payroll_cutoff_end" mode="date" inputClass="golan-input payroll-date-input" [(ngModel)]="form.payroll_cutoff_end" (ngModelChange)="onCutoffChanged()" [required]="true" ariaLabel="Cut-off selesai"></app-date-picker></label>
         <label>Tanggal bayar *<app-date-picker name="payment_date" mode="date" inputClass="golan-input payroll-date-input" [(ngModel)]="form.payment_date" [required]="true" ariaLabel="Tanggal bayar"></app-date-picker></label>
         <label>Total hari kerja *<input name="total_hari_kerja" type="number" min="0" step="1" [(ngModel)]="form.total_hari_kerja" readonly required></label>
       </div>
