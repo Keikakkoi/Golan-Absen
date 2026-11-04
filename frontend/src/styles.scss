@@ -5683,3 +5683,52 @@ app-admin-sidebar .sidebar {
   }
 }
 
+/* Location management owns the desktop page scroll. The large-screen admin
+   density applies zoom:1.5 to .admin-theme; leaving its 100vh min-height in
+   normal document flow makes the zoomed shell taller than the viewport and
+   creates the browser scrollbar at the far right. Keep this contract scoped to
+   this route so other pages can retain their existing scroll owner. */
+@media (min-width: 901px) {
+  html:has(app-location-management),
+  body:has(app-location-management) {
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+  }
+
+  app-location-management {
+    display: block;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  app-location-management .location-management-shell {
+    width: 100%;
+    height: calc(100dvh / var(--dashboard-screen-scale, 1));
+    min-height: 0 !important;
+    max-height: calc(100dvh / var(--dashboard-screen-scale, 1));
+    overflow-x: clip !important;
+    overflow-y: hidden !important;
+  }
+
+  app-location-management .location-management-page {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  /* Keep the sidebar's independent scroll viewport aligned with the scaled
+     shell while preserving its existing overflow-y:auto behavior. */
+  app-location-management app-admin-sidebar .sidebar {
+    height: calc(100dvh / var(--dashboard-screen-scale, 1)) !important;
+    min-height: calc(100dvh / var(--dashboard-screen-scale, 1)) !important;
+    max-height: calc(100dvh / var(--dashboard-screen-scale, 1)) !important;
+  }
+}
+
