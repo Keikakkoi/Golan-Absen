@@ -257,7 +257,7 @@
                             <span class="alternative-status-badge" [ngClass]="alternativeUsageStatus(location) === 'active' ? 'active' : 'inactive'">{{ alternativeUsageLabel(location) }}</span>
                           </label>
                         </ng-container>
-                        <ng-template #unavailableStatus><span class="alternative-status-badge" [ngClass]="alternativeUsageStatus(location) === 'active' ? 'active' : 'inactive'">{{ alternativeUsageLabel(location) }}</span><br><small>Belum tersedia</small></ng-template>
+                        <ng-template #unavailableStatus><span class="alternative-status-badge" [ngClass]="alternativeUsageStatus(location) === 'active' ? 'active' : 'inactive'">{{ alternativeUsageLabel(location) }}</span></ng-template>
                       </td>
                       <td>{{ alternativeRejectionReason(location) || '-' }}</td>
                       <td>
