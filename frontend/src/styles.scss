@@ -3277,7 +3277,7 @@ body.dark-theme .topbar-header .hamburger-btn:hover {
    Component-local rules and inline styles previously left neutral buttons
    with white/light backgrounds in dark mode. Semantic action buttons keep
    their role color; all neutral controls use the shared dark surfaces. */
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel),
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):not(.btn-cancel-reference),
 body.dark-theme .main-content
   a.btn-secondary,
 body.dark-theme .main-content
@@ -3313,7 +3313,7 @@ body.dark-theme .main-content
   text-shadow: none !important;
 }
 
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):not(:disabled):hover,
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):not(.btn-cancel-reference):not(:disabled):hover,
 body.dark-theme .main-content a.btn-secondary:hover,
 body.dark-theme .main-content a.btn-view-detail:hover,
 body.dark-theme .main-content .btn-outline-primary:not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):hover,
@@ -3333,7 +3333,7 @@ body.dark-theme .main-content .calendar-header button:hover {
   color: var(--text-dark) !important;
 }
 
-body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):active,
+body.dark-theme .main-content button:not(.btn-primary):not(.btn-stamp):not(.btn-danger):not(.btn-delete):not(.delete):not(.btn-success):not(.btn-warning):not(.btn-approve):not(.btn-reject):not(.btn-modal-reject):not(.btn-modal-approve):not(.btn-info):not(.btn-edit):not(.btn-detail):not(.approve):not(.reject):not(.view):not(.edit):not(.tab-btn):not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):not(.btn-cancel-reference):active,
 body.dark-theme .main-content a.btn-secondary:active,
 body.dark-theme .main-content a.btn-view-detail:active,
 body.dark-theme .main-content .btn-outline-primary:not(.home-geofence-cancel):not(.home-wfh-detail-close):not(.work-report-cancel):active,
@@ -4097,6 +4097,38 @@ body.dark-theme .filter-native-menu {
   .admin-dashboard-page .stats-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
+}
+
+/* Dark-mode outline action used by the close/cancel buttons that follow the
+   blue reference style. Keep it above the broad neutral-button rules. */
+body.dark-theme .main-content .modal-content .btn-cancel-reference {
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  border: 1px solid #5ea9ff !important;
+  border-radius: 12px !important;
+  color: #f8fafc !important;
+  text-shadow: none !important;
+}
+
+body.dark-theme .main-content .modal-content .btn-cancel-reference:not(:disabled):hover {
+  background: #22365b !important;
+  background-color: #22365b !important;
+  border-color: #8bc2ff !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 14px rgba(7, 16, 35, 0.35) !important;
+}
+
+body.dark-theme .main-content .modal-content .btn-cancel-reference:active {
+  background: #1c2d4c !important;
+  background-color: #1c2d4c !important;
+  border-color: #b4d8ff !important;
+  color: #ffffff !important;
+}
+
+body.dark-theme .main-content .modal-content .btn-cancel-reference:focus-visible {
+  outline: 3px solid #5ea9ff !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #1e293b, 0 0 0 5px rgba(94, 169, 255, 0.38) !important;
 }
 
 /* Full-screen dialogs are fixed to the viewport. Reserve a small bottom

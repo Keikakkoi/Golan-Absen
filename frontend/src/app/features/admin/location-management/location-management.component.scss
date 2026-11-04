@@ -201,6 +201,27 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
+:host-context(body.dark-theme) .location-form-modal .modal-footer > .btn-cancel-reference {
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  border: 1px solid #5ea9ff !important;
+  border-radius: 12px !important;
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .location-form-modal .modal-footer > .btn-cancel-reference:hover {
+  background: #22365b !important;
+  background-color: #22365b !important;
+  border-color: #8bc2ff !important;
+  color: #ffffff !important;
+}
+
+:host-context(body.dark-theme) .location-form-modal .modal-footer > .btn-cancel-reference:focus-visible {
+  outline: 3px solid #5ea9ff !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #1e293b, 0 0 0 5px rgba(94, 169, 255, 0.38) !important;
+}
+
 .location-detail-modal {
   max-height: calc(100dvh - 48px);
   overflow-y: auto;
@@ -267,6 +288,27 @@
 .location-detail-modal .modal-footer .btn-cancel-reference:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+:host-context(body.dark-theme) .location-detail-modal .modal-footer .btn-cancel-reference {
+  background: #1e293b !important;
+  background-color: #1e293b !important;
+  border: 1px solid #5ea9ff !important;
+  border-radius: 12px !important;
+  color: #f8fafc !important;
+}
+
+:host-context(body.dark-theme) .location-detail-modal .modal-footer .btn-cancel-reference:hover {
+  background: #22365b !important;
+  background-color: #22365b !important;
+  border-color: #8bc2ff !important;
+  color: #ffffff !important;
+}
+
+:host-context(body.dark-theme) .location-detail-modal .modal-footer .btn-cancel-reference:focus-visible {
+  outline: 3px solid #5ea9ff !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 2px #1e293b, 0 0 0 5px rgba(94, 169, 255, 0.38) !important;
 }
 
 @media (max-width: 700px) {
