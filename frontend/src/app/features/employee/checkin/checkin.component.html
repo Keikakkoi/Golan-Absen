@@ -100,7 +100,7 @@
             <span>{{ selectedLocationCoordinates() }} · radius {{ selectedLocationRadius() }} meter</span>
           </div>
           <div
-            *ngIf="locationError"
+            *ngIf="locationWarningVisible()"
             class="alert alert-danger geolocation-warning"
             role="alert"
             [class.outside-radius-message]="locationError.includes('di luar radius')">
