@@ -487,17 +487,37 @@
    cell padding; this rule only normalizes typography and wrapping so long
    iPhone addresses do not render larger or overflow their cell. */
 @media (max-width: 640px) {
+  .location-management-page,
+  .location-management-page .location-table,
+  .location-management-page .location-table-wrap {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   .location-management-page .location-table .location-cell,
   .location-management-page .location-table .location-name-cell,
   .location-management-page .location-table .location-description-cell {
     box-sizing: border-box;
     font-family: var(--font-body);
-    font-size: 0.9375rem;
-    font-weight: 400;
-    line-height: 1.4;
+    font-size: 0.9375rem !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
     white-space: normal;
     overflow-wrap: anywhere;
     word-break: break-word;
     vertical-align: middle;
+  }
+
+  /* The desktop column tracks are intentionally wide. On iPhone, let the
+     description column use the visible table width so long addresses wrap
+     inside the viewport instead of being visually cut off. */
+  .location-management-page .location-table .location-description-cell,
+  .location-management-page .field-table th:nth-child(2),
+  .location-management-page .field-table td:nth-child(2),
+  .location-management-page .alternative-table th:nth-child(3),
+  .location-management-page .alternative-table td:nth-child(3) {
+    width: calc(100vw - 32px) !important;
+    min-width: calc(100vw - 32px) !important;
+    max-width: calc(100vw - 32px) !important;
   }
 }
