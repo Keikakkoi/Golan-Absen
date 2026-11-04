@@ -79,20 +79,35 @@
           <div *ngIf="locationSelectionError" class="alert alert-danger geolocation-warning" role="alert">
             <span class="warning-icon" aria-hidden="true">!</span><span class="warning-message">{{ locationSelectionError }}</span>
           </div>
-          <div *ngIf="selectedCanonicalType() === 'alternative_location'" class="location-selection-panel">
+          <div
+            *ngIf="selectedCanonicalType() === 'alternative_location'"
+            class="location-selection-panel"
+            [class.is-error]="!locationSelectionLoading && !alternativeLocations.length"
+            [class.is-disabled]="hasCheckedIn || locationSelectionLoading">
             <label for="alternative-checkin-location">Lokasi Alternatif</label>
-            <select id="alternative-checkin-location" class="form-control" [(ngModel)]="selectedAlternativeLocationId" name="alternative_checkin_location" (ngModelChange)="onAlternativeLocationChange()" [disabled]="hasCheckedIn || locationSelectionLoading">
-              <option [ngValue]="null">Pilih lokasi approved dan aktif</option>
-              <option *ngFor="let location of alternativeLocations" [ngValue]="location.id || location.ID">{{ location.nama_lokasi || location.NamaLokasi }}</option>
-            </select>
-            <small *ngIf="!alternativeLocations.length && !locationSelectionLoading">Belum ada lokasi alternatif approved dan aktif.</small>
+            <div class="location-select-control">
+              <select id="alternative-checkin-location" class="form-control location-select" [(ngModel)]="selectedAlternativeLocationId" name="alternative_checkin_location" (ngModelChange)="onAlternativeLocationChange()" [disabled]="hasCheckedIn || locationSelectionLoading" [attr.aria-invalid]="!locationSelectionLoading && !alternativeLocations.length">
+                <option [ngValue]="null">Pilih lokasi approved dan aktif</option>
+                <option *ngFor="let location of alternativeLocations" [ngValue]="location.id || location.ID">{{ location.nama_lokasi || location.NamaLokasi }}</option>
+              </select>
+              <span class="location-select-chevron" aria-hidden="true"></span>
+            </div>
+            <small *ngIf="!alternativeLocations.length && !locationSelectionLoading" class="location-selection-message" role="alert">Belum ada lokasi alternatif approved dan aktif.</small>
           </div>
-          <div *ngIf="selectedCanonicalType() === 'field_location'" class="location-selection-panel">
+          <div
+            *ngIf="selectedCanonicalType() === 'field_location'"
+            class="location-selection-panel"
+            [class.is-error]="!locationSelectionLoading && !fieldLocations.length"
+            [class.is-disabled]="true">
             <label for="field-checkin-location">Lokasi Lapangan</label>
-            <select id="field-checkin-location" class="form-control" [(ngModel)]="selectedFieldLocationId" name="field_checkin_location" (ngModelChange)="onFieldLocationChange()" [disabled]="true">
-              <option [ngValue]="null">Lokasi lapangan belum tersedia</option>
-              <option *ngFor="let location of fieldLocations" [ngValue]="location.id || location.ID">{{ location.nama_lokasi || location.NamaLokasi }}</option>
-            </select>
+            <div class="location-select-control">
+              <select id="field-checkin-location" class="form-control location-select" [(ngModel)]="selectedFieldLocationId" name="field_checkin_location" (ngModelChange)="onFieldLocationChange()" [disabled]="true" [attr.aria-invalid]="!locationSelectionLoading && !fieldLocations.length">
+                <option [ngValue]="null">Lokasi lapangan belum tersedia</option>
+                <option *ngFor="let location of fieldLocations" [ngValue]="location.id || location.ID">{{ location.nama_lokasi || location.NamaLokasi }}</option>
+              </select>
+              <span class="location-select-chevron" aria-hidden="true"></span>
+            </div>
+            <small *ngIf="!fieldLocations.length && !locationSelectionLoading" class="location-selection-message" role="alert">Lokasi lapangan belum tersedia.</small>
           </div>
           <div *ngIf="selectedLocation()" class="selected-location-summary">
             <strong>{{ selectedLocationName() }}</strong>

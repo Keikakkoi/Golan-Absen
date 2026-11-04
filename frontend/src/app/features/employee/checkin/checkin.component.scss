@@ -468,21 +468,116 @@
 .location-selection-panel,
 .selected-location-summary {
   margin: 12px 0;
-  padding: 10px 12px;
+  padding: 16px;
   border: 1px solid var(--mint-2);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--mint-0);
 }
 
 .location-selection-panel {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
 
-  label { font-weight: 600; color: var(--green-deep); }
-  .form-control { flex: 1 1 240px; min-width: 0; }
-  small { flex: 1 1 100%; color: var(--text-dark-lo); }
+  label {
+    margin: 0;
+    color: #1769aa;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .location-select-control {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .location-select {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 56px;
+    padding: 14px 48px 14px 16px;
+    border: 1.5px solid #b9d9fb;
+    border-radius: 11px;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #ffffff;
+    color: #1769aa;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.35;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+
+    &:hover {
+      border-color: #2f80ed;
+      background-color: #f7fbff;
+    }
+
+    &:focus,
+    &:focus-visible {
+      border-color: #2f80ed;
+      box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.18);
+    }
+
+    &:disabled {
+      border-color: #cbdbea;
+      background-color: #edf5fc;
+      color: #6f86a0;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+  }
+
+  .location-select-chevron {
+    position: absolute;
+    top: 50%;
+    right: 19px;
+    width: 9px;
+    height: 9px;
+    border-right: 2px solid #1769aa;
+    border-bottom: 2px solid #1769aa;
+    transform: translateY(-65%) rotate(45deg);
+    pointer-events: none;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+
+  &:focus-within .location-select-chevron {
+    border-color: #2f80ed;
+    transform: translateY(-25%) rotate(225deg);
+  }
+
+  &.is-disabled .location-select-chevron {
+    border-color: #8da4bb;
+  }
+
+  &.is-error {
+    border-color: #e1a6a0;
+    background: #fff8f7;
+
+    .location-select {
+      border-color: #d15c50;
+      background-color: #fff8f7;
+      color: #8f3029;
+    }
+
+    .location-select-chevron {
+      border-color: #a83e35;
+    }
+  }
+
+  .location-selection-message {
+    color: #9a3a32;
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
 }
 
 .selected-location-summary {
@@ -496,6 +591,16 @@
 }
 
 @media (max-width: 520px) {
+  .location-selection-panel {
+    padding: 14px;
+
+    .location-select {
+      min-height: 54px;
+      padding-left: 15px;
+      padding-right: 46px;
+    }
+  }
+
   .map-card {
     min-width: 0;
 
@@ -513,5 +618,49 @@
         margin-top: 2px;
       }
     }
+  }
+}
+
+:host-context(body.dark-theme) .location-selection-panel {
+  border-color: var(--mint-2);
+  background: var(--mint-0);
+
+  label { color: var(--text-dark); }
+
+  .location-select {
+    border-color: var(--mint-2);
+    background-color: var(--mint-1);
+    color: var(--text-dark);
+
+    &:hover,
+    &:focus,
+    &:focus-visible {
+      border-color: var(--green);
+      background-color: var(--mint-1);
+    }
+
+    &:disabled {
+      border-color: var(--mint-2);
+      background-color: rgba(255, 255, 255, 0.06);
+      color: var(--muted-color, #94a3b8);
+    }
+  }
+
+  .location-select-chevron { border-color: var(--text-dark); }
+  &:focus-within .location-select-chevron { border-color: var(--green); }
+  &.is-disabled .location-select-chevron { border-color: var(--muted-color, #94a3b8); }
+
+  &.is-error {
+    border-color: #9f4d46;
+    background: #3b2024;
+
+    .location-select {
+      border-color: #ef4444;
+      background-color: #3b2024;
+      color: #fecaca;
+    }
+
+    .location-select-chevron,
+    .location-selection-message { color: #fecaca; border-color: #ef4444; }
   }
 }
