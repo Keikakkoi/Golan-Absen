@@ -87,8 +87,8 @@ export class AlertService {
   async textarea(title: string, text: string, confirmButtonText = 'Tolak Pengajuan', placeholder = ''): Promise<string | null> {
     const sweetAlert = await this.load();
     const result = await sweetAlert.fire({
-      icon: 'warning', title, text, input: 'textarea', inputPlaceholder: placeholder,
-      inputAttributes: { maxlength: '2000', 'aria-label': 'Alasan Penolakan' },
+      icon: 'warning', title, text, input: 'textarea', inputLabel: 'Alasan Penolakan', inputPlaceholder: placeholder,
+      inputAttributes: { maxlength: '500', 'aria-label': 'Alasan Penolakan' },
       inputValidator: (value: string) => !value?.trim() ? 'Alasan penolakan wajib diisi' : undefined,
       showCancelButton: true, confirmButtonText, cancelButtonText: 'Batal', reverseButtons: true, focusCancel: true
     });

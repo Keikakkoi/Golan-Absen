@@ -143,7 +143,10 @@ export class LocationManagementComponent implements OnInit, OnDestroy {
   }
   fieldStatusValue(row: any): string { return String(row?.status_aktif || row?.StatusAktif || '').toLowerCase(); }
   fieldStatusLabel(row: any): string { return this.fieldStatusValue(row) === 'active' ? 'Aktif' : 'Tidak aktif'; }
-  rejectionReason(row: any): string { return row?.rejection_reason || row?.alasan_penolakan || row?.AlasanPenolakan || ''; }
+  rejectionReason(row: any): string {
+    if (this.alternativeStatus(row) !== 'rejected') return '';
+    return row?.rejection_reason || row?.RejectionReason || row?.alasan_penolakan || row?.AlasanPenolakan || '';
+  }
   isPending(row: any): boolean { return this.alternativeStatus(row) === 'pending'; }
   fieldIsActive(row: any): boolean { return this.fieldStatusValue(row) === 'active'; }
 
@@ -177,7 +180,7 @@ export class LocationManagementComponent implements OnInit, OnDestroy {
     if (!reason) return;
     const id = this.alternativeId(row);
     this.alternativeActingId = id;
-    this.http.post<any>(`${this.api}/alternative-requests/${id}/reject`, { alasan_penolakan: reason }, { headers: this.headers() }).pipe(
+    this.http.post<any>(`${this.api}/alternative-requests/${id}/reject`, { rejection_reason: reason }, { headers: this.headers() }).pipe(
       timeout(15000), takeUntil(this.destroy$), finalize(() => this.alternativeActingId = null)
     ).subscribe({
       next: async () => { this.closeAlternativeDetail(); await this.alert.success('Pengajuan ditolak'); this.loadAlternativeRequests(); },

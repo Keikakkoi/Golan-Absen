@@ -166,6 +166,9 @@ func alternativeLocationView(row models.AlternativeLocation) models.AlternativeL
 	// Keep sensitive approval actor IDs out of ordinary owner responses while
 	// retaining the fields in the model for the admin/audit contract.
 	row.User = models.User{}
+	if row.StatusApproval != models.AlternativeLocationRejected {
+		row.RejectionReason = ""
+	}
 	return row
 }
 
@@ -225,7 +228,7 @@ func alternativeLocationResponseFor(row models.AlternativeLocation) alternativeL
 		Status:              string(row.StatusApproval),
 		StatusLabel:         alternativeLocationStatusLabel(row.StatusApproval),
 		StatusAktifLabel:    locationUsageStatusLabel(row.StatusAktif),
-		RejectionReason:     row.AlasanPenolakan,
+		RejectionReason:     row.RejectionReason,
 		CanEdit:             models.CanEditAlternativeLocation(row.StatusApproval),
 		CanDelete:           models.CanDeleteAlternativeLocation(row.StatusApproval),
 		CanToggle:           models.CanToggleAlternativeLocation(row.StatusApproval),
@@ -250,10 +253,10 @@ func adminAlternativeLocationResponseFor(row models.AlternativeLocation) adminAl
 func applyAlternativeLocationDecision(row *models.AlternativeLocation, approve bool, adminID uint, reason string, decidedAt time.Time) {
 	if approve {
 		row.StatusApproval, row.StatusAktif, row.ApprovedBy, row.ApprovedAt = models.AlternativeLocationApproved, models.LocationActive, &adminID, &decidedAt
-		row.RejectedBy, row.RejectedAt, row.AlasanPenolakan = nil, nil, ""
+		row.RejectedBy, row.RejectedAt, row.RejectionReason = nil, nil, ""
 		return
 	}
-	row.StatusApproval, row.StatusAktif, row.RejectedBy, row.RejectedAt, row.AlasanPenolakan = models.AlternativeLocationRejected, models.LocationInactive, &adminID, &decidedAt, strings.TrimSpace(reason)
+	row.StatusApproval, row.StatusAktif, row.RejectedBy, row.RejectedAt, row.RejectionReason = models.AlternativeLocationRejected, models.LocationInactive, &adminID, &decidedAt, models.NormalizeAlternativeLocationRejectionReason(reason)
 	row.ApprovedBy, row.ApprovedAt = nil, nil
 }
 
@@ -373,7 +376,7 @@ func UpdateAlternativeLocation(c *fiber.Ctx) error {
 	// Any edit must be reviewed again. This prevents an approved location from
 	// remaining usable after its coordinates or meaning have changed.
 	row.StatusApproval, row.StatusAktif = models.AlternativeLocationPending, models.LocationInactive
-	row.AlasanPenolakan, row.ApprovedBy, row.RejectedBy, row.ApprovedAt, row.RejectedAt = "", nil, nil, nil, nil
+	row.RejectionReason, row.ApprovedBy, row.RejectedBy, row.ApprovedAt, row.RejectedAt = "", nil, nil, nil, nil
 	if err := config.DB.Save(&row).Error; err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal memperbarui lokasi alternatif"})
 	}
@@ -498,15 +501,20 @@ func reviewAlternativeLocation(c *fiber.Ctx, approve bool) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	var body struct {
-		Reason string `json:"alasan_penolakan"`
+		Reason       string `json:"rejection_reason"`
+		LegacyReason string `json:"alasan_penolakan"`
 	}
 	_ = c.BodyParser(&body)
 	var row models.AlternativeLocation
-	if !approve && strings.TrimSpace(body.Reason) == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "Alasan penolakan wajib diisi"})
+	reason := body.Reason
+	if reason == "" {
+		reason = body.LegacyReason
 	}
-	if !approve && len([]rune(strings.TrimSpace(body.Reason))) > 1000 {
-		return c.Status(400).JSON(fiber.Map{"error": "Alasan penolakan maksimal 1000 karakter"})
+	if !approve {
+		if err := models.ValidateAlternativeLocationRejectionReason(reason); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		}
+		reason = models.NormalizeAlternativeLocationRejectionReason(reason)
 	}
 	err = config.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("User").First(&row, id).Error; err != nil {
@@ -519,7 +527,7 @@ func reviewAlternativeLocation(c *fiber.Ctx, approve bool) error {
 			return errAlternativeLocationReviewed
 		}
 		now := time.Now().In(jakartaLocation)
-		applyAlternativeLocationDecision(&row, approve, adminID, body.Reason, now)
+		applyAlternativeLocationDecision(&row, approve, adminID, reason, now)
 		return tx.Save(&row).Error
 	})
 	if err != nil {
@@ -534,7 +542,7 @@ func reviewAlternativeLocation(c *fiber.Ctx, approve bool) error {
 	}
 	detail := "approved"
 	if !approve {
-		detail = "rejected: " + row.AlasanPenolakan
+		detail = "rejected: " + row.RejectionReason
 	}
 	_ = utils.LogAction(adminID, "UPDATE", "AlternativeLocation", row.ID, detail)
 	applyConfiguredAlternativeRadius(&row)

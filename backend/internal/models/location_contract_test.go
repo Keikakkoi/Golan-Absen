@@ -3,6 +3,7 @@ package models
 import (
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -99,6 +100,36 @@ func TestLocationModelsValidateAndNormalizeDefaults(t *testing.T) {
 	}
 	if field.NamaLokasi != "Proyek" || field.MetodeValidasi != LocationValidationRadius || field.StatusAktif != LocationActive {
 		t.Fatalf("field defaults were not normalized: %+v", field)
+	}
+}
+
+func TestAlternativeLocationRejectionReasonValidation(t *testing.T) {
+	if got := NormalizeAlternativeLocationRejectionReason("  Koordinat\x00 tidak sesuai  "); got != "Koordinat tidak sesuai" {
+		t.Fatalf("rejection reason was not sanitized: %q", got)
+	}
+	if err := ValidateAlternativeLocationRejectionReason("   "); err == nil {
+		t.Fatal("empty rejection reason should be rejected")
+	}
+	longReason := strings.Repeat("a", MaxAlternativeLocationRejectionReasonLength+1)
+	if err := ValidateAlternativeLocationRejectionReason(longReason); err == nil {
+		t.Fatal("overlong rejection reason should be rejected")
+	}
+	if err := ValidateAlternativeLocationRejectionReason(strings.Repeat("あ", MaxAlternativeLocationRejectionReasonLength)); err != nil {
+		t.Fatalf("valid rune-length reason should be accepted: %v", err)
+	}
+}
+
+func TestAlternativeLocationSaveRequiresReasonOnlyWhenRejected(t *testing.T) {
+	rejected := AlternativeLocation{UserID: 7, NamaLokasi: "Rumah", Latitude: -6.2, Longitude: 106.8, RadiusMeter: 100, StatusApproval: AlternativeLocationRejected, StatusAktif: LocationInactive}
+	if err := rejected.BeforeSave(nil); err == nil {
+		t.Fatal("rejected location without reason should be rejected")
+	}
+	approved := AlternativeLocation{UserID: 7, NamaLokasi: "Rumah", Latitude: -6.2, Longitude: 106.8, RadiusMeter: 100, StatusApproval: AlternativeLocationApproved, StatusAktif: LocationActive, RejectionReason: "stale"}
+	if err := approved.BeforeSave(nil); err != nil {
+		t.Fatalf("approved location should save without a rejection reason: %v", err)
+	}
+	if approved.RejectionReason != "" {
+		t.Fatal("approved location retained a rejection reason")
 	}
 }
 

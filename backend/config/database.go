@@ -46,6 +46,23 @@ func ConnectDB(cfg *Config) {
 	// Backfill legacy rows before AutoMigrate attempts to enforce the model's
 	// NOT NULL constraint. This is harmless on a fresh database.
 	_ = DB.Exec("UPDATE employees SET shift_kerja = 'Reguler' WHERE shift_kerja IS NULL OR BTRIM(shift_kerja) = ''")
+	// The first alternative-location rollout used the Indonesian column name.
+	// Move that data before AutoMigrate creates the canonical API/domain field.
+	_ = DB.Exec(`DO $$
+	BEGIN
+		IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'alternative_locations' AND column_name = 'alasan_penolakan')
+		   AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'alternative_locations' AND column_name = 'rejection_reason') THEN
+			ALTER TABLE alternative_locations RENAME COLUMN alasan_penolakan TO rejection_reason;
+		END IF;
+	END $$`)
+	_ = DB.Exec(`ALTER TABLE alternative_locations ADD COLUMN IF NOT EXISTS rejection_reason TEXT`)
+	_ = DB.Exec(`DO $$
+	BEGIN
+		IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'alternative_locations' AND column_name = 'alasan_penolakan') THEN
+			UPDATE alternative_locations SET rejection_reason = COALESCE(NULLIF(BTRIM(rejection_reason), ''), alasan_penolakan)
+			WHERE rejection_reason IS NULL OR BTRIM(rejection_reason) = '';
+		END IF;
+	END $$`)
 
 	err = DB.AutoMigrate(
 		&models.Project{},

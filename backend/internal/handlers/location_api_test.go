@@ -120,7 +120,7 @@ func TestAlternativeLocationResponseHasStableUIContract(t *testing.T) {
 		RadiusMeter:     100,
 		StatusApproval:  models.AlternativeLocationRejected,
 		StatusAktif:     models.LocationInactive,
-		AlasanPenolakan: "Koordinat perlu diperbaiki",
+		RejectionReason: "Koordinat perlu diperbaiki",
 	})
 	payload, err := json.Marshal(row)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestAlternativeLocationResponseHasStableUIContract(t *testing.T) {
 	if err := json.Unmarshal(payload, &decoded); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	for _, key := range []string{"id", "user_id", "label", "status", "status_label", "status_aktif", "status_aktif_label", "alasan_penolakan", "latitude", "longitude", "radius_meter", "can_edit", "can_delete", "can_toggle"} {
+	for _, key := range []string{"id", "user_id", "label", "status", "status_label", "status_aktif", "status_aktif_label", "rejection_reason", "latitude", "longitude", "radius_meter", "can_edit", "can_delete", "can_toggle"} {
 		if _, ok := decoded[key]; !ok {
 			t.Fatalf("response is missing UI field %q: %s", key, payload)
 		}
@@ -159,7 +159,7 @@ func TestAlternativeLocationResponsePreservesAllApprovalStatuses(t *testing.T) {
 
 func TestAlternativeLocationInputCannotSetApprovalOrOwner(t *testing.T) {
 	var payload locationPayload
-	if err := json.Unmarshal([]byte(`{"user_id":99,"status_approval":"approved","approved_by":99,"alasan_penolakan":"forged","nama_lokasi":"Rumah","latitude":-6.2,"longitude":106.8,"radius_meter":100}`), &payload); err != nil {
+	if err := json.Unmarshal([]byte(`{"user_id":99,"status_approval":"approved","approved_by":99,"rejection_reason":"forged","nama_lokasi":"Rumah","latitude":-6.2,"longitude":106.8,"radius_meter":100}`), &payload); err != nil {
 		t.Fatalf("decode input: %v", err)
 	}
 	if payload.NamaLokasi != "Rumah" || payload.Latitude != -6.2 || payload.Longitude != 106.8 || payload.RadiusMeter != 100 {
@@ -304,7 +304,7 @@ func TestAdminAlternativeDecisionStoresActorTimeAndReason(t *testing.T) {
 	decidedAt := time.Date(2026, 11, 3, 10, 0, 0, 0, time.FixedZone("Asia/Jakarta", 7*60*60))
 	row := models.AlternativeLocation{StatusApproval: models.AlternativeLocationPending, StatusAktif: models.LocationInactive}
 	applyAlternativeLocationDecision(&row, false, 99, "  Koordinat tidak jelas  ", decidedAt)
-	if row.StatusApproval != models.AlternativeLocationRejected || row.StatusAktif != models.LocationInactive || row.RejectedBy == nil || *row.RejectedBy != 99 || row.RejectedAt == nil || !row.RejectedAt.Equal(decidedAt) || row.AlasanPenolakan != "Koordinat tidak jelas" {
+	if row.StatusApproval != models.AlternativeLocationRejected || row.StatusAktif != models.LocationInactive || row.RejectedBy == nil || *row.RejectedBy != 99 || row.RejectedAt == nil || !row.RejectedAt.Equal(decidedAt) || row.RejectionReason != "Koordinat tidak jelas" {
 		t.Fatalf("rejection decision was not persisted in model contract: %+v", row)
 	}
 	row = models.AlternativeLocation{StatusApproval: models.AlternativeLocationPending, StatusAktif: models.LocationInactive}
@@ -328,7 +328,7 @@ func TestAdminReviewRejectsAlreadyProcessedRequestAtomically(t *testing.T) {
 		c.Locals("user_id", uint(99))
 		return RejectAlternativeLocation(c)
 	})
-	request := httptest.NewRequest("POST", "/admin/locations/alternative-requests/7/reject", strings.NewReader(`{"alasan_penolakan":"Tidak valid"}`))
+	request := httptest.NewRequest("POST", "/admin/locations/alternative-requests/7/reject", strings.NewReader(`{"rejection_reason":"Tidak valid"}`))
 	request.Header.Set("Content-Type", "application/json")
 	response, err := app.Test(request)
 	if err != nil {
@@ -339,6 +339,23 @@ func TestAdminReviewRejectsAlreadyProcessedRequestAtomically(t *testing.T) {
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Fatalf("review transaction expectation: %v", err)
+	}
+}
+
+func TestAdminRejectRequiresReasonBeforeDatabaseWrite(t *testing.T) {
+	app := fiber.New()
+	app.Post("/admin/locations/alternative-requests/:id/reject", func(c *fiber.Ctx) error {
+		c.Locals("user_id", uint(99))
+		return RejectAlternativeLocation(c)
+	})
+	request := httptest.NewRequest("POST", "/admin/locations/alternative-requests/7/reject", strings.NewReader(`{"rejection_reason":"   "}`))
+	request.Header.Set("Content-Type", "application/json")
+	response, err := app.Test(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != fiber.StatusBadRequest {
+		t.Fatalf("empty reason got %d, want %d", response.StatusCode, fiber.StatusBadRequest)
 	}
 }
 

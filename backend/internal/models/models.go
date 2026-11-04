@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gorm.io/gorm"
 )
@@ -304,6 +305,26 @@ const (
 
 const MaxAlternativeLocations = 3
 
+const MaxAlternativeLocationRejectionReasonLength = 500
+
+func NormalizeAlternativeLocationRejectionReason(reason string) string {
+	// PostgreSQL text values cannot contain NUL bytes. Remove them before
+	// trimming so the value is safe for persistence and display.
+	reason = strings.ReplaceAll(reason, "\x00", "")
+	return strings.TrimSpace(reason)
+}
+
+func ValidateAlternativeLocationRejectionReason(reason string) error {
+	reason = NormalizeAlternativeLocationRejectionReason(reason)
+	if reason == "" {
+		return errors.New("alasan penolakan wajib diisi")
+	}
+	if utf8.RuneCountInString(reason) > MaxAlternativeLocationRejectionReasonLength {
+		return fmt.Errorf("alasan penolakan maksimal %d karakter", MaxAlternativeLocationRejectionReasonLength)
+	}
+	return nil
+}
+
 const LocationValidationRadius = "radius"
 
 var ErrDuplicateLocationName = errors.New("nama lokasi sudah digunakan")
@@ -411,7 +432,7 @@ type AlternativeLocation struct {
 	MetodeValidasi  string                    `gorm:"size:30;not null;default:'radius'" json:"metode_validasi"`
 	StatusApproval  AlternativeLocationStatus `gorm:"type:varchar(20);not null;default:'pending';index" json:"status_approval"`
 	StatusAktif     LocationUsageStatus       `gorm:"type:varchar(20);not null;default:'inactive';index" json:"status_aktif"`
-	AlasanPenolakan string                    `gorm:"type:text" json:"alasan_penolakan,omitempty"`
+	RejectionReason string                    `gorm:"column:rejection_reason;type:text" json:"rejection_reason,omitempty"`
 	ApprovedBy      *uint                     `gorm:"index" json:"approved_by,omitempty"`
 	RejectedBy      *uint                     `gorm:"index" json:"rejected_by,omitempty"`
 	ApprovedAt      *time.Time                `gorm:"type:timestamp" json:"approved_at,omitempty"`
@@ -438,6 +459,16 @@ func (location *AlternativeLocation) BeforeSave(_ *gorm.DB) error {
 	}
 	if !ValidateAlternativeLocationStatus(location.StatusApproval) {
 		return fmt.Errorf("status approval lokasi alternatif tidak valid")
+	}
+	if location.StatusApproval == AlternativeLocationRejected {
+		if err := ValidateAlternativeLocationRejectionReason(location.RejectionReason); err != nil {
+			return err
+		}
+		location.RejectionReason = NormalizeAlternativeLocationRejectionReason(location.RejectionReason)
+	} else {
+		// A reason belongs only to a rejected decision. This keeps pending and
+		// approved rows clear even when they are persisted outside the handler.
+		location.RejectionReason = ""
 	}
 	if !ValidateLocationUsageStatus(location.StatusAktif) {
 		return fmt.Errorf("status aktif lokasi tidak valid")

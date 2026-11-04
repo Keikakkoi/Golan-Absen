@@ -93,10 +93,16 @@ describe('LocationManagementComponent', () => {
     await Promise.resolve();
     await Promise.resolve();
     const request = expectRequest('/alternative-requests/8/reject');
-    expect(request.request.body).toEqual({ alasan_penolakan: 'Koordinat tidak sesuai area kerja' });
-    request.flush({ id: 8, status: 'rejected', alasan_penolakan: 'Koordinat tidak sesuai area kerja' });
+    expect(request.request.body).toEqual({ rejection_reason: 'Koordinat tidak sesuai area kerja' });
+    request.flush({ id: 8, status: 'rejected', rejection_reason: 'Koordinat tidak sesuai area kerja' });
     await Promise.resolve();
     expectRequest('/alternative-requests').flush({ data: [], total: 0, page: 1, limit: 20, total_pages: 0 });
+  });
+
+  it('only displays a rejection reason for rejected requests', () => {
+    expect(component.rejectionReason({ status: 'rejected', rejection_reason: 'Koordinat tidak sesuai' })).toBe('Koordinat tidak sesuai');
+    expect(component.rejectionReason({ status: 'approved', rejection_reason: 'stale' })).toBe('');
+    expect(component.rejectionReason({ status: 'pending' })).toBe('');
   });
 
   it('creates a field location with numeric coordinates and refreshes the list', async () => {

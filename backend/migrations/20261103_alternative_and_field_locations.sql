@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS alternative_locations (
     metode_validasi VARCHAR(30) NOT NULL DEFAULT 'radius',
     status_approval VARCHAR(20) NOT NULL DEFAULT 'pending',
     status_aktif VARCHAR(20) NOT NULL DEFAULT 'inactive',
-    alasan_penolakan TEXT,
+    rejection_reason TEXT,
     approved_by BIGINT NULL,
     rejected_by BIGINT NULL,
     approved_at TIMESTAMP NULL,

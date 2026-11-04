@@ -40,13 +40,14 @@
       </div>
       <div class="golan-table-responsive location-table-wrap">
         <table class="golan-table location-table alternative-table">
-          <thead><tr><th>User</th><th>Lokasi</th><th>Alamat/deskripsi</th><th>Status</th><th>Diajukan</th><th>Aksi</th></tr></thead>
+          <thead><tr><th>User</th><th>Lokasi</th><th>Alamat/deskripsi</th><th>Status</th><th>Alasan Penolakan</th><th>Diajukan</th><th>Aksi</th></tr></thead>
           <tbody>
             <tr *ngFor="let row of alternativeRequests">
               <td><strong>{{ ownerName(row) }}</strong><br><small>{{ ownerRole(row) }}<span *ngIf="row.owner?.email"> · {{ row.owner.email }}</span></small></td>
               <td>{{ alternativeName(row) }}</td>
               <td>{{ row.deskripsi || row.Deskripsi || '-' }}</td>
-              <td><span class="location-status-badge" [ngClass]="alternativeStatus(row) || 'pending'">{{ alternativeStatusLabel(row) }}</span><small *ngIf="rejectionReason(row)" class="rejection-note">{{ rejectionReason(row) }}</small></td>
+              <td><span class="location-status-badge" [ngClass]="alternativeStatus(row) || 'pending'">{{ alternativeStatusLabel(row) }}</span></td>
+              <td class="rejection-reason-cell">{{ rejectionReason(row) || '-' }}</td>
               <td>{{ (row.created_at || row.CreatedAt) | date:'dd MMM yyyy HH:mm' }}</td>
                 <td class="location-actions">
                 <button type="button" class="icon-button view" (click)="openAlternativeDetail(row)" aria-label="Lihat pengajuan" title="Lihat"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>

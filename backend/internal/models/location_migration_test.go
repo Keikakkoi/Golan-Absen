@@ -14,6 +14,7 @@ func TestLocationMigrationIsAdditiveAndRerunnable(t *testing.T) {
 	sql := strings.ToLower(string(sqlBytes))
 	for _, statement := range []string{
 		"create table if not exists alternative_locations",
+		"rejection_reason text",
 		"create table if not exists field_locations",
 		"create unique index if not exists idx_alternative_locations_user_name_active",
 		"create unique index if not exists idx_field_locations_name_active",
@@ -27,6 +28,17 @@ func TestLocationMigrationIsAdditiveAndRerunnable(t *testing.T) {
 	} {
 		if !strings.Contains(sql, statement) {
 			t.Errorf("migration is missing additive contract %q", statement)
+		}
+	}
+
+	reasonMigration, err := os.ReadFile("../../migrations/20261104_alternative_location_rejection_reason.sql")
+	if err != nil {
+		t.Fatalf("read rejection-reason migration: %v", err)
+	}
+	reasonSQL := strings.ToLower(string(reasonMigration))
+	for _, statement := range []string{"rename column alasan_penolakan to rejection_reason", "add column if not exists rejection_reason text"} {
+		if !strings.Contains(reasonSQL, statement) {
+			t.Errorf("rejection-reason migration is missing %q", statement)
 		}
 	}
 	for _, destructive := range []string{"drop table", "delete from attendance_records", "truncate attendance_records"} {
