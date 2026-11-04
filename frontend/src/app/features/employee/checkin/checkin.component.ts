@@ -55,6 +55,12 @@ const blueIcon = L.divIcon({
   styleUrls: ['./checkin.component.scss']
 })
 export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
+  private readonly gpsUnavailableMessage = 'GPS tidak aktif. Silakan aktifkan GPS dan izinkan akses lokasi.';
+  private readonly officeNotConfiguredMessage = 'Lokasi kantor belum dikonfigurasi.';
+  private readonly alternativeNotSelectedMessage = 'Silakan pilih lokasi alternatif terlebih dahulu.';
+  private readonly alternativeGeofenceInvalidMessage = 'Data geofence lokasi alternatif tidak valid.';
+  private readonly outsideRadiusMessage = 'Posisi Anda berada di luar radius lokasi.';
+
   @ViewChild('videoElement') videoElement!: ElementRef<HTMLVideoElement>;
   @ViewChild('canvasElement') canvasElement!: ElementRef<HTMLCanvasElement>;
 
@@ -542,8 +548,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     const selected = this.workTypes.find(workType => workType.Nama === this.tipeKerja);
     const canonical = this.canonicalType(selected);
     if (canonical === 'alternative_location') {
+      // Keep an explicit empty selection so the user gets a useful prompt
+      // instead of silently checking in against the first available location.
       if (!this.alternativeLocations.some(location => this.locationId(location) === this.selectedAlternativeLocationId)) {
-        this.selectedAlternativeLocationId = this.locationId(this.alternativeLocations[0]) || null;
+        this.selectedAlternativeLocationId = null;
       }
       this.selectedFieldLocationId = null;
     } else if (canonical === 'field_location') {
@@ -600,7 +608,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         const lat = Number(office?.Latitude ?? office?.latitude);
         const lng = Number(office?.Longitude ?? office?.longitude);
         const radius = Number(office?.RadiusMeter ?? office?.radius_meter);
-        this.officeConfigured = Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0 && lng !== 0 && radius > 0;
+        this.officeConfigured = this.isValidGeofence(lat, lng, radius);
         if (this.officeConfigured) {
           this.officeLat = lat;
           this.officeLng = lng;
@@ -861,10 +869,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private startLocationTracking(): void {
     if (!navigator.geolocation) {
-      this.locationError = 'Geolocation tidak didukung oleh browser Anda.';
+      this.locationError = this.gpsUnavailableMessage;
       this.isGpsActive = false;
       this.isLocationValid = false;
-      this.statusText = 'GPS Tidak Aktif · Silakan aktifkan GPS perangkat Anda';
+      this.statusText = this.gpsUnavailableMessage;
       return;
     }
 
@@ -896,9 +904,9 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       (error) => {
         this.isGpsActive = false;
         this.isLocationValid = false;
-        this.locationError = `Aktifkan GPS untuk melanjutkan absensi. (Err: ${error.message || error.code})`;
+        this.locationError = this.gpsUnavailableMessage;
         this.checkRadius();
-        this.statusText = `GPS Tidak Aktif · Err: ${error.message || error.code}`;
+        this.statusText = this.gpsUnavailableMessage;
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
     );
@@ -927,6 +935,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private checkRadius(): void {
     this.locationDistanceText = '';
+    this.locationError = '';
+    this.isLocationValid = false;
 
     const selectedWorkType = this.workTypes.find(w => w.Nama === this.tipeKerja);
     const mode = this.validationMode(selectedWorkType);
@@ -942,9 +952,15 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    if (mode === 'kantor' && !this.officeConfigured) {
+    if (!this.isGpsActive || (this.currentLat === 0 && this.currentLng === 0)) {
       this.isLocationValid = false;
-      this.locationError = 'Lokasi kantor belum dikonfigurasi.';
+      this.locationError = this.gpsUnavailableMessage;
+      this.statusText = this.gpsUnavailableMessage;
+      return;
+    }
+
+    if (mode === 'kantor' && !this.officeConfigured) {
+      this.locationError = this.officeNotConfiguredMessage;
       this.statusText = 'Lokasi kantor belum dikonfigurasi';
       return;
     }
@@ -954,17 +970,16 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.employeeProfile.Employee.HomeLatitude ?? 0);
       const hLng = Number(home?.LongitudeRumah ?? home?.longitude_rumah ?? this.employeeProfile.Employee.HomeLongitude ?? 0);
       const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 0);
-      if (hLat === 0 || hLng === 0 || homeRadius <= 0) {
-        this.isLocationValid = false;
+      if (!this.isValidGeofence(hLat, hLng, homeRadius)) {
         this.locationError = 'Lokasi rumah untuk absensi WFH belum diatur oleh HRD.';
         this.statusText = 'Lokasi rumah belum diatur';
         return;
       }
     }
 
-    if (!this.isGpsActive || (this.currentLat === 0 && this.currentLng === 0)) {
-      this.isLocationValid = false;
-      this.statusText = 'GPS Tidak Aktif · Silakan aktifkan GPS perangkat Anda';
+    if (mode === 'rumah' && !this.employeeProfile?.Employee) {
+      this.locationError = 'Memuat profil karyawan...';
+      this.statusText = 'Memuat profil karyawan...';
       return;
     }
 
@@ -974,7 +989,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!location) {
         this.isLocationValid = false;
         this.locationError = mode === 'alternatif'
-          ? 'Pilih lokasi alternatif approved dan aktif untuk check-in.'
+          ? this.alternativeNotSelectedMessage
           : 'Lokasi lapangan aktif belum tersedia atau belum dikonfigurasi pada tipe kerja.';
         this.statusText = 'Lokasi check-in belum dipilih';
         return;
@@ -982,15 +997,17 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       const latitude = Number(location.latitude ?? location.Latitude);
       const longitude = Number(location.longitude ?? location.Longitude);
       const locationRadius = this.selectedLocationRadius();
-      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || locationRadius <= 0) {
+      if (!this.isValidGeofence(latitude, longitude, locationRadius)) {
         this.isLocationValid = false;
-        this.locationError = 'Data geofence lokasi tidak valid.';
+        this.locationError = mode === 'alternatif'
+          ? this.alternativeGeofenceInvalidMessage
+          : 'Data geofence lokasi lapangan tidak valid.';
         this.statusText = 'Lokasi tidak valid';
         return;
       }
       const distance = Math.round(userLatLng.distanceTo(L.latLng(latitude, longitude)));
       this.isLocationValid = distance <= locationRadius + Math.min(this.currentAccuracy, 50);
-      this.locationError = this.isLocationValid ? '' : `Posisi Anda di luar radius ${mode === 'alternatif' ? 'lokasi alternatif' : 'lokasi lapangan'}.`;
+      this.locationError = this.isLocationValid ? '' : this.outsideRadiusMessage;
       this.statusText = this.isLocationValid ? 'Lokasi terverifikasi' : 'Lokasi di luar radius';
       this.locationDistanceText = `${this.isLocationValid ? 'Radius' : 'Jarak'} ${this.formatDistance(distance)} meter dari ${mode === 'alternatif' ? 'lokasi alternatif' : 'lokasi lapangan'}`;
       return;
@@ -1004,7 +1021,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.employeeProfile.Employee.HomeLatitude ?? 0);
         const hLng = Number(home?.LongitudeRumah ?? home?.longitude_rumah ?? this.employeeProfile.Employee.HomeLongitude ?? 0);
         const homeRadius = Number(home?.RadiusMeter ?? home?.radius_meter ?? 0);
-        if (hLat === 0 || hLng === 0 || homeRadius <= 0) {
+        if (!this.isValidGeofence(hLat, hLng, homeRadius)) {
           this.isLocationValid = false;
           this.locationError = 'Lokasi rumah untuk absensi WFH belum diatur oleh HRD.';
           this.statusText = 'Lokasi rumah belum diatur';
@@ -1014,7 +1031,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         const homeDistance = Math.round(userLatLng.distanceTo(homeLatLng));
         this.isLocationValid = homeDistance <= homeRadius + Math.min(this.currentAccuracy, 50);
         if (!this.isLocationValid) {
-          this.locationError = 'Posisi Anda di luar radius rumah.';
+          this.locationError = this.outsideRadiusMessage;
         } else {
           this.locationError = '';
         }
@@ -1030,7 +1047,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     } else if (mode === 'kantor') {
       this.isLocationValid = this.distanceToOffice <= this.radius + Math.min(this.currentAccuracy, 50);
       if (!this.isLocationValid) {
-          this.locationError = 'Posisi Anda di luar radius kantor.';
+          this.locationError = this.outsideRadiusMessage;
         } else {
           this.locationError = '';
         }
@@ -1041,11 +1058,29 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private isValidGeofence(latitude: number, longitude: number, radius: number): boolean {
+    return Number.isFinite(latitude)
+      && Number.isFinite(longitude)
+      && latitude >= -90
+      && latitude <= 90
+      && longitude >= -180
+      && longitude <= 180
+      && (latitude !== 0 || longitude !== 0)
+      && Number.isFinite(radius)
+      && radius > 0;
+  }
+
   private formatDistance(distance: number): string {
     return Math.round(distance).toLocaleString('id-ID');
   }
 
   private startCamera(): void {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.isCameraReady = false;
+      this.cameraError = 'Kamera/selfie tidak tersedia. Silakan izinkan akses kamera pada browser.';
+      return;
+    }
+
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
       .then((stream) => {
         this.stream = stream;
@@ -1055,6 +1090,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
         this.cameraError = '';
       })
       .catch((err) => {
+        this.isCameraReady = false;
         this.cameraError = `Izin kamera ditolak. Silakan aktifkan kamera. (Err: ${err.message || err.name || err})`;
       });
   }
@@ -1104,7 +1140,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async triggerPunch(): Promise<void> {
-    if (!this.canPunchBySchedule || (this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
+    if (!this.canPunchBySchedule || (this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.isCameraReady || !this.capturedBlob || this.isSubmitting) return;
     if (this.isCheckoutPage && !this.hasCheckedIn) return;
     const isCheckout = this.hasCheckedIn;
     if (!await this.alert.confirm(isCheckout ? 'Konfirmasi check-out' : 'Konfirmasi check-in', isCheckout ? 'Simpan waktu check-out sekarang?' : 'Simpan absensi check-in sekarang?', isCheckout ? 'Ya, check-out' : 'Ya, check-in')) return;
@@ -1116,7 +1152,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   submitCheckin(): void {
-    if ((this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
+    if ((this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.isCameraReady || !this.capturedBlob || this.isSubmitting) return;
 
     this.isSubmitting = true;
 
@@ -1142,7 +1178,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   submitCheckout(): void {
-    if ((this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
+    if ((this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.isCameraReady || !this.capturedBlob || this.isSubmitting) return;
 
     this.isSubmitting = true;
 

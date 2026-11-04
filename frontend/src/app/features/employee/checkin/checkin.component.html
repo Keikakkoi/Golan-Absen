@@ -26,7 +26,7 @@
             class="punch-btn-large" 
             [class.checkin-pending]="!hasCheckedIn"
             [class.checkout-mode]="hasCheckedIn && !hasCheckedOut"
-            [disabled]="!canPunchBySchedule || (isLocationRequired && !isGpsActive) || !isLocationValid || !capturedBlob || isSubmitting || attendanceClosed || (isCheckoutPage && !hasCheckedIn)"
+            [disabled]="!canPunchBySchedule || (isLocationRequired && !isGpsActive) || !isLocationValid || !isCameraReady || !capturedBlob || isSubmitting || attendanceClosed || (isCheckoutPage && !hasCheckedIn)"
             (click)="triggerPunch()">
             <span class="punch-title">{{ hasCheckedIn ? 'PUNCH OUT' : (isCheckoutPage ? 'PUNCH OUT' : 'PUNCH IN') }}</span>
             <span class="punch-time">{{ currentTime | date:'HH:mm:ss' }}</span>
