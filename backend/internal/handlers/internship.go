@@ -189,7 +189,8 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 	var countHadir, countTerlambat, countAlpha int64
 	var totalCheckInSecs int64
 	var checkInCount int64
-	wfoCount, wfhCount, remoteCount := 0, 0, 0
+	wfoCount, wfhCount, alternativeCount, fieldCount, legacyCount, remoteCount := 0, 0, 0, 0, 0, 0
+	decorateAttendanceRecords(records)
 
 	for _, rec := range records {
 		switch rec.Status {
@@ -201,13 +202,20 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 			countAlpha++
 		}
 
-		tipe := strings.ToUpper(rec.TipeKerja)
-		if tipe == "WFH" {
-			wfhCount++
-		} else if tipe == "REMOTE" {
-			remoteCount++
-		} else {
+		switch attendanceCanonicalType(rec) {
+		case models.WorkTypeWFO:
 			wfoCount++
+		case models.WorkTypeWFH:
+			wfhCount++
+		case models.WorkTypeAlternative:
+			alternativeCount++
+		case models.WorkTypeField:
+			fieldCount++
+		default:
+			legacyCount++
+			if strings.EqualFold(strings.TrimSpace(rec.TipeKerja), "remote") {
+				remoteCount++
+			}
 		}
 
 		if rec.JamMasuk != nil {
@@ -287,16 +295,20 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 		}
 
 		dailyTrend = append(dailyTrend, fiber.Map{
-			"tanggal":        rec.Tanggal.Format("2006-01-02"),
-			"day_name":       dayNames[rec.Tanggal.Weekday()],
-			"date_str":       rec.Tanggal.Format("02 Jan"),
-			"status":         string(rec.Status),
-			"hours":          fmt.Sprintf("%.1f", hours),
-			"hours_val":      hours,
-			"height_percent": heightPercent,
-			"jam_masuk":      masukStr,
-			"jam_pulang":     pulangStr,
-			"tipe_kerja":     rec.TipeKerja,
+			"tanggal":              rec.Tanggal.Format("2006-01-02"),
+			"day_name":             dayNames[rec.Tanggal.Weekday()],
+			"date_str":             rec.Tanggal.Format("02 Jan"),
+			"status":               string(rec.Status),
+			"hours":                fmt.Sprintf("%.1f", hours),
+			"hours_val":            hours,
+			"height_percent":       heightPercent,
+			"jam_masuk":            masukStr,
+			"jam_pulang":           pulangStr,
+			"tipe_kerja":           rec.TipeKerja,
+			"tipe_kerja_canonical": rec.TipeKerjaCanonical,
+			"tipe_kerja_label":     rec.TipeKerjaLabel,
+			"location_name":        rec.LocationName,
+			"location_address":     rec.LocationAddress,
 		})
 	}
 
@@ -309,8 +321,12 @@ func GetInternshipStatistics(c *fiber.Ctx) error {
 		"attendance_rate":      attendanceRate,
 		"average_checkin_time": avgCheckInStr,
 		"work_type_stats": fiber.Map{
-			"wfo":    wfoCount,
-			"wfh":    wfhCount,
+			"wfo":                  wfoCount,
+			"wfh":                  wfhCount,
+			"alternative_location": alternativeCount,
+			"field_location":       fieldCount,
+			"legacy":               legacyCount,
+			// Compatibility alias for older intern dashboards.
 			"remote": remoteCount,
 		},
 		"work_reports_submitted": workReportsSubmitted,

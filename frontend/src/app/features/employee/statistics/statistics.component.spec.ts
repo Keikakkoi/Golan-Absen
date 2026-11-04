@@ -30,7 +30,7 @@ describe('StatisticsComponent', () => {
     expect(component.countCuti).toBe(1);
     expect(component.countAlpha).toBe(1);
     expect(component.attendanceRate).toBe(40);
-    expect(component.workTypeStats).toEqual({ wfo: 2, wfh: 1, dinasLuar: 2 });
+    expect(component.workTypeStats).toEqual({ wfo: 2, wfh: 1, alternativeLocation: 0, fieldLocation: 0, legacy: 2 });
     expect(component.weeklyTrend.length).toBe(5);
   });
 

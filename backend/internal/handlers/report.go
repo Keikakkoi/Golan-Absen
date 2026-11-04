@@ -307,6 +307,7 @@ func normalizeAdminReportRecords(records []models.AttendanceRecord) {
 		}
 		records[i].Status = models.AttendanceStatus(adminReportDisplayStatus(records[i]))
 	}
+	decorateAttendanceRecords(records)
 }
 
 func GetAdminReports(c *fiber.Ctx) error {
@@ -360,8 +361,10 @@ func ExportAdminReportsCSV(c *fiber.Ctx) error {
 	writer := csv.NewWriter(c.Response().BodyWriter())
 	defer writer.Flush()
 
-	// Header
-	writer.Write([]string{"Tanggal", "NIK", "Nama Karyawan", "Tipe Kerja", "Jam Masuk", "Jam Pulang", "Status"})
+	// Header. Keep the raw legacy type in the JSON/API model, but make every
+	// machine-readable report use the same canonical display label and location
+	// snapshot as the UI.
+	writer.Write([]string{"Tanggal", "NIK", "Nama Karyawan", "Tipe Kerja", "Lokasi", "Alamat Lokasi", "Koordinat", "Jam Masuk", "Jam Pulang", "Status"})
 
 	for _, rec := range records {
 		jamMasuk := "-"
@@ -373,11 +376,15 @@ func ExportAdminReportsCSV(c *fiber.Ctx) error {
 			jamPulang = rec.JamPulang.Format("15:04:05")
 		}
 
+		location := attendanceLocationSummary(rec)
 		writer.Write([]string{
 			rec.Tanggal.Format("2006-01-02"),
 			rec.Employee.NIK,
 			rec.Employee.User.Nama,
-			rec.TipeKerja,
+			rec.TipeKerjaLabel,
+			location.Name,
+			location.Address,
+			location.Coordinates,
 			jamMasuk,
 			jamPulang,
 			string(rec.Status),

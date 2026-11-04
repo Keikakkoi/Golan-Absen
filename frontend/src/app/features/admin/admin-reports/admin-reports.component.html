@@ -160,6 +160,8 @@
               <th style="padding: 0.75rem;">Foto Check-in</th>
               <th style="padding: 0.75rem;">Foto Check-out</th>
               <th style="padding: 0.75rem;">Lokasi Check-in</th>
+              <th style="padding: 0.75rem;">Alamat Lokasi</th>
+              <th style="padding: 0.75rem;">Koordinat</th>
               <th style="padding: 0.75rem;">Waktu Check-in</th>
               <th style="padding: 0.75rem;">Jam Pulang</th>
               <th style="padding: 0.75rem;">Status</th>
@@ -173,7 +175,7 @@
               <td style="padding: 0.75rem; font-weight: 500;">{{ req.Employee?.User?.Nama }}</td>
               <td style="padding: 0.75rem;">{{ req.Employee?.Division?.NamaDivisi || '-' }}</td>
               <td style="padding: 0.75rem;">{{ req.Employee?.Position?.NamaJabatan || '-' }}</td>
-              <td style="padding: 0.75rem;">{{ req.TipeKerja || 'WFO' }}</td>
+              <td style="padding: 0.75rem;">{{ workTypeLabel(req) }}</td>
               <td style="padding: 0.75rem;">
                 <a *ngIf="checkInPhoto(req)" class="photo-link" [href]="checkInPhoto(req)" target="_blank" rel="noopener" title="Lihat foto check-in ukuran besar">
                   <img class="checkin-photo-thumb" [src]="checkInPhoto(req)" alt="Foto check-in">
@@ -186,7 +188,9 @@
                 </a>
                 <span *ngIf="!checkOutPhoto(req)" class="photo-placeholder">Tidak ada foto</span>
               </td>
-              <td style="padding: 0.75rem;" class="location-cell" [title]="locationSummary(req)">{{ locationSummary(req) }}</td>
+              <td style="padding: 0.75rem;">{{ locationName(req) || '-' }}</td>
+              <td style="padding: 0.75rem;">{{ locationAddress(req) || '-' }}</td>
+              <td style="padding: 0.75rem;">{{ locationCoordinates(req) || '-' }}</td>
               <td style="padding: 0.75rem;">{{ req.JamMasuk ? (req.JamMasuk | date:'dd MMM yyyy, HH:mm:ss') : '-' }}</td>
               <td style="padding: 0.75rem;">{{ req.JamPulang ? (req.JamPulang | date:'HH:mm:ss') : '-' }}</td>
               <td style="padding: 0.75rem;">
@@ -234,6 +238,7 @@
           </div>
           <div class="attendance-detail-info">
             <dl>
+              <dt>Tipe kerja</dt><dd>{{ workTypeLabel(selectedReport) }}</dd>
               <dt>Lokasi check-in</dt><dd>{{ locationSummary(selectedReport) }}</dd>
               <dt>Koordinat GPS check-in</dt><dd>{{ checkInLatitude(selectedReport) ?? '-' }}, {{ checkInLongitude(selectedReport) ?? '-' }}</dd>
               <dt>Waktu check-in</dt><dd>{{ selectedReport.JamMasuk ? (selectedReport.JamMasuk | date:'dd MMM yyyy, HH:mm:ss') : '-' }}</dd>

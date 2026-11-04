@@ -18,6 +18,12 @@ export class WorktypeListComponent implements OnInit {
   @Input() embedded = false;
 
   workTypes: any[] = [];
+  fieldLocations: any[] = [];
+  searchTerm = '';
+  modeFilter = '';
+  selectedWorkType: any = null;
+  isDetailOpen = false;
+  isLoadingFieldLocations = false;
   isLoading = true;
   errorMessage = '';
 
@@ -28,7 +34,11 @@ export class WorktypeListComponent implements OnInit {
   formData: any = {
     id: null,
     Nama: '',
-    RadiusYangBerlaku: 'kantor'
+    RadiusYangBerlaku: 'kantor',
+    CanonicalType: 'wfo',
+    FieldLocationID: null,
+    FieldLocationName: '',
+    FieldLocationActive: true
   };
 
   private baseUrl = 'http://localhost:8080/api/v1/admin/worktypes';
@@ -38,6 +48,7 @@ export class WorktypeListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadWorkTypes();
+    this.loadFieldLocations();
   }
 
   private getHeaders(): HttpHeaders {
@@ -58,9 +69,23 @@ export class WorktypeListComponent implements OnInit {
     });
   }
 
+  loadFieldLocations(): void {
+    this.isLoadingFieldLocations = true;
+    this.http.get<any>('http://localhost:8080/api/v1/admin/locations/field?status=active&limit=100&sort=name&order=asc', { headers: this.getHeaders() }).subscribe({
+      next: (response) => {
+        this.fieldLocations = Array.isArray(response) ? response : (response?.data || []);
+        this.isLoadingFieldLocations = false;
+      },
+      error: () => {
+        this.fieldLocations = [];
+        this.isLoadingFieldLocations = false;
+      }
+    });
+  }
+
   openAddModal(): void {
     this.isEditMode = false;
-    this.formData = { id: null, Nama: '', RadiusYangBerlaku: 'kantor' };
+    this.formData = { id: null, Nama: '', RadiusYangBerlaku: 'kantor', CanonicalType: 'wfo', FieldLocationID: null, FieldLocationName: '', FieldLocationActive: true };
     this.isModalOpen = true;
   }
 
@@ -69,13 +94,59 @@ export class WorktypeListComponent implements OnInit {
     this.formData = {
       id: wt.ID,
       Nama: wt.Nama,
-      RadiusYangBerlaku: this.validationMode(wt)
+      RadiusYangBerlaku: this.validationMode(wt),
+      CanonicalType: this.canonicalType(wt),
+      FieldLocationID: wt.field_location_id ?? wt.FieldLocationID ?? null,
+      FieldLocationName: wt.field_location_name ?? wt.FieldLocationName ?? '',
+      FieldLocationActive: wt.field_location_active ?? wt.FieldLocationActive ?? true
     };
     this.isModalOpen = true;
   }
 
   closeModal(): void {
     this.isModalOpen = false;
+  }
+
+  openDetailModal(workType: any): void {
+    const id = workType?.ID ?? workType?.id;
+    if (!id) return;
+    this.http.get<any>(`${this.baseUrl}/${id}`, { headers: this.getHeaders() }).subscribe({
+      next: (detail) => {
+        this.selectedWorkType = detail;
+        this.isDetailOpen = true;
+      },
+      error: (err) => this.alert.error('Gagal memuat detail tipe kerja', err.error?.error || 'Gagal memuat detail')
+    });
+  }
+
+  closeDetailModal(): void {
+    this.isDetailOpen = false;
+    this.selectedWorkType = null;
+  }
+
+  filteredWorkTypes(): any[] {
+    const search = this.searchTerm.trim().toLowerCase();
+    return this.workTypes.filter(workType => {
+      const matchesSearch = !search || String(workType?.Nama || '').toLowerCase().includes(search) || this.validationLabel(workType).toLowerCase().includes(search);
+      const matchesMode = !this.modeFilter || this.canonicalType(workType) === this.modeFilter;
+      return matchesSearch && matchesMode;
+    }).sort((left, right) => {
+      const rankDifference = this.workTypeSortRank(left) - this.workTypeSortRank(right);
+      if (rankDifference !== 0) return rankDifference;
+      return String(left?.Nama || '').localeCompare(String(right?.Nama || ''), 'id', { sensitivity: 'base' });
+    });
+  }
+
+  workTypeSortRank(workType: any): number {
+    const canonical = this.canonicalType(workType);
+    if (canonical === 'wfo') return 0;
+    if (canonical === 'wfh') return 1;
+
+    const name = String(workType?.Nama || '').trim().toLowerCase();
+    if (name === 'dinas luar') return 2;
+    if (canonical === 'alternative_location') return 3;
+    if (canonical === 'field_location') return 4;
+    return 5;
   }
 
   async saveWorkType(): Promise<void> {
@@ -87,12 +158,19 @@ export class WorktypeListComponent implements OnInit {
       await this.alert.error('Data belum lengkap', 'Mode validasi lokasi wajib dipilih.');
       return;
     }
+    if (this.formData.CanonicalType === 'field_location' && !this.formData.FieldLocationID) {
+      await this.alert.error('Data belum lengkap', 'Lokasi Lapangan aktif wajib dipilih dari master Manajemen Lokasi.');
+      return;
+    }
     const action = this.isEditMode ? 'mengubah tipe kerja ini' : 'menyimpan tipe kerja baru';
     if (!await this.alert.confirm('Konfirmasi perubahan', `Apakah Anda yakin ingin ${action}?`)) return;
     this.isSaving = true;
+    const canonicalType = this.formData.CanonicalType || 'wfo';
     const body = {
       Nama: this.formData.Nama.trim(),
-      RadiusYangBerlaku: this.formData.RadiusYangBerlaku
+      RadiusYangBerlaku: this.radiusModeForCanonical(canonicalType),
+      canonical_type: canonicalType === 'tanpa_validasi' ? null : canonicalType,
+      field_location_id: canonicalType === 'field_location' ? Number(this.formData.FieldLocationID) : null
     };
 
     const req = this.isEditMode 
@@ -114,6 +192,11 @@ export class WorktypeListComponent implements OnInit {
   }
 
   validationMode(workType: any): string {
+    const canonical = this.canonicalType(workType);
+    if (canonical === 'wfo') return 'kantor';
+    if (canonical === 'wfh') return 'rumah';
+    if (canonical === 'alternative_location') return 'alternatif';
+    if (canonical === 'field_location') return 'lapangan';
     const configured = String(workType?.RadiusYangBerlaku || '').trim().toLowerCase();
     if (configured === 'rumah' || configured === 'tanpa_validasi') return configured;
     if (workType?.IsHomeBase) return 'rumah';
@@ -122,11 +205,42 @@ export class WorktypeListComponent implements OnInit {
   }
 
   validationLabel(workType: any): string {
-    switch (this.validationMode(workType)) {
-      case 'kantor': return 'Kantor';
-      case 'rumah': return 'Rumah';
+    switch (this.canonicalType(workType)) {
+      case 'wfo': return 'Kantor';
+      case 'wfh': return 'Rumah';
+      case 'alternative_location': return 'Lokasi Alternatif';
+      case 'field_location': return 'Lokasi Lapangan';
       default: return 'Tidak ada';
     }
+  }
+
+  canonicalType(workType: any): string {
+    const canonical = String(workType?.canonical_type || workType?.CanonicalType || '').trim().toLowerCase();
+    if (['wfo', 'wfh', 'alternative_location', 'field_location'].includes(canonical)) return canonical;
+    const mode = String(workType?.RadiusYangBerlaku || '').trim().toLowerCase();
+    if (mode === 'rumah' || workType?.IsHomeBase) return 'wfh';
+    if (mode === 'kantor' || String(workType?.Nama || '').trim().toUpperCase() === 'WFO') return 'wfo';
+    if (mode === 'alternatif' || mode === 'alternative_location' || String(workType?.Nama || '').trim().toLowerCase() === 'lokasi alternatif') return 'alternative_location';
+    if (mode === 'lapangan' || mode === 'field_location') return 'field_location';
+    return 'tanpa_validasi';
+  }
+
+  radiusModeForCanonical(canonical: string): string {
+    switch (canonical) {
+      case 'wfo': return 'kantor';
+      case 'wfh': return 'rumah';
+      case 'alternative_location': return 'alternatif';
+      case 'field_location': return 'lapangan';
+      default: return 'tanpa_validasi';
+    }
+  }
+
+  selectableFieldLocations(): any[] {
+    const currentID = Number(this.formData.FieldLocationID || 0);
+    const current = currentID && !this.fieldLocations.some(location => Number(location.ID ?? location.id) === currentID)
+      ? [{ ID: currentID, NamaLokasi: this.formData.FieldLocationName || 'Lokasi lapangan tersimpan', StatusAktif: 'inactive', archived: true }]
+      : [];
+    return [...this.fieldLocations, ...current];
   }
 
   async deleteWorkType(id: number): Promise<void> {

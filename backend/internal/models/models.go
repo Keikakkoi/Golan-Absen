@@ -1,6 +1,10 @@
 package models
 
 import (
+	"errors"
+	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -189,44 +193,290 @@ type AttendanceRecord struct {
 	EmployeeNameSnapshot string `gorm:"size:100" json:"employee_name_snapshot"`
 	EmployeeCodeSnapshot string `gorm:"size:40" json:"employee_code_snapshot"`
 	Employee             Employee
-	Tanggal              time.Time        `gorm:"type:date;not null"`
-	TipeKerjaID          *uint            `gorm:"index"`
-	TipeKerja            string           `gorm:"size:20;default:'WFO'"`
-	JamMasuk             *time.Time       `gorm:"type:time"`
-	JamPulang            *time.Time       `gorm:"type:time"`
-	CheckOutOtomatis     bool             `gorm:"default:false"`
-	IsLate               bool             `gorm:"default:false;index"`
-	LateDurationMinutes  int              `gorm:"default:0"`
-	IsCheckoutMissing    bool             `gorm:"default:false;index"`
-	Status               AttendanceStatus `gorm:"type:varchar(20);not null"`
-	Latitude             float64          // General / Masuk Latitude
-	Longitude            float64          // General / Masuk Longitude
-	AkurasiGPS           float64          // General / Masuk GPS Accuracy (meter)
-	DalamRadius          bool             // General / Masuk within radius boolean
-	RadiusTervalidasi    string           `gorm:"size:50;default:'kantor'"` // kantor/rumah/tanpa_validasi
-	LatitudeMasuk        float64
-	LongitudeMasuk       float64
-	AkurasiGPSMasuk      float64
-	DalamRadiusMasuk     bool
-	FotoSelfieMasukURL   string `gorm:"type:text"`
-	LatitudePulang       float64
-	LongitudePulang      float64
-	AkurasiGPSPulang     float64
-	DalamRadiusPulang    bool
-	FotoSelfiePulangURL  string `gorm:"type:text"`
+	Tanggal              time.Time `gorm:"type:date;not null"`
+	TipeKerjaID          *uint     `gorm:"index"`
+	TipeKerja            string    `gorm:"size:20;default:'WFO'"`
+	// TipeKerjaCanonical and the location references are additive fields. The
+	// legacy TipeKerja value remains the display/backward-compatibility source
+	// for old attendance rows.
+	TipeKerjaCanonical        WorkTypeCanonical `gorm:"type:varchar(30);index" json:"tipe_kerja_canonical,omitempty"`
+	TipeKerjaLabel            string            `gorm:"-" json:"tipe_kerja_label,omitempty"`
+	AlternativeLocationID     *uint             `gorm:"index" json:"alternative_location_id,omitempty"`
+	FieldLocationID           *uint             `gorm:"index" json:"field_location_id,omitempty"`
+	LocationNameSnapshot      string            `gorm:"size:100" json:"location_name_snapshot,omitempty"`
+	LocationAddressSnapshot   string            `gorm:"type:text" json:"location_address_snapshot,omitempty"`
+	LocationLatitudeSnapshot  *float64          `json:"location_latitude_snapshot,omitempty"`
+	LocationLongitudeSnapshot *float64          `json:"location_longitude_snapshot,omitempty"`
+	LocationRadiusSnapshot    *float64          `json:"location_radius_snapshot,omitempty"`
+	LocationName              string            `gorm:"-" json:"location_name,omitempty"`
+	LocationAddress           string            `gorm:"-" json:"location_address,omitempty"`
+	LocationLatitude          *float64          `gorm:"-" json:"location_latitude,omitempty"`
+	LocationLongitude         *float64          `gorm:"-" json:"location_longitude,omitempty"`
+	JamMasuk                  *time.Time        `gorm:"type:time"`
+	JamPulang                 *time.Time        `gorm:"type:time"`
+	CheckOutOtomatis          bool              `gorm:"default:false"`
+	IsLate                    bool              `gorm:"default:false;index"`
+	LateDurationMinutes       int               `gorm:"default:0"`
+	IsCheckoutMissing         bool              `gorm:"default:false;index"`
+	Status                    AttendanceStatus  `gorm:"type:varchar(20);not null"`
+	Latitude                  float64           // General / Masuk Latitude
+	Longitude                 float64           // General / Masuk Longitude
+	AkurasiGPS                float64           // General / Masuk GPS Accuracy (meter)
+	DalamRadius               bool              // General / Masuk within radius boolean
+	RadiusTervalidasi         string            `gorm:"size:50;default:'kantor'"` // kantor/rumah/tanpa_validasi
+	LatitudeMasuk             float64
+	LongitudeMasuk            float64
+	AkurasiGPSMasuk           float64
+	DalamRadiusMasuk          bool
+	FotoSelfieMasukURL        string `gorm:"type:text"`
+	LatitudePulang            float64
+	LongitudePulang           float64
+	AkurasiGPSPulang          float64
+	DalamRadiusPulang         bool
+	FotoSelfiePulangURL       string `gorm:"type:text"`
 }
 
 type WorkType struct {
 	Model
-	Nama                  string `gorm:"size:50;not null;unique"` // Nama / NamaTipe
-	Deskripsi             string `gorm:"type:text"`
-	IsDefault             bool   `gorm:"default:false"`
-	IsHomeBase            bool   `gorm:"default:false"`
-	ButuhValidasiGeofence bool   `gorm:"default:true"`
-	RadiusYangBerlaku     string `gorm:"size:50;default:'kantor'"` // kantor/rumah/tanpa_validasi
-	WajibSelfie           bool   `gorm:"default:true"`
-	WarnaLabel            string `gorm:"size:20;default:'#3B82F6'"`
-	StatusAktif           bool   `gorm:"default:true"`
+	Nama                  string            `gorm:"size:50;not null;unique"` // Nama / NamaTipe
+	Deskripsi             string            `gorm:"type:text"`
+	IsDefault             bool              `gorm:"default:false"`
+	IsHomeBase            bool              `gorm:"default:false"`
+	ButuhValidasiGeofence bool              `gorm:"default:true"`
+	RadiusYangBerlaku     string            `gorm:"size:50;default:'kantor'"` // kantor/rumah/tanpa_validasi
+	WajibSelfie           bool              `gorm:"default:true"`
+	WarnaLabel            string            `gorm:"size:20;default:'#3B82F6'"`
+	StatusAktif           bool              `gorm:"default:true"`
+	CanonicalType         WorkTypeCanonical `gorm:"type:varchar(30);index" json:"canonical_type,omitempty"`
+	FieldLocationID       *uint             `gorm:"index" json:"field_location_id,omitempty"`
+	LocationModeLabel     string            `gorm:"-" json:"location_mode_label,omitempty"`
+	FieldLocationName     string            `gorm:"-" json:"field_location_name,omitempty"`
+	FieldLocationActive   *bool             `gorm:"-" json:"field_location_active,omitempty"`
+}
+
+// WorkTypeCanonical is the stable API/storage vocabulary for attendance
+// modes. Existing rows may have an empty value and are resolved through the
+// compatibility adapter in the attendance/work-type handlers.
+type WorkTypeCanonical string
+
+const (
+	WorkTypeWFO         WorkTypeCanonical = "wfo"
+	WorkTypeWFH         WorkTypeCanonical = "wfh"
+	WorkTypeAlternative WorkTypeCanonical = "alternative_location"
+	WorkTypeField       WorkTypeCanonical = "field_location"
+)
+
+func (value WorkTypeCanonical) Valid() bool {
+	return value == WorkTypeWFO || value == WorkTypeWFH || value == WorkTypeAlternative || value == WorkTypeField
+}
+
+func CanonicalWorkType(value string) WorkTypeCanonical {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "wfo", "work_from_office":
+		return WorkTypeWFO
+	case "wfh", "work_from_home":
+		return WorkTypeWFH
+	case "lokasi alternatif", "alternative", "alternative_location":
+		return WorkTypeAlternative
+	case "lokasi lapangan", "field", "field_location":
+		return WorkTypeField
+	default:
+		return ""
+	}
+}
+
+// AlternativeLocationStatus is intentionally lowercase because it is an API
+// contract and is independent from the older Indonesian WFH status values.
+type AlternativeLocationStatus string
+
+const (
+	AlternativeLocationPending  AlternativeLocationStatus = "pending"
+	AlternativeLocationApproved AlternativeLocationStatus = "approved"
+	AlternativeLocationRejected AlternativeLocationStatus = "rejected"
+)
+
+type LocationUsageStatus string
+
+const (
+	LocationActive   LocationUsageStatus = "active"
+	LocationInactive LocationUsageStatus = "inactive"
+)
+
+const MaxAlternativeLocations = 3
+
+const LocationValidationRadius = "radius"
+
+var ErrDuplicateLocationName = errors.New("nama lokasi sudah digunakan")
+
+func NormalizeLocationName(name string) string {
+	return strings.TrimSpace(name)
+}
+
+func LocationNameKey(name string) string {
+	return strings.ToLower(NormalizeLocationName(name))
+}
+
+func ValidateLocationName(name string) error {
+	name = NormalizeLocationName(name)
+	if name == "" {
+		return fmt.Errorf("nama lokasi wajib diisi")
+	}
+	if len([]rune(name)) > 100 {
+		return fmt.Errorf("nama lokasi maksimal 100 karakter")
+	}
+	return nil
+}
+
+func NormalizeLocationValidationMethod(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return LocationValidationRadius
+	}
+	return value
+}
+
+func ValidateLocationValidationMethod(value string) error {
+	if NormalizeLocationValidationMethod(value) != LocationValidationRadius {
+		return fmt.Errorf("metode validasi lokasi tidak didukung")
+	}
+	return nil
+}
+
+// ValidateLocationFields centralizes the domain rules shared by alternative
+// and field locations. It deliberately rejects NaN/Inf, which comparisons
+// alone would otherwise let slip through.
+func ValidateLocationFields(name string, latitude, longitude, radius float64) error {
+	if err := ValidateLocationName(name); err != nil {
+		return err
+	}
+	if math.IsNaN(latitude) || math.IsInf(latitude, 0) || math.IsNaN(longitude) || math.IsInf(longitude, 0) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || (latitude == 0 && longitude == 0) {
+		return fmt.Errorf("koordinat lokasi tidak valid")
+	}
+	if math.IsNaN(radius) || math.IsInf(radius, 0) || radius < 1 || radius > 10000 {
+		return fmt.Errorf("radius lokasi harus antara 1 sampai 10000 meter")
+	}
+	return nil
+}
+
+func ValidateAlternativeLocationStatus(status AlternativeLocationStatus) bool {
+	return status == AlternativeLocationPending || status == AlternativeLocationApproved || status == AlternativeLocationRejected
+}
+
+func ValidateLocationUsageStatus(status LocationUsageStatus) bool {
+	return status == LocationActive || status == LocationInactive
+}
+
+func ValidateLocationOwner(ownerID uint) error {
+	if ownerID == 0 {
+		return fmt.Errorf("owner lokasi wajib diisi")
+	}
+	return nil
+}
+
+func ValidateAlternativeLocationQuota(used int64) error {
+	if used < 0 {
+		return fmt.Errorf("jumlah lokasi alternatif tidak valid")
+	}
+	if used >= MaxAlternativeLocations {
+		return fmt.Errorf("kuota maksimal %d lokasi alternatif sudah tercapai", MaxAlternativeLocations)
+	}
+	return nil
+}
+
+func CanEditAlternativeLocation(status AlternativeLocationStatus) bool {
+	return ValidateAlternativeLocationStatus(status)
+}
+
+func CanDeleteAlternativeLocation(status AlternativeLocationStatus) bool {
+	return ValidateAlternativeLocationStatus(status)
+}
+
+func CanToggleAlternativeLocation(status AlternativeLocationStatus) bool {
+	return status == AlternativeLocationApproved
+}
+
+// AlternativeLocation belongs to the authenticated user. A rejected row is
+// retained until explicitly deleted so the decision and rejection reason are
+// auditable and it still consumes one of the three slots.
+type AlternativeLocation struct {
+	Model
+	DeletedAt       gorm.DeletedAt            `gorm:"index" json:"-"`
+	UserID          uint                      `gorm:"not null;index" json:"user_id"`
+	User            User                      `gorm:"foreignKey:UserID" json:"-"`
+	NamaLokasi      string                    `gorm:"size:100;not null" json:"nama_lokasi"`
+	Deskripsi       string                    `gorm:"type:text" json:"deskripsi"`
+	Latitude        float64                   `gorm:"not null" json:"latitude"`
+	Longitude       float64                   `gorm:"not null" json:"longitude"`
+	RadiusMeter     float64                   `gorm:"not null;default:100" json:"radius_meter"`
+	MetodeValidasi  string                    `gorm:"size:30;not null;default:'radius'" json:"metode_validasi"`
+	StatusApproval  AlternativeLocationStatus `gorm:"type:varchar(20);not null;default:'pending';index" json:"status_approval"`
+	StatusAktif     LocationUsageStatus       `gorm:"type:varchar(20);not null;default:'inactive';index" json:"status_aktif"`
+	AlasanPenolakan string                    `gorm:"type:text" json:"alasan_penolakan,omitempty"`
+	ApprovedBy      *uint                     `gorm:"index" json:"approved_by,omitempty"`
+	RejectedBy      *uint                     `gorm:"index" json:"rejected_by,omitempty"`
+	ApprovedAt      *time.Time                `gorm:"type:timestamp" json:"approved_at,omitempty"`
+	RejectedAt      *time.Time                `gorm:"type:timestamp" json:"rejected_at,omitempty"`
+}
+
+func (location *AlternativeLocation) BeforeSave(_ *gorm.DB) error {
+	if err := ValidateLocationOwner(location.UserID); err != nil {
+		return err
+	}
+	if err := ValidateLocationFields(location.NamaLokasi, location.Latitude, location.Longitude, location.RadiusMeter); err != nil {
+		return err
+	}
+	location.NamaLokasi = NormalizeLocationName(location.NamaLokasi)
+	location.MetodeValidasi = NormalizeLocationValidationMethod(location.MetodeValidasi)
+	if err := ValidateLocationValidationMethod(location.MetodeValidasi); err != nil {
+		return err
+	}
+	if location.StatusApproval == "" {
+		location.StatusApproval = AlternativeLocationPending
+	}
+	if location.StatusAktif == "" {
+		location.StatusAktif = LocationInactive
+	}
+	if !ValidateAlternativeLocationStatus(location.StatusApproval) {
+		return fmt.Errorf("status approval lokasi alternatif tidak valid")
+	}
+	if !ValidateLocationUsageStatus(location.StatusAktif) {
+		return fmt.Errorf("status aktif lokasi tidak valid")
+	}
+	return nil
+}
+
+// FieldLocation is the HRD-managed master for work performed outside the
+// office. It is soft-deleted so attendance history can keep its references.
+type FieldLocation struct {
+	Model
+	DeletedAt      gorm.DeletedAt      `gorm:"index" json:"-"`
+	NamaLokasi     string              `gorm:"size:100;not null" json:"nama_lokasi"`
+	Deskripsi      string              `gorm:"type:text" json:"deskripsi"`
+	Latitude       float64             `gorm:"not null" json:"latitude"`
+	Longitude      float64             `gorm:"not null" json:"longitude"`
+	RadiusMeter    float64             `gorm:"not null;default:100" json:"radius_meter"`
+	MetodeValidasi string              `gorm:"size:30;not null;default:'radius'" json:"metode_validasi"`
+	StatusAktif    LocationUsageStatus `gorm:"type:varchar(20);not null;default:'active';index" json:"status_aktif"`
+	CreatedBy      *uint               `gorm:"index" json:"created_by,omitempty"`
+	UpdatedBy      *uint               `gorm:"index" json:"updated_by,omitempty"`
+}
+
+func (location *FieldLocation) BeforeSave(_ *gorm.DB) error {
+	if err := ValidateLocationFields(location.NamaLokasi, location.Latitude, location.Longitude, location.RadiusMeter); err != nil {
+		return err
+	}
+	location.NamaLokasi = NormalizeLocationName(location.NamaLokasi)
+	location.MetodeValidasi = NormalizeLocationValidationMethod(location.MetodeValidasi)
+	if err := ValidateLocationValidationMethod(location.MetodeValidasi); err != nil {
+		return err
+	}
+	if location.StatusAktif == "" {
+		location.StatusAktif = LocationActive
+	}
+	if !ValidateLocationUsageStatus(location.StatusAktif) {
+		return fmt.Errorf("status aktif lokasi tidak valid")
+	}
+	return nil
 }
 
 type EmployeeHomeLocation struct {
@@ -433,6 +683,11 @@ type GeneralSetting struct {
 	DefaultCutiQuotaHari             int `gorm:"not null;default:12" json:"default_cuti_quota_hari"`
 	BatasLaporanSetelahCheckoutMenit int `gorm:"not null;default:60"`
 	ToleransiAbsenAwalMenit          int `gorm:"not null;default:0" json:"toleransi_absen_awal_menit"`
+	// RadiusToleransiWfhAlternatifMeter is the single admin-controlled
+	// geofence tolerance shared by WFH and approved alternative locations.
+	// The legacy per-location radius columns remain for history compatibility,
+	// but are no longer accepted as an employee-controlled setting.
+	RadiusToleransiWfhAlternatifMeter float64 `gorm:"not null;default:100" json:"radius_toleransi_wfh_alternatif_meter"`
 	// Deprecated: retained while existing installations are migrated to minutes.
 	BatasLaporanSetelahCheckoutJam int `gorm:"not null;default:1"`
 }

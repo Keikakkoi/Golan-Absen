@@ -200,8 +200,8 @@
                 <div class="form-group-row">
                   <div class="form-group"><label>Latitude</label><input class="form-control" type="number" [(ngModel)]="homeLocationForm.latitude" name="home_latitude" min="-90" max="90" step="any"></div>
                   <div class="form-group"><label>Longitude</label><input class="form-control" type="number" [(ngModel)]="homeLocationForm.longitude" name="home_longitude" min="-180" max="180" step="any"></div>
-                  <div class="form-group"><label>Radius geofence (meter)</label><input class="form-control" type="number" [(ngModel)]="homeLocationForm.radius_meter" name="home_radius" min="1" max="10000" required></div>
                 </div>
+                <p class="text-dark-lo">Radius toleransi WFH ditentukan oleh admin melalui Pengaturan Umum dan berlaku sama untuk WFH serta lokasi alternatif.</p>
                 <div class="form-group-row">
                   <div class="form-group"><label>Tanggal mulai berlaku</label><app-date-picker class="form-control" [(ngModel)]="homeLocationForm.tanggal_mulai_berlaku" name="home_effective_date" [min]="today" [required]="true" ariaLabel="Tanggal mulai berlaku"></app-date-picker></div>
                   <div class="form-group"><label>Lampiran opsional (maks. 5 MB)</label><input class="form-control" type="file" (change)="onHomeLocationAttachment($event)" accept=".pdf,.jpg,.jpeg,.png"><small>{{ homeLocationAttachmentName }}</small></div>
@@ -221,6 +221,54 @@
               </div>
 
               <div class="home-location-history"><h4>Riwayat Pengajuan Lokasi WFH</h4><div *ngIf="!homeLocationRequests.length" class="empty-state">Belum ada riwayat pengajuan.</div><div *ngIf="homeLocationRequests.length" class="golan-table-responsive"><table class="golan-table"><thead><tr><th>Waktu pengajuan</th><th>Lokasi baru</th><th>Status</th><th>Alasan penolakan</th></tr></thead><tbody><tr *ngFor="let request of homeLocationRequests"><td>{{ request.CreatedAt | date:'dd MMM yyyy HH:mm' }}</td><td>{{ request.NewAddress }}<br><small>{{ request.NewLatitude }}, {{ request.NewLongitude }} · {{ request.NewRadiusMeter }} m</small></td><td>{{ request.Status }}</td><td>{{ request.RejectionReason || '-' }}</td></tr></tbody></table></div></div>
+            </section>
+
+            <section class="home-location-profile-section">
+              <div class="section-title">Lokasi Alternatif</div>
+              <p class="form-description">Ajukan lokasi kerja alternatif untuk check-in. Lokasi baru atau hasil edit harus disetujui admin sebelum dapat digunakan.</p>
+
+              <div class="detail-grid">
+                <div class="detail-row"><span class="detail-label">Kuota lokasi</span><span class="detail-value">{{ alternativeLocationQuotaLabel() }}</span></div>
+                <div class="detail-row"><span class="detail-label">Ketersediaan check-in</span><span class="detail-value">Hanya lokasi approved dan aktif</span></div>
+              </div>
+
+              <div *ngIf="alternativeLocationError" class="alert alert-danger" role="alert">
+                {{ alternativeLocationError }}
+                <button type="button" class="btn-secondary" (click)="loadAlternativeLocations()">Coba lagi</button>
+              </div>
+              <div *ngIf="alternativeLocationLoading" class="empty-state">Memuat lokasi alternatif...</div>
+
+              <button type="button" class="btn-primary" (click)="openAlternativeLocationModal()" [disabled]="alternativeLocationUsed >= alternativeLocationLimit">Ajukan Lokasi Alternatif</button>
+              <small class="form-description" *ngIf="alternativeLocationUsed >= alternativeLocationLimit">Kuota penuh. Hapus salah satu lokasi untuk mengajukan lokasi baru.</small>
+
+              <div *ngIf="!alternativeLocationLoading && !alternativeLocations.length" class="empty-state" style="margin-top: 1rem;">Belum ada lokasi alternatif. Pengajuan pertama akan berstatus menunggu persetujuan.</div>
+              <div *ngIf="alternativeLocations.length" class="golan-table-responsive" style="margin-top: 1rem;">
+                <table class="golan-table">
+                  <thead><tr><th>Lokasi</th><th>Koordinat</th><th>Persetujuan</th><th>Status</th><th>Alasan penolakan</th><th>Aksi</th></tr></thead>
+                  <tbody>
+                    <tr *ngFor="let location of alternativeLocations">
+                      <td><strong>{{ alternativeLocationName(location) }}</strong><br><small>{{ alternativeLocationDescription(location) }}</small></td>
+                      <td class="mono-text">{{ location.latitude }}, {{ location.longitude }}<br><small>{{ location.radius_meter }} meter</small></td>
+                      <td><span class="status-badge" [class.status-active]="alternativeApprovalStatus(location) === 'approved'">{{ alternativeApprovalLabel(location) }}</span></td>
+                      <td>
+                        <ng-container *ngIf="alternativeCanToggle(location); else unavailableStatus">
+                          <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" [checked]="alternativeLocationActive(location)" (change)="toggleAlternativeLocation(location)" [attr.aria-label]="'Ubah status ' + alternativeLocationName(location)">
+                            {{ alternativeUsageLabel(location) }}
+                          </label>
+                        </ng-container>
+                        <ng-template #unavailableStatus><span>{{ alternativeUsageLabel(location) }}</span><br><small>Belum tersedia</small></ng-template>
+                      </td>
+                      <td>{{ alternativeRejectionReason(location) || '-' }}</td>
+                      <td>
+                        <button type="button" class="icon-button view" (click)="openAlternativeLocationDetail(location)" aria-label="Lihat detail lokasi alternatif" title="Lihat detail"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
+                        <button type="button" class="icon-button edit" (click)="openAlternativeLocationModal(location)" aria-label="Edit lokasi alternatif" title="Edit"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>
+                        <button type="button" class="icon-button delete" (click)="deleteAlternativeLocation(location)" aria-label="Hapus lokasi alternatif" title="Hapus"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             <form (ngSubmit)="savePreferences()">
@@ -399,6 +447,45 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay profile-alternative-location-overlay" *ngIf="alternativeLocationModalOpen" (click)="closeAlternativeLocationModal()">
+    <div class="modal-content golan-card profile-alternative-location-dialog" role="dialog" aria-modal="true" aria-labelledby="alternative-location-modal-title" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h3 id="alternative-location-modal-title">{{ editingAlternativeLocationId ? 'Edit Lokasi Alternatif' : 'Ajukan Lokasi Alternatif' }}</h3><button type="button" class="icon-button" (click)="closeAlternativeLocationModal()" aria-label="Tutup">×</button></div>
+      <form class="profile-alternative-location-form" (ngSubmit)="saveAlternativeLocation()">
+        <div class="modal-body">
+          <div *ngIf="alternativeLocationError" class="alert alert-danger" role="alert">{{ alternativeLocationError }}</div>
+          <div class="form-group"><label for="alternative-location-google-maps">Link Google Maps <span *ngIf="editingAlternativeLocationId === null" class="required">*</span></label><input id="alternative-location-google-maps" class="form-control" type="url" [(ngModel)]="alternativeLocationForm.google_maps_url" (ngModelChange)="onAlternativeGoogleMapsUrlChange()" (blur)="resolveAlternativeGoogleMapsUrl()" name="alternative_location_google_maps_url" placeholder="https://maps.app.goo.gl/..." [required]="editingAlternativeLocationId === null"><small class="form-description">Tempel link lokasi dari Google Maps. Latitude dan longitude akan terisi otomatis.</small><small *ngIf="alternativeLocationMapResolving" class="form-description">Membaca koordinat dari Google Maps...</small></div>
+          <div class="form-group"><label for="alternative-location-name">Nama lokasi <span class="required">*</span></label><input id="alternative-location-name" class="form-control" maxlength="100" [(ngModel)]="alternativeLocationForm.nama_lokasi" name="alternative_location_name" required></div>
+          <div class="form-group"><label for="alternative-location-description">Alamat/deskripsi</label><textarea id="alternative-location-description" class="form-control" rows="3" [(ngModel)]="alternativeLocationForm.deskripsi" name="alternative_location_description"></textarea></div>
+          <div class="form-group-row">
+            <div class="form-group"><label for="alternative-location-latitude">Latitude <span class="required">*</span></label><input id="alternative-location-latitude" class="form-control" type="number" min="-90" max="90" step="any" [(ngModel)]="alternativeLocationForm.latitude" (ngModelChange)="onAlternativeCoordinatesChange()" name="alternative_location_latitude" readonly required></div>
+            <div class="form-group"><label for="alternative-location-longitude">Longitude <span class="required">*</span></label><input id="alternative-location-longitude" class="form-control" type="number" min="-180" max="180" step="any" [(ngModel)]="alternativeLocationForm.longitude" (ngModelChange)="onAlternativeCoordinatesChange()" name="alternative_location_longitude" readonly required></div>
+          </div>
+          <div id="profile-alternative-map" class="profile-alternative-location-map" aria-label="Peta pilih lokasi alternatif"></div>
+          <p class="form-description" style="margin-top: 0.75rem;">Klik peta untuk mengisi koordinat. Radius toleransi ditentukan admin dan berlaku sama untuk WFH serta lokasi alternatif. Setelah dikirim, status lokasi menjadi menunggu persetujuan admin.</p>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn-secondary btn-cancel-reference" (click)="closeAlternativeLocationModal()">Batal</button><button type="submit" class="btn-primary" [disabled]="alternativeLocationSubmitting">{{ alternativeLocationSubmitting ? 'Menyimpan...' : 'Simpan Pengajuan' }}</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay profile-alternative-location-overlay" *ngIf="alternativeLocationDetailOpen" (click)="closeAlternativeLocationDetail()">
+    <div class="modal-content golan-card profile-alternative-location-dialog profile-alternative-location-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="alternative-location-detail-title" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h3 id="alternative-location-detail-title">Detail Lokasi Alternatif</h3><button type="button" class="icon-button" (click)="closeAlternativeLocationDetail()" aria-label="Tutup">×</button></div>
+      <div class="modal-body" *ngIf="selectedAlternativeLocation">
+        <div class="detail-grid">
+          <div class="detail-row"><span class="detail-label">Nama</span><span class="detail-value">{{ alternativeLocationName(selectedAlternativeLocation) }}</span></div>
+          <div class="detail-row"><span class="detail-label">Alamat/deskripsi</span><span class="detail-value">{{ alternativeLocationDescription(selectedAlternativeLocation) }}</span></div>
+          <div class="detail-row"><span class="detail-label">Koordinat</span><span class="detail-value mono-text">{{ selectedAlternativeLocation.latitude }}, {{ selectedAlternativeLocation.longitude }}</span></div>
+          <div class="detail-row"><span class="detail-label">Radius/metode</span><span class="detail-value">{{ selectedAlternativeLocation.radius_meter }} meter / {{ selectedAlternativeLocation.metode_validasi || 'radius' }}</span></div>
+          <div class="detail-row"><span class="detail-label">Persetujuan</span><span class="detail-value">{{ alternativeApprovalLabel(selectedAlternativeLocation) }}</span></div>
+          <div class="detail-row"><span class="detail-label">Status penggunaan</span><span class="detail-value">{{ alternativeUsageLabel(selectedAlternativeLocation) }}</span></div>
+          <div class="detail-row" *ngIf="alternativeRejectionReason(selectedAlternativeLocation)"><span class="detail-label">Alasan penolakan</span><span class="detail-value">{{ alternativeRejectionReason(selectedAlternativeLocation) }}</span></div>
+        </div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn-secondary btn-cancel-reference" (click)="closeAlternativeLocationDetail()">Tutup</button></div>
     </div>
   </div>
 </div>

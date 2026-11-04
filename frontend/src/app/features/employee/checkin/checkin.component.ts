@@ -65,6 +65,10 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   homeCircle!: L.Circle;
   homeMarker!: L.Marker;
   officeMarker!: L.Marker;
+  alternativeCircle!: L.Circle;
+  alternativeMarker!: L.Marker;
+  fieldCircle!: L.Circle;
+  fieldMarker!: L.Marker;
   
   // Kantor Koordinat (Fallback defaults)
   officeLat = -6.1202471;
@@ -97,12 +101,19 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   
   tipeKerja: string = 'WFO';
   private readonly fallbackWorkTypes = [
-    { Nama: 'WFO', RadiusYangBerlaku: 'kantor' },
-    { Nama: 'WFH', RadiusYangBerlaku: 'rumah' },
+    { Nama: 'WFO', RadiusYangBerlaku: 'kantor', canonical_type: 'wfo', LocationModeLabel: 'WFO' },
+    { Nama: 'WFH', RadiusYangBerlaku: 'rumah', canonical_type: 'wfh', LocationModeLabel: 'WFH' },
+    { Nama: 'Lokasi Alternatif', RadiusYangBerlaku: 'alternatif', canonical_type: 'alternative_location', LocationModeLabel: 'Lokasi Alternatif' },
     { Nama: 'Dinas Luar', RadiusYangBerlaku: 'tanpa_validasi' }
   ];
   // Keep the selector usable even before the API response arrives.
   workTypes: any[] = this.fallbackWorkTypes.map(workType => ({ ...workType }));
+  alternativeLocations: any[] = [];
+  fieldLocations: any[] = [];
+  selectedAlternativeLocationId: number | null = null;
+  selectedFieldLocationId: number | null = null;
+  locationSelectionLoading = true;
+  locationSelectionError = '';
   openTipeKerja = false;
   
   stream!: MediaStream;
@@ -136,6 +147,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isCheckoutPage = this.router.url === '/employee/checkout';
     this.checkTodayAttendance();
     this.loadWorkTypes();
+    this.loadLocationSelections();
     this.loadEmployeeProfile();
     this.loadOfficeInfo();
     this.clockInterval = setInterval(() => {
@@ -435,6 +447,117 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  private loadLocationSelections(): void {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      this.locationSelectionLoading = false;
+      this.syncSelectedLocation();
+      return;
+    }
+    const headers = { Authorization: `Bearer ${token}` };
+    let completed = 0;
+    const complete = () => {
+      completed += 1;
+      if (completed === 2) this.locationSelectionLoading = false;
+      this.syncSelectedLocation();
+    };
+
+    this.http.get<any>('http://localhost:8080/api/v1/employee/alternative-locations', { headers }).subscribe({
+      next: response => {
+        const rows = Array.isArray(response) ? response : response?.data;
+        this.alternativeLocations = (Array.isArray(rows) ? rows : []).filter(location => this.isApprovedActiveAlternative(location));
+        complete();
+      },
+      error: error => {
+        this.alternativeLocations = [];
+        this.locationSelectionError = this.apiLocationError(error, 'Lokasi alternatif tidak dapat dimuat.');
+        complete();
+      }
+    });
+
+    this.http.get<any>('http://localhost:8080/api/v1/locations/field/active', { headers }).subscribe({
+      next: response => {
+        const rows = Array.isArray(response) ? response : response?.data;
+        this.fieldLocations = (Array.isArray(rows) ? rows : []).filter(location => this.isActiveFieldLocation(location));
+        complete();
+      },
+      error: error => {
+        this.fieldLocations = [];
+        this.locationSelectionError = this.apiLocationError(error, 'Lokasi lapangan aktif tidak dapat dimuat.');
+        complete();
+      }
+    });
+  }
+
+  private apiLocationError(error: any, fallback: string): string {
+    if (error?.status === 401) return 'Sesi login telah kedaluwarsa. Silakan login kembali.';
+    return error?.error?.error || error?.error?.message || fallback;
+  }
+
+  canonicalType(workType: any): string {
+    const configured = String(workType?.canonical_type ?? workType?.CanonicalType ?? '').trim().toLowerCase();
+    if (['wfo', 'wfh', 'alternative_location', 'field_location'].includes(configured)) return configured;
+    const mode = String(workType?.RadiusYangBerlaku ?? '').trim().toLowerCase();
+    if (mode === 'rumah' || workType?.IsHomeBase) return 'wfh';
+    if (mode === 'alternatif' || mode === 'alternative') return 'alternative_location';
+    if (mode === 'lapangan' || mode === 'field') return 'field_location';
+    const name = String(workType?.Nama ?? '').trim().toLowerCase();
+    if (name === 'wfo') return 'wfo';
+    if (name === 'wfh') return 'wfh';
+    if (name === 'lokasi alternatif' || name === 'alternative location') return 'alternative_location';
+    if (name === 'lokasi lapangan' || name === 'field location') return 'field_location';
+    return '';
+  }
+
+  selectableWorkTypes(): any[] {
+    return this.workTypes.filter(workType => {
+      if (this.canonicalType(workType) !== 'field_location') return true;
+      return this.isFieldLocationAllowedByWorkType(workType) || (this.hasCheckedIn && workType.Nama === this.tipeKerja);
+    });
+  }
+
+  private locationId(location: any): number {
+    return Number(location?.id ?? location?.ID ?? 0);
+  }
+
+  private isApprovedActiveAlternative(location: any): boolean {
+    const approval = String(location?.status ?? location?.status_approval ?? location?.StatusApproval ?? '').toLowerCase();
+    const active = String(location?.status_aktif ?? location?.StatusAktif ?? '').toLowerCase();
+    return approval === 'approved' && active === 'active';
+  }
+
+  private isActiveFieldLocation(location: any): boolean {
+    const status = String(location?.status_aktif ?? location?.StatusAktif ?? '').toLowerCase();
+    return status === 'active' && !location?.deleted_at && !location?.DeletedAt;
+  }
+
+  private isFieldLocationAllowedByWorkType(workType: any): boolean {
+    if (this.canonicalType(workType) !== 'field_location') return false;
+    if (workType?.field_location_active === false || workType?.FieldLocationActive === false) return false;
+    const id = Number(workType?.field_location_id ?? workType?.FieldLocationID ?? 0);
+    return id > 0 && this.fieldLocations.some(location => this.locationId(location) === id && this.isActiveFieldLocation(location));
+  }
+
+  private syncSelectedLocation(): void {
+    const selected = this.workTypes.find(workType => workType.Nama === this.tipeKerja);
+    const canonical = this.canonicalType(selected);
+    if (canonical === 'alternative_location') {
+      if (!this.alternativeLocations.some(location => this.locationId(location) === this.selectedAlternativeLocationId)) {
+        this.selectedAlternativeLocationId = this.locationId(this.alternativeLocations[0]) || null;
+      }
+      this.selectedFieldLocationId = null;
+    } else if (canonical === 'field_location') {
+      const configuredID = Number(selected?.field_location_id ?? selected?.FieldLocationID ?? 0);
+      this.selectedFieldLocationId = this.fieldLocations.some(location => this.locationId(location) === configuredID) ? configuredID : null;
+      this.selectedAlternativeLocationId = null;
+    } else {
+      this.selectedAlternativeLocationId = null;
+      this.selectedFieldLocationId = null;
+    }
+    this.updateMapGeofences();
+    this.checkRadius();
+  }
+
   private applyWorkTypes(apiWorkTypes: any[] | null | undefined): void {
     const workTypes = Array.isArray(apiWorkTypes) ? apiWorkTypes.filter(w => w?.Nama) : [];
     const merged = [...workTypes];
@@ -454,7 +577,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.hasCheckedIn && recordedType && !merged.some(workType => workType.Nama === recordedType)) {
       merged.push({
         Nama: recordedType,
-        RadiusYangBerlaku: recordedType === 'WFH' ? 'rumah' : (recordedType === 'WFO' ? 'kantor' : 'tanpa_validasi')
+        RadiusYangBerlaku: recordedType === 'WFH' ? 'rumah' : (recordedType === 'WFO' ? 'kantor' : 'tanpa_validasi'),
+        canonical_type: recordedType === 'WFH' ? 'wfh' : (recordedType === 'WFO' ? 'wfo' : undefined)
       });
     }
 
@@ -467,6 +591,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     this.updateOfficeGeofence();
     this.updateMapGeofences();
     this.checkRadius();
+    this.syncSelectedLocation();
   }
 
   private loadOfficeInfo(): void {
@@ -554,8 +679,31 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.homeMarker) {
       this.map.removeLayer(this.homeMarker);
     }
+    if (this.alternativeCircle) {
+      this.map.removeLayer(this.alternativeCircle);
+    }
+    if (this.alternativeMarker) {
+      this.map.removeLayer(this.alternativeMarker);
+    }
+    if (this.fieldCircle) {
+      this.map.removeLayer(this.fieldCircle);
+    }
+    if (this.fieldMarker) {
+      this.map.removeLayer(this.fieldMarker);
+    }
 
     const selectedWorkType = this.workTypes.find(w => w.Nama === this.tipeKerja);
+    const canonical = this.canonicalType(selectedWorkType);
+    if (canonical === 'alternative_location') {
+      const location = this.selectedAlternativeLocation();
+      if (location) this.drawSelectedLocation(location, 'alternative');
+      return;
+    }
+    if (canonical === 'field_location') {
+      const location = this.selectedFieldLocation();
+      if (location) this.drawSelectedLocation(location, 'field');
+      return;
+    }
     if (this.validationMode(selectedWorkType) === 'rumah' && this.employeeProfile?.Employee) {
       const home = this.employeeProfile.Employee.HomeLocation || this.employeeProfile.Employee.home_location;
       const hLat = Number(home?.LatitudeRumah ?? home?.latitude_rumah ?? this.employeeProfile.Employee.HomeLatitude ?? 0);
@@ -575,9 +723,81 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private validationMode(workType: any): 'kantor' | 'rumah' | 'tanpa_validasi' {
+  private selectedAlternativeLocation(): any | null {
+    return this.alternativeLocations.find(location => this.locationId(location) === this.selectedAlternativeLocationId) || null;
+  }
+
+  private selectedFieldLocation(): any | null {
+    return this.fieldLocations.find(location => this.locationId(location) === this.selectedFieldLocationId) || null;
+  }
+
+  private drawSelectedLocation(location: any, source: 'alternative' | 'field'): void {
+    const latitude = Number(location?.latitude ?? location?.Latitude);
+    const longitude = Number(location?.longitude ?? location?.Longitude);
+    const radius = Number(location?.radius_meter ?? location?.RadiusMeter);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(radius) || radius <= 0) return;
+    const point: L.LatLngExpression = [latitude, longitude];
+    const color = source === 'alternative' ? '#3B82F6' : '#8B5CF6';
+    const marker = source === 'alternative' ? blueIcon : greenIcon;
+    const popup = `${location?.nama_lokasi ?? location?.NamaLokasi ?? 'Lokasi'} (${radius} meter)`;
+    const circle = L.circle(point, { color, fillColor: color, fillOpacity: 0.15, weight: 2, radius }).addTo(this.map);
+    const pin = L.marker(point, { icon: marker }).addTo(this.map).bindPopup(popup);
+    if (source === 'alternative') {
+      this.alternativeCircle = circle;
+      this.alternativeMarker = pin;
+    } else {
+      this.fieldCircle = circle;
+      this.fieldMarker = pin;
+    }
+    if (this.currentLat === 0 && this.currentLng === 0) this.map.setView(point, 17);
+  }
+
+  selectedCanonicalType(): string {
+    return this.canonicalType(this.workTypes.find(workType => workType.Nama === this.tipeKerja));
+  }
+
+  selectedLocation(): any | null {
+    const canonical = this.selectedCanonicalType();
+    return canonical === 'alternative_location' ? this.selectedAlternativeLocation() : canonical === 'field_location' ? this.selectedFieldLocation() : null;
+  }
+
+  selectedLocationName(): string {
+    const location = this.selectedLocation();
+    return location?.nama_lokasi ?? location?.NamaLokasi ?? '';
+  }
+
+  selectedLocationDescription(): string {
+    const location = this.selectedLocation();
+    return location?.deskripsi ?? location?.Deskripsi ?? '';
+  }
+
+  selectedLocationCoordinates(): string {
+    const location = this.selectedLocation();
+    if (!location) return '';
+    return `${location.latitude ?? location.Latitude}, ${location.longitude ?? location.Longitude}`;
+  }
+
+  selectedLocationRadius(): number {
+    const location = this.selectedLocation();
+    return Number(location?.radius_meter ?? location?.RadiusMeter ?? 0);
+  }
+
+  onAlternativeLocationChange(): void {
+    this.updateMapGeofences();
+    this.checkRadius();
+  }
+
+  onFieldLocationChange(): void {
+    this.updateMapGeofences();
+    this.checkRadius();
+  }
+
+  private validationMode(workType: any): 'kantor' | 'rumah' | 'alternatif' | 'lapangan' | 'tanpa_validasi' {
+    const canonical = this.canonicalType(workType);
+    if (canonical === 'alternative_location') return 'alternatif';
+    if (canonical === 'field_location') return 'lapangan';
     const configured = String(workType?.RadiusYangBerlaku || '').trim().toLowerCase();
-    if (configured === 'rumah' || configured === 'tanpa_validasi') return configured;
+    if (configured === 'rumah' || configured === 'tanpa_validasi' || configured === 'alternatif' || configured === 'lapangan') return configured;
     // Compatibility for work types returned by an older API/cache.
     if (workType?.IsHomeBase) return 'rumah';
     if (configured === 'kantor' || String(workType?.Nama || '').trim().toUpperCase() === 'WFO') return 'kantor';
@@ -585,6 +805,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onTipeKerjaChange(): void {
+    this.syncSelectedLocation();
     this.updateOfficeGeofence();
     this.updateMapGeofences();
     this.checkRadius();
@@ -597,6 +818,7 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
 
   selectTipeKerja(value: string): void {
     if (this.hasCheckedIn) return;
+    if (!this.selectableWorkTypes().some(workType => workType.Nama === value)) return;
     this.tipeKerja = value;
     this.openTipeKerja = false;
     this.onTipeKerjaChange();
@@ -747,6 +969,32 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const userLatLng = L.latLng(this.currentLat, this.currentLng);
+    if (mode === 'alternatif' || mode === 'lapangan') {
+      const location = this.selectedLocation();
+      if (!location) {
+        this.isLocationValid = false;
+        this.locationError = mode === 'alternatif'
+          ? 'Pilih lokasi alternatif approved dan aktif untuk check-in.'
+          : 'Lokasi lapangan aktif belum tersedia atau belum dikonfigurasi pada tipe kerja.';
+        this.statusText = 'Lokasi check-in belum dipilih';
+        return;
+      }
+      const latitude = Number(location.latitude ?? location.Latitude);
+      const longitude = Number(location.longitude ?? location.Longitude);
+      const locationRadius = this.selectedLocationRadius();
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || locationRadius <= 0) {
+        this.isLocationValid = false;
+        this.locationError = 'Data geofence lokasi tidak valid.';
+        this.statusText = 'Lokasi tidak valid';
+        return;
+      }
+      const distance = Math.round(userLatLng.distanceTo(L.latLng(latitude, longitude)));
+      this.isLocationValid = distance <= locationRadius + Math.min(this.currentAccuracy, 50);
+      this.locationError = this.isLocationValid ? '' : `Posisi Anda di luar radius ${mode === 'alternatif' ? 'lokasi alternatif' : 'lokasi lapangan'}.`;
+      this.statusText = this.isLocationValid ? 'Lokasi terverifikasi' : 'Lokasi di luar radius';
+      this.locationDistanceText = `${this.isLocationValid ? 'Radius' : 'Jarak'} ${this.formatDistance(distance)} meter dari ${mode === 'alternatif' ? 'lokasi alternatif' : 'lokasi lapangan'}`;
+      return;
+    }
     const officeLatLng = L.latLng(this.officeLat, this.officeLng);
     this.distanceToOffice = Math.round(userLatLng.distanceTo(officeLatLng));
     
@@ -846,6 +1094,15 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
     this.capturedBlob = null;
   }
 
+  private attendanceLocationSelection(): { canonicalType: string; alternativeLocationId?: number | null; fieldLocationId?: number | null } {
+    const canonicalType = this.selectedCanonicalType();
+    return {
+      canonicalType,
+      alternativeLocationId: canonicalType === 'alternative_location' ? this.selectedAlternativeLocationId : null,
+      fieldLocationId: canonicalType === 'field_location' ? this.selectedFieldLocationId : null
+    };
+  }
+
   async triggerPunch(): Promise<void> {
     if (!this.canPunchBySchedule || (this.isLocationRequired && !this.isGpsActive) || !this.isLocationValid || !this.capturedBlob || this.isSubmitting) return;
     if (this.isCheckoutPage && !this.hasCheckedIn) return;
@@ -868,7 +1125,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       this.currentLng, 
       this.currentAccuracy, 
       this.capturedBlob,
-      this.tipeKerja
+      this.tipeKerja,
+      this.attendanceLocationSelection()
     ).subscribe({
       next: () => {
         this.isSubmitting = false;
@@ -893,7 +1151,8 @@ export class CheckinComponent implements OnInit, AfterViewInit, OnDestroy {
       this.currentLng, 
       this.currentAccuracy, 
       this.capturedBlob,
-      this.tipeKerja
+      this.tipeKerja,
+      this.attendanceLocationSelection()
     ).subscribe({
       next: () => {
         this.isSubmitting = false;

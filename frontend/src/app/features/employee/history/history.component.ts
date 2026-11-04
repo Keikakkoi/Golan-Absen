@@ -5,6 +5,7 @@ import { AttendanceService } from '../../../core/services/attendance.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { UiSkeletonComponent } from '../../../shared/ui-skeleton/ui-skeleton.component';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
+import { attendanceLocationAddress, attendanceLocationCoordinates, attendanceLocationSummary, attendanceTypeLabel } from '../../../core/utils/attendance-display';
 
 @Component({
   selector: 'app-history',
@@ -101,6 +102,11 @@ export class HistoryComponent implements OnInit {
     const diffMins = Math.floor((diffMs % 3600000) / 60000);
     return `${diffHrs} jam ${diffMins} menit`;
   }
+
+  workTypeLabel(record: any): string { return attendanceTypeLabel(record); }
+  locationSummary(record: any): string { return attendanceLocationSummary(record); }
+  locationAddress(record: any): string { return attendanceLocationAddress(record); }
+  locationCoordinates(record: any): string { return attendanceLocationCoordinates(record); }
 
   generateCalendar(): void {
     const year = this.currentMonth.getFullYear();

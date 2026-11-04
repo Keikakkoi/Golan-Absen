@@ -1,0 +1,164 @@
+<div class="dashboard-container admin-theme location-management-shell">
+  <app-admin-sidebar></app-admin-sidebar>
+
+  <main class="main-content location-management-page">
+    <div class="header">
+      <h2>Manajemen Lokasi</h2>
+      <p class="subtitle">Kelola pengajuan lokasi alternatif user dan master lokasi lapangan.</p>
+    </div>
+
+    <section class="golan-card location-section">
+      <div class="location-section-heading">
+        <div><h3>Pengajuan Lokasi Alternatif</h3><p>Setujui atau tolak pengajuan lokasi milik user. Pengajuan yang sudah diproses tidak dapat diputuskan ulang.</p></div>
+      </div>
+      <div *ngIf="alternativeError" class="alert alert-danger" role="alert">{{ alternativeError }} <button type="button" class="btn-secondary" (click)="loadAlternativeRequests()">Coba lagi</button></div>
+      <div class="filter-card premium-filter location-filter-card">
+        <div class="filter-header">
+          <h5><i class="fas fa-filter text-primary" aria-hidden="true"></i> Filter Pengajuan</h5>
+        </div>
+        <div class="filter-grid premium-grid location-filter-grid">
+          <div class="filter-group">
+            <label for="alternative-search">Pencarian User/Lokasi</label>
+            <div class="input-wrapper">
+              <i class="fas fa-search icon-left" aria-hidden="true"></i>
+              <input id="alternative-search" type="search" class="filter-input has-icon" [(ngModel)]="alternativeSearch" (ngModelChange)="alternativeFiltersChanged()" placeholder="Nama user, email, atau lokasi">
+            </div>
+          </div>
+          <div class="filter-group">
+            <label for="alternative-status">Status</label>
+            <div class="input-wrapper select-wrapper">
+              <select id="alternative-status" class="filter-input" [(ngModel)]="alternativeStatusFilter" (ngModelChange)="alternativeFiltersChanged()">
+                <option value="">Semua Status</option>
+                <option value="pending">Menunggu persetujuan</option>
+                <option value="approved">Disetujui</option>
+                <option value="rejected">Ditolak</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right" aria-hidden="true"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="golan-table-responsive location-table-wrap">
+        <table class="golan-table location-table alternative-table">
+          <thead><tr><th>User</th><th>Lokasi</th><th>Alamat/deskripsi</th><th>Status</th><th>Diajukan</th><th>Aksi</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let row of alternativeRequests">
+              <td><strong>{{ ownerName(row) }}</strong><br><small>{{ ownerRole(row) }}<span *ngIf="row.owner?.email"> · {{ row.owner.email }}</span></small></td>
+              <td>{{ alternativeName(row) }}</td>
+              <td>{{ row.deskripsi || row.Deskripsi || '-' }}</td>
+              <td><span class="status-badge" [ngClass]="alternativeStatus(row)">{{ alternativeStatusLabel(row) }}</span><small *ngIf="rejectionReason(row)" class="rejection-note">{{ rejectionReason(row) }}</small></td>
+              <td>{{ (row.created_at || row.CreatedAt) | date:'dd MMM yyyy HH:mm' }}</td>
+                <td class="location-actions">
+                <button type="button" class="icon-button view" (click)="openAlternativeDetail(row)" aria-label="Lihat pengajuan" title="Lihat"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
+                <button type="button" class="icon-button approve" [disabled]="!isPending(row) || alternativeActingId === alternativeId(row)" (click)="approveAlternative(row)" aria-label="Setujui pengajuan" title="Setujui"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#check"></use></svg></button>
+                <button type="button" class="icon-button reject" [disabled]="!isPending(row) || alternativeActingId === alternativeId(row)" (click)="rejectAlternative(row)" aria-label="Tolak pengajuan" title="Tolak"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#x"></use></svg></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="!alternativeLoading && !alternativeRequests.length" class="empty-state">Belum ada pengajuan lokasi alternatif.</div>
+        <div *ngIf="alternativeLoading" class="loading-state">Memuat pengajuan lokasi alternatif...</div>
+      </div>
+      <div class="location-pagination">
+        <app-pagination [totalItems]="alternativeTotal" [currentPage]="alternativePage" [pageSize]="alternativePageSize" [pageSizeOptions]="pageSizeOptions" [loading]="alternativeLoading" [showEmpty]="false" (pageChange)="alternativePageChanged($event)" (pageSizeChange)="alternativePageSizeChanged($event)"></app-pagination>
+      </div>
+    </section>
+
+    <section class="golan-card location-section">
+      <div class="location-section-heading">
+        <div><h3>Daftar Lokasi Lapangan</h3><p>Master lokasi yang dapat dipilih pada Pengaturan Umum Tipe Kerja.</p></div>
+        <button type="button" class="btn-primary" (click)="openFieldModal()">+ Tambah Lokasi Lapangan</button>
+      </div>
+      <div *ngIf="fieldError" class="alert alert-danger" role="alert">{{ fieldError }} <button type="button" class="btn-secondary" (click)="loadFieldLocations()">Coba lagi</button></div>
+      <div class="filter-card premium-filter location-filter-card">
+        <div class="filter-header">
+          <h5><i class="fas fa-filter text-primary" aria-hidden="true"></i> Filter Lokasi Lapangan</h5>
+        </div>
+        <div class="filter-grid premium-grid location-filter-grid">
+          <div class="filter-group">
+            <label for="field-search">Pencarian Lokasi</label>
+            <div class="input-wrapper">
+              <i class="fas fa-search icon-left" aria-hidden="true"></i>
+              <input id="field-search" type="search" class="filter-input has-icon" [(ngModel)]="fieldSearch" (ngModelChange)="fieldFiltersChanged()" placeholder="Nama atau alamat">
+            </div>
+          </div>
+          <div class="filter-group">
+            <label for="field-status">Status</label>
+            <div class="input-wrapper select-wrapper">
+              <select id="field-status" class="filter-input" [(ngModel)]="fieldStatus" (ngModelChange)="fieldFiltersChanged()">
+                <option value="">Semua Status</option>
+                <option value="active">Aktif</option>
+                <option value="inactive">Tidak aktif</option>
+              </select>
+              <i class="fas fa-chevron-down icon-right" aria-hidden="true"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="golan-table-responsive location-table-wrap">
+        <table class="golan-table location-table field-table">
+          <thead><tr><th>Nama lokasi</th><th>Alamat/deskripsi</th><th>Koordinat/radius</th><th>Status</th><th>Diperbarui</th><th>Aksi</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let row of fieldLocations">
+              <td><strong>{{ row.nama_lokasi || row.NamaLokasi }}</strong></td>
+              <td>{{ row.deskripsi || row.Deskripsi || '-' }}</td>
+              <td class="mono-text">{{ row.latitude ?? row.Latitude }}, {{ row.longitude ?? row.Longitude }}<br><small>{{ row.radius_meter ?? row.RadiusMeter }} meter</small></td>
+              <td><span class="status-badge" [ngClass]="fieldStatusValue(row)">{{ fieldStatusLabel(row) }}</span></td>
+              <td>{{ (row.updated_at || row.UpdatedAt || row.created_at || row.CreatedAt) | date:'dd MMM yyyy HH:mm' }}</td>
+                <td class="location-actions">
+                <label class="location-switch" [class.is-active]="fieldIsActive(row)" [class.is-inactive]="!fieldIsActive(row)" [attr.aria-label]="(fieldIsActive(row) ? 'Nonaktifkan ' : 'Aktifkan ') + (row.nama_lokasi || row.NamaLokasi)">
+                  <input type="checkbox" [checked]="fieldIsActive(row)" (change)="toggleFieldLocation(row)">
+                  <span class="location-switch-track" aria-hidden="true"><span class="location-switch-text">{{ fieldIsActive(row) ? 'ON' : 'OFF' }}</span><span class="location-switch-thumb"></span></span>
+                </label>
+                <div class="location-action-buttons">
+                  <button type="button" class="icon-button view" (click)="openFieldDetail(row)" aria-label="Lihat lokasi lapangan" title="Lihat"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
+                  <button type="button" class="icon-button edit" (click)="openFieldModal(row)" aria-label="Edit lokasi lapangan" title="Edit"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>
+                  <button type="button" class="icon-button delete" (click)="deleteFieldLocation(row)" aria-label="Arsipkan lokasi lapangan" title="Arsipkan"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="!fieldLoading && !fieldLocations.length" class="empty-state">Belum ada lokasi lapangan.</div>
+        <div *ngIf="fieldLoading" class="loading-state">Memuat lokasi lapangan...</div>
+      </div>
+      <div class="location-pagination">
+        <app-pagination [totalItems]="fieldTotal" [currentPage]="fieldPage" [pageSize]="fieldPageSize" [pageSizeOptions]="pageSizeOptions" [loading]="fieldLoading" [showEmpty]="false" (pageChange)="fieldPageChanged($event)" (pageSizeChange)="fieldPageSizeChanged($event)"></app-pagination>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-overlay location-management-modal-overlay" *ngIf="alternativeDetailOpen" (click)="closeAlternativeDetail()">
+    <div class="modal-content golan-card location-detail-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h3>Detail Pengajuan Lokasi Alternatif</h3><button class="btn-close" type="button" (click)="closeAlternativeDetail()" aria-label="Tutup">&times;</button></div>
+      <div class="modal-body" *ngIf="selectedAlternativeRequest">
+        <div class="detail-grid"><div class="detail-row"><span class="detail-label">User</span><span class="detail-value">{{ ownerName(selectedAlternativeRequest) }} ({{ ownerRole(selectedAlternativeRequest) }})</span></div><div class="detail-row"><span class="detail-label">Lokasi</span><span class="detail-value">{{ alternativeName(selectedAlternativeRequest) }}</span></div><div class="detail-row"><span class="detail-label">Alamat/deskripsi</span><span class="detail-value">{{ selectedAlternativeRequest.deskripsi || '-' }}</span></div><div class="detail-row"><span class="detail-label">Koordinat</span><span class="detail-value mono-text">{{ selectedAlternativeRequest.latitude }}, {{ selectedAlternativeRequest.longitude }}</span></div><div class="detail-row"><span class="detail-label">Radius/metode</span><span class="detail-value">{{ selectedAlternativeRequest.radius_meter }} meter / {{ selectedAlternativeRequest.metode_validasi || 'radius' }}</span></div><div class="detail-row"><span class="detail-label">Status</span><span class="detail-value">{{ alternativeStatusLabel(selectedAlternativeRequest) }}</span></div><div class="detail-row" *ngIf="rejectionReason(selectedAlternativeRequest)"><span class="detail-label">Alasan penolakan</span><span class="detail-value">{{ rejectionReason(selectedAlternativeRequest) }}</span></div></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn-secondary btn-cancel-reference" (click)="closeAlternativeDetail()">Tutup</button><ng-container *ngIf="isPending(selectedAlternativeRequest)"><button type="button" class="btn-primary" (click)="approveAlternative(selectedAlternativeRequest)">Setujui</button><button type="button" class="btn-secondary" (click)="rejectAlternative(selectedAlternativeRequest)">Tolak</button></ng-container></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay location-management-modal-overlay" *ngIf="fieldModalOpen" (click)="closeFieldModal()">
+    <div class="modal-content golan-card location-form-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h3>{{ editingFieldLocationId ? 'Edit Lokasi Lapangan' : 'Tambah Lokasi Lapangan' }}</h3><button class="btn-close" type="button" (click)="closeFieldModal()" aria-label="Tutup">&times;</button></div>
+      <form (ngSubmit)="saveFieldLocation()">
+        <div class="modal-body">
+          <div class="form-group"><label for="field-name">Nama lokasi <span class="required-mark">*</span></label><input id="field-name" class="form-control" maxlength="100" [(ngModel)]="fieldForm.nama_lokasi" name="field_name" required></div>
+          <div class="form-group"><label for="field-description">Alamat/deskripsi</label><textarea id="field-description" class="form-control" rows="3" [(ngModel)]="fieldForm.deskripsi" name="field_description"></textarea></div>
+          <div class="form-group"><label for="field-google-maps">Link Google Maps <span *ngIf="editingFieldLocationId === null" class="required-mark">*</span></label><input id="field-google-maps" type="url" class="form-control" [(ngModel)]="fieldForm.google_maps_url" (ngModelChange)="onFieldGoogleMapsUrlChange()" (blur)="resolveFieldGoogleMapsUrl()" name="field_google_maps_url" placeholder="https://maps.app.goo.gl/..." [required]="editingFieldLocationId === null"><small class="form-help">Tempel link pin lokasi dari Google Maps. Latitude dan longitude akan terisi otomatis.</small><small *ngIf="fieldMapResolving" class="form-help">Membaca koordinat dari Google Maps...</small></div>
+          <div class="form-group-row"><div class="form-group"><label for="field-latitude">Latitude <span class="required-mark">*</span></label><input id="field-latitude" type="number" class="form-control" min="-90" max="90" step="any" [(ngModel)]="fieldForm.latitude" name="field_latitude" readonly required></div><div class="form-group"><label for="field-longitude">Longitude <span class="required-mark">*</span></label><input id="field-longitude" type="number" class="form-control" min="-180" max="180" step="any" [(ngModel)]="fieldForm.longitude" name="field_longitude" readonly required></div></div>
+          <div class="form-group-row"><div class="form-group"><label for="field-radius">Radius (meter)</label><input id="field-radius" type="number" class="form-control" min="1" max="10000" [(ngModel)]="fieldForm.radius_meter" name="field_radius" required></div><div class="form-group"><label for="field-validation">Metode validasi</label><select id="field-validation" class="form-control" [(ngModel)]="fieldForm.metode_validasi" name="field_validation"><option value="radius">Radius</option><option value="polygon">Polygon</option></select></div><div class="form-group"><label for="field-status">Status</label><select id="field-status" class="form-control" [(ngModel)]="fieldForm.status_aktif" name="field_status"><option value="active">Aktif</option><option value="inactive">Tidak aktif</option></select></div></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn-secondary btn-cancel-reference" (click)="closeFieldModal()">Batal</button><button type="submit" class="btn-primary" [disabled]="fieldSaving">{{ fieldSaving ? 'Menyimpan...' : 'Simpan' }}</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay location-management-modal-overlay" *ngIf="fieldDetailOpen" (click)="closeFieldDetail()">
+    <div class="modal-content golan-card location-detail-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h3>Detail Lokasi Lapangan</h3><button class="btn-close" type="button" (click)="closeFieldDetail()" aria-label="Tutup">&times;</button></div>
+      <div class="modal-body" *ngIf="selectedFieldLocation"><div class="detail-grid"><div class="detail-row"><span class="detail-label">Nama</span><span class="detail-value">{{ selectedFieldLocation.nama_lokasi || selectedFieldLocation.NamaLokasi }}</span></div><div class="detail-row"><span class="detail-label">Alamat/deskripsi</span><span class="detail-value">{{ selectedFieldLocation.deskripsi || '-' }}</span></div><div class="detail-row"><span class="detail-label">Koordinat</span><span class="detail-value mono-text">{{ selectedFieldLocation.latitude }}, {{ selectedFieldLocation.longitude }}</span></div><div class="detail-row"><span class="detail-label">Radius/metode</span><span class="detail-value">{{ selectedFieldLocation.radius_meter }} meter / {{ selectedFieldLocation.metode_validasi || 'radius' }}</span></div><div class="detail-row"><span class="detail-label">Status</span><span class="detail-value">{{ fieldStatusLabel(selectedFieldLocation) }}</span></div></div></div>
+      <div class="modal-footer"><button type="button" class="btn-secondary btn-cancel-reference" (click)="closeFieldDetail()">Tutup</button></div>
+    </div>
+  </div>
+</div>

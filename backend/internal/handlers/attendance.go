@@ -6,6 +6,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -111,13 +112,17 @@ func CheckIn(c *fiber.Ctx) error {
 		wt.IsHomeBase = strings.EqualFold(tipeKerja, "WFH")
 		wt.ButuhValidasiGeofence = !wt.IsHomeBase
 	}
+	canonical := canonicalWorkType(wt)
+	if wt.ID != 0 && !wt.StatusAktif {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Tipe kerja sedang tidak aktif"})
+	}
+	if (canonical == models.WorkTypeAlternative || canonical == models.WorkTypeField) && wt.ID == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Tipe kerja lokasi belum dikonfigurasi"})
+	}
 
-	lat, lon, acc, dalamRadius, radiusTervalidasi, locationErr := resolveAttendanceLocation(
-		employee.ID,
-		wt,
-		c.FormValue("latitude"),
-		c.FormValue("longitude"),
-		c.FormValue("accuracy"),
+	location, locationErr := resolveAttendanceLocationSelection(
+		userID, employee.ID, wt, c.FormValue("alternative_location_id"), c.FormValue("field_location_id"),
+		c.FormValue("latitude"), c.FormValue("longitude"), c.FormValue("accuracy"),
 	)
 	if locationErr != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": locationErr.Error()})
@@ -150,23 +155,37 @@ func CheckIn(c *fiber.Ctx) error {
 	}
 
 	record := models.AttendanceRecord{
-		EmployeeID:          &employee.ID,
-		Tanggal:             workDate,
-		JamMasuk:            &now,
-		IsLate:              now.After(lateTime),
-		LateDurationMinutes: lateMinutes,
-		Status:              status,
-		LatitudeMasuk:       lat,
-		LongitudeMasuk:      lon,
-		AkurasiGPSMasuk:     acc,
-		DalamRadiusMasuk:    dalamRadius,
-		FotoSelfieMasukURL:  imageURL,
-		Latitude:            lat,
-		Longitude:           lon,
-		AkurasiGPS:          acc,
-		DalamRadius:         dalamRadius,
-		RadiusTervalidasi:   radiusTervalidasi,
-		TipeKerja:           tipeKerja,
+		EmployeeID:              &employee.ID,
+		Tanggal:                 workDate,
+		JamMasuk:                &now,
+		IsLate:                  now.After(lateTime),
+		LateDurationMinutes:     lateMinutes,
+		Status:                  status,
+		LatitudeMasuk:           location.Latitude,
+		LongitudeMasuk:          location.Longitude,
+		AkurasiGPSMasuk:         location.Accuracy,
+		DalamRadiusMasuk:        location.WithinRadius,
+		FotoSelfieMasukURL:      imageURL,
+		Latitude:                location.Latitude,
+		Longitude:               location.Longitude,
+		AkurasiGPS:              location.Accuracy,
+		DalamRadius:             location.WithinRadius,
+		RadiusTervalidasi:       location.ValidationSource,
+		TipeKerja:               tipeKerja,
+		TipeKerjaCanonical:      canonical,
+		AlternativeLocationID:   location.AlternativeLocationID,
+		FieldLocationID:         location.FieldLocationID,
+		LocationNameSnapshot:    location.Name,
+		LocationAddressSnapshot: location.Address,
+	}
+	if location.Latitude != 0 || location.Longitude != 0 {
+		lat, lon := location.Latitude, location.Longitude
+		record.LocationLatitudeSnapshot = &lat
+		record.LocationLongitudeSnapshot = &lon
+	}
+	if location.Radius > 0 {
+		radius := location.Radius
+		record.LocationRadiusSnapshot = &radius
 	}
 	if wt.ID != 0 {
 		record.TipeKerjaID = &wt.ID
@@ -184,7 +203,7 @@ func CheckIn(c *fiber.Ctx) error {
 				_ = notifyWFHAttendance(hrd, employee, record, now)
 				continue
 			}
-			_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Check-In", "Check-In Karyawan", fmt.Sprintf("%s melakukan check-in pada %s (%s)", employee.NIK, now.Format("02 Jan 2006 15:04"), wt.Nama))
+			_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Check-In", "Check-In Karyawan", fmt.Sprintf("%s melakukan check-in pada %s (%s)", employee.NIK, now.Format("02 Jan 2006 15:04"), attendanceTypeLabel(record)))
 		}
 	}
 
@@ -223,8 +242,8 @@ func wfhAttendanceNotificationPayload(employee models.Employee, record models.At
 	if strings.TrimSpace(location) == "" {
 		location = "Lokasi rumah tervalidasi"
 	}
-	workType := strings.TrimSpace(record.TipeKerja)
-	if workType == "" {
+	workType := attendanceTypeLabel(record)
+	if strings.TrimSpace(record.TipeKerja) == "" && !record.TipeKerjaCanonical.Valid() {
 		workType = "WFH"
 	}
 	message := fmt.Sprintf("%s melakukan absensi pada %s. Jenis: %s. Status: %s. Lokasi: %s.", name, at.Format("02 Jan 2006 15:04"), workType, record.Status, location)
@@ -275,16 +294,29 @@ func CheckOut(c *fiber.Ctx) error {
 	var wt models.WorkType
 	if err := config.DB.Where("nama = ?", record.TipeKerja).First(&wt).Error; err != nil {
 		wt.Nama = record.TipeKerja
+		wt.CanonicalType = record.TipeKerjaCanonical
+		wt.FieldLocationID = record.FieldLocationID
 		wt.IsHomeBase = strings.EqualFold(record.TipeKerja, "WFH")
 		wt.ButuhValidasiGeofence = !wt.IsHomeBase
 	}
+	if record.TipeKerjaCanonical.Valid() {
+		wt.CanonicalType = record.TipeKerjaCanonical
+	}
+	if record.FieldLocationID != nil {
+		wt.FieldLocationID = record.FieldLocationID
+	}
 
-	lat, lon, acc, dalamRadius, radiusTervalidasi, locationErr := resolveAttendanceLocation(
-		employee.ID,
-		wt,
-		c.FormValue("latitude"),
-		c.FormValue("longitude"),
-		c.FormValue("accuracy"),
+	alternativeID := ""
+	if record.AlternativeLocationID != nil {
+		alternativeID = strconv.FormatUint(uint64(*record.AlternativeLocationID), 10)
+	}
+	fieldID := ""
+	if record.FieldLocationID != nil {
+		fieldID = strconv.FormatUint(uint64(*record.FieldLocationID), 10)
+	}
+	location, locationErr := resolveAttendanceLocationSelection(
+		userID, employee.ID, wt, alternativeID, fieldID,
+		c.FormValue("latitude"), c.FormValue("longitude"), c.FormValue("accuracy"),
 	)
 	if locationErr != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": locationErr.Error()})
@@ -302,16 +334,16 @@ func CheckOut(c *fiber.Ctx) error {
 	}
 
 	record.JamPulang = &now
-	record.LatitudePulang = lat
-	record.LongitudePulang = lon
-	record.AkurasiGPSPulang = acc
-	record.DalamRadiusPulang = dalamRadius
+	record.LatitudePulang = location.Latitude
+	record.LongitudePulang = location.Longitude
+	record.AkurasiGPSPulang = location.Accuracy
+	record.DalamRadiusPulang = location.WithinRadius
 	record.FotoSelfiePulangURL = imageURL
-	record.Latitude = lat
-	record.Longitude = lon
-	record.AkurasiGPS = acc
-	record.DalamRadius = dalamRadius
-	record.RadiusTervalidasi = radiusTervalidasi
+	record.Latitude = location.Latitude
+	record.Longitude = location.Longitude
+	record.AkurasiGPS = location.Accuracy
+	record.DalamRadius = location.WithinRadius
+	record.RadiusTervalidasi = location.ValidationSource
 
 	if err := config.DB.Save(&record).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to save check-out record"})
@@ -321,7 +353,7 @@ func CheckOut(c *fiber.Ctx) error {
 	var hrdUsers []models.User
 	if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
 		for _, hrd := range hrdUsers {
-			_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Check-Out", "Check-Out Karyawan", fmt.Sprintf("%s melakukan check-out pada %s (%s)", employee.NIK, now.Format("02 Jan 2006 15:04"), wt.Nama))
+			_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Check-Out", "Check-Out Karyawan", fmt.Sprintf("%s melakukan check-out pada %s (%s)", employee.NIK, now.Format("02 Jan 2006 15:04"), attendanceTypeLabel(record)))
 		}
 	}
 
@@ -337,8 +369,109 @@ func CheckOut(c *fiber.Ctx) error {
 	})
 }
 
+type attendanceLocationResolution struct {
+	Latitude              float64
+	Longitude             float64
+	Accuracy              float64
+	WithinRadius          bool
+	ValidationSource      string
+	Radius                float64
+	Name                  string
+	Address               string
+	AlternativeLocationID *uint
+	FieldLocationID       *uint
+}
+
+func parseSelectedLocationID(value string) (*uint, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+	id, err := strconv.ParseUint(strings.TrimSpace(value), 10, 64)
+	if err != nil || id == 0 {
+		return nil, fmt.Errorf("referensi lokasi tidak valid")
+	}
+	parsed := uint(id)
+	return &parsed, nil
+}
+
+// resolveAttendanceLocationSelection is the authoritative server-side
+// location selector. The client may suggest IDs, but ownership, approval,
+// active state, work-type configuration, and the geofence are all checked
+// again here before an attendance row is written.
+func resolveAttendanceLocationSelection(userID, employeeID uint, workType models.WorkType, alternativeIDText, fieldIDText, latitudeText, longitudeText, accuracyText string) (attendanceLocationResolution, error) {
+	result := attendanceLocationResolution{}
+	mode := workTypeValidationMode(workType)
+	canonical := canonicalWorkType(workType)
+	alternativeID, err := parseSelectedLocationID(alternativeIDText)
+	if err != nil {
+		return result, err
+	}
+	fieldID, err := parseSelectedLocationID(fieldIDText)
+	if err != nil {
+		return result, err
+	}
+
+	if canonical == models.WorkTypeAlternative || mode == workTypeValidationAlternative {
+		if alternativeID == nil || userID == 0 {
+			return result, fmt.Errorf("lokasi alternatif yang disetujui wajib dipilih")
+		}
+		var location models.AlternativeLocation
+		if err := config.DB.Where("id = ? AND user_id = ? AND status_approval = ? AND status_aktif = ?", *alternativeID, userID, models.AlternativeLocationApproved, models.LocationActive).First(&location).Error; err != nil {
+			return result, fmt.Errorf("lokasi alternatif tidak tersedia atau belum disetujui")
+		}
+		lat, lon, accuracy, parseErr := parseAttendanceLocation(latitudeText, longitudeText, accuracyText)
+		if parseErr != nil {
+			return result, parseErr
+		}
+		radius := wfhAlternativeRadius(config.DB)
+		valid := validateCoordinatesAgainstRadius("alternative", lat, lon, accuracy, location.Latitude, location.Longitude, radius)
+		if !valid {
+			return result, fmt.Errorf("absensi harus berada dalam radius lokasi alternatif")
+		}
+		result = attendanceLocationResolution{Latitude: lat, Longitude: lon, Accuracy: accuracy, WithinRadius: true, ValidationSource: "alternative", Radius: radius, Name: location.NamaLokasi, Address: location.Deskripsi, AlternativeLocationID: alternativeID}
+		return result, nil
+	}
+
+	if canonical == models.WorkTypeField || mode == workTypeValidationField {
+		if workType.FieldLocationID == nil {
+			return result, fmt.Errorf("tipe kerja lokasi lapangan belum dikonfigurasi")
+		}
+		if fieldID != nil && *fieldID != *workType.FieldLocationID {
+			return result, fmt.Errorf("lokasi lapangan tidak sesuai konfigurasi tipe kerja")
+		}
+		var location models.FieldLocation
+		if err := config.DB.Where("id = ? AND status_aktif = ?", *workType.FieldLocationID, models.LocationActive).First(&location).Error; err != nil {
+			return result, fmt.Errorf("lokasi lapangan tidak tersedia atau tidak aktif")
+		}
+		lat, lon, accuracy, parseErr := parseAttendanceLocation(latitudeText, longitudeText, accuracyText)
+		if parseErr != nil {
+			return result, parseErr
+		}
+		if !validateCoordinatesAgainstRadius("field", lat, lon, accuracy, location.Latitude, location.Longitude, location.RadiusMeter) {
+			return result, fmt.Errorf("absensi harus berada dalam radius lokasi lapangan")
+		}
+		configuredID := *workType.FieldLocationID
+		result = attendanceLocationResolution{Latitude: lat, Longitude: lon, Accuracy: accuracy, WithinRadius: true, ValidationSource: "field", Radius: location.RadiusMeter, Name: location.NamaLokasi, Address: location.Deskripsi, FieldLocationID: &configuredID}
+		return result, nil
+	}
+
+	lat, lon, accuracy, within, source, err := resolveAttendanceLocation(employeeID, workType, latitudeText, longitudeText, accuracyText)
+	if err != nil {
+		return result, err
+	}
+	result.Latitude, result.Longitude, result.Accuracy, result.WithinRadius, result.ValidationSource = lat, lon, accuracy, within, source
+	if mode == workTypeValidationOffice {
+		var office models.OfficeLocation
+		if config.DB.First(&office).Error == nil {
+			result.Name, result.Address, result.Radius = office.NamaLokasi, office.Alamat, office.RadiusMeter
+		}
+	}
+	return result, nil
+}
+
 // resolveAttendanceLocation is shared by check-in and check-out so both
-// endpoints always apply the same configured work-type rule.
+// endpoints always apply the same configured work-type rule. It remains as a
+// compatibility wrapper for legacy WFO/WFH/Dinas Luar callers and tests.
 func resolveAttendanceLocation(employeeID uint, workType models.WorkType, latitudeText, longitudeText, accuracyText string) (float64, float64, float64, bool, string, error) {
 	mode := workTypeValidationMode(workType)
 	if mode == workTypeValidationNone {
@@ -396,10 +529,11 @@ func validateHomeAttendanceLocation(employeeID uint, latitude, longitude float64
 
 func validateConfiguredHomeLocation(home models.EmployeeHomeLocation, latitude, longitude float64, accuracyValues ...float64) (bool, string, error) {
 	accuracy := firstAccuracy(accuracyValues)
-	if home.LatitudeRumah == 0 || home.LongitudeRumah == 0 || home.RadiusMeter <= 0 {
+	radius := wfhAlternativeRadius(config.DB)
+	if home.LatitudeRumah == 0 || home.LongitudeRumah == 0 || radius <= 0 {
 		return false, workTypeValidationNone, fmt.Errorf("Lokasi rumah untuk absensi WFH belum diatur oleh HRD.")
 	}
-	if !validateCoordinatesAgainstRadius(workTypeValidationHome, latitude, longitude, accuracy, home.LatitudeRumah, home.LongitudeRumah, home.RadiusMeter) {
+	if !validateCoordinatesAgainstRadius(workTypeValidationHome, latitude, longitude, accuracy, home.LatitudeRumah, home.LongitudeRumah, radius) {
 		return false, workTypeValidationHome, fmt.Errorf("Absensi harus berada dalam radius rumah karyawan.")
 	}
 	return true, workTypeValidationHome, nil
@@ -456,6 +590,7 @@ func GetAttendanceHistory(c *fiber.Ctx) error {
 		records[index].FotoSelfieMasukURL = minio.RewriteObjectURL(records[index].FotoSelfieMasukURL)
 		records[index].FotoSelfiePulangURL = minio.RewriteObjectURL(records[index].FotoSelfiePulangURL)
 	}
+	decorateAttendanceRecords(records)
 
 	return c.JSON(records)
 }

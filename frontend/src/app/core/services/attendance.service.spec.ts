@@ -36,4 +36,33 @@ describe('AttendanceService', () => {
     expect(request.request.params.keys()).toEqual([]);
     request.flush([]);
   });
+
+  it('sends canonical alternative-location selection metadata with check-in', () => {
+    service.checkIn(-6.2, 106.8, 12, null, 'Lokasi Alternatif', {
+      canonicalType: 'alternative_location',
+      alternativeLocationId: 22
+    }).subscribe();
+
+    const request = httpMock.expectOne(req => req.url.endsWith('/attendance/checkin'));
+    const body = request.request.body as FormData;
+    expect(body.get('tipe_kerja')).toBe('Lokasi Alternatif');
+    expect(body.get('tipe_kerja_canonical')).toBe('alternative_location');
+    expect(body.get('alternative_location_id')).toBe('22');
+    expect(body.get('field_location_id')).toBeNull();
+    request.flush({ message: 'ok', status: 'success', time: '2026-11-03T08:00:00Z' });
+  });
+
+  it('sends canonical field-location selection metadata with check-out', () => {
+    service.checkOut(-6.2, 106.8, 8, null, 'Lokasi Lapangan', {
+      canonicalType: 'field_location',
+      fieldLocationId: 33
+    }).subscribe();
+
+    const request = httpMock.expectOne(req => req.url.endsWith('/attendance/checkout'));
+    const body = request.request.body as FormData;
+    expect(body.get('tipe_kerja_canonical')).toBe('field_location');
+    expect(body.get('field_location_id')).toBe('33');
+    expect(body.get('alternative_location_id')).toBeNull();
+    request.flush({ message: 'ok' });
+  });
 });

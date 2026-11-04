@@ -84,6 +84,7 @@ func main() {
 	handlers.SetupEventRoutes(api)
 	handlers.SetupAdminDirectoryRoutes(api)
 	handlers.SetupHomeLocationChangeRoutes(api)
+	handlers.SetupLocationRoutes(api)
 	handlers.SetupWorkReportRoutes(api)
 	handlers.SetupInternshipRoutes(api)
 	handlers.SetupManagerRoutes(api)

@@ -9,6 +9,12 @@ export interface CheckInResponse {
   time: string;
 }
 
+export interface AttendanceLocationSelection {
+  canonicalType?: string;
+  alternativeLocationId?: number | null;
+  fieldLocationId?: number | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -22,7 +28,7 @@ export class AttendanceService {
     return new HttpHeaders().set('Authorization', `Bearer ${token}`);
   }
 
-  checkIn(latitude: number, longitude: number, accuracy: number, selfieBlob: Blob | null, tipeKerja: string = 'WFO'): Observable<CheckInResponse> {
+  checkIn(latitude: number, longitude: number, accuracy: number, selfieBlob: Blob | null, tipeKerja: string = 'WFO', selection: AttendanceLocationSelection = {}): Observable<CheckInResponse> {
     const formData = new FormData();
     this.appendLocation(formData, latitude, longitude, accuracy);
     formData.append('location_timestamp', new Date().toISOString());
@@ -31,13 +37,14 @@ export class AttendanceService {
       formData.append('selfie', selfieBlob, 'selfie.jpg');
     }
     formData.append('tipe_kerja', tipeKerja);
+    this.appendLocationSelection(formData, selection);
 
     return this.http.post<CheckInResponse>(`${this.apiUrl}/checkin`, formData, {
       headers: this.getHeaders()
     });
   }
 
-  checkOut(latitude: number, longitude: number, accuracy: number, selfieBlob: Blob | null, tipeKerja: string = 'WFO'): Observable<any> {
+  checkOut(latitude: number, longitude: number, accuracy: number, selfieBlob: Blob | null, tipeKerja: string = 'WFO', selection: AttendanceLocationSelection = {}): Observable<any> {
     const formData = new FormData();
     this.appendLocation(formData, latitude, longitude, accuracy);
     formData.append('location_timestamp', new Date().toISOString());
@@ -46,6 +53,7 @@ export class AttendanceService {
       formData.append('selfie', selfieBlob, 'selfie.jpg');
     }
     formData.append('tipe_kerja', tipeKerja);
+    this.appendLocationSelection(formData, selection);
 
     return this.http.post<any>(`${this.apiUrl}/checkout`, formData, {
       headers: this.getHeaders()
@@ -61,6 +69,12 @@ export class AttendanceService {
     if (Number.isFinite(accuracy) && accuracy >= 0) {
       formData.append('accuracy', accuracy.toString());
     }
+  }
+
+  private appendLocationSelection(formData: FormData, selection: AttendanceLocationSelection): void {
+    if (selection.canonicalType) formData.append('tipe_kerja_canonical', selection.canonicalType);
+    if (selection.alternativeLocationId != null) formData.append('alternative_location_id', String(selection.alternativeLocationId));
+    if (selection.fieldLocationId != null) formData.append('field_location_id', String(selection.fieldLocationId));
   }
 
   getOfficeInfo(): Observable<any> {

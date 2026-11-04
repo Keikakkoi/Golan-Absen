@@ -142,7 +142,9 @@
             <div class="worktype-pill-grid">
               <div class="wt-pill"><svg class="worktype-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#building"></use></svg> WFO: {{ stats.work_type_stats?.wfo || 0 }}x</div>
               <div class="wt-pill"><svg class="worktype-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#home"></use></svg> WFH: {{ stats.work_type_stats?.wfh || 0 }}x</div>
-              <div class="wt-pill"><svg class="worktype-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#plane"></use></svg> Remote: {{ stats.work_type_stats?.remote || 0 }}x</div>
+              <div class="wt-pill"><svg class="worktype-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#map-pin"></use></svg> Lokasi Alternatif: {{ stats.work_type_stats?.alternative_location || 0 }}x</div>
+              <div class="wt-pill"><svg class="worktype-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#map-pin"></use></svg> Lokasi Lapangan: {{ stats.work_type_stats?.field_location || 0 }}x</div>
+              <div class="wt-pill" *ngIf="stats.work_type_stats?.legacy"><svg class="worktype-icon" aria-hidden="true" focusable="false"><use href="assets/sidebar-icons.svg#plane"></use></svg> Legacy: {{ stats.work_type_stats?.legacy || 0 }}x</div>
             </div>
           </div>
         </div>

@@ -26,26 +26,49 @@
   <div class="golan-card worktype-card">
     <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
 
+    <div class="form-group-row" style="align-items: end; margin-bottom: 1rem;">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label for="worktype-search">Cari tipe kerja</label>
+        <input id="worktype-search" type="search" [(ngModel)]="searchTerm" class="form-control" placeholder="Nama atau sumber lokasi" />
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label for="worktype-filter">Filter sumber lokasi</label>
+        <select id="worktype-filter" [(ngModel)]="modeFilter" class="form-control">
+          <option value="">Semua sumber</option>
+          <option value="wfo">Kantor / WFO</option>
+          <option value="wfh">Rumah / WFH</option>
+          <option value="alternative_location">Lokasi Alternatif</option>
+          <option value="field_location">Lokasi Lapangan</option>
+          <option value="tanpa_validasi">Tanpa validasi (legacy)</option>
+        </select>
+      </div>
+    </div>
+
     <div class="table-container" style="overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch;">
-      <table *ngIf="!isLoading && workTypes.length > 0" style="min-width: 650px; width: 100%;">
+      <table *ngIf="!isLoading && filteredWorkTypes().length > 0" class="worktype-table" style="min-width: 650px; width: 100%;">
         <thead>
           <tr>
-            <th>ID</th>
+            <th class="worktype-number-column">No.</th>
             <th>Nama Tipe Kerja</th>
-            <th>Validasi Lokasi</th>
-            <th>Aksi</th>
+            <th class="worktype-validation-column">Validasi Lokasi</th>
+            <th class="worktype-actions-column">Aksi</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let wt of workTypes">
-            <td>{{ wt.ID }}</td>
+          <tr *ngFor="let wt of filteredWorkTypes(); let rowNumber = index">
+            <td class="worktype-number-column">{{ rowNumber + 1 }}</td>
             <td style="font-weight: 500;">{{ wt.Nama }}</td>
-            <td>
+            <td class="worktype-validation-column">
               <span class="status-badge" [ngClass]="validationMode(wt) === 'tanpa_validasi' ? 'status-alpha' : 'status-hadir'">
                 {{ validationLabel(wt) }}
               </span>
+              <small *ngIf="canonicalType(wt) === 'field_location'" style="display: block; margin-top: 0.25rem; color: #64748b;">
+                {{ wt.field_location_name || wt.FieldLocationName || 'Lokasi lapangan belum tersedia' }}
+                <ng-container *ngIf="wt.field_location_active === false || wt.FieldLocationActive === false"> (nonaktif)</ng-container>
+              </small>
             </td>
-            <td>
+            <td class="worktype-actions-column worktype-actions-cell">
+              <button class="icon-button view" type="button" (click)="openDetailModal(wt)" aria-label="Lihat detail tipe kerja" title="Lihat detail tipe kerja"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
               <button class="icon-button edit" type="button" (click)="openEditModal(wt)" aria-label="Edit tipe kerja" title="Edit tipe kerja"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg></button>
               <button class="icon-button delete" type="button" (click)="deleteWorkType(wt.ID)" aria-label="Hapus tipe kerja" title="Hapus tipe kerja"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#trash"></use></svg></button>
             </td>
@@ -54,12 +77,12 @@
       </table>
 
       <div *ngIf="isLoading" class="loading-state">Memuat data...</div>
-      <div *ngIf="!isLoading && workTypes.length === 0" class="empty-state">Belum ada tipe kerja.</div>
+      <div *ngIf="!isLoading && filteredWorkTypes().length === 0" class="empty-state">Tidak ada tipe kerja yang sesuai filter.</div>
     </div>
   </div>
 
   <div class="modal-overlay" *ngIf="isModalOpen">
-    <div class="modal-content golan-card" style="max-width: 400px;">
+    <div class="modal-content golan-card worktype-modal">
       <div class="modal-header">
         <h3>{{ isEditMode ? 'Edit Tipe Kerja' : 'Tambah Tipe Kerja' }}</h3>
         <button class="btn-close" type="button" (click)="closeModal()" aria-label="Tutup">×</button>
@@ -71,32 +94,41 @@
             <input type="text" [(ngModel)]="formData.Nama" name="nama" required class="form-control" placeholder="Contoh: WFO, WFH, Dinas Luar" />
           </div>
 
-          <fieldset class="location-validation-fieldset">
-            <legend>Validasi Lokasi <span class="required-mark">*</span></legend>
-            <label class="location-option">
-              <input type="radio" [(ngModel)]="formData.RadiusYangBerlaku" name="radiusMode" value="kantor" required />
-              <span><strong>Validasi lokasi kantor</strong><small>Absensi harus berada dalam radius kantor.</small></span>
-            </label>
-            <label class="location-option">
-              <input type="radio" [(ngModel)]="formData.RadiusYangBerlaku" name="radiusMode" value="rumah" required />
-              <span><strong>Validasi lokasi rumah karyawan</strong><small>Absensi harus berada dalam radius rumah karyawan.</small></span>
-            </label>
-            <label class="location-option">
-              <input type="radio" [(ngModel)]="formData.RadiusYangBerlaku" name="radiusMode" value="tanpa_validasi" required />
-              <span><strong>Tidak ada validasi lokasi</strong><small>Absensi tetap dapat mencatat koordinat jika tersedia, tetapi tidak ditolak berdasarkan radius.</small></span>
-            </label>
-          </fieldset>
+          <div class="form-group">
+            <label for="work-type-location-source">Sumber Lokasi <span class="required-mark">*</span></label>
+            <select id="work-type-location-source" [(ngModel)]="formData.CanonicalType" name="canonicalType" required class="form-control">
+              <option value="wfo">WFO</option>
+              <option value="wfh">WFH</option>
+              <option value="alternative_location">Lokasi Alternatif</option>
+              <option value="field_location">Lokasi Lapangan</option>
+              <option value="tanpa_validasi">Tanpa validasi lokasi (legacy)</option>
+            </select>
+          </div>
+
+          <div class="form-group" *ngIf="formData.CanonicalType === 'field_location'">
+            <label for="field-location">Master Lokasi Lapangan <span class="required-mark">*</span></label>
+            <select id="field-location" [(ngModel)]="formData.FieldLocationID" name="fieldLocation" required class="form-control">
+              <option [ngValue]="null">Pilih lokasi lapangan aktif</option>
+              <option *ngFor="let location of selectableFieldLocations()" [ngValue]="location.ID ?? location.id" [disabled]="location.archived || location.StatusAktif === 'inactive'">
+                {{ location.NamaLokasi || location.nama_lokasi }}{{ location.archived ? ' (nonaktif/arsip)' : '' }}
+              </option>
+            </select>
+            <small *ngIf="isLoadingFieldLocations">Memuat master lokasi lapangan...</small>
+            <small *ngIf="!isLoadingFieldLocations && fieldLocations.length === 0">Belum ada lokasi lapangan aktif di Manajemen Lokasi.</small>
+          </div>
 
           <div class="location-mode-help" aria-live="polite">
-            <ng-container [ngSwitch]="formData.RadiusYangBerlaku">
-              <span *ngSwitchCase="'kantor'">Lokasi kantor: absensi harus berada dalam radius kantor.</span>
-              <span *ngSwitchCase="'rumah'">Lokasi rumah: absensi harus berada dalam radius rumah karyawan.</span>
-              <span *ngSwitchCase="'tanpa_validasi'">Tidak ada validasi lokasi: absensi tetap dapat mencatat koordinat jika tersedia, tetapi tidak ditolak berdasarkan radius.</span>
+            <ng-container [ngSwitch]="formData.CanonicalType">
+              <span *ngSwitchCase="'wfo'">WFO: absensi harus berada dalam radius kantor.</span>
+              <span *ngSwitchCase="'wfh'">WFH: absensi harus berada dalam radius rumah karyawan.</span>
+              <span *ngSwitchCase="'alternative_location'">Lokasi Alternatif: user memilih lokasi approved miliknya saat check-in.</span>
+              <span *ngSwitchCase="'field_location'">Lokasi Lapangan: gunakan hanya master lokasi lapangan aktif.</span>
+              <span *ngSwitchDefault>Legacy tanpa validasi lokasi.</span>
             </ng-container>
           </div>
 
-          <div class="modal-footer" style="margin-top: 25px;">
-            <button type="button" class="btn-secondary" (click)="closeModal()">Batal</button>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary btn-cancel-reference" (click)="closeModal()">Batal</button>
             <button type="submit" class="btn-primary" [disabled]="isSaving || !formData.Nama?.trim() || !formData.RadiusYangBerlaku">{{ isSaving ? 'Menyimpan...' : 'Simpan' }}</button>
           </div>
         </form>
@@ -104,3 +136,21 @@
     </div>
   </div>
 </ng-template>
+
+<div class="modal-overlay" *ngIf="isDetailOpen">
+  <div class="modal-content golan-card worktype-detail-modal">
+    <div class="modal-header">
+      <h3>Detail Tipe Kerja</h3>
+      <button class="btn-close" type="button" (click)="closeDetailModal()" aria-label="Tutup">&times;</button>
+    </div>
+    <div class="modal-body" *ngIf="selectedWorkType">
+      <div class="worktype-detail-list">
+        <p><strong>Nama:</strong> {{ selectedWorkType.Nama }}</p>
+        <p><strong>Sumber lokasi:</strong> {{ validationLabel(selectedWorkType) }}</p>
+        <p *ngIf="canonicalType(selectedWorkType) === 'field_location'"><strong>Master lokasi lapangan:</strong> {{ selectedWorkType.field_location_name || selectedWorkType.FieldLocationName || '-' }}</p>
+        <p><strong>Canonical:</strong> {{ selectedWorkType.canonical_type || selectedWorkType.CanonicalType || '-' }}</p>
+        <p><strong>Status:</strong> {{ selectedWorkType.StatusAktif ? 'Aktif' : 'Tidak aktif' }}</p>
+      </div>
+    </div>
+  </div>
+</div>

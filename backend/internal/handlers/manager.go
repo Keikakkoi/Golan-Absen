@@ -184,6 +184,7 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 	if len(ids) > 0 {
 		config.DB.Where("employee_id IN ? AND tanggal BETWEEN ? AND ?", ids, start, end).Find(&records)
 	}
+	decorateAttendanceRecords(records)
 	byEmployee := map[string]models.AttendanceRecord{}
 	for _, record := range records {
 		if record.EmployeeID == nil {
@@ -219,10 +220,23 @@ func GetManagerTeamAttendance(c *fiber.Ctx) error {
 				continue
 			}
 			checkoutMissing := false
+			tipeKerja := ""
+			tipeKerjaCanonical := models.WorkTypeCanonical("")
+			location := attendanceLocationPresentation{}
 			if hasRecord {
 				checkoutMissing = record.IsCheckoutMissing
+				tipeKerja = record.TipeKerjaLabel
+				tipeKerjaCanonical = record.TipeKerjaCanonical
+				location = attendanceLocationSummary(record)
 			}
-			rows = append(rows, fiber.Map{"employee_id": employee.ID, "user_id": employee.UserID, "nama": employee.User.Nama, "tanggal": dateString, "status": status, "jam_masuk": masuk, "jam_pulang": pulang, "checkout_missing": checkoutMissing})
+			rows = append(rows, fiber.Map{
+				"employee_id": employee.ID, "user_id": employee.UserID, "nama": employee.User.Nama,
+				"tanggal": dateString, "status": status, "jam_masuk": masuk, "jam_pulang": pulang,
+				"checkout_missing": checkoutMissing, "tipe_kerja": tipeKerja,
+				"tipe_kerja_canonical": tipeKerjaCanonical, "tipe_kerja_label": tipeKerja,
+				"location_name": location.Name, "location_address": location.Address,
+				"location_coordinates": location.Coordinates,
+			})
 		}
 	}
 	if hasPaginationQuery(c) {

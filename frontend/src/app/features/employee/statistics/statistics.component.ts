@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AttendanceService } from '../../../core/services/attendance.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
+import { attendanceCanonicalType } from '../../../core/utils/attendance-display';
 
 interface ChartBar {
   dayName: string;
@@ -40,7 +41,9 @@ export class StatisticsComponent implements OnInit {
   workTypeStats = {
     wfo: 0,
     wfh: 0,
-    dinasLuar: 0
+    alternativeLocation: 0,
+    fieldLocation: 0,
+    legacy: 0
   };
 
   // SVG Chart data
@@ -101,7 +104,7 @@ export class StatisticsComponent implements OnInit {
     this.countCuti = 0;
     this.countTerlambat = 0;
     this.countAlpha = 0;
-    this.workTypeStats = { wfo: 0, wfh: 0, dinasLuar: 0 };
+    this.workTypeStats = { wfo: 0, wfh: 0, alternativeLocation: 0, fieldLocation: 0, legacy: 0 };
 
     let totalCheckInSecs = 0;
     let checkInCount = 0;
@@ -146,10 +149,13 @@ export class StatisticsComponent implements OnInit {
       else if (status === 'Alpha') this.countAlpha++;
 
       // Counters by work type
-      const tipe = String(rec.TipeKerja || 'WFO').trim().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').toUpperCase();
-      if (tipe === 'WFO') this.workTypeStats.wfo++;
-      else if (tipe === 'WFH') this.workTypeStats.wfh++;
-      else if (tipe === 'DINAS LUAR' || tipe === 'REMOTE') this.workTypeStats.dinasLuar++;
+      switch (attendanceCanonicalType(rec)) {
+        case 'wfo': this.workTypeStats.wfo++; break;
+        case 'wfh': this.workTypeStats.wfh++; break;
+        case 'alternative_location': this.workTypeStats.alternativeLocation++; break;
+        case 'field_location': this.workTypeStats.fieldLocation++; break;
+        default: this.workTypeStats.legacy++;
+      }
 
       // Check-in times analysis
       if (rec.JamMasuk) {

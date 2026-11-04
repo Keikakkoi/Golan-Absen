@@ -60,6 +60,9 @@ func GetHomeLocations(c *fiber.Ctx) error {
 			employee.HomeLatitude = effective.LatitudeRumah
 			employee.HomeLongitude = effective.LongitudeRumah
 		}
+		if ok {
+			location.RadiusMeter = wfhAlternativeRadius(config.DB)
+		}
 		result = append(result, fiber.Map{"employee": employee, "location": func() any {
 			if ok {
 				return location
@@ -104,9 +107,10 @@ func UpdateHomeLocation(c *fiber.Ctx) error {
 	}
 	input.LatitudeRumah = latitude
 	input.LongitudeRumah = longitude
-	if input.LatitudeRumah == 0 || input.LongitudeRumah == 0 || input.RadiusMeter <= 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Link Google Maps dan radius rumah wajib valid"})
+	if input.LatitudeRumah == 0 || input.LongitudeRumah == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Link Google Maps rumah wajib valid"})
 	}
+	input.RadiusMeter = wfhAlternativeRadius(config.DB)
 	var employee models.Employee
 	if err := config.DB.First(&employee, uint(employeeID)).Error; err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Employee not found"})

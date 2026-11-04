@@ -1,0 +1,282 @@
+:host { display: block; min-width: 0; }
+
+.location-management-page { min-width: 0; }
+
+.location-section { margin-bottom: 1.5rem; min-width: 0; }
+
+.location-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.location-section-heading h3 { margin: 0 0 .35rem; color: var(--green-deep, #1769aa); }
+.location-section-heading p { margin: 0; color: var(--text-dark-lo, #64748b); font-size: .9rem; }
+
+.location-filter-card { margin: 0 0 1rem; padding: 1.25rem; }
+.location-filter-card .filter-header { margin-bottom: 1rem; padding-bottom: .75rem; }
+.location-filter-card .filter-header h5 { margin: 0; }
+.location-filter-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.5rem !important; }
+.location-filter-card .filter-group { min-width: 0; }
+.location-filter-card .filter-input { min-height: 42px; }
+.location-filter-card .input-wrapper { min-width: 0; }
+.location-pagination { margin-top: .5rem; }
+
+.location-table-wrap { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.location-table { table-layout: fixed; }
+.alternative-table { min-width: 1470px; }
+.alternative-table th:nth-child(1), .alternative-table td:nth-child(1) { width: 250px; }
+.alternative-table th:nth-child(2), .alternative-table td:nth-child(2) { width: 180px; }
+.alternative-table th:nth-child(3), .alternative-table td:nth-child(3) { width: 520px; }
+.alternative-table th:nth-child(4), .alternative-table td:nth-child(4) { width: 160px; }
+.alternative-table th:nth-child(5), .alternative-table td:nth-child(5) { width: 170px; }
+.alternative-table th:nth-child(6), .alternative-table td:nth-child(6) { width: 190px; }
+.alternative-table th:nth-child(4), .alternative-table td:nth-child(4),
+.alternative-table th:nth-child(6), .alternative-table td:nth-child(6) { text-align: center; vertical-align: middle; }
+.field-table { min-width: 1450px; }
+.field-table th:nth-child(1), .field-table td:nth-child(1) { width: 220px; }
+.field-table th:nth-child(2), .field-table td:nth-child(2) { width: 420px; }
+.field-table th:nth-child(3), .field-table td:nth-child(3) { width: 220px; }
+.field-table th:nth-child(4), .field-table td:nth-child(4) { width: 140px; }
+.field-table th:nth-child(5), .field-table td:nth-child(5) { width: 170px; }
+.field-table th:nth-child(6), .field-table td:nth-child(6) { width: 280px; }
+.field-table th:nth-child(4), .field-table td:nth-child(4),
+.field-table th:nth-child(6), .field-table td:nth-child(6) { text-align: center; vertical-align: middle; }
+.field-table th,
+.field-table td { vertical-align: middle; }
+.location-table th, .location-table td { vertical-align: top; white-space: normal; overflow-wrap: anywhere; }
+.location-table.field-table th,
+.location-table.field-table td { vertical-align: middle; }
+.location-table td small { display: block; margin-top: .25rem; }
+.location-actions { min-width: 280px; text-align: center; white-space: nowrap !important; vertical-align: middle !important; }
+.alternative-table .location-actions { min-width: 190px; }
+.field-table .location-actions { min-width: 280px; }
+.location-switch { display: block; width: 96px; margin: 0 auto .65rem; cursor: pointer; }
+.location-switch input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.location-switch-track { position: relative; display: flex; align-items: center; width: 96px; height: 36px; box-sizing: border-box; padding: 0 7px; border: 2px solid #cbd5e1; border-radius: 999px; background: #f1f5f9; color: #64748b; box-shadow: inset 0 1px 2px rgba(15, 23, 42, .08); transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+.location-switch-text { width: 100%; font-size: .76rem; font-weight: 800; letter-spacing: .04em; line-height: 1; text-align: right; }
+.location-switch-thumb { position: absolute; top: 2px; left: 2px; width: 28px; height: 28px; border-radius: 50%; background: #94a3b8; box-shadow: 0 2px 5px rgba(15, 23, 42, .22); transition: left .2s ease, background-color .2s ease; }
+.location-switch.is-active .location-switch-track { border-color: #60a5fa; background: #3b82f6; color: white; }
+.location-switch.is-active .location-switch-text { text-align: left; padding-left: 4px; }
+.location-switch.is-active .location-switch-thumb { left: 64px; background: #fff; }
+.location-switch.is-inactive .location-switch-track { border-color: #cbd5e1; background: #f8fafc; color: #94a3b8; }
+.location-switch:has(input:focus-visible) .location-switch-track { outline: 3px solid rgba(59, 130, 246, .3); outline-offset: 3px; }
+.location-action-buttons { display: flex; align-items: center; justify-content: center; gap: .45rem; }
+.location-actions > .icon-button { width: 40px; height: 40px; margin: 0 .2rem; }
+.location-action-buttons .icon-button { width: 40px; height: 40px; margin: 0; }
+.rejection-note { color: #991b1b; }
+.empty-state, .loading-state { padding: 1.25rem; color: var(--text-dark-lo, #64748b); text-align: center; }
+.location-detail-modal { max-width: 620px; }
+.location-form-modal { max-width: 720px; }
+
+/* Keep add/edit field-location forms as centered dialogs. Without this
+   overlay the modal markup falls into the page layout and appears as a narrow
+   side column beside the location tables. */
+.location-management-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 24px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.location-management-modal-overlay > .modal-content {
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 48px);
+  box-sizing: border-box;
+  margin: auto;
+  transform: none !important;
+  transform-origin: center center;
+}
+
+.location-form-modal {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.location-form-modal .modal-header,
+.location-detail-modal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--mint-1, #dbeafe);
+}
+
+.location-form-modal .modal-header h3,
+.location-detail-modal .modal-header h3 {
+  margin: 0;
+  color: var(--green-deep, #1769aa);
+  line-height: 1.25;
+}
+
+.location-form-modal .btn-close,
+.location-detail-modal .btn-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--mint-2, #bfdbfe);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-dark-lo, #64748b);
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.location-form-modal .btn-close:hover,
+.location-detail-modal .btn-close:hover {
+  border-color: var(--green, #3b82f6);
+  background: var(--mint-0, #eff6ff);
+  color: var(--green-deep, #1769aa);
+}
+
+.location-form-modal .btn-close:focus-visible,
+.location-detail-modal .btn-close:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, .3);
+  outline-offset: 2px;
+}
+
+.location-form-modal form {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.location-form-modal .modal-header,
+.location-form-modal .modal-footer {
+  flex-shrink: 0;
+}
+
+.location-form-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.location-form-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  border-top: 1px solid var(--mint-1, #dbeafe);
+  padding: 1rem 1.5rem;
+}
+
+.location-form-modal .modal-footer > .btn-primary,
+.location-form-modal .modal-footer > .btn-cancel-reference {
+  min-height: 45px;
+  box-sizing: border-box;
+}
+
+.location-form-modal .modal-footer > .btn-cancel-reference {
+  padding: 10px 24px;
+  border: 1px solid #3b82f6;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #2563eb;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.location-form-modal .modal-footer > .btn-cancel-reference:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.location-form-modal .modal-footer > .btn-cancel-reference:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.location-detail-modal {
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+}
+
+.location-detail-modal .modal-body {
+  padding: 1.5rem;
+}
+
+.location-detail-modal .detail-grid {
+  display: grid;
+  gap: .75rem;
+}
+
+.location-detail-modal .detail-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 34%) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--mint-1, #dbeafe);
+}
+
+.location-detail-modal .detail-row:last-child { border-bottom: 0; }
+
+.location-detail-modal .detail-label {
+  color: var(--text-dark-lo, #64748b);
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.location-detail-modal .detail-value {
+  min-width: 0;
+  color: var(--text-dark, #1e293b);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.location-detail-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: .75rem;
+  border-top: 1px solid var(--mint-1, #dbeafe);
+  padding: 1rem 1.5rem;
+}
+
+.location-detail-modal .modal-footer .btn-cancel-reference {
+  min-height: 45px;
+  padding: 10px 16px;
+  border: 1px solid #3b82f6;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #2563eb;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.location-detail-modal .modal-footer .btn-cancel-reference:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.location-detail-modal .modal-footer .btn-cancel-reference:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+@media (max-width: 700px) {
+  .location-management-modal-overlay { align-items: flex-start; padding: 12px; }
+  .location-management-modal-overlay > .modal-content { max-height: calc(100dvh - 24px); }
+  .location-form-modal .form-group-row { flex-direction: column; gap: 0; }
+  .location-form-modal .modal-footer { flex-wrap: wrap; }
+  .location-form-modal .modal-footer button { flex: 1 1 140px; }
+  .location-detail-modal .detail-row { grid-template-columns: 1fr; gap: .35rem; }
+  .location-section-heading { flex-direction: column; }
+  .location-section-heading .btn-primary { width: 100%; }
+  .location-filter-grid { grid-template-columns: 1fr; }
+}

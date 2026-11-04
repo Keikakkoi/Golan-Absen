@@ -382,6 +382,7 @@ func GetProfile(c *fiber.Ctx) error {
 		if effective, err := effectiveHomeLocation(config.DB, empID, attendanceNow()); err == nil {
 			user.Employee.HomeLatitude = effective.LatitudeRumah
 			user.Employee.HomeLongitude = effective.LongitudeRumah
+			effective.RadiusMeter = wfhAlternativeRadius(config.DB)
 			user.Employee.HomeLocation = &effective
 		}
 	}
@@ -1307,14 +1308,12 @@ func hasHomeLocation(latitude, longitude float64) bool {
 func saveEmployeeHomeLocation(tx *gorm.DB, employeeID uint, latitude, longitude float64, googleMapsURL string) error {
 	var location models.EmployeeHomeLocation
 	if err := tx.Where("employee_id = ?", employeeID).First(&location).Error; err != nil {
-		location = models.EmployeeHomeLocation{EmployeeID: &employeeID, RadiusMeter: 100}
+		location = models.EmployeeHomeLocation{EmployeeID: &employeeID, RadiusMeter: wfhAlternativeRadius(tx)}
 	}
 	location.LatitudeRumah = latitude
 	location.LongitudeRumah = longitude
 	location.GoogleMapsURL = googleMapsURL
-	if location.RadiusMeter <= 0 {
-		location.RadiusMeter = 100
-	}
+	location.RadiusMeter = wfhAlternativeRadius(tx)
 	return tx.Save(&location).Error
 }
 

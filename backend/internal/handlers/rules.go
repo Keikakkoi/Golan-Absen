@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	defaultMinimumMasaKerjaCutiBulan        = 3
-	defaultCutiQuotaHari                    = 12
-	defaultBatasLaporanSetelahCheckoutMenit = 60
-	defaultToleransiAbsenAwalMenit          = 0
+	defaultMinimumMasaKerjaCutiBulan         = 3
+	defaultCutiQuotaHari                     = 12
+	defaultBatasLaporanSetelahCheckoutMenit  = 60
+	defaultToleransiAbsenAwalMenit           = 0
+	defaultRadiusToleransiWfhAlternatifMeter = 100
 )
 
 func getGeneralSetting() models.GeneralSetting {
@@ -25,10 +26,11 @@ func getGeneralSetting() models.GeneralSetting {
 
 func getGeneralSettingFrom(db *gorm.DB) models.GeneralSetting {
 	setting := models.GeneralSetting{
-		MinimumMasaKerjaCutiBulan:        defaultMinimumMasaKerjaCutiBulan,
-		DefaultCutiQuotaHari:             defaultCutiQuotaHari,
-		BatasLaporanSetelahCheckoutMenit: defaultBatasLaporanSetelahCheckoutMenit,
-		ToleransiAbsenAwalMenit:          defaultToleransiAbsenAwalMenit,
+		MinimumMasaKerjaCutiBulan:         defaultMinimumMasaKerjaCutiBulan,
+		DefaultCutiQuotaHari:              defaultCutiQuotaHari,
+		BatasLaporanSetelahCheckoutMenit:  defaultBatasLaporanSetelahCheckoutMenit,
+		ToleransiAbsenAwalMenit:           defaultToleransiAbsenAwalMenit,
+		RadiusToleransiWfhAlternatifMeter: defaultRadiusToleransiWfhAlternatifMeter,
 	}
 	if db == nil || db.First(&setting).Error != nil {
 		return setting
@@ -49,7 +51,23 @@ func getGeneralSettingFrom(db *gorm.DB) models.GeneralSetting {
 	if setting.ToleransiAbsenAwalMenit < 0 {
 		setting.ToleransiAbsenAwalMenit = defaultToleransiAbsenAwalMenit
 	}
+	if setting.RadiusToleransiWfhAlternatifMeter < 1 || setting.RadiusToleransiWfhAlternatifMeter > 10000 {
+		setting.RadiusToleransiWfhAlternatifMeter = defaultRadiusToleransiWfhAlternatifMeter
+	}
 	return setting
+}
+
+// wfhAlternativeRadius is the authoritative radius for WFH and alternative
+// location check-ins. It deliberately ignores legacy per-location values.
+func wfhAlternativeRadius(db *gorm.DB) float64 {
+	if db == nil {
+		return defaultRadiusToleransiWfhAlternatifMeter
+	}
+	var radius float64
+	if err := db.Model(&models.GeneralSetting{}).Select("radius_toleransi_wfh_alternatif_meter").Limit(1).Scan(&radius).Error; err != nil || radius < 1 || radius > 10000 {
+		return defaultRadiusToleransiWfhAlternatifMeter
+	}
+	return radius
 }
 
 func isEligibleForCuti(employee models.Employee, asOf time.Time, minimumMonths int) bool {

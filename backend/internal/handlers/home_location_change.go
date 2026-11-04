@@ -116,6 +116,7 @@ func GetMyHomeLocation(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal memuat lokasi WFH"})
 	}
+	location.RadiusMeter = wfhAlternativeRadius(config.DB)
 	return c.JSON(fiber.Map{"active": location})
 }
 
@@ -156,9 +157,6 @@ func validateHomeLocationInput(input homeLocationRequestInput) (time.Time, error
 	if input.Latitude < -90 || input.Latitude > 90 || input.Longitude < -180 || input.Longitude > 180 || (input.Latitude == 0 && input.Longitude == 0) {
 		return time.Time{}, fmt.Errorf("koordinat tidak valid")
 	}
-	if input.Radius < 1 || input.Radius > 10000 {
-		return time.Time{}, fmt.Errorf("radius harus antara 1 sampai 10000 meter")
-	}
 	date, err := parseEffectiveDate(input.EffectiveDate)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("tanggal mulai berlaku tidak valid")
@@ -187,6 +185,9 @@ func CreateHomeLocationRequest(c *fiber.Ctx) error {
 		}
 		input.Latitude, input.Longitude = lat, lng
 	}
+	// The client may still send the legacy field, but it is never trusted.
+	// WFH uses the single admin-controlled radius shared with alternatives.
+	input.Radius = wfhAlternativeRadius(config.DB)
 	date, err := validateHomeLocationInput(input)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
@@ -307,6 +308,9 @@ func reviewHomeLocationRequest(c *fiber.Ctx, approve bool, rejection string) err
 	}
 	now := time.Now().In(jakartaLocation)
 	req.ReviewedBy, req.ReviewedAt = &adminID, &now
+	// Reconcile legacy/pending requests with the current admin policy before
+	// writing history or activating the location.
+	req.NewRadiusMeter = wfhAlternativeRadius(tx)
 	history := models.EmployeeHomeLocationHistory{EmployeeID: req.EmployeeID, RequestID: &req.ID, ChangedBy: adminID, EffectiveDate: req.EffectiveDate, OldAddress: req.OldAddress, NewAddress: req.NewAddress, OldLatitude: req.OldLatitude, OldLongitude: req.OldLongitude, NewLatitude: req.NewLatitude, NewLongitude: req.NewLongitude, NewGoogleMapsURL: req.NewGoogleMapsURL, OldRadiusMeter: req.OldRadiusMeter, NewRadiusMeter: req.NewRadiusMeter}
 	if approve {
 		req.Status = models.HomeLocationApproved
@@ -359,6 +363,7 @@ func reviewHomeLocationRequest(c *fiber.Ctx, approve bool, rejection string) err
 		_ = utils.CreateNotification(config.DB, employee.UserID, employee.User.Role, "Status Pengajuan", title, message)
 	}
 	_ = utils.LogAction(adminID, "UPDATE", "HomeLocationChangeRequest", req.ID, string(req.Status))
+	req.NewRadiusMeter = wfhAlternativeRadius(config.DB)
 	return c.JSON(req)
 }
 

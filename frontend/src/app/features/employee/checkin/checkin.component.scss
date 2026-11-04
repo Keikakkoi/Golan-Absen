@@ -465,6 +465,36 @@
   }
 }
 
+.location-selection-panel,
+.selected-location-summary {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mint-2);
+  border-radius: 8px;
+  background: var(--mint-0);
+}
+
+.location-selection-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  label { font-weight: 600; color: var(--green-deep); }
+  .form-control { flex: 1 1 240px; min-width: 0; }
+  small { flex: 1 1 100%; color: var(--text-dark-lo); }
+}
+
+.selected-location-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-dark-lo);
+  font-size: .85rem;
+
+  strong { color: var(--green-deep); font-size: .95rem; }
+}
+
 @media (max-width: 520px) {
   .map-card {
     min-width: 0;

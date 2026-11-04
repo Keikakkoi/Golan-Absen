@@ -100,7 +100,7 @@
             <tr *ngIf="expandedEmployeeId === summary.employee_id" class="detail-row">
               <td colspan="7">
                 <div class="detail-list">
-                  <div *ngFor="let detail of summary.details"><span>{{ detail.Tanggal | date:'dd MMM yyyy' }}</span><span>{{ detail.JamMasuk | date:'HH:mm:ss' }}</span><span>{{ detail.TipeKerja || 'WFO' }}</span></div>
+                  <div *ngFor="let detail of summary.details"><span>{{ detail.Tanggal | date:'dd MMM yyyy' }}</span><span>{{ detail.JamMasuk | date:'HH:mm:ss' }}</span><span>{{ workTypeLabel(detail) }}</span><span>{{ locationSummary(detail) }}</span></div>
                 </div>
               </td>
             </tr>

@@ -14,6 +14,7 @@ import { DatePickerComponent } from '../../../shared/date-picker/date-picker.com
 import { validateProfilePhoto } from '../../../shared/profile-photo-validation';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil, timeout } from 'rxjs/operators';
+import { extractGoogleMapsCoordinates } from '../../../core/utils/google-maps';
 
 interface WeeklyShiftRow {
   tanggal: string;
@@ -60,6 +61,23 @@ export class ProfileComponent implements OnInit, OnDestroy {
     radius_meter: 100, tanggal_mulai_berlaku: '', alasan: '', google_maps_url: ''
   };
 
+  alternativeLocations: any[] = [];
+  alternativeLocationUsed = 0;
+  alternativeLocationLimit = 3;
+  alternativeLocationRadius = 100;
+  alternativeLocationLoading = false;
+  alternativeLocationSubmitting = false;
+  alternativeLocationMapResolving = false;
+  alternativeLocationError = '';
+  alternativeLocationModalOpen = false;
+  alternativeLocationDetailOpen = false;
+  selectedAlternativeLocation: any = null;
+  editingAlternativeLocationId: number | null = null;
+  alternativeLocationForm = {
+    nama_lokasi: '', deskripsi: '', latitude: null as number | null,
+    longitude: null as number | null, radius_meter: 100, google_maps_url: ''
+  };
+
   preferences: EmployeePreferences = {
     darkMode: false,
     emailNotification: true,
@@ -81,12 +99,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private profileRequestId = 0;
   private homeLocationRequestId = 0;
+  private alternativeLocationRequestId = 0;
   private destroyed = false;
 
   // Leaflet Home base map
   private map!: L.Map;
   private homeCircle!: L.Circle;
   private homeMarker!: L.Marker;
+  private alternativeMap!: L.Map;
+  private alternativeCircle!: L.Circle;
+  private alternativeMarker!: L.CircleMarker;
 
   constructor(
     private http: HttpClient,
@@ -111,6 +133,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.destroyMap();
+    this.destroyAlternativeMap();
     if (this.profilePhotoPreviewUrl) URL.revokeObjectURL(this.profilePhotoPreviewUrl);
   }
 
@@ -120,6 +143,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     if (tab === 'profile') {
       this.initHomeMap();
+    }
+    if (tab === 'settings' && this.profileData) {
+      // Re-read the list when returning to settings so an admin decision made
+      // in another session is visible without requiring a full page reload.
+      this.loadAlternativeLocations();
     }
   }
 
@@ -159,6 +187,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.updateForm.google_maps_url = homeLoc?.GoogleMapsURL || homeLoc?.google_maps_url || '';
         this.errorMessage = '';
         this.loadHomeLocationWorkflow();
+        this.loadAlternativeLocations();
         
         if (this.activeTab === 'profile') {
           this.initHomeMap();
@@ -270,6 +299,276 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.errorMessage = this.apiError(error, 'Gagal memuat data lokasi WFH.');
   }
 
+  loadAlternativeLocations(): void {
+    const requestId = ++this.alternativeLocationRequestId;
+    this.alternativeLocationLoading = true;
+    this.alternativeLocationError = '';
+    this.http.get<any>('http://localhost:8080/api/v1/employee/alternative-locations', { headers: this.authHeaders() }).pipe(
+      timeout(10000), takeUntil(this.destroy$), finalize(() => {
+        if (requestId === this.alternativeLocationRequestId) this.alternativeLocationLoading = false;
+      })
+    ).subscribe({
+      next: response => {
+        if (requestId !== this.alternativeLocationRequestId || this.destroyed) return;
+        const rows = Array.isArray(response) ? response : response?.data;
+        this.alternativeLocations = Array.isArray(rows) ? rows : [];
+        this.alternativeLocationUsed = Number(response?.used ?? response?.meta?.used ?? this.alternativeLocations.length) || 0;
+        this.alternativeLocationLimit = Number(response?.limit ?? response?.meta?.limit ?? 3) || 3;
+        this.alternativeLocationRadius = Number(response?.radius_meter ?? 100) || 100;
+      },
+      error: error => {
+        if (requestId !== this.alternativeLocationRequestId || this.destroyed) return;
+        this.alternativeLocationError = this.apiError(error, 'Gagal memuat lokasi alternatif.');
+      }
+    });
+  }
+
+  alternativeLocationId(location: any): number {
+    return Number(location?.id ?? location?.ID ?? 0);
+  }
+
+  alternativeLocationName(location: any): string {
+    return location?.nama_lokasi ?? location?.NamaLokasi ?? '-';
+  }
+
+  alternativeLocationDescription(location: any): string {
+    return location?.deskripsi ?? location?.Deskripsi ?? '-';
+  }
+
+  alternativeApprovalStatus(location: any): string {
+    return String(location?.status_approval ?? location?.StatusApproval ?? location?.status ?? '').toLowerCase();
+  }
+
+  alternativeApprovalLabel(location: any): string {
+    const label = location?.status_label;
+    if (label) return label;
+    const status = this.alternativeApprovalStatus(location);
+    return status === 'approved' ? 'Disetujui' : status === 'rejected' ? 'Ditolak' : 'Menunggu persetujuan';
+  }
+
+  alternativeUsageStatus(location: any): string {
+    return String(location?.status_aktif ?? location?.StatusAktif ?? '').toLowerCase();
+  }
+
+  alternativeUsageLabel(location: any): string {
+    const label = location?.status_aktif_label;
+    if (label) return label;
+    return this.alternativeUsageStatus(location) === 'active' ? 'Aktif' : 'Nonaktif';
+  }
+
+  alternativeLocationActive(location: any): boolean {
+    return this.alternativeUsageStatus(location) === 'active';
+  }
+
+  alternativeCanToggle(location: any): boolean {
+    return this.alternativeApprovalStatus(location) === 'approved' && location?.can_toggle !== false;
+  }
+
+  alternativeRejectionReason(location: any): string {
+    return location?.rejection_reason ?? location?.alasan_penolakan ?? location?.AlasanPenolakan ?? '';
+  }
+
+  alternativeLocationQuotaLabel(): string {
+    return `${this.alternativeLocationUsed} dari ${this.alternativeLocationLimit} lokasi digunakan`;
+  }
+
+  openAlternativeLocationModal(location?: any): void {
+    this.editingAlternativeLocationId = location ? this.alternativeLocationId(location) : null;
+    this.alternativeLocationError = '';
+    this.alternativeLocationForm = {
+      nama_lokasi: location ? this.alternativeLocationName(location) : '',
+      deskripsi: location ? this.alternativeLocationDescription(location) : '',
+      latitude: location?.latitude == null ? null : Number(location.latitude),
+      longitude: location?.longitude == null ? null : Number(location.longitude),
+      radius_meter: Number(location?.radius_meter ?? location?.RadiusMeter ?? this.alternativeLocationRadius) || this.alternativeLocationRadius,
+      google_maps_url: location?.google_maps_url || location?.GoogleMapsURL || ''
+    };
+    this.alternativeLocationModalOpen = true;
+    setTimeout(() => this.initAlternativeMap(), 0);
+  }
+
+  closeAlternativeLocationModal(): void {
+    this.alternativeLocationModalOpen = false;
+    this.editingAlternativeLocationId = null;
+    this.destroyAlternativeMap();
+  }
+
+  openAlternativeLocationDetail(location: any): void {
+    this.selectedAlternativeLocation = location;
+    this.alternativeLocationDetailOpen = true;
+  }
+
+  closeAlternativeLocationDetail(): void {
+    this.alternativeLocationDetailOpen = false;
+    this.selectedAlternativeLocation = null;
+  }
+
+  onAlternativeCoordinatesChange(): void {
+    setTimeout(() => this.updateAlternativeMap(), 0);
+  }
+
+  onAlternativeGoogleMapsUrlChange(): void {
+    const coordinates = extractGoogleMapsCoordinates(this.alternativeLocationForm.google_maps_url);
+    this.alternativeLocationForm.latitude = coordinates?.latitude ?? null;
+    this.alternativeLocationForm.longitude = coordinates?.longitude ?? null;
+    this.alternativeLocationError = '';
+    this.onAlternativeCoordinatesChange();
+  }
+
+  resolveAlternativeGoogleMapsUrl(): void {
+    const url = this.alternativeLocationForm.google_maps_url.trim();
+    if (!url || (this.alternativeLocationForm.latitude !== null && this.alternativeLocationForm.longitude !== null)) return;
+    this.alternativeLocationMapResolving = true;
+    this.http.get<any>('http://localhost:8080/api/v1/google-maps/resolve', {
+      headers: this.authHeaders(), params: { url }
+    }).pipe(timeout(12000), takeUntil(this.destroy$), finalize(() => this.alternativeLocationMapResolving = false)).subscribe({
+      next: result => {
+        this.alternativeLocationForm.latitude = Number(result.latitude);
+        this.alternativeLocationForm.longitude = Number(result.longitude);
+        this.onAlternativeCoordinatesChange();
+      },
+      error: error => this.alternativeLocationError = this.apiError(error, 'Link Google Maps tidak berisi koordinat yang valid.')
+    });
+  }
+
+  private validateAlternativeLocationForm(): string | null {
+    const form = this.alternativeLocationForm;
+    if (!form.nama_lokasi.trim()) return 'Nama lokasi wajib diisi.';
+    if (form.nama_lokasi.trim().length > 100) return 'Nama lokasi maksimal 100 karakter.';
+    const latitude = Number(form.latitude);
+    const longitude = Number(form.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      return 'Latitude dan longitude harus berupa koordinat bumi yang valid.';
+    }
+    if (latitude === 0 && longitude === 0) return 'Koordinat 0,0 tidak dapat digunakan.';
+    return null;
+  }
+
+  async saveAlternativeLocation(): Promise<void> {
+    if (this.alternativeLocationSubmitting) return;
+    this.alternativeLocationError = '';
+    const validationError = this.validateAlternativeLocationForm();
+    if (validationError) {
+      this.alternativeLocationError = validationError;
+      await this.alert.error('Data lokasi tidak valid', validationError);
+      return;
+    }
+    if (!this.authService.getToken()) {
+      this.alternativeLocationError = 'Sesi login tidak ditemukan. Silakan login kembali.';
+      await this.alert.error('Sesi berakhir', this.alternativeLocationError);
+      return;
+    }
+    if (this.alternativeLocationMapResolving) {
+      this.alternativeLocationError = 'Tunggu sampai koordinat selesai dibaca dari link Google Maps.';
+      await this.alert.error('Koordinat belum siap', this.alternativeLocationError);
+      return;
+    }
+    const editing = this.editingAlternativeLocationId !== null;
+    if (!await this.alert.confirm(editing ? 'Simpan perubahan lokasi?' : 'Kirim pengajuan lokasi alternatif?', 'Lokasi baru atau hasil edit akan berstatus menunggu persetujuan admin.')) return;
+    const id = this.editingAlternativeLocationId;
+    const url = editing ? `http://localhost:8080/api/v1/employee/alternative-locations/${id}` : 'http://localhost:8080/api/v1/employee/alternative-locations';
+    const { radius_meter: _legacyRadius, ...locationForm } = this.alternativeLocationForm;
+    const body = { ...locationForm, nama_lokasi: this.alternativeLocationForm.nama_lokasi.trim(), metode_validasi: 'radius' };
+    this.alternativeLocationSubmitting = true;
+    const request = editing
+      ? this.http.put<any>(url, body, { headers: this.authHeaders() })
+      : this.http.post<any>(url, body, { headers: this.authHeaders() });
+    request.pipe(timeout(15000), takeUntil(this.destroy$), finalize(() => this.alternativeLocationSubmitting = false)).subscribe({
+      next: () => {
+        this.closeAlternativeLocationModal();
+        this.successMessage = editing ? 'Lokasi alternatif berhasil diperbarui.' : 'Pengajuan lokasi alternatif berhasil dikirim.';
+        this.alert.success(editing ? 'Lokasi alternatif diperbarui' : 'Pengajuan lokasi alternatif berhasil dikirim');
+        this.loadAlternativeLocations();
+      },
+      error: async error => {
+        this.alternativeLocationError = this.apiError(error, 'Gagal menyimpan lokasi alternatif.');
+        await this.alert.error('Penyimpanan gagal', this.alternativeLocationError);
+      }
+    });
+  }
+
+  async deleteAlternativeLocation(location: any): Promise<void> {
+    const id = this.alternativeLocationId(location);
+    if (!id || !await this.alert.confirm('Hapus lokasi alternatif?', 'Lokasi akan diarsipkan dan histori absensi tetap aman.')) return;
+    this.alternativeLocationError = '';
+    this.http.delete<any>(`http://localhost:8080/api/v1/employee/alternative-locations/${id}`, { headers: this.authHeaders() }).pipe(
+      timeout(15000), takeUntil(this.destroy$)
+    ).subscribe({
+      next: () => { this.alert.success('Lokasi alternatif dihapus'); this.loadAlternativeLocations(); },
+      error: async error => {
+        this.alternativeLocationError = this.apiError(error, 'Gagal menghapus lokasi alternatif.');
+        await this.alert.error('Penghapusan gagal', this.alternativeLocationError);
+      }
+    });
+  }
+
+  async toggleAlternativeLocation(location: any): Promise<void> {
+    if (!this.alternativeCanToggle(location)) {
+      await this.alert.error('Lokasi belum tersedia', 'Lokasi pending atau ditolak belum dapat digunakan untuk check-in.');
+      return;
+    }
+    const id = this.alternativeLocationId(location);
+    const active = !this.alternativeLocationActive(location);
+    if (!await this.alert.confirm(active ? 'Aktifkan lokasi alternatif?' : 'Nonaktifkan lokasi alternatif?', active ? 'Lokasi approved akan tersedia untuk check-in.' : 'Lokasi tidak akan ditawarkan untuk check-in baru.')) return;
+    this.http.patch<any>(`http://localhost:8080/api/v1/employee/alternative-locations/${id}/status`, { active }, { headers: this.authHeaders() }).pipe(
+      timeout(15000), takeUntil(this.destroy$)
+    ).subscribe({
+      next: () => { this.alert.success(active ? 'Lokasi diaktifkan' : 'Lokasi dinonaktifkan'); this.loadAlternativeLocations(); },
+      error: async error => {
+        this.alternativeLocationError = this.apiError(error, 'Gagal mengubah status lokasi alternatif.');
+        await this.alert.error('Perubahan status gagal', this.alternativeLocationError);
+      }
+    });
+  }
+
+  initAlternativeMap(): void {
+    const container = document.getElementById('profile-alternative-map');
+    if (!container || this.destroyed || !this.alternativeLocationModalOpen) return;
+    this.destroyAlternativeMap();
+    const latitude = Number(this.alternativeLocationForm.latitude);
+    const longitude = Number(this.alternativeLocationForm.longitude);
+    const centerLat = Number.isFinite(latitude) && latitude >= -90 && latitude <= 90 && latitude !== 0 ? latitude : -6.1202471;
+    const centerLng = Number.isFinite(longitude) && longitude >= -180 && longitude <= 180 && longitude !== 0 ? longitude : 106.7118952;
+    try {
+      this.alternativeMap = L.map(container).setView([centerLat, centerLng], 16);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(this.alternativeMap);
+      this.alternativeMap.on('click', event => {
+        this.alternativeLocationForm.latitude = Number(event.latlng.lat.toFixed(7));
+        this.alternativeLocationForm.longitude = Number(event.latlng.lng.toFixed(7));
+        this.updateAlternativeMap();
+      });
+      this.updateAlternativeMap();
+    } catch {
+      this.destroyAlternativeMap();
+      this.alternativeLocationError = 'Peta lokasi tidak dapat dimuat. Koordinat tetap dapat diisi manual.';
+    }
+  }
+
+  private updateAlternativeMap(): void {
+    if (!this.alternativeMap) return;
+    this.alternativeCircle?.remove();
+    this.alternativeMarker?.remove();
+    const latitude = Number(this.alternativeLocationForm.latitude);
+    const longitude = Number(this.alternativeLocationForm.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || (latitude === 0 && longitude === 0)) return;
+    const point: L.LatLngExpression = [latitude, longitude];
+    this.alternativeMap.setView(point, 16);
+    this.alternativeCircle = L.circle(point, { color: '#3B82F6', fillColor: '#3B82F6', fillOpacity: 0.15, weight: 2, radius: this.alternativeLocationRadius }).addTo(this.alternativeMap);
+    this.alternativeMarker = L.circleMarker(point, { radius: 7, color: '#2563EB', fillColor: '#3B82F6', fillOpacity: 1 }).addTo(this.alternativeMap);
+  }
+
+  private destroyAlternativeMap(): void {
+    try {
+      this.alternativeCircle?.remove();
+      this.alternativeMarker?.remove();
+      this.alternativeMap?.off();
+      this.alternativeMap?.remove();
+    } catch { /* Leaflet may already have removed the modal container. */ }
+    this.alternativeCircle = undefined as any;
+    this.alternativeMarker = undefined as any;
+    this.alternativeMap = undefined as any;
+  }
+
   onHomeLocationAttachment(event: Event): void {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -355,8 +654,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     } else if (!f.google_maps_url.trim()) {
       await this.alert.error('Koordinat tidak valid', 'Masukkan koordinat atau link Google Maps yang valid.'); return;
     }
-    if (f.radius_meter < 1 || f.radius_meter > 10000 || f.tanggal_mulai_berlaku < this.today) {
-      await this.alert.error('Data lokasi tidak valid', 'Radius harus 1–10.000 meter dan tanggal mulai berlaku tidak boleh lampau.'); return;
+    if (f.tanggal_mulai_berlaku < this.today) {
+      await this.alert.error('Data lokasi tidak valid', 'Tanggal mulai berlaku tidak boleh lampau. Radius ditentukan oleh admin.'); return;
     }
     if (this.homeLocationRequests.some(request => request.Status === 'Menunggu Persetujuan')) {
       await this.alert.error('Pengajuan masih diproses', 'Masih ada pengajuan lokasi WFH yang menunggu persetujuan admin.'); return;
@@ -368,8 +667,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
     // Include the complete API payload for audit/debug compatibility. The
     // backend still derives user_id and old_* from the JWT/database and never
     // trusts these client-provided values for authorization or history.
+    const { radius_meter: _legacyRadius, ...homeForm } = f;
     Object.entries({
-      ...f,
+      ...homeForm,
       latitude,
       longitude,
       user_id: this.profileData?.ID || this.profileData?.id || '',

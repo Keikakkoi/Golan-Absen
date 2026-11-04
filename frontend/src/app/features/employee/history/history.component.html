@@ -20,6 +20,7 @@
               <th class="history-entry-column">Jam Masuk</th>
               <th class="history-secondary-column">Jam Pulang</th>
               <th class="history-secondary-column">Durasi Kerja</th>
+              <th class="history-secondary-column">Tipe Kerja</th>
               <th>Status</th>
               <th>Bukti (Masuk)</th>
             </tr>
@@ -30,6 +31,7 @@
               <td class="mono-text history-entry-column">{{ rec.JamMasuk ? (rec.JamMasuk | date:'HH:mm:ss') : '-' }}</td>
               <td class="mono-text history-secondary-column">{{ rec.JamPulang ? (rec.JamPulang | date:'HH:mm:ss') : '-' }}</td>
               <td class="mono-text history-secondary-column">{{ getWorkDuration(rec) }}</td>
+              <td class="history-secondary-column">{{ workTypeLabel(rec) }}</td>
               <td class="history-status-cell">
                 <span *ngIf="!rec.IsCheckoutMissing" class="status-pill" [ngClass]="historyStatusClass(rec.Status)">
                   {{ rec.Status }}
@@ -93,7 +95,10 @@
           <span *ngIf="!selectedRecord.IsCheckoutMissing" class="status-badge" [ngClass]="historyStatusClass(selectedRecord.Status)">{{ selectedRecord.Status }}</span>
           <span *ngIf="selectedRecord.IsCheckoutMissing" class="status-badge status-warning">⚠ Belum Check-out</span>
         </p>
-        <p><strong>Tipe Kerja:</strong> {{ selectedRecord.TipeKerja || 'WFO' }}</p>
+        <p><strong>Tipe Kerja:</strong> {{ workTypeLabel(selectedRecord) }}</p>
+        <p><strong>Lokasi:</strong> {{ locationSummary(selectedRecord) }}</p>
+        <p *ngIf="locationAddress(selectedRecord)"><strong>Alamat lokasi:</strong> {{ locationAddress(selectedRecord) }}</p>
+        <p *ngIf="locationCoordinates(selectedRecord)"><strong>Koordinat lokasi:</strong> {{ locationCoordinates(selectedRecord) }}</p>
         <p><strong>Durasi Kerja:</strong> {{ getWorkDuration(selectedRecord) }}</p>
         <hr>
         <div class="attendance-detail-grid">

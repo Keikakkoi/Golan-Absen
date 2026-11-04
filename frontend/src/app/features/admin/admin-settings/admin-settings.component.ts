@@ -39,7 +39,7 @@ export class AdminSettingsComponent implements OnInit {
   };
   regularSchedules: any[] = [];
   readonly regularDayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-  general: any = { MinimumMasaKerjaCutiBulan: 3, BatasLaporanSetelahCheckoutMenit: 60, ToleransiAbsenAwalMenit: 0 };
+  general: any = { MinimumMasaKerjaCutiBulan: 3, BatasLaporanSetelahCheckoutMenit: 60, ToleransiAbsenAwalMenit: 0, RadiusToleransiWfhAlternatifMeter: 100 };
 
   isLoadingOffice = true;
   isLoadingSchedule = true;
@@ -150,7 +150,8 @@ export class AdminSettingsComponent implements OnInit {
       MinimumMasaKerjaCutiBulan: data?.MinimumMasaKerjaCutiBulan ?? data?.minimum_masa_kerja_cuti_bulan ?? 3,
       DefaultCutiQuotaHari: data?.DefaultCutiQuotaHari ?? data?.default_cuti_quota_hari ?? 12,
       BatasLaporanSetelahCheckoutMenit: minutes ?? (legacyHours != null ? Number(legacyHours) * 60 : 60),
-      ToleransiAbsenAwalMenit: Number(data?.ToleransiAbsenAwalMenit ?? data?.toleransi_absen_awal_menit ?? 0)
+      ToleransiAbsenAwalMenit: Number(data?.ToleransiAbsenAwalMenit ?? data?.toleransi_absen_awal_menit ?? 0),
+      RadiusToleransiWfhAlternatifMeter: Number(data?.RadiusToleransiWfhAlternatifMeter ?? data?.radius_toleransi_wfh_alternatif_meter ?? 100) || 100
     };
   }
 
@@ -161,7 +162,8 @@ export class AdminSettingsComponent implements OnInit {
       minimum_masa_kerja_cuti_bulan: Number(this.general.MinimumMasaKerjaCutiBulan),
       default_cuti_quota_hari: Number(this.general.DefaultCutiQuotaHari),
       batas_laporan_setelah_checkout_menit: Number(this.general.BatasLaporanSetelahCheckoutMenit),
-      toleransi_absen_awal_menit: Number(this.general.ToleransiAbsenAwalMenit)
+      toleransi_absen_awal_menit: Number(this.general.ToleransiAbsenAwalMenit),
+      radius_toleransi_wfh_alternatif_meter: Number(this.general.RadiusToleransiWfhAlternatifMeter)
     };
     this.http.put(`${this.baseUrl}/settings/general`, body, { headers: this.getHeaders() }).subscribe({
       next: data => { this.general = this.normalizeGeneral(data); this.isSavingGeneral = false; this.alert.success('Aturan umum berhasil disimpan'); },

@@ -449,6 +449,171 @@
   .empty-state { color: var(--text-dark-lo); padding: 1rem; background: var(--mint-0); border-radius: 8px; }
 }
 
+/* Keep the alternative-location editor as a viewport dialog instead of
+   letting it expand inside the profile column. */
+.profile-alternative-location-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 24px;
+  overflow-y: auto;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.profile-alternative-location-dialog {
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 48px);
+  box-sizing: border-box;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: none !important;
+  transform-origin: center center;
+
+  .modal-header,
+  .modal-footer {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 24px;
+  }
+
+  .modal-header {
+    border-bottom: 1px solid var(--mint-1);
+
+    h3 {
+      margin: 0;
+      color: var(--green-deep);
+      font-size: 1.25rem;
+    }
+  }
+
+  .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 22px 24px;
+    overflow-y: auto;
+  }
+
+  .modal-footer {
+    justify-content: flex-end;
+    border-top: 1px solid var(--mint-1);
+  }
+
+  .profile-alternative-location-form .modal-footer > .btn-primary,
+  .profile-alternative-location-form .modal-footer > .btn-cancel-reference {
+    min-height: 45px;
+    box-sizing: border-box;
+  }
+
+  .profile-alternative-location-form .modal-footer > .btn-cancel-reference {
+    padding: 10px 24px;
+    border: 1px solid #3b82f6;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #2563eb;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  .profile-alternative-location-form .modal-footer > .btn-cancel-reference:hover {
+    background: #eff6ff;
+    border-color: #2563eb;
+    color: #1d4ed8;
+  }
+
+  .profile-alternative-location-form .modal-footer > .btn-cancel-reference:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+
+  .profile-alternative-location-form {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .form-group-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+.profile-alternative-location-detail-dialog {
+  width: min(520px, 100%);
+}
+
+.profile-alternative-location-detail-dialog .modal-footer .btn-cancel-reference {
+  min-height: 45px;
+  padding: 10px 16px;
+  border: 1px solid #3b82f6;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #2563eb;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.profile-alternative-location-detail-dialog .modal-footer .btn-cancel-reference:hover {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.profile-alternative-location-detail-dialog .modal-footer .btn-cancel-reference:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.profile-alternative-location-map {
+  height: 250px;
+  border: 1px solid var(--mint-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .profile-alternative-location-overlay {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .profile-alternative-location-dialog {
+    max-height: calc(100dvh - 24px);
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .form-group-row {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    .modal-footer {
+      flex-wrap: wrap;
+
+      button {
+        flex: 1 1 140px;
+      }
+    }
+  }
+}
+
 /* Long WFH addresses need their own table sizing. On narrow screens the
    wrapper scrolls horizontally instead of clipping text or the card. */
 .home-location-status .golan-table,

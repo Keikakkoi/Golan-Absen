@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../../core/services/auth.service';
 import { AdminSidebarComponent } from '../admin-sidebar/admin-sidebar.component';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
+import { attendanceLocationSummary, attendanceTypeLabel } from '../../../core/utils/attendance-display';
 
 @Component({
   selector: 'app-admin-late-reports',
@@ -95,6 +96,8 @@ export class AdminLateReportsComponent implements OnInit {
 
   totalOccurrences(): number { return this.summaries.reduce((sum, item) => sum + Number(item.total || 0), 0); }
   totalMinutes(): number { return this.summaries.reduce((sum, item) => sum + Number(item.total_menit || 0), 0); }
+  workTypeLabel(record: any): string { return attendanceTypeLabel(record); }
+  locationSummary(record: any): string { return attendanceLocationSummary(record); }
 
   toggleExportDropdown(): void {
     this.isExportOpen = !this.isExportOpen;

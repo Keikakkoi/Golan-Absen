@@ -47,6 +47,7 @@ describe('ProfileComponent resilience', () => {
   function flushSecondaryRequests() {
     http.expectOne('http://localhost:8080/api/v1/employee/profile/home-location').flush({ active: null });
     http.expectOne('http://localhost:8080/api/v1/employee/profile/home-location/requests').flush([]);
+    http.expectOne('http://localhost:8080/api/v1/employee/alternative-locations').flush({ data: [], used: 0, limit: 3 });
   }
   function loadTestProfile() {
     profileRequest().flush(profile);
@@ -69,9 +70,59 @@ describe('ProfileComponent resilience', () => {
   it('handles empty profile response without throwing', () => {
     profileRequest().flush(null); expect(component.isLoading).toBeFalse(); expect(component.errorMessage).toContain('Data profil');
   });
+  it('loads alternative locations with quota and keeps pending/rejected unavailable', () => {
+    loadTestProfile();
+    component.loadAlternativeLocations();
+    http.expectOne('http://localhost:8080/api/v1/employee/alternative-locations').flush({
+      data: [
+        { id: 1, nama_lokasi: 'Rumah Orang Tua', latitude: -6.2, longitude: 106.8, radius_meter: 100, status_approval: 'approved', status_aktif: 'active' },
+        { id: 2, nama_lokasi: 'Lokasi Pending', latitude: -6.3, longitude: 106.9, status_approval: 'pending', status_aktif: 'inactive' },
+        { id: 3, nama_lokasi: 'Lokasi Ditolak', latitude: -6.4, longitude: 107, status_approval: 'rejected', status_aktif: 'inactive', rejection_reason: 'Koordinat tidak sesuai' }
+      ], used: 3, limit: 3
+    });
+
+    expect(component.alternativeLocationQuotaLabel()).toBe('3 dari 3 lokasi digunakan');
+    expect(component.alternativeCanToggle(component.alternativeLocations[0])).toBeTrue();
+    expect(component.alternativeCanToggle(component.alternativeLocations[1])).toBeFalse();
+    expect(component.alternativeCanToggle(component.alternativeLocations[2])).toBeFalse();
+    expect(component.alternativeRejectionReason(component.alternativeLocations[2])).toBe('Koordinat tidak sesuai');
+  });
+  it('rejects invalid alternative coordinates before sending to backend', fakeAsync(() => {
+    loadTestProfile();
+    component.openAlternativeLocationModal();
+    component.alternativeLocationForm = { nama_lokasi: 'Lokasi Baru', deskripsi: '', latitude: 91, longitude: 106, radius_meter: 100, google_maps_url: '' };
+    component.saveAlternativeLocation();
+    tick();
+
+    expect(component.alternativeLocationError).toContain('koordinat bumi yang valid');
+    expect(alert.error).toHaveBeenCalled();
+  }));
+  it('surfaces forbidden errors when alternative locations cannot be loaded', () => {
+    profileRequest().flush(profile);
+    http.expectOne('http://localhost:8080/api/v1/employee/profile/home-location').flush({ active: null });
+    http.expectOne('http://localhost:8080/api/v1/employee/profile/home-location/requests').flush([]);
+    http.expectOne('http://localhost:8080/api/v1/employee/alternative-locations').flush({ error: 'forbidden' }, { status: 403, statusText: 'Forbidden' });
+
+    expect(component.alternativeLocationError).toBe('forbidden');
+  });
+  it('creates an alternative location and refreshes the list', fakeAsync(() => {
+    loadTestProfile();
+    component.openAlternativeLocationModal();
+    component.alternativeLocationForm = { nama_lokasi: 'Kantor Klien', deskripsi: 'Alamat klien', latitude: -6.2, longitude: 106.8, radius_meter: 150, google_maps_url: '' };
+    component.saveAlternativeLocation();
+    tick();
+
+    const request = http.expectOne(req => req.method === 'POST' && req.url.endsWith('/employee/alternative-locations'));
+    expect(request.request.body).toEqual(jasmine.objectContaining({ nama_lokasi: 'Kantor Klien', latitude: -6.2, longitude: 106.8, metode_validasi: 'radius' }));
+    expect(request.request.body.radius_meter).toBeUndefined();
+    request.flush({ data: { id: 4 } });
+    http.expectOne('http://localhost:8080/api/v1/employee/alternative-locations').flush({ data: [], used: 1, limit: 3 });
+    expect(component.alternativeLocationUsed).toBe(1);
+  }));
   it('keeps profile rendered when home location fails', () => {
     profileRequest().flush(profile);
     http.expectOne('http://localhost:8080/api/v1/employee/profile/home-location').flush({ error: 'down' }, { status: 500, statusText: 'Server error' });
+    http.expectOne('http://localhost:8080/api/v1/employee/alternative-locations').flush({ data: [], used: 0, limit: 3 });
     expect(component.profileData.Nama).toBe('Sari'); expect(component.homeLocationLoading).toBeFalse();
   });
   it('keeps old data when save succeeds but reload fails', fakeAsync(() => {

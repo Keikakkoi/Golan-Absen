@@ -58,6 +58,8 @@ func ConnectDB(cfg *Config) {
 		&models.EmployeeHomeLocation{},
 		&models.HomeLocationChangeRequest{},
 		&models.EmployeeHomeLocationHistory{},
+		&models.AlternativeLocation{},
+		&models.FieldLocation{},
 		&models.AttendanceRecord{},
 		&models.OfficeLocation{},
 		&models.WorkSchedule{},
@@ -88,6 +90,43 @@ func ConnectDB(cfg *Config) {
 	)
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database schemas: %v", err)
+	}
+	// The repository also ships the equivalent standalone SQL migration for
+	// installations that run migrations outside the API. Keep startup
+	// idempotent for the existing AutoMigrate-based deployment path as well.
+	for _, statement := range []string{
+		`UPDATE work_types SET canonical_type = 'wfo' WHERE canonical_type IS NULL AND LOWER(BTRIM(nama)) = 'wfo'`,
+		`UPDATE work_types SET canonical_type = 'wfh' WHERE canonical_type IS NULL AND LOWER(BTRIM(nama)) = 'wfh'`,
+		`UPDATE work_types SET canonical_type = 'alternative_location' WHERE canonical_type IS NULL AND LOWER(BTRIM(nama)) = 'lokasi alternatif'`,
+		`ALTER TABLE alternative_locations DROP CONSTRAINT IF EXISTS alternative_locations_coordinates_check`,
+		`ALTER TABLE alternative_locations ADD CONSTRAINT alternative_locations_coordinates_check CHECK (latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180 AND (latitude <> 0 OR longitude <> 0) AND radius_meter BETWEEN 1 AND 10000)`,
+		`ALTER TABLE alternative_locations DROP CONSTRAINT IF EXISTS alternative_locations_status_check`,
+		`ALTER TABLE alternative_locations ADD CONSTRAINT alternative_locations_status_check CHECK (status_approval IN ('pending', 'approved', 'rejected') AND status_aktif IN ('active', 'inactive'))`,
+		`ALTER TABLE field_locations DROP CONSTRAINT IF EXISTS field_locations_coordinates_check`,
+		`ALTER TABLE field_locations ADD CONSTRAINT field_locations_coordinates_check CHECK (latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180 AND (latitude <> 0 OR longitude <> 0) AND radius_meter BETWEEN 1 AND 10000)`,
+		`ALTER TABLE field_locations DROP CONSTRAINT IF EXISTS field_locations_status_check`,
+		`ALTER TABLE field_locations ADD CONSTRAINT field_locations_status_check CHECK (status_aktif IN ('active', 'inactive'))`,
+		`ALTER TABLE alternative_locations DROP CONSTRAINT IF EXISTS alternative_locations_validation_method_check`,
+		`ALTER TABLE alternative_locations ADD CONSTRAINT alternative_locations_validation_method_check CHECK (metode_validasi IN ('radius'))`,
+		`ALTER TABLE field_locations DROP CONSTRAINT IF EXISTS field_locations_validation_method_check`,
+		`ALTER TABLE field_locations ADD CONSTRAINT field_locations_validation_method_check CHECK (metode_validasi IN ('radius'))`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_alternative_locations_user_name_active ON alternative_locations (user_id, LOWER(BTRIM(nama_lokasi))) WHERE deleted_at IS NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_field_locations_name_active ON field_locations (LOWER(BTRIM(nama_lokasi))) WHERE deleted_at IS NULL`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'work_types_field_location_id_fkey') THEN
+				ALTER TABLE work_types ADD CONSTRAINT work_types_field_location_id_fkey FOREIGN KEY (field_location_id) REFERENCES field_locations(id);
+			END IF;
+			IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'attendance_records_alternative_location_id_fkey') THEN
+				ALTER TABLE attendance_records ADD CONSTRAINT attendance_records_alternative_location_id_fkey FOREIGN KEY (alternative_location_id) REFERENCES alternative_locations(id);
+			END IF;
+			IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'attendance_records_field_location_id_fkey') THEN
+				ALTER TABLE attendance_records ADD CONSTRAINT attendance_records_field_location_id_fkey FOREIGN KEY (field_location_id) REFERENCES field_locations(id);
+			END IF;
+		END $$`,
+	} {
+		if err := DB.Exec(statement).Error; err != nil {
+			log.Printf("Location contract migration statement failed: %v", err)
+		}
 	}
 	// Normalize legacy work-type location rules without touching attendance
 	// history. Older rows used IsHomeBase and sometimes stored the default
@@ -289,6 +328,7 @@ func ConnectDB(cfg *Config) {
 			WajibSelfie:           true,
 			WarnaLabel:            "#3B82F6",
 			StatusAktif:           true,
+			CanonicalType:         models.WorkTypeWFO,
 		},
 		{
 			Nama:                  "WFH",
@@ -300,6 +340,7 @@ func ConnectDB(cfg *Config) {
 			WajibSelfie:           true,
 			WarnaLabel:            "#10B981",
 			StatusAktif:           true,
+			CanonicalType:         models.WorkTypeWFH,
 		},
 		{
 			Nama:                  "Dinas Luar",
@@ -311,11 +352,39 @@ func ConnectDB(cfg *Config) {
 			WajibSelfie:           true,
 			WarnaLabel:            "#F59E0B",
 			StatusAktif:           true,
+			// Dinas Luar is retained as a legacy no-geofence type. New field
+			// attendance uses the canonical field_location type below.
+		},
+		{
+			Nama:                  "Lokasi Alternatif",
+			Deskripsi:             "Lokasi alternatif milik karyawan yang telah disetujui",
+			IsDefault:             true,
+			ButuhValidasiGeofence: true,
+			RadiusYangBerlaku:     "alternatif",
+			CanonicalType:         models.WorkTypeAlternative,
+			WajibSelfie:           true,
+			WarnaLabel:            "#8B5CF6",
+			StatusAktif:           true,
 		},
 	}
 	for _, workType := range defaultWorkTypes {
 		result := DB.Where("nama = ?", workType.Nama).FirstOrCreate(&workType)
-		if result.Error == nil && result.RowsAffected > 0 {
+		if result.Error != nil {
+			continue
+		}
+		if workType.CanonicalType.Valid() {
+			// Repair only the additive/default contract fields. Existing
+			// attendance rows retain their own legacy type and snapshots.
+			DB.Model(&models.WorkType{}).Where("id = ?", workType.ID).Updates(map[string]interface{}{
+				"canonical_type":          workType.CanonicalType,
+				"radius_yang_berlaku":     workType.RadiusYangBerlaku,
+				"is_home_base":            workType.IsHomeBase,
+				"butuh_validasi_geofence": workType.ButuhValidasiGeofence,
+				"is_default":              workType.IsDefault,
+				"status_aktif":            true,
+			})
+		}
+		if result.RowsAffected > 0 {
 			log.Printf("Seeded default work type: %s", workType.Nama)
 		}
 	}
@@ -329,6 +398,7 @@ func ConnectDB(cfg *Config) {
 			MinimumMasaKerjaCutiBulan:        3,
 			BatasLaporanSetelahCheckoutMenit: 60,
 			BatasLaporanSetelahCheckoutJam:   1,
+			RadiusToleransiWfhAlternatifMeter: 100,
 		})
 	}
 

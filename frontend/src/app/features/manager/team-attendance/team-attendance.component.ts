@@ -8,6 +8,7 @@ import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sideb
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { PaginationComponent } from '../../../shared/pagination/pagination.component';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
+import { attendanceLocationSummary, attendanceTypeLabel } from '../../../core/utils/attendance-display';
 @Component({ selector: 'app-team-attendance', standalone: true, imports: [CommonModule, FormsModule, SharedSidebarComponent, PaginationComponent, DatePickerComponent], templateUrl: './team-attendance.component.html', styleUrls: ['./team-attendance.component.scss'] })
 export class TeamAttendanceComponent implements OnDestroy, OnInit {
   startDate = this.todayBusinessDate(); endDate = this.startDate; search = ''; status = ''; rows: any[] = []; private serverPaginated = false; private requestSequence = 0;
@@ -64,13 +65,15 @@ export class TeamAttendanceComponent implements OnDestroy, OnInit {
     if (normalized === 'terlambat') return 'status-terlambat';
     return 'status-pending';
   }
+  workTypeLabel(row: any): string { return attendanceTypeLabel(row); }
+  locationSummary(row: any): string { return attendanceLocationSummary(row); }
   toggleExportDropdown(): void { this.isExportOpen = !this.isExportOpen; }
-  exportCSV(): void { this.isExportOpen = false; this.reportExport.downloadCsv('absensi-tim.csv', ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
-  exportExcel(): void { this.isExportOpen = false; this.reportExport.downloadExcel('absensi-tim.xls', ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
+  exportCSV(): void { this.isExportOpen = false; this.reportExport.downloadCsv('absensi-tim.csv', ['Nama', 'Tanggal', 'Tipe Kerja', 'Lokasi', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
+  exportExcel(): void { this.isExportOpen = false; this.reportExport.downloadExcel('absensi-tim.xls', ['Nama', 'Tanggal', 'Tipe Kerja', 'Lokasi', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
   exportJSON(): void { this.isExportOpen = false; this.reportExport.downloadJson('absensi-tim.json', this.rows); }
-  exportPDF(): void { this.isExportOpen = false; this.reportExport.downloadPdf('absensi-tim.pdf', 'Absensi Tim', this.dateRangeLabel(), ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
-  printReport(): void { this.isExportOpen = false; this.reportExport.printReport('Absensi Tim', this.dateRangeLabel(), ['Nama', 'Tanggal', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
-  private exportRows(): unknown[][] { return this.rows.map(row => [row.nama, row.tanggal, row.status, row.jam_masuk, row.jam_pulang]); }
+  exportPDF(): void { this.isExportOpen = false; this.reportExport.downloadPdf('absensi-tim.pdf', 'Absensi Tim', this.dateRangeLabel(), ['Nama', 'Tanggal', 'Tipe Kerja', 'Lokasi', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
+  printReport(): void { this.isExportOpen = false; this.reportExport.printReport('Absensi Tim', this.dateRangeLabel(), ['Nama', 'Tanggal', 'Tipe Kerja', 'Lokasi', 'Status', 'Masuk', 'Pulang'], this.exportRows()); }
+  private exportRows(): unknown[][] { return this.rows.map(row => [row.nama, row.tanggal, this.workTypeLabel(row), this.locationSummary(row), row.status, row.jam_masuk, row.jam_pulang]); }
   private dateRangeLabel(): string { return `${this.formatDate(this.startDate)} - ${this.formatDate(this.endDate)}`; }
   private formatDate(value: string): string { const [year, month, day] = value.split('-'); return year && month && day ? `${day}/${month}/${year}` : value; }
   private validateDateRange(): string {

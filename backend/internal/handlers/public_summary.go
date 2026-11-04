@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"time"
+	"database/sql"
 
 	"absensi-golan-backend/config"
 	"absensi-golan-backend/internal/models"
@@ -31,17 +31,18 @@ func GetPublicAttendanceSummary(c *fiber.Ctx) error {
 			Where("attendance_records.tanggal = ? AND users.status = ? AND (attendance_records.status = ? OR attendance_records.is_late = ?)", today, "aktif", models.StatusTerlambat, true).Count(&guided)
 	}
 
-	var lastUpdated time.Time
+	var lastUpdated sql.NullTime
 	config.DB.Model(&models.AttendanceRecord{}).Where("tanggal = ?", today).Select("MAX(updated_at)").Scan(&lastUpdated)
-	if lastUpdated.IsZero() {
-		lastUpdated = now
+	if !lastUpdated.Valid || lastUpdated.Time.IsZero() {
+		lastUpdated.Time = now
 	}
+	lastUpdatedTime := lastUpdated.Time
 	percentage := int64(0)
 	if total > 0 {
 		percentage = present * 100 / total
 	}
 	return c.JSON(fiber.Map{
 		"date": today, "team_present_percentage": percentage,
-		"present": present, "late": guided, "last_updated": lastUpdated.In(jakartaLocation),
+		"present": present, "late": guided, "last_updated": lastUpdatedTime.In(jakartaLocation),
 	})
 }

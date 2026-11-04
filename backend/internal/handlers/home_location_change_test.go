@@ -43,7 +43,6 @@ func TestValidateHomeLocationInput(t *testing.T) {
 	tests := []homeLocationRequestInput{
 		{Address: "", Latitude: -6.2, Longitude: 106.8, Radius: 100, EffectiveDate: future, Reason: "Pindah"},
 		{Address: "Alamat", Latitude: 91, Longitude: 106.8, Radius: 100, EffectiveDate: future, Reason: "Pindah"},
-		{Address: "Alamat", Latitude: -6.2, Longitude: 106.8, Radius: 0, EffectiveDate: future, Reason: "Pindah"},
 	}
 	for _, input := range tests {
 		if _, err := validateHomeLocationInput(input); err == nil {

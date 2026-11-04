@@ -390,7 +390,8 @@ export class AdminManagementComponent implements OnInit {
     if (!this.selectedHome) return;
     if (!await this.alert.confirm('Simpan lokasi rumah?', 'Koordinat geofence WFH karyawan akan diperbarui dari link Google Maps.')) return;
     this.isSaving = true;
-    this.http.put(`${this.api}/admin/home-locations/${this.selectedHome.ID}`, this.homeForm, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.selectedHome = null; this.loadHomeLocations(); this.alert.success('Lokasi rumah disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan lokasi rumah', err.error?.error || 'Gagal menyimpan lokasi rumah'); } });
+    const { radius_meter: _legacyRadius, ...homeForm } = this.homeForm;
+    this.http.put(`${this.api}/admin/home-locations/${this.selectedHome.ID}`, homeForm, { headers: this.headers() }).subscribe({ next: () => { this.isSaving = false; this.selectedHome = null; this.loadHomeLocations(); this.alert.success('Lokasi rumah disimpan'); }, error: err => { this.isSaving = false; this.fail(err); this.alert.error('Gagal menyimpan lokasi rumah', err.error?.error || 'Gagal menyimpan lokasi rumah'); } });
   }
 
   loadQuotas(): void {

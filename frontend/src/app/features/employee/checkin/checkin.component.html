@@ -66,7 +66,7 @@
                 <button
                   type="button"
                   class="event-type-option"
-                  *ngFor="let wt of workTypes"
+                  *ngFor="let wt of selectableWorkTypes()"
                   role="option"
                   [attr.aria-selected]="tipeKerja === wt.Nama"
                   [class.is-selected]="tipeKerja === wt.Nama"
@@ -75,6 +75,29 @@
                 </button>
               </div>
             </div>
+          </div>
+          <div *ngIf="locationSelectionError" class="alert alert-danger geolocation-warning" role="alert">
+            <span class="warning-icon" aria-hidden="true">!</span><span class="warning-message">{{ locationSelectionError }}</span>
+          </div>
+          <div *ngIf="selectedCanonicalType() === 'alternative_location'" class="location-selection-panel">
+            <label for="alternative-checkin-location">Lokasi Alternatif</label>
+            <select id="alternative-checkin-location" class="form-control" [(ngModel)]="selectedAlternativeLocationId" name="alternative_checkin_location" (ngModelChange)="onAlternativeLocationChange()" [disabled]="hasCheckedIn || locationSelectionLoading">
+              <option [ngValue]="null">Pilih lokasi approved dan aktif</option>
+              <option *ngFor="let location of alternativeLocations" [ngValue]="location.id || location.ID">{{ location.nama_lokasi || location.NamaLokasi }}</option>
+            </select>
+            <small *ngIf="!alternativeLocations.length && !locationSelectionLoading">Belum ada lokasi alternatif approved dan aktif.</small>
+          </div>
+          <div *ngIf="selectedCanonicalType() === 'field_location'" class="location-selection-panel">
+            <label for="field-checkin-location">Lokasi Lapangan</label>
+            <select id="field-checkin-location" class="form-control" [(ngModel)]="selectedFieldLocationId" name="field_checkin_location" (ngModelChange)="onFieldLocationChange()" [disabled]="true">
+              <option [ngValue]="null">Lokasi lapangan belum tersedia</option>
+              <option *ngFor="let location of fieldLocations" [ngValue]="location.id || location.ID">{{ location.nama_lokasi || location.NamaLokasi }}</option>
+            </select>
+          </div>
+          <div *ngIf="selectedLocation()" class="selected-location-summary">
+            <strong>{{ selectedLocationName() }}</strong>
+            <span *ngIf="selectedLocationDescription()">{{ selectedLocationDescription() }}</span>
+            <span>{{ selectedLocationCoordinates() }} · radius {{ selectedLocationRadius() }} meter</span>
           </div>
           <div
             *ngIf="locationError"

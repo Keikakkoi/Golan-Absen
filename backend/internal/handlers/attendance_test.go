@@ -203,6 +203,8 @@ func TestWorkTypeValidationModesPreferCanonicalConfigurationWithLegacyFallbacks(
 		{name: "legacy home flag", workType: models.WorkType{Nama: "WFH", IsHomeBase: true, RadiusYangBerlaku: "kantor"}, want: workTypeValidationHome},
 		{name: "legacy WFO name", workType: models.WorkType{Nama: "WFO"}, want: workTypeValidationOffice},
 		{name: "legacy custom", workType: models.WorkType{Nama: "Dinas Luar", ButuhValidasiGeofence: true}, want: workTypeValidationNone},
+		{name: "canonical alternative", workType: models.WorkType{Nama: "Custom", CanonicalType: models.WorkTypeAlternative}, want: workTypeValidationAlternative},
+		{name: "canonical field", workType: models.WorkType{Nama: "Custom", CanonicalType: models.WorkTypeField}, want: workTypeValidationField},
 	}
 	for _, testCase := range cases {
 		if got := workTypeValidationMode(testCase.workType); got != testCase.want {

@@ -10,6 +10,7 @@ import { PaginationComponent } from '../../../shared/pagination/pagination.compo
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
+import { attendanceLocationAddress, attendanceLocationCoordinates, attendanceLocationName, attendanceLocationSummary, attendanceTypeLabel } from '../../../core/utils/attendance-display';
 
 @Component({
   selector: 'app-admin-reports',
@@ -277,12 +278,13 @@ export class AdminReportsComponent implements OnInit {
   }
 
   locationSummary(report: any): string {
-    const latitude = this.checkInLatitude(report);
-    const longitude = this.checkInLongitude(report);
-    return latitude !== null && longitude !== null
-      ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
-      : 'Tidak ada lokasi';
+		return attendanceLocationSummary(report);
   }
+
+  workTypeLabel(report: any): string { return attendanceTypeLabel(report); }
+  locationName(report: any): string { return attendanceLocationName(report); }
+  locationAddress(report: any): string { return attendanceLocationAddress(report); }
+  locationCoordinates(report: any): string { return attendanceLocationCoordinates(report); }
 
   checkOutLocationSummary(report: any): string {
     const latitude = this.checkOutLatitude(report);
@@ -378,7 +380,8 @@ export class AdminReportsComponent implements OnInit {
       return;
     }
     
-    let csvContent = 'Tanggal,NIK,Nama Karyawan,Divisi,Jabatan,Tipe Kerja,Jam Masuk,Jam Pulang,Status\n';
+    let csvContent = 'Tanggal,NIK,Nama Karyawan,Divisi,Jabatan,Tipe Kerja,Lokasi,Alamat Lokasi,Koordinat,Jam Masuk,Jam Pulang,Status\n';
+    const csvCell = (value: unknown): string => `"${String(value ?? '').replace(/"/g, '""')}"`;
     
     this.reports.forEach(r => {
       const dateVal = r.Tanggal ? new Date(r.Tanggal).toLocaleDateString('id-ID') : '-';
@@ -391,12 +394,15 @@ export class AdminReportsComponent implements OnInit {
         `"${(r.Employee?.User?.Nama || '').replace(/"/g, '""')}"`,
         `"${(r.Employee?.Division?.NamaDivisi || '').replace(/"/g, '""')}"`,
         `"${(r.Employee?.Position?.NamaJabatan || '').replace(/"/g, '""')}"`,
-        r.TipeKerja || 'WFO',
+        this.workTypeLabel(r),
+        this.locationName(r),
+        this.locationAddress(r),
+        this.locationCoordinates(r),
         jamMasuk,
         jamPulang,
         this.attendanceStatus(r)
       ];
-      csvContent += row.join(',') + '\n';
+      csvContent += row.map(csvCell).join(',') + '\n';
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -436,6 +442,9 @@ export class AdminReportsComponent implements OnInit {
               <th>Divisi</th>
               <th>Jabatan</th>
               <th>Tipe Kerja</th>
+              <th>Lokasi</th>
+              <th>Alamat Lokasi</th>
+              <th>Koordinat</th>
               <th>Jam Masuk</th>
               <th>Jam Pulang</th>
               <th>Status</th>
@@ -455,7 +464,10 @@ export class AdminReportsComponent implements OnInit {
           <td>${r.Employee?.User?.Nama || ''}</td>
           <td>${r.Employee?.Division?.NamaDivisi || ''}</td>
           <td>${r.Employee?.Position?.NamaJabatan || ''}</td>
-          <td>${r.TipeKerja || 'WFO'}</td>
+          <td>${this.workTypeLabel(r)}</td>
+          <td>${this.locationName(r)}</td>
+          <td>${this.locationAddress(r)}</td>
+          <td>${this.locationCoordinates(r)}</td>
           <td>${jamMasuk}</td>
           <td>${jamPulang}</td>
           <td>${this.attendanceStatus(r)}</td>
@@ -489,7 +501,11 @@ export class AdminReportsComponent implements OnInit {
     }
     const exportReports = this.reports.map(report => ({
       ...report,
-      Status: this.attendanceStatus(report)
+      Status: this.attendanceStatus(report),
+      tipe_kerja_label: this.workTypeLabel(report),
+      location_name: this.locationName(report),
+      location_address: this.locationAddress(report),
+      location_coordinates: this.locationCoordinates(report)
     }));
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportReports, null, 2));
     const downloadAnchorNode = document.createElement('a');
@@ -517,10 +533,11 @@ export class AdminReportsComponent implements OnInit {
   }
 
   private buildPrintableReport(): { headers: string[]; rows: unknown[][] } {
-    const headers = ['Tanggal', 'NIK', 'Nama Karyawan', 'Divisi', 'Jabatan', 'Tipe Kerja', 'Jam Masuk', 'Jam Pulang', 'Status'];
+    const headers = ['Tanggal', 'NIK', 'Nama Karyawan', 'Divisi', 'Jabatan', 'Tipe Kerja', 'Lokasi', 'Alamat Lokasi', 'Koordinat', 'Jam Masuk', 'Jam Pulang', 'Status'];
     const rows = this.reports.map(r => [
       this.formatAttendanceDate(r.Tanggal), r.Employee?.NIK || '-', r.Employee?.User?.Nama || '-',
-      r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', r.TipeKerja || 'WFO',
+      r.Employee?.Division?.NamaDivisi || '-', r.Employee?.Position?.NamaJabatan || '-', this.workTypeLabel(r),
+      this.locationName(r), this.locationAddress(r), this.locationCoordinates(r),
       this.formatAttendanceTime(r.JamMasuk), this.formatAttendanceTime(r.JamPulang), this.attendanceStatus(r)
     ]);
     return { headers, rows };

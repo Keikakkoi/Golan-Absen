@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { SharedSidebarComponent } from '../../shared/shared-sidebar/shared-sidebar.component';
 import { ReportExportService } from '../../../core/services/report-export.service';
 import { DatePickerComponent } from '../../../shared/date-picker/date-picker.component';
+import { attendanceTypeLabel } from '../../../core/utils/attendance-display';
 
 interface ChartBar {
   dayName: string;
@@ -41,7 +42,7 @@ export class InternStatisticsComponent implements OnInit {
     total_days: 0,
     attendance_rate: 100,
     average_checkin_time: '-',
-    work_type_stats: { wfo: 0, wfh: 0, remote: 0 },
+    work_type_stats: { wfo: 0, wfh: 0, alternative_location: 0, field_location: 0, legacy: 0, remote: 0 },
     work_reports_submitted: 0,
     work_reports_approved: 0,
     daily_trend: []
@@ -71,7 +72,7 @@ export class InternStatisticsComponent implements OnInit {
     }).subscribe({
       next: data => {
         this.stats = data || {};
-        this.stats.work_type_stats = this.stats.work_type_stats || { wfo: 0, wfh: 0, remote: 0 };
+        this.stats.work_type_stats = this.stats.work_type_stats || { wfo: 0, wfh: 0, alternative_location: 0, field_location: 0, legacy: 0, remote: 0 };
         this.stats.work_reports_submitted = Number(this.stats.work_reports_submitted) || 0;
         this.stats.work_reports_approved = Number(this.stats.work_reports_approved) || 0;
         this.processDailyTrend(this.stats.daily_trend || []);
@@ -95,7 +96,7 @@ export class InternStatisticsComponent implements OnInit {
       status: item.status || 'Hadir',
       jamMasuk: item.jam_masuk || '-',
       jamPulang: item.jam_pulang || '-',
-      tipeKerja: item.tipe_kerja || 'WFO'
+      tipeKerja: item.tipe_kerja_label || attendanceTypeLabel(item)
     }));
   }
 

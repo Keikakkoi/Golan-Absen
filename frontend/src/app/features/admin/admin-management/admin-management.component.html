@@ -266,7 +266,7 @@
       <div class="golan-card home-location-card">
         <div class="golan-table-responsive home-location-table-wrap">
           <table class="golan-table home-location-table">
-            <thead><tr><th>Karyawan</th><th>Link Google Maps</th><th>Radius</th><th>Alamat</th><th>Aksi</th></tr></thead>
+            <thead><tr><th>Karyawan</th><th>Link Google Maps</th><th>Radius WFH &amp; Alternatif</th><th>Alamat</th><th>Aksi</th></tr></thead>
             <tbody>
               <tr *ngFor="let row of homeRows">
                 <td>{{ row.employee?.User?.Nama || '-' }}<div class="code">{{ row.employee?.NIK || '-' }}</div></td>
@@ -303,11 +303,6 @@
               <label class="home-field"><span>Latitude</span><input type="number" class="golan-input" [ngModel]="homeForm.latitude_rumah" name="latitude_preview" readonly></label>
               <label class="home-field"><span>Longitude</span><input type="number" class="golan-input" [ngModel]="homeForm.longitude_rumah" name="longitude_preview" readonly></label>
             </div>
-            
-            <label class="home-field" for="home-radius">
-              <span>Radius (meter)</span>
-              <input id="home-radius" type="number" class="golan-input" [(ngModel)]="homeForm.radius_meter" name="radius" min="1" required>
-            </label>
             
             <label class="home-field" for="home-alamat">
               <span>Alamat / catatan</span>

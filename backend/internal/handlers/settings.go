@@ -194,10 +194,11 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Access denied"})
 	}
 	var input struct {
-		MinimumMasaKerjaCutiBulan        int  `json:"minimum_masa_kerja_cuti_bulan"`
-		DefaultCutiQuotaHari             *int `json:"default_cuti_quota_hari"`
-		BatasLaporanSetelahCheckoutMenit int  `json:"batas_laporan_setelah_checkout_menit"`
-		ToleransiAbsenAwalMenit          *int `json:"toleransi_absen_awal_menit"`
+		MinimumMasaKerjaCutiBulan         int      `json:"minimum_masa_kerja_cuti_bulan"`
+		DefaultCutiQuotaHari              *int     `json:"default_cuti_quota_hari"`
+		BatasLaporanSetelahCheckoutMenit  int      `json:"batas_laporan_setelah_checkout_menit"`
+		ToleransiAbsenAwalMenit           *int     `json:"toleransi_absen_awal_menit"`
+		RadiusToleransiWfhAlternatifMeter *float64 `json:"radius_toleransi_wfh_alternatif_meter"`
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid input"})
@@ -214,6 +215,9 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 	if input.ToleransiAbsenAwalMenit != nil && (*input.ToleransiAbsenAwalMenit < 0 || *input.ToleransiAbsenAwalMenit > 24*60) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Toleransi absen awal harus antara 0 dan 1.440 menit"})
 	}
+	if input.RadiusToleransiWfhAlternatifMeter != nil && (*input.RadiusToleransiWfhAlternatifMeter < 1 || *input.RadiusToleransiWfhAlternatifMeter > 10000) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Radius toleransi WFH dan lokasi alternatif harus antara 1 sampai 10.000 meter"})
+	}
 	var setting models.GeneralSetting
 	if err := config.DB.First(&setting).Error; err != nil {
 		setting = models.GeneralSetting{}
@@ -226,6 +230,12 @@ func UpdateGeneralSettings(c *fiber.Ctx) error {
 	setting.BatasLaporanSetelahCheckoutJam = input.BatasLaporanSetelahCheckoutMenit / 60
 	if input.ToleransiAbsenAwalMenit != nil {
 		setting.ToleransiAbsenAwalMenit = *input.ToleransiAbsenAwalMenit
+	}
+	if input.RadiusToleransiWfhAlternatifMeter != nil {
+		setting.RadiusToleransiWfhAlternatifMeter = *input.RadiusToleransiWfhAlternatifMeter
+	}
+	if setting.RadiusToleransiWfhAlternatifMeter < 1 || setting.RadiusToleransiWfhAlternatifMeter > 10000 {
+		setting.RadiusToleransiWfhAlternatifMeter = defaultRadiusToleransiWfhAlternatifMeter
 	}
 	if err := config.DB.Save(&setting).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to update general settings"})

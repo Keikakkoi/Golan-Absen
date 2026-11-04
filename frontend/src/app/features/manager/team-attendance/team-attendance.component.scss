@@ -135,7 +135,7 @@ body.dark-theme .team-attendance-toolbar .dropdown-item-print {
   border-top-color: var(--border-color, #334155);
 }
 
-/* Keep the five team-attendance columns aligned while allowing the viewport
+/* Keep the seven team-attendance columns aligned while allowing the viewport
    to scroll horizontally on narrow phones. */
 .team-attendance-table {
   min-width: 700px;
@@ -157,15 +157,19 @@ body.dark-theme .team-attendance-toolbar .dropdown-item-print {
 }
 
 .main-content .golan-table th:nth-child(1),
-.main-content .golan-table td:nth-child(1) { width: 30%; }
+.main-content .golan-table td:nth-child(1) { width: 20%; }
 .main-content .golan-table th:nth-child(2),
-.main-content .golan-table td:nth-child(2) { width: 20%; }
+.main-content .golan-table td:nth-child(2) { width: 12%; }
 .main-content .golan-table th:nth-child(3),
-.main-content .golan-table td:nth-child(3) { width: 20%; }
+.main-content .golan-table td:nth-child(3) { width: 16%; }
 .main-content .golan-table th:nth-child(4),
-.main-content .golan-table td:nth-child(4),
+.main-content .golan-table td:nth-child(4) { width: 18%; }
 .main-content .golan-table th:nth-child(5),
-.main-content .golan-table td:nth-child(5) { width: 15%; }
+.main-content .golan-table td:nth-child(5) { width: 16%; }
+.main-content .golan-table th:nth-child(6),
+.main-content .golan-table td:nth-child(6),
+.main-content .golan-table th:nth-child(7),
+.main-content .golan-table td:nth-child(7) { width: 9%; }
 
 .team-attendance-table th,
 .team-attendance-table td {
@@ -179,15 +183,19 @@ body.dark-theme .team-attendance-toolbar .dropdown-item-print {
 }
 
 .team-attendance-table th:nth-child(1),
-.team-attendance-table td:nth-child(1) { width: 30%; }
+.team-attendance-table td:nth-child(1) { width: 20%; }
 .team-attendance-table th:nth-child(2),
-.team-attendance-table td:nth-child(2) { width: 20%; }
+.team-attendance-table td:nth-child(2) { width: 12%; }
 .team-attendance-table th:nth-child(3),
-.team-attendance-table td:nth-child(3) { width: 20%; }
+.team-attendance-table td:nth-child(3) { width: 16%; }
 .team-attendance-table th:nth-child(4),
-.team-attendance-table td:nth-child(4),
+.team-attendance-table td:nth-child(4) { width: 18%; }
 .team-attendance-table th:nth-child(5),
-.team-attendance-table td:nth-child(5) { width: 15%; }
+.team-attendance-table td:nth-child(5) { width: 16%; }
+.team-attendance-table th:nth-child(6),
+.team-attendance-table td:nth-child(6),
+.team-attendance-table th:nth-child(7),
+.team-attendance-table td:nth-child(7) { width: 9%; }
 
 /* Match the status treatment used by Approval Izin & Cuti. */
 .team-attendance-table .status-cell { white-space: nowrap !important; }
