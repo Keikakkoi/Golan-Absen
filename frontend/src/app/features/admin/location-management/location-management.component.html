@@ -44,8 +44,8 @@
           <tbody>
             <tr *ngFor="let row of alternativeRequests">
               <td><strong>{{ ownerName(row) }}</strong><br><small>{{ ownerRole(row) }}<span *ngIf="row.owner?.email"> · {{ row.owner.email }}</span></small></td>
-              <td>{{ alternativeName(row) }}</td>
-              <td>{{ row.deskripsi || row.Deskripsi || '-' }}</td>
+              <td class="location-cell">{{ alternativeName(row) }}</td>
+              <td class="location-description-cell">{{ row.deskripsi || row.Deskripsi || '-' }}</td>
               <td><span class="location-status-badge" [ngClass]="alternativeStatus(row) || 'pending'">{{ alternativeStatusLabel(row) }}</span></td>
               <td class="rejection-reason-cell">{{ rejectionReason(row) || '-' }}</td>
               <td>{{ (row.created_at || row.CreatedAt) | date:'dd MMM yyyy HH:mm' }}</td>
@@ -101,8 +101,8 @@
           <thead><tr><th>Nama lokasi</th><th>Alamat/deskripsi</th><th>Koordinat/radius</th><th>Status</th><th>Diperbarui</th><th>Aksi</th></tr></thead>
           <tbody>
             <tr *ngFor="let row of fieldLocations">
-              <td><strong>{{ row.nama_lokasi || row.NamaLokasi }}</strong></td>
-              <td>{{ row.deskripsi || row.Deskripsi || '-' }}</td>
+              <td class="location-name-cell"><strong>{{ row.nama_lokasi || row.NamaLokasi }}</strong></td>
+              <td class="location-description-cell">{{ row.deskripsi || row.Deskripsi || '-' }}</td>
               <td class="mono-text">{{ row.latitude ?? row.Latitude }}, {{ row.longitude ?? row.Longitude }}<br><small>{{ row.radius_meter ?? row.RadiusMeter }} meter</small></td>
               <td><span class="location-status-badge" [ngClass]="fieldStatusValue(row) === 'active' ? 'active' : 'inactive'">{{ fieldStatusLabel(row) }}</span></td>
               <td>{{ (row.updated_at || row.UpdatedAt || row.created_at || row.CreatedAt) | date:'dd MMM yyyy HH:mm' }}</td>
