@@ -59,11 +59,10 @@
             <td class="worktype-number-column">{{ rowNumber + 1 }}</td>
             <td style="font-weight: 500;">{{ wt.Nama }}</td>
             <td class="worktype-validation-column">
-              <span class="status-badge" [ngClass]="validationMode(wt) === 'tanpa_validasi' ? 'status-alpha' : 'status-hadir'">
-                {{ validationLabel(wt) }}
+              <span class="worktype-validation-badge" [ngClass]="validationMode(wt) === 'tanpa_validasi' ? 'validation-none' : 'validation-location'">
+                {{ tableValidationLabel(wt) }}
               </span>
-              <small *ngIf="canonicalType(wt) === 'field_location'" style="display: block; margin-top: 0.25rem; color: #64748b;">
-                {{ wt.field_location_name || wt.FieldLocationName || 'Lokasi lapangan belum tersedia' }}
+              <small *ngIf="canonicalType(wt) === 'field_location' && (wt.field_location_active === false || wt.FieldLocationActive === false)" style="display: block; margin-top: 0.25rem; color: #64748b;">
                 <ng-container *ngIf="wt.field_location_active === false || wt.FieldLocationActive === false"> (nonaktif)</ng-container>
               </small>
             </td>

@@ -46,6 +46,163 @@
 .location-actions { min-width: 280px; text-align: center; white-space: nowrap !important; vertical-align: middle !important; }
 .alternative-table .location-actions { min-width: 190px; }
 .field-table .location-actions { min-width: 280px; }
+
+/* Use the same action palette as the organization reference. The alternative
+   request table only has a View action in this palette; the field-location
+   table applies it to View, Edit, and Archive/Delete. */
+.alternative-table .location-actions > .icon-button.view,
+.field-table .location-action-buttons > .icon-button.view {
+  background: #e8f3ff;
+  border-color: #b8d9fb;
+  color: #175a9d;
+}
+
+.alternative-table .location-actions > .icon-button.view:hover,
+.field-table .location-action-buttons > .icon-button.view:hover {
+  background: #d7eaff;
+  border-color: #8fc2f3;
+  color: #175a9d;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+}
+
+.field-table .location-action-buttons > .icon-button.edit {
+  background: #fff4db;
+  border-color: #f6d28a;
+  color: #9a5a00;
+}
+
+.field-table .location-action-buttons > .icon-button.edit:hover {
+  background: #ffe9b5;
+  border-color: #efbb4e;
+  color: #9a5a00;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+}
+
+.field-table .location-action-buttons > .icon-button.delete {
+  background: #fff0f0;
+  border-color: #f7b5b5;
+  color: #b4232d;
+}
+
+.field-table .location-action-buttons > .icon-button.delete:hover {
+  background: #ffe0e0;
+  border-color: #ef8e8e;
+  color: #b4232d;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+}
+
+/* Broad shared dark-mode rules otherwise make these icon buttons neutral. */
+:host-context(body.dark-theme) .alternative-table .location-actions > .icon-button.view,
+:host-context(body.dark-theme) .field-table .location-action-buttons > .icon-button.view {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .alternative-table .location-actions > .icon-button.view:hover,
+:host-context(body.dark-theme) .field-table .location-action-buttons > .icon-button.view:hover {
+  background: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
+:host-context(body.dark-theme) .field-table .location-action-buttons > .icon-button.edit {
+  background: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .field-table .location-action-buttons > .icon-button.edit:hover {
+  background: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+:host-context(body.dark-theme) .field-table .location-action-buttons > .icon-button.delete {
+  background: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .field-table .location-action-buttons > .icon-button.delete:hover {
+  background: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
+/* Location statuses follow the Role Akses badge treatment: outlined pills in
+   light mode and stronger filled pills in dark mode. */
+.location-table .location-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.location-table .location-status-badge.approved,
+.location-table .location-status-badge.active {
+  background-color: #f0fdf4;
+  border-color: #4ade80;
+  color: #166534;
+}
+
+.location-table .location-status-badge.pending {
+  background-color: #fffbeb;
+  border-color: #fbbf24;
+  color: #92400e;
+}
+
+.location-table .location-status-badge.rejected,
+.location-table .location-status-badge.inactive {
+  background-color: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+.location-table .location-status-badge:not(.approved):not(.active):not(.pending):not(.rejected):not(.inactive) {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+:host-context(body.dark-theme) .location-table .location-status-badge.approved,
+:host-context(body.dark-theme) .location-table .location-status-badge.active {
+  background-color: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+:host-context(body.dark-theme) .location-table .location-status-badge.pending {
+  background-color: #78350f;
+  border-color: #fbbf24;
+  color: #fef3c7;
+}
+
+:host-context(body.dark-theme) .location-table .location-status-badge.rejected,
+:host-context(body.dark-theme) .location-table .location-status-badge.inactive {
+  background-color: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+:host-context(body.dark-theme) .location-table .location-status-badge:not(.approved):not(.active):not(.pending):not(.rejected):not(.inactive) {
+  background-color: #334155;
+  border-color: #64748b;
+  color: #e2e8f0;
+}
+
 .location-switch { display: block; width: 96px; margin: 0 auto .65rem; cursor: pointer; }
 .location-switch input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .location-switch-track { position: relative; display: flex; align-items: center; width: 96px; height: 36px; box-sizing: border-box; padding: 0 7px; border: 2px solid #cbd5e1; border-radius: 999px; background: #f1f5f9; color: #64748b; box-shadow: inset 0 1px 2px rgba(15, 23, 42, .08); transition: background-color .2s ease, border-color .2s ease, color .2s ease; }

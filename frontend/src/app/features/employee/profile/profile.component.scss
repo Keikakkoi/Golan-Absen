@@ -120,6 +120,175 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Keep the alternative-location table actions consistent with the admin
+   reference: blue View, amber Edit, and red Delete. */
+.home-location-profile-section .golan-table td:last-child > .icon-button.view {
+  background: #e8f3ff;
+  border-color: #b8d9fb;
+  color: #175a9d;
+}
+
+.home-location-profile-section .golan-table td:last-child > .icon-button.view:hover {
+  background: #d7eaff;
+  border-color: #8fc2f3;
+  color: #175a9d;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+}
+
+.home-location-profile-section .golan-table td:last-child > .icon-button.edit {
+  background: #fff4db;
+  border-color: #f6d28a;
+  color: #9a5a00;
+}
+
+.home-location-profile-section .golan-table td:last-child > .icon-button.edit:hover {
+  background: #ffe9b5;
+  border-color: #efbb4e;
+  color: #9a5a00;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+}
+
+.home-location-profile-section .golan-table td:last-child > .icon-button.delete {
+  background: #fff0f0;
+  border-color: #f7b5b5;
+  color: #b4232d;
+}
+
+.home-location-profile-section .golan-table td:last-child > .icon-button.delete:hover {
+  background: #ffe0e0;
+  border-color: #ef8e8e;
+  color: #b4232d;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+}
+
+/* Alternative-location approval and usage statuses follow the Role Akses
+   badge treatment: outlined pills in light mode and filled pills in dark mode. */
+.home-location-profile-section .alternative-approval-badge,
+.home-location-profile-section .alternative-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.home-location-profile-section .alternative-approval-badge.approved,
+.home-location-profile-section .alternative-status-badge.active {
+  background-color: #f0fdf4;
+  border-color: #4ade80;
+  color: #166534;
+}
+
+.home-location-profile-section .alternative-approval-badge.pending {
+  background-color: #fffbeb;
+  border-color: #fbbf24;
+  color: #92400e;
+}
+
+.home-location-profile-section .alternative-approval-badge.rejected,
+.home-location-profile-section .alternative-status-badge.inactive {
+  background-color: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+.home-location-profile-section .alternative-approval-badge:not(.approved):not(.pending):not(.rejected),
+.home-location-profile-section .alternative-status-badge:not(.active):not(.inactive) {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.home-location-profile-section .alternative-status-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.home-location-profile-section .alternative-status-control input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #3b82f6;
+}
+
+:host-context(body.dark-theme) .home-location-profile-section .alternative-approval-badge.approved,
+:host-context(body.dark-theme) .home-location-profile-section .alternative-status-badge.active {
+  background-color: #14532d;
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+:host-context(body.dark-theme) .home-location-profile-section .alternative-approval-badge.pending {
+  background-color: #78350f;
+  border-color: #fbbf24;
+  color: #fef3c7;
+}
+
+:host-context(body.dark-theme) .home-location-profile-section .alternative-approval-badge.rejected,
+:host-context(body.dark-theme) .home-location-profile-section .alternative-status-badge.inactive {
+  background-color: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+:host-context(body.dark-theme) .home-location-profile-section .alternative-approval-badge:not(.approved):not(.pending):not(.rejected),
+:host-context(body.dark-theme) .home-location-profile-section .alternative-status-badge:not(.active):not(.inactive) {
+  background-color: #334155;
+  border-color: #64748b;
+  color: #e2e8f0;
+}
+
+/* The shared dark-mode layer is broad, so explicitly preserve the reference
+   colors for this employee table as well. */
+:host-context(body.dark-theme) .home-location-profile-section .golan-table td:last-child > .icon-button.view {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .home-location-profile-section .golan-table td:last-child > .icon-button.view:hover {
+  background: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
+:host-context(body.dark-theme) .home-location-profile-section .golan-table td:last-child > .icon-button.edit {
+  background: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .home-location-profile-section .golan-table td:last-child > .icon-button.edit:hover {
+  background: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+:host-context(body.dark-theme) .home-location-profile-section .golan-table td:last-child > .icon-button.delete {
+  background: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .home-location-profile-section .golan-table td:last-child > .icon-button.delete:hover {
+  background: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
 .profile-summary-header {
   display: flex;
   align-items: center;

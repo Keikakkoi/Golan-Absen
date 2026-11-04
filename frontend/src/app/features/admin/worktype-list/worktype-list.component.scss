@@ -67,7 +67,133 @@
     .icon-button {
       margin: 2px;
     }
+
+    /* Match the organization-page action palette in both themes. These
+       selectors stay local to the work type table so shared dark-mode rules
+       cannot flatten the three actions into the same neutral button style. */
+    > .icon-button.view {
+      background: #e8f3ff;
+      border-color: #b8d9fb;
+      color: #175a9d;
+    }
+
+    > .icon-button.view:hover {
+      background: #d7eaff;
+      border-color: #8fc2f3;
+      color: #175a9d;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+    }
+
+    > .icon-button.edit {
+      background: #fff4db;
+      border-color: #f6d28a;
+      color: #9a5a00;
+    }
+
+    > .icon-button.edit:hover {
+      background: #ffe9b5;
+      border-color: #efbb4e;
+      color: #9a5a00;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+    }
+
+    > .icon-button.delete {
+      background: #fff0f0;
+      border-color: #f7b5b5;
+      color: #b4232d;
+    }
+
+    > .icon-button.delete:hover {
+      background: #ffe0e0;
+      border-color: #ef8e8e;
+      color: #b4232d;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+    }
   }
+}
+
+/* Dark-mode colors match the organization reference: blue for view, amber
+   for edit, and red for delete. !important is needed because the shared
+   admin dark-mode layer intentionally has broad selectors for these classes. */
+:host-context(body.dark-theme) .worktype-table .worktype-actions-cell > .icon-button.view {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #93c5fd !important;
+}
+
+:host-context(body.dark-theme) .worktype-table .worktype-actions-cell > .icon-button.view:hover {
+  background: #254d78 !important;
+  border-color: #60a5fa !important;
+  color: #dbeafe !important;
+}
+
+:host-context(body.dark-theme) .worktype-table .worktype-actions-cell > .icon-button.edit {
+  background: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .worktype-table .worktype-actions-cell > .icon-button.edit:hover {
+  background: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+:host-context(body.dark-theme) .worktype-table .worktype-actions-cell > .icon-button.delete {
+  background: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .worktype-table .worktype-actions-cell > .icon-button.delete:hover {
+  background: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
+/* Location validation badges follow the Role Akses badge treatment: outlined
+   pills in light mode and stronger filled pills in dark mode. */
+.worktype-table .worktype-validation-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.worktype-table .worktype-validation-badge.validation-location {
+  background-color: #eff6ff;
+  border-color: #60a5fa;
+  color: #1d4ed8;
+}
+
+.worktype-table .worktype-validation-badge.validation-none {
+  background-color: #fef2f2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+:host-context(body.dark-theme) .worktype-table .worktype-validation-badge.validation-location {
+  background-color: #1e3a8a;
+  border-color: #60a5fa;
+  color: #dbeafe;
+}
+
+:host-context(body.dark-theme) .worktype-table .worktype-validation-badge.validation-none {
+  background-color: #7f1d1d;
+  border-color: #f87171;
+  color: #fecaca;
 }
 
 @media (max-width: 640px) {

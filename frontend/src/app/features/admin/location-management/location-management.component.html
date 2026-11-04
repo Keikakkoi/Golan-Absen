@@ -46,7 +46,7 @@
               <td><strong>{{ ownerName(row) }}</strong><br><small>{{ ownerRole(row) }}<span *ngIf="row.owner?.email"> · {{ row.owner.email }}</span></small></td>
               <td>{{ alternativeName(row) }}</td>
               <td>{{ row.deskripsi || row.Deskripsi || '-' }}</td>
-              <td><span class="status-badge" [ngClass]="alternativeStatus(row)">{{ alternativeStatusLabel(row) }}</span><small *ngIf="rejectionReason(row)" class="rejection-note">{{ rejectionReason(row) }}</small></td>
+              <td><span class="location-status-badge" [ngClass]="alternativeStatus(row) || 'pending'">{{ alternativeStatusLabel(row) }}</span><small *ngIf="rejectionReason(row)" class="rejection-note">{{ rejectionReason(row) }}</small></td>
               <td>{{ (row.created_at || row.CreatedAt) | date:'dd MMM yyyy HH:mm' }}</td>
                 <td class="location-actions">
                 <button type="button" class="icon-button view" (click)="openAlternativeDetail(row)" aria-label="Lihat pengajuan" title="Lihat"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button>
@@ -103,7 +103,7 @@
               <td><strong>{{ row.nama_lokasi || row.NamaLokasi }}</strong></td>
               <td>{{ row.deskripsi || row.Deskripsi || '-' }}</td>
               <td class="mono-text">{{ row.latitude ?? row.Latitude }}, {{ row.longitude ?? row.Longitude }}<br><small>{{ row.radius_meter ?? row.RadiusMeter }} meter</small></td>
-              <td><span class="status-badge" [ngClass]="fieldStatusValue(row)">{{ fieldStatusLabel(row) }}</span></td>
+              <td><span class="location-status-badge" [ngClass]="fieldStatusValue(row) === 'active' ? 'active' : 'inactive'">{{ fieldStatusLabel(row) }}</span></td>
               <td>{{ (row.updated_at || row.UpdatedAt || row.created_at || row.CreatedAt) | date:'dd MMM yyyy HH:mm' }}</td>
                 <td class="location-actions">
                 <label class="location-switch" [class.is-active]="fieldIsActive(row)" [class.is-inactive]="!fieldIsActive(row)" [attr.aria-label]="(fieldIsActive(row) ? 'Nonaktifkan ' : 'Aktifkan ') + (row.nama_lokasi || row.NamaLokasi)">

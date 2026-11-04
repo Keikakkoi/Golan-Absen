@@ -249,15 +249,15 @@
                     <tr *ngFor="let location of alternativeLocations">
                       <td><strong>{{ alternativeLocationName(location) }}</strong><br><small>{{ alternativeLocationDescription(location) }}</small></td>
                       <td class="mono-text">{{ location.latitude }}, {{ location.longitude }}<br><small>{{ location.radius_meter }} meter</small></td>
-                      <td><span class="status-badge" [class.status-active]="alternativeApprovalStatus(location) === 'approved'">{{ alternativeApprovalLabel(location) }}</span></td>
+                      <td><span class="alternative-approval-badge" [ngClass]="alternativeApprovalStatus(location) || 'pending'">{{ alternativeApprovalLabel(location) }}</span></td>
                       <td>
                         <ng-container *ngIf="alternativeCanToggle(location); else unavailableStatus">
-                          <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                          <label class="alternative-status-control">
                             <input type="checkbox" [checked]="alternativeLocationActive(location)" (change)="toggleAlternativeLocation(location)" [attr.aria-label]="'Ubah status ' + alternativeLocationName(location)">
-                            {{ alternativeUsageLabel(location) }}
+                            <span class="alternative-status-badge" [ngClass]="alternativeUsageStatus(location) === 'active' ? 'active' : 'inactive'">{{ alternativeUsageLabel(location) }}</span>
                           </label>
                         </ng-container>
-                        <ng-template #unavailableStatus><span>{{ alternativeUsageLabel(location) }}</span><br><small>Belum tersedia</small></ng-template>
+                        <ng-template #unavailableStatus><span class="alternative-status-badge" [ngClass]="alternativeUsageStatus(location) === 'active' ? 'active' : 'inactive'">{{ alternativeUsageLabel(location) }}</span><br><small>Belum tersedia</small></ng-template>
                       </td>
                       <td>{{ alternativeRejectionReason(location) || '-' }}</td>
                       <td>
