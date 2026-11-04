@@ -331,20 +331,20 @@
 
 .location-form-modal .modal-footer > .btn-primary,
 .location-form-modal .modal-footer > .btn-cancel-reference {
-  min-height: 45px;
+  min-height: 34px;
+  padding: 7px 11px;
   box-sizing: border-box;
+  font-size: .82rem;
+  line-height: 1.2;
 }
 
 .location-form-modal .modal-footer > .btn-cancel-reference {
-  padding: 10px 24px;
   border: 1px solid #3b82f6;
   border-radius: 12px;
   background: #ffffff;
   color: #2563eb;
   font-family: var(--font-display);
-  font-size: 1rem;
   font-weight: 600;
-  line-height: 1.2;
 }
 
 .location-form-modal .modal-footer > .btn-cancel-reference:hover {
@@ -426,13 +426,13 @@
 }
 
 .location-detail-modal .modal-footer .btn-cancel-reference {
-  min-height: 45px;
-  padding: 10px 16px;
+  min-height: 34px;
+  padding: 7px 11px;
   border: 1px solid #3b82f6;
   border-radius: 12px;
   background: #ffffff;
   color: #2563eb;
-  font-size: 1.125rem;
+  font-size: .82rem;
   font-weight: 600;
 }
 
