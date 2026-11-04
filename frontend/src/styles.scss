@@ -23,6 +23,9 @@
   --surface-raised: #f8fafc;
   --surface-muted: #f1f5f9;
   --border-strong: #cbd5e1;
+  --danger-surface: #fef2f2;
+  --danger-border: #fca5a5;
+  --danger-text: #991b1b;
 
   /* 15.3 TIPOGRAFI */
   --font-display: 'Space Grotesk', sans-serif;
@@ -53,6 +56,9 @@ body.dark-theme {
   --surface-raised: #26364d;
   --surface-muted: #334155;
   --border-strong: #475569;
+  --danger-surface: #450a0a;
+  --danger-border: #991b1b;
+  --danger-text: #fecaca;
 }
 
 body.dark-theme,
@@ -1021,9 +1027,9 @@ body.dark-theme .btn-view-detail:hover { background: var(--mint-1); border-color
   font-size: 14px;
 }
 .alert-danger {
-  background-color: #FBEEEE;
-  color: var(--absent);
-  border: 1px solid #F5C6C6;
+  background-color: var(--danger-surface);
+  color: var(--danger-text);
+  border: 1px solid var(--danger-border);
 }
 .alert-success {
   background-color: var(--mint-1);
@@ -3224,6 +3230,16 @@ body.dark-theme .main-content .loading-state,
 body.dark-theme .main-content .state-message {
   color: var(--text-dark) !important;
   border-color: var(--border-strong) !important;
+}
+
+/* Error alerts need their semantic palette after the generic dark-mode
+   surface/text normalization above; otherwise pale text is placed on a
+   light red background and loses contrast. */
+body.dark-theme .main-content .alert.alert-danger {
+  background: var(--danger-surface) !important;
+  background-color: var(--danger-surface) !important;
+  border-color: var(--danger-border) !important;
+  color: var(--danger-text) !important;
 }
 
 body.dark-theme .main-content .dropdown-item:hover,
