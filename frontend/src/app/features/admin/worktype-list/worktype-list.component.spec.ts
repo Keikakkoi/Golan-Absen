@@ -37,6 +37,7 @@ describe('WorktypeListComponent', () => {
     expect(component.validationLabel({ Nama: 'Dinas Luar', RadiusYangBerlaku: 'tanpa_validasi' })).toBe('Tidak ada');
     expect(component.validationLabel({ canonical_type: 'alternative_location' })).toBe('Lokasi Alternatif');
     expect(component.validationLabel({ canonical_type: 'field_location' })).toBe('Lokasi Lapangan');
+    expect(component.tableValidationLabel({ canonical_type: 'field_location', field_location_name: 'kantor pusat' })).toBe('kantor pusat');
   });
 
   it('prepares canonical field-location payloads without accepting free-form location data', () => {

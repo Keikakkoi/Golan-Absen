@@ -214,6 +214,13 @@ export class WorktypeListComponent implements OnInit {
     }
   }
 
+  tableValidationLabel(workType: any): string {
+    if (this.canonicalType(workType) === 'field_location') {
+      return String(workType?.field_location_name || workType?.FieldLocationName || 'Lokasi lapangan belum tersedia');
+    }
+    return this.validationLabel(workType);
+  }
+
   canonicalType(workType: any): string {
     const canonical = String(workType?.canonical_type || workType?.CanonicalType || '').trim().toLowerCase();
     if (['wfo', 'wfh', 'alternative_location', 'field_location'].includes(canonical)) return canonical;
