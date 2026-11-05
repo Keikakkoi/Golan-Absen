@@ -512,6 +512,7 @@ func seedNotificationSettings() {
 		{TipeNotifikasi: "Jadwal Shift", Role: models.RoleManajer, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Pengajuan Izin", Role: models.RoleHRD, IsEmailEnabled: true, IsInAppEnabled: true},
 		{TipeNotifikasi: "Pengajuan Lokasi WFH", Role: models.RoleHRD, IsEmailEnabled: false, IsInAppEnabled: true},
+		{TipeNotifikasi: "Pengajuan Lokasi Alternatif", Role: models.RoleHRD, IsEmailEnabled: false, IsInAppEnabled: true},
 		{TipeNotifikasi: "Persetujuan Izin Tim", Role: models.RoleManajer, IsEmailEnabled: true, IsInAppEnabled: true},
 		{TipeNotifikasi: "Status Pengajuan", Role: models.RoleKaryawan, IsEmailEnabled: true, IsInAppEnabled: true},
 		{TipeNotifikasi: "Status Pengajuan", Role: models.RoleMagang, IsEmailEnabled: true, IsInAppEnabled: true},

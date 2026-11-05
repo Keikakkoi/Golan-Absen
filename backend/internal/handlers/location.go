@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,11 @@ import (
 var (
 	errAlternativeLocationNotFound = errors.New("pengajuan lokasi tidak ditemukan")
 	errAlternativeLocationReviewed = errors.New("pengajuan lokasi sudah diproses")
+)
+
+const (
+	alternativeLocationSubmissionNotificationType = "Pengajuan Lokasi Alternatif"
+	alternativeLocationStatusNotificationType     = "Status Pengajuan"
 )
 
 func SetupLocationRoutes(router fiber.Router) {
@@ -260,6 +266,62 @@ func applyAlternativeLocationDecision(row *models.AlternativeLocation, approve b
 	row.ApprovedBy, row.ApprovedAt = nil, nil
 }
 
+func alternativeLocationUserLabel(user models.User) string {
+	if name := strings.TrimSpace(user.Nama); name != "" {
+		return name
+	}
+	if email := strings.TrimSpace(user.Email); email != "" {
+		return email
+	}
+	return fmt.Sprintf("user %d", user.ID)
+}
+
+func notifyAlternativeLocationSubmission(row models.AlternativeLocation, submitter models.User) {
+	var recipients []models.User
+	if err := config.DB.Where("role = ?", models.RoleHRD).Find(&recipients).Error; err != nil {
+		log.Printf("notification alternative location submission: recipient lookup failed for location %d: %v", row.ID, err)
+		return
+	}
+
+	message := fmt.Sprintf("Ada pengajuan lokasi alternatif baru dari %s.", alternativeLocationUserLabel(submitter))
+	key := fmt.Sprintf("alternative-location-submitted:%d", row.ID)
+	for _, recipient := range recipients {
+		if err := utils.CreateNotificationWithIdempotencyKey(config.DB, recipient.ID, recipient.Role, alternativeLocationSubmissionNotificationType, "Pengajuan Lokasi Alternatif Baru", message, key); err != nil {
+			log.Printf("notification alternative location submission: failed for location %d/user %d: %v", row.ID, recipient.ID, err)
+		}
+	}
+}
+
+func notifyAlternativeLocationDecision(row models.AlternativeLocation, approved bool) {
+	title, message, key, ok := alternativeLocationDecisionNotificationPayload(row, approved)
+	if !ok {
+		return
+	}
+	if err := utils.CreateNotificationWithIdempotencyKey(config.DB, row.UserID, row.User.Role, alternativeLocationStatusNotificationType, title, message, key); err != nil {
+		log.Printf("notification alternative location decision: failed for location %d/user %d: %v", row.ID, row.UserID, err)
+	}
+}
+
+func alternativeLocationDecisionNotificationPayload(row models.AlternativeLocation, approved bool) (string, string, string, bool) {
+	decisionAt := row.RejectedAt
+	statusLabel := "rejected"
+	title := "Pengajuan Lokasi Alternatif Ditolak"
+	message := fmt.Sprintf("Pengajuan lokasi alternatif %s Anda ditolak. Alasan: %s", row.NamaLokasi, row.RejectionReason)
+	if approved {
+		decisionAt = row.ApprovedAt
+		statusLabel = "approved"
+		title = "Pengajuan Lokasi Alternatif Disetujui"
+		message = fmt.Sprintf("Pengajuan lokasi alternatif %s Anda telah disetujui dan sudah dapat digunakan untuk check-in.", row.NamaLokasi)
+	}
+	if decisionAt == nil {
+		log.Printf("notification alternative location decision: missing decision timestamp for location %d", row.ID)
+		return "", "", "", false
+	}
+
+	key := fmt.Sprintf("alternative-location-decision:%d:%s:%s", row.ID, statusLabel, decisionAt.Format(time.RFC3339Nano))
+	return title, message, key, true
+}
+
 func GetMyAlternativeLocations(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(uint)
 	var rows []models.AlternativeLocation
@@ -307,11 +369,12 @@ func CreateAlternativeLocation(c *fiber.Ctx) error {
 	if err := validateLocationPayload(input); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
+	var row models.AlternativeLocation
+	var submitter models.User
 	if err := config.DB.Transaction(func(tx *gorm.DB) error {
 		// Lock the owner row so two simultaneous requests cannot both pass the
 		// three-location quota check.
-		var owner models.User
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&owner, userID).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&submitter, userID).Error; err != nil {
 			return err
 		}
 		var used int64
@@ -325,7 +388,7 @@ func CreateAlternativeLocation(c *fiber.Ctx) error {
 			return err
 		}
 		input.RadiusMeter = wfhAlternativeRadius(tx)
-		row := newAlternativeLocation(userID, input)
+		row = newAlternativeLocation(userID, input)
 		return tx.Create(&row).Error
 	}); err != nil {
 		if locationConflict(err) || strings.Contains(err.Error(), "kuota maksimal") {
@@ -333,10 +396,9 @@ func CreateAlternativeLocation(c *fiber.Ctx) error {
 		}
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal menyimpan lokasi alternatif"})
 	}
-	var row models.AlternativeLocation
-	config.DB.Where("user_id = ?", userID).Order("id desc").First(&row)
 	applyConfiguredAlternativeRadius(&row)
 	_ = utils.LogAction(userID, "CREATE", "AlternativeLocation", row.ID, "Pengajuan lokasi alternatif")
+	notifyAlternativeLocationSubmission(row, submitter)
 	return c.Status(201).JSON(alternativeLocationResponseFor(row))
 }
 
@@ -545,6 +607,7 @@ func reviewAlternativeLocation(c *fiber.Ctx, approve bool) error {
 		detail = "rejected: " + row.RejectionReason
 	}
 	_ = utils.LogAction(adminID, "UPDATE", "AlternativeLocation", row.ID, detail)
+	notifyAlternativeLocationDecision(row, approve)
 	applyConfiguredAlternativeRadius(&row)
 	return c.JSON(adminAlternativeLocationResponseFor(row))
 }
