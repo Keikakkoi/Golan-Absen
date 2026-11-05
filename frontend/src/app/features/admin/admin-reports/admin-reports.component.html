@@ -147,58 +147,75 @@
         </div>
       </div>
       
-      <div class="table-container report-table-container" style="overflow-x: auto;">
-        <table *ngIf="!isLoadingReports && reports.length > 0" class="golan-table report-table" style="width: 100%; border-collapse: collapse;">
+      <div class="table-container report-table-container">
+        <table *ngIf="!isLoadingReports && reports.length > 0" class="golan-table report-table">
+          <colgroup>
+            <col class="col-date">
+            <col class="col-nik">
+            <col class="col-name">
+            <col class="col-division">
+            <col class="col-position">
+            <col class="col-work-type">
+            <col class="col-photo">
+            <col class="col-photo">
+            <col class="col-location">
+            <col class="col-address">
+            <col class="col-coordinates">
+            <col class="col-checkin-time">
+            <col class="col-checkout-time">
+            <col class="col-status">
+            <col class="col-action">
+          </colgroup>
           <thead>
-            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
-              <th style="padding: 0.75rem;">Tanggal</th>
-              <th style="padding: 0.75rem;">NIK</th>
-              <th style="padding: 0.75rem;">Nama Karyawan</th>
-              <th style="padding: 0.75rem;">Divisi</th>
-              <th style="padding: 0.75rem;">Jabatan</th>
-              <th style="padding: 0.75rem;">Tipe Kerja</th>
-              <th style="padding: 0.75rem;">Foto Check-in</th>
-              <th style="padding: 0.75rem;">Foto Check-out</th>
-              <th style="padding: 0.75rem;">Lokasi Check-in</th>
-              <th style="padding: 0.75rem;">Alamat Lokasi</th>
-              <th style="padding: 0.75rem;">Koordinat</th>
-              <th style="padding: 0.75rem;">Waktu Check-in</th>
-              <th style="padding: 0.75rem;">Jam Pulang</th>
-              <th style="padding: 0.75rem;">Status</th>
-              <th style="padding: 0.75rem;">Aksi</th>
+            <tr class="report-table-heading-row">
+              <th class="date-cell">Tanggal</th>
+              <th class="nik-cell">NIK</th>
+              <th class="name-cell">Nama Karyawan</th>
+              <th class="division-cell">Divisi</th>
+              <th class="position-cell">Jabatan</th>
+              <th class="work-type-cell">Tipe Kerja</th>
+              <th class="photo-cell">Foto Check-in</th>
+              <th class="photo-cell">Foto Check-out</th>
+              <th class="location-cell">Lokasi Check-in</th>
+              <th class="address-cell">Alamat Lokasi</th>
+              <th class="coordinates-cell">Koordinat</th>
+              <th class="checkin-time-cell">Waktu Check-in</th>
+              <th class="checkout-time-cell">Jam Pulang</th>
+              <th class="status-cell">Status</th>
+              <th class="action-cell">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let req of displayedReports" style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 0.75rem;">{{ req.Tanggal | date:'dd MMM yyyy' }}</td>
-              <td style="padding: 0.75rem; font-family: monospace;">{{ req.Employee?.NIK }}</td>
-              <td style="padding: 0.75rem; font-weight: 500;">{{ req.Employee?.User?.Nama }}</td>
-              <td style="padding: 0.75rem;">{{ req.Employee?.Division?.NamaDivisi || '-' }}</td>
-              <td style="padding: 0.75rem;">{{ req.Employee?.Position?.NamaJabatan || '-' }}</td>
-              <td style="padding: 0.75rem;">{{ workTypeLabel(req) }}</td>
-              <td style="padding: 0.75rem;">
+            <tr *ngFor="let req of displayedReports" class="report-table-data-row">
+              <td class="date-cell">{{ req.Tanggal | date:'dd MMM yyyy' }}</td>
+              <td class="nik-cell">{{ req.Employee?.NIK }}</td>
+              <td class="name-cell">{{ req.Employee?.User?.Nama }}</td>
+              <td class="division-cell">{{ req.Employee?.Division?.NamaDivisi || '-' }}</td>
+              <td class="position-cell">{{ req.Employee?.Position?.NamaJabatan || '-' }}</td>
+              <td class="work-type-cell">{{ workTypeLabel(req) }}</td>
+              <td class="photo-cell">
                 <a *ngIf="checkInPhoto(req)" class="photo-link" [href]="checkInPhoto(req)" target="_blank" rel="noopener" title="Lihat foto check-in ukuran besar">
                   <img class="checkin-photo-thumb" [src]="checkInPhoto(req)" alt="Foto check-in">
                 </a>
                 <span *ngIf="!checkInPhoto(req)" class="photo-placeholder">Tidak ada foto</span>
               </td>
-              <td style="padding: 0.75rem;">
+              <td class="photo-cell">
                 <a *ngIf="checkOutPhoto(req)" class="photo-link" [href]="checkOutPhoto(req)" target="_blank" rel="noopener" title="Lihat foto check-out ukuran besar">
                   <img class="checkout-photo-thumb" [src]="checkOutPhoto(req)" alt="Foto check-out">
                 </a>
                 <span *ngIf="!checkOutPhoto(req)" class="photo-placeholder">Tidak ada foto</span>
               </td>
-              <td style="padding: 0.75rem;">{{ locationName(req) || '-' }}</td>
-              <td style="padding: 0.75rem;">{{ locationAddress(req) || '-' }}</td>
-              <td style="padding: 0.75rem;">{{ locationCoordinates(req) || '-' }}</td>
-              <td style="padding: 0.75rem;">{{ req.JamMasuk ? (req.JamMasuk | date:'dd MMM yyyy, HH:mm:ss') : '-' }}</td>
-              <td style="padding: 0.75rem;">{{ req.JamPulang ? (req.JamPulang | date:'HH:mm:ss') : '-' }}</td>
-              <td style="padding: 0.75rem;">
+              <td class="location-cell">{{ locationName(req) || '-' }}</td>
+              <td class="address-cell">{{ locationAddress(req) || '-' }}</td>
+              <td class="coordinates-cell">{{ locationCoordinates(req) || '-' }}</td>
+              <td class="checkin-time-cell">{{ req.JamMasuk ? (req.JamMasuk | date:'dd MMM yyyy, HH:mm:ss') : '-' }}</td>
+              <td class="checkout-time-cell">{{ req.JamPulang ? (req.JamPulang | date:'HH:mm:ss') : '-' }}</td>
+              <td class="status-cell">
                 <span class="status-badge" [ngClass]="attendanceStatusClass(req)">
                   {{ attendanceStatus(req) }}
                 </span>
               </td>
-              <td style="padding: 0.75rem;"><button type="button" class="icon-button view" (click)="openReportDetail(req)" aria-label="Lihat detail absensi" title="Lihat detail absensi"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button></td>
+              <td class="action-cell"><button type="button" class="icon-button view" (click)="openReportDetail(req)" aria-label="Lihat detail absensi" title="Lihat detail absensi"><svg aria-hidden="true"><use href="assets/sidebar-icons.svg#eye"></use></svg></button></td>
             </tr>
           </tbody>
         </table>
