@@ -189,7 +189,9 @@
             <tr *ngFor="let req of displayedReports" class="report-table-data-row">
               <td class="date-cell">{{ req.Tanggal | date:'dd MMM yyyy' }}</td>
               <td class="nik-cell">{{ req.Employee?.NIK }}</td>
-              <td class="name-cell">{{ req.Employee?.User?.Nama }}</td>
+              <td class="name-cell">
+                <span class="name-text" [attr.title]="req.Employee?.User?.Nama || null">{{ req.Employee?.User?.Nama }}</span>
+              </td>
               <td class="division-cell">{{ req.Employee?.Division?.NamaDivisi || '-' }}</td>
               <td class="position-cell">{{ req.Employee?.Position?.NamaJabatan || '-' }}</td>
               <td class="work-type-cell">{{ workTypeLabel(req) }}</td>

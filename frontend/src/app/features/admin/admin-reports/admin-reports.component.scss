@@ -359,14 +359,14 @@
 .admin-report-page .report-table {
   table-layout: fixed;
   width: 100% !important;
-  min-width: 2306px !important;
+  min-width: 2420px !important;
   max-width: none !important;
   border-collapse: collapse;
 }
 
 .admin-report-page .report-table col.col-date { width: 122px; }
-.admin-report-page .report-table col.col-nik { width: 112px; }
-.admin-report-page .report-table col.col-name { width: 190px; }
+.admin-report-page .report-table col.col-nik { width: 180px; }
+.admin-report-page .report-table col.col-name { width: 245px; }
 .admin-report-page .report-table col.col-division { width: 150px; }
 .admin-report-page .report-table col.col-position { width: 150px; }
 .admin-report-page .report-table col.col-work-type { width: 120px; }
@@ -401,7 +401,6 @@
 
 .admin-report-page .report-table .date-cell,
 .admin-report-page .report-table .nik-cell,
-.admin-report-page .report-table .name-cell,
 .admin-report-page .report-table .position-cell,
 .admin-report-page .report-table .checkin-time-cell,
 .admin-report-page .report-table .checkout-time-cell,
@@ -409,6 +408,29 @@
 .admin-report-page .report-table .status-cell,
 .admin-report-page .report-table .action-cell {
   white-space: nowrap !important;
+}
+
+.admin-report-page .report-table .nik-cell,
+.admin-report-page .report-table .name-cell {
+  overflow: hidden;
+  text-align: left;
+  padding-inline: 16px !important;
+}
+
+.admin-report-page .report-table .nik-cell {
+  white-space: nowrap !important;
+}
+
+.admin-report-page .report-table .name-cell {
+  white-space: nowrap !important;
+}
+
+.admin-report-page .report-table .name-text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-report-page .report-table .photo-cell,
@@ -455,6 +477,11 @@
   .admin-report-page .report-table td {
     padding: 10px 12px !important;
     line-height: 1.45;
+  }
+
+  .admin-report-page .report-table .nik-cell,
+  .admin-report-page .report-table .name-cell {
+    padding-inline: 12px !important;
   }
 
   .admin-report-page .report-table-container {
