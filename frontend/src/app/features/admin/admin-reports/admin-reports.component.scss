@@ -271,17 +271,6 @@
   background: var(--surface-raised) !important;
 }
 
-:host-context(body.dark-theme) .attendance-detail-modal .map-link {
-  background: var(--surface-muted) !important;
-  border-color: var(--border-strong) !important;
-  color: var(--text-dark) !important;
-}
-
-:host-context(body.dark-theme) .attendance-detail-modal .map-link:hover {
-  background: var(--mint-1) !important;
-  border-color: var(--green) !important;
-}
-
 @media (max-width: 640px) {
   .attendance-detail-content { padding: 1rem; }
   .attendance-detail-section { padding: .85rem; }

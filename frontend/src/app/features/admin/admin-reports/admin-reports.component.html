@@ -263,7 +263,7 @@
               <dt>Waktu check-in</dt><dd>{{ selectedReport.JamMasuk ? (selectedReport.JamMasuk | date:'dd MMM yyyy, HH:mm:ss') : '-' }}</dd>
               <dt>Status check-in</dt><dd>{{ selectedReport.Status || '-' }}</dd>
             </dl>
-            <a *ngIf="mapsUrl(selectedReport)" class="btn btn-secondary map-link" [href]="mapsUrl(selectedReport)" target="_blank" rel="noopener">Buka di Google Maps</a>
+            <a *ngIf="mapsUrl(selectedReport)" class="btn btn-primary map-link" [href]="mapsUrl(selectedReport)" target="_blank" rel="noopener">Buka di Google Maps</a>
           </div>
         </div>
         <iframe *ngIf="mapEmbedUrl(selectedReport)" class="attendance-detail-map" [src]="mapEmbedUrl(selectedReport)" title="Peta lokasi check-in"></iframe>
@@ -285,7 +285,7 @@
               <dt>Waktu check-out</dt><dd>{{ hasCheckOutData(selectedReport) ? (selectedReport.JamPulang | date:'dd MMM yyyy, HH:mm:ss') : 'Belum check-out' }}</dd>
               <dt>Status check-out</dt><dd>{{ hasCheckOutData(selectedReport) ? (selectedReport.Status || '-') : 'Belum check-out' }}</dd>
             </dl>
-            <a *ngIf="hasCheckOutData(selectedReport) && checkOutMapsUrl(selectedReport)" class="btn btn-secondary map-link" [href]="checkOutMapsUrl(selectedReport)" target="_blank" rel="noopener">Buka di Google Maps</a>
+            <a *ngIf="hasCheckOutData(selectedReport) && checkOutMapsUrl(selectedReport)" class="btn btn-primary map-link" [href]="checkOutMapsUrl(selectedReport)" target="_blank" rel="noopener">Buka di Google Maps</a>
           </div>
         </div>
         <iframe *ngIf="hasCheckOutData(selectedReport) && checkOutMapEmbedUrl(selectedReport)" class="attendance-detail-map" [src]="checkOutMapEmbedUrl(selectedReport)" title="Peta lokasi check-out"></iframe>
