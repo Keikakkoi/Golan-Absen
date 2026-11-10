@@ -232,6 +232,38 @@ func TestShouldSendWFHAttendanceNotificationOnlyForHomeBaseWorkType(t *testing.T
 	}
 }
 
+func TestCheckInAttendanceNotificationUsesEmployeeNameInsteadOfNIK(t *testing.T) {
+	employee := models.Employee{
+		NIK: "3215644231111111",
+		User: &models.User{
+			Nama: "IRVAN SABILA",
+		},
+	}
+	record := models.AttendanceRecord{TipeKerja: "WFO"}
+	at := time.Date(2026, 11, 9, 13, 4, 0, 0, jakartaLocation)
+
+	message := checkInAttendanceNotificationMessage(employee, record, at)
+	want := "IRVAN SABILA melakukan check-in pada 09 Nov 2026 13:04 (WFO)"
+	if message != want {
+		t.Fatalf("message: got %q, want %q", message, want)
+	}
+	if strings.Contains(message, employee.NIK) {
+		t.Fatalf("message must not expose NIK when the employee name is available: %q", message)
+	}
+}
+
+func TestCheckInAttendanceNotificationFallsBackSafelyWhenNameIsUnavailable(t *testing.T) {
+	at := time.Date(2026, 11, 9, 13, 4, 0, 0, jakartaLocation)
+	record := models.AttendanceRecord{TipeKerja: "WFO"}
+
+	if got := checkInAttendanceNotificationMessage(models.Employee{NIK: "EMP001"}, record, at); got != "EMP001 melakukan check-in pada 09 Nov 2026 13:04 (WFO)" {
+		t.Fatalf("NIK fallback: got %q", got)
+	}
+	if got := checkInAttendanceNotificationMessage(models.Employee{}, record, at); got != "Karyawan melakukan check-in pada 09 Nov 2026 13:04 (WFO)" {
+		t.Fatalf("generic fallback: got %q", got)
+	}
+}
+
 func TestWFHAttendanceNotificationPayloadContainsRequiredDetails(t *testing.T) {
 	employee := models.Employee{
 		NIK: "EMP001",

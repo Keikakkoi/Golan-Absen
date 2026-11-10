@@ -198,12 +198,13 @@ func CheckIn(c *fiber.Ctx) error {
 
 	var hrdUsers []models.User
 	if err := config.DB.Where("role = ?", models.RoleHRD).Find(&hrdUsers).Error; err == nil {
+		checkInMessage := checkInAttendanceNotificationMessage(employee, record, now)
 		for _, hrd := range hrdUsers {
 			if shouldSendWFHAttendanceNotification(wt) {
 				_ = notifyWFHAttendance(hrd, employee, record, now)
 				continue
 			}
-			_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Check-In", "Check-In Karyawan", fmt.Sprintf("%s melakukan check-in pada %s (%s)", employee.NIK, now.Format("02 Jan 2006 15:04"), attendanceTypeLabel(record)))
+			_ = auditutils.CreateNotification(config.DB, hrd.ID, models.RoleHRD, "Check-In", "Check-In Karyawan", checkInMessage)
 		}
 	}
 
@@ -234,11 +235,22 @@ func shouldSendWFHAttendanceNotification(workType models.WorkType) bool {
 	return workTypeValidationMode(workType) == workTypeValidationHome
 }
 
-func wfhAttendanceNotificationPayload(employee models.Employee, record models.AttendanceRecord, at time.Time, location string) (string, string) {
-	name := employee.NIK
+func attendanceNotificationEmployeeName(employee models.Employee) string {
 	if employee.User != nil && strings.TrimSpace(employee.User.Nama) != "" {
-		name = employee.User.Nama
+		return employee.User.Nama
 	}
+	if strings.TrimSpace(employee.NIK) != "" {
+		return employee.NIK
+	}
+	return "Karyawan"
+}
+
+func checkInAttendanceNotificationMessage(employee models.Employee, record models.AttendanceRecord, at time.Time) string {
+	return fmt.Sprintf("%s melakukan check-in pada %s (%s)", attendanceNotificationEmployeeName(employee), at.Format("02 Jan 2006 15:04"), attendanceTypeLabel(record))
+}
+
+func wfhAttendanceNotificationPayload(employee models.Employee, record models.AttendanceRecord, at time.Time, location string) (string, string) {
+	name := attendanceNotificationEmployeeName(employee)
 	if strings.TrimSpace(location) == "" {
 		location = "Lokasi rumah tervalidasi"
 	}
