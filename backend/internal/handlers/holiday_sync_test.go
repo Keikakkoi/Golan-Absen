@@ -28,12 +28,12 @@ func TestNationalHolidayCalendarRequestsExplicitYear2025And2027(t *testing.T) {
 	t.Setenv("NATIONAL_HOLIDAY_URL", server.URL+"/holidays/%d")
 
 	for _, year := range []int{2025, 2027} {
-		items, _, err := fetchNationalHolidayCalendar(year, server.Client())
+		fetched, err := fetchNationalHolidayCalendar(year, server.Client())
 		if err != nil {
 			t.Fatalf("year %d: unexpected error: %v", year, err)
 		}
-		if len(items) != 1 || items[0].Date.Year() != year {
-			t.Fatalf("year %d: unexpected items: %#v", year, items)
+		if len(fetched.Items) != 1 || fetched.Items[0].Date.Year() != year {
+			t.Fatalf("year %d: unexpected items: %#v", year, fetched.Items)
 		}
 	}
 
@@ -60,16 +60,77 @@ func TestNationalHolidayCalendarUsesHistoricalFallbackFor2024(t *testing.T) {
 	t.Setenv("NATIONAL_HOLIDAY_URL", server.URL+"/primary/%d")
 	t.Setenv("NATIONAL_HOLIDAY_FALLBACK_URL", server.URL+"/fallback/%d")
 
-	items, endpoint, err := fetchNationalHolidayCalendar(2024, server.Client())
+	fetched, err := fetchNationalHolidayCalendar(2024, server.Client())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if requestedFallbackYear != "2024" || !strings.Contains(endpoint, "/fallback/2024") {
-		t.Fatalf("historical fallback was not requested for 2024: year=%q endpoint=%q", requestedFallbackYear, endpoint)
+	if requestedFallbackYear != "2024" || !strings.Contains(fetched.Endpoint, "/fallback/2024") {
+		t.Fatalf("historical fallback was not requested for 2024: year=%q endpoint=%q", requestedFallbackYear, fetched.Endpoint)
 	}
-	if len(items) != 2 || items[0].Type != "joint_leave" || items[1].Type != "national" {
-		t.Fatalf("unexpected historical items: %#v", items)
+	if len(fetched.Items) != 2 || fetched.Items[0].Type != "joint_leave" || fetched.Items[1].Type != "national" {
+		t.Fatalf("unexpected historical items: %#v", fetched.Items)
 	}
+}
+
+func TestNationalHolidayCalendarSkipsBlankNationalAndDefaultsBlankJointLeave(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[
+			{"holiday_date":"2021-05-12","holiday_name":"","is_national_holiday":false,"is_joint_holiday":true},
+			{"holiday_date":"2021-05-13","holiday_name":"","is_national_holiday":true,"is_joint_holiday":false},
+			{"holiday_date":"2021-05-14","holiday_name":"Idul Fitri","is_national_holiday":true,"is_joint_holiday":false}
+		]}`)
+	}))
+	defer server.Close()
+	t.Setenv("NATIONAL_HOLIDAY_URL", server.URL+"/holidays/%d")
+	t.Setenv("NATIONAL_HOLIDAY_FALLBACK_URL", "")
+
+	fetched, err := fetchNationalHolidayCalendar(2021, server.Client())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(fetched.Items) != 2 || fetched.Skipped != 1 {
+		t.Fatalf("unexpected normalized result: %#v", fetched)
+	}
+	if fetched.Items[0].Name != "Cuti Bersama" || fetched.Items[0].Type != "joint_leave" {
+		t.Fatalf("blank joint leave was not defaulted: %#v", fetched.Items[0])
+	}
+	if len(fetched.Warnings) != 2 {
+		t.Fatalf("warnings = %#v, want warnings for both incomplete items", fetched.Warnings)
+	}
+}
+
+func TestNationalHolidayCalendarUsesLocalHistoricalDatasetWhenProvidersReturnEmpty(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[]}`)
+	}))
+	defer server.Close()
+	t.Setenv("NATIONAL_HOLIDAY_URL", server.URL+"/primary/%d")
+	t.Setenv("NATIONAL_HOLIDAY_FALLBACK_URL", server.URL+"/fallback/%d")
+
+	for _, year := range []int{2022, 2021, 2020, 2019, 2000} {
+		fetched, err := fetchNationalHolidayCalendar(year, server.Client())
+		if err != nil {
+			t.Fatalf("year %d: unexpected error: %v", year, err)
+		}
+		if fetched.Endpoint != fmt.Sprintf("local://national-holidays/%d", year) || len(fetched.Items) == 0 {
+			t.Fatalf("year %d did not use local dataset: %#v", year, fetched)
+		}
+	}
+}
+
+func TestNationalHolidayCalendarReportsMissingDataWhenNoLocalYearExists(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"data":[]}`)
+	}))
+	defer server.Close()
+	t.Setenv("NATIONAL_HOLIDAY_URL", server.URL+"/primary/%d")
+	t.Setenv("NATIONAL_HOLIDAY_FALLBACK_URL", server.URL+"/fallback/%d")
+
+	_, err := fetchNationalHolidayCalendar(2023, server.Client())
+	assertNationalHolidaySyncErrorKind(t, err, syncErrorCalendarMissing)
 }
 
 func TestNationalHolidayCalendarAPIErrorIsClassified(t *testing.T) {
@@ -79,7 +140,7 @@ func TestNationalHolidayCalendarAPIErrorIsClassified(t *testing.T) {
 	defer server.Close()
 	t.Setenv("NATIONAL_HOLIDAY_URL", server.URL+"/holidays/%d")
 
-	_, _, err := fetchNationalHolidayCalendar(2025, server.Client())
+	_, err := fetchNationalHolidayCalendar(2025, server.Client())
 	assertNationalHolidaySyncErrorKind(t, err, syncErrorAPI)
 }
 
@@ -91,7 +152,7 @@ func TestNationalHolidayCalendarTimeoutIsClassified(t *testing.T) {
 	t.Setenv("NATIONAL_HOLIDAY_URL", server.URL+"/holidays/%d")
 
 	client := &http.Client{Timeout: 10 * time.Millisecond}
-	_, _, err := fetchNationalHolidayCalendar(2025, client)
+	_, err := fetchNationalHolidayCalendar(2025, client)
 	assertNationalHolidaySyncErrorKind(t, err, syncErrorTimeout)
 }
 
@@ -103,7 +164,7 @@ func TestNationalHolidayCalendarInvalidResponseIsClassified(t *testing.T) {
 	defer server.Close()
 	t.Setenv("NATIONAL_HOLIDAY_URL", server.URL+"/holidays/%d")
 
-	_, _, err := fetchNationalHolidayCalendar(2025, server.Client())
+	_, err := fetchNationalHolidayCalendar(2025, server.Client())
 	assertNationalHolidaySyncErrorKind(t, err, syncErrorInvalidResponse)
 }
 

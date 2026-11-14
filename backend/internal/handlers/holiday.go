@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"absensi-golan-backend/config"
@@ -133,6 +135,32 @@ type syncedNationalHoliday struct {
 	ExternalID string
 }
 
+type nationalHolidayFetchResult struct {
+	Items    []syncedNationalHoliday
+	Endpoint string
+	Skipped  int
+	Warnings []string
+}
+
+type historicalNationalHolidayYear struct {
+	Year   int                   `json:"year"`
+	Source string                `json:"source"`
+	Data   []nationalHolidayItem `json:"data"`
+}
+
+// The remote providers do not consistently retain older SKB calendars. Keep
+// the published historical dates in the application so a provider returning
+// an empty calendar does not make a valid past year look unavailable.
+//
+//go:embed data/national_holidays_historical.json
+var historicalNationalHolidayData []byte
+
+var (
+	historicalNationalHolidayOnce sync.Once
+	historicalNationalHolidayMap  map[int]historicalNationalHolidayYear
+	historicalNationalHolidayErr  error
+)
+
 type nationalHolidaySyncErrorKind string
 
 const (
@@ -233,7 +261,7 @@ func syncNationalHolidaysWithClient(year int, client *http.Client) (fiber.Map, e
 	if year < 2000 || year > 2100 {
 		return nil, newNationalHolidaySyncError(syncErrorInvalidYear, "tahun tidak valid")
 	}
-	items, endpoint, err := fetchNationalHolidayCalendar(year, client)
+	fetched, err := fetchNationalHolidayCalendar(year, client)
 	if err != nil {
 		return nil, err
 	}
@@ -243,12 +271,12 @@ func syncNationalHolidaysWithClient(year int, client *http.Client) (fiber.Map, e
 	if tx.Error != nil {
 		return nil, newNationalHolidaySyncError(syncErrorPersistence, tx.Error.Error())
 	}
-	for _, item := range items {
+	for _, item := range fetched.Items {
 		var h models.Holiday
 		// Find is intentional here: a new external ID is expected during the
 		// first synchronization and must not produce noisy "record not found"
 		// error logs.
-		lookup := tx.Where("external_id = ?", item.ExternalID).Limit(1).Find(&h)
+		lookup := tx.Where("external_id = ? AND type IN ?", item.ExternalID, []string{"national", "joint_leave"}).Limit(1).Find(&h)
 		if lookup.RowsAffected == 0 {
 			lookup = tx.Where("tanggal = ? AND type = ?", item.DateText, item.Type).Limit(1).Find(&h)
 		}
@@ -274,34 +302,64 @@ func syncNationalHolidaysWithClient(year int, client *http.Client) (fiber.Map, e
 	if err := tx.Commit().Error; err != nil {
 		return nil, newNationalHolidaySyncError(syncErrorPersistence, err.Error())
 	}
-	return fiber.Map{"year": year, "created": created, "updated": updated, "synced_at": now, "source": endpoint}, nil
+	warnings := fetched.Warnings
+	if warnings == nil {
+		warnings = []string{}
+	}
+	return fiber.Map{
+		"year":      year,
+		"created":   created,
+		"updated":   updated,
+		"skipped":   fetched.Skipped,
+		"synced_at": now,
+		"source":    fetched.Endpoint,
+		"warnings":  warnings,
+	}, nil
 }
 
-func fetchNationalHolidayCalendar(year int, client *http.Client) ([]syncedNationalHoliday, string, error) {
+func fetchNationalHolidayCalendar(year int, client *http.Client) (nationalHolidayFetchResult, error) {
 	if year < 2000 || year > 2100 {
-		return nil, "", newNationalHolidaySyncError(syncErrorInvalidYear, "tahun tidak valid")
+		return nationalHolidayFetchResult{}, newNationalHolidaySyncError(syncErrorInvalidYear, "tahun tidak valid")
 	}
 	cfg := config.LoadConfig()
-	items, endpoint, err := fetchNationalHolidayCalendarFromURL(year, cfg.NationalHolidayURL, client, cfg.NationalHolidayAPIKey)
+	fetched, err := fetchNationalHolidayCalendarFromURL(year, cfg.NationalHolidayURL, client, cfg.NationalHolidayAPIKey)
 	if err == nil {
-		return items, endpoint, nil
+		return fetched, nil
 	}
 
 	// The primary SKB mirror currently covers only newer years. Historical
 	// years must still be synchronizable, so retry only the explicit
 	// "calendar unavailable" result against the configured historical source.
 	var syncErr *nationalHolidaySyncError
-	if errors.As(err, &syncErr) && syncErr.Kind == syncErrorCalendarMissing && strings.TrimSpace(cfg.NationalHolidayFallbackURL) != "" {
-		return fetchNationalHolidayCalendarFromURL(year, cfg.NationalHolidayFallbackURL, client, cfg.NationalHolidayAPIKey)
+	primaryCalendarMissing := errors.As(err, &syncErr) && syncErr.Kind == syncErrorCalendarMissing
+	if primaryCalendarMissing && strings.TrimSpace(cfg.NationalHolidayFallbackURL) != "" {
+		fallback, fallbackErr := fetchNationalHolidayCalendarFromURL(year, cfg.NationalHolidayFallbackURL, client, cfg.NationalHolidayAPIKey)
+		if fallbackErr == nil {
+			return fallback, nil
+		}
+		var fallbackSyncErr *nationalHolidaySyncError
+		if !errors.As(fallbackErr, &fallbackSyncErr) || fallbackSyncErr.Kind != syncErrorCalendarMissing {
+			return nationalHolidayFetchResult{}, fallbackErr
+		}
+		err = fallbackErr
 	}
-	return nil, endpoint, err
+
+	// Both configured providers explicitly reported that the calendar is
+	// missing. Only then use the bundled historical dataset. Network failures,
+	// timeouts, and malformed responses remain visible as their actual cause.
+	if primaryCalendarMissing {
+		if historical, historicalErr := fetchNationalHolidayCalendarFromHistoricalDataset(year); historicalErr == nil {
+			return historical, nil
+		}
+	}
+	return nationalHolidayFetchResult{}, err
 }
 
-func fetchNationalHolidayCalendarFromURL(year int, sourceURL string, client *http.Client, apiKey string) ([]syncedNationalHoliday, string, error) {
+func fetchNationalHolidayCalendarFromURL(year int, sourceURL string, client *http.Client, apiKey string) (nationalHolidayFetchResult, error) {
 	endpoint := fmt.Sprintf(sourceURL, year)
 	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
-		return nil, endpoint, newNationalHolidaySyncError(syncErrorSourceUnavailable, "konfigurasi URL sumber kalender tidak valid")
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorSourceUnavailable, "konfigurasi URL sumber kalender tidak valid")
 	}
 	req.Header.Set("Accept", "application/json")
 	if apiKey != "" {
@@ -311,34 +369,39 @@ func fetchNationalHolidayCalendarFromURL(year int, sourceURL string, client *htt
 	if err != nil {
 		var netErr net.Error
 		if errors.As(err, &netErr) && netErr.Timeout() {
-			return nil, endpoint, newNationalHolidaySyncError(syncErrorTimeout, err.Error())
+			return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorTimeout, err.Error())
 		}
-		return nil, endpoint, newNationalHolidaySyncError(syncErrorSourceUnavailable, err.Error())
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorSourceUnavailable, err.Error())
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, endpoint, newNationalHolidaySyncError(syncErrorCalendarMissing, "sumber tidak menyediakan kalender untuk tahun tersebut")
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorCalendarMissing, "sumber tidak menyediakan kalender untuk tahun tersebut")
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, endpoint, newNationalHolidaySyncError(syncErrorAPI, fmt.Sprintf("source returned %s", resp.Status))
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorAPI, fmt.Sprintf("source returned %s", resp.Status))
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, endpoint, newNationalHolidaySyncError(syncErrorInvalidResponse, err.Error())
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorInvalidResponse, err.Error())
 	}
 	rawItems, err := decodeNationalHolidayItems(body)
 	if err != nil {
-		return nil, endpoint, newNationalHolidaySyncError(syncErrorInvalidResponse, err.Error())
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorInvalidResponse, err.Error())
 	}
 	if rawItems == nil {
-		return nil, endpoint, newNationalHolidaySyncError(syncErrorCalendarMissing, "calendar data unavailable")
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorCalendarMissing, "calendar data unavailable")
 	}
 	if len(rawItems) == 0 {
-		return nil, endpoint, newNationalHolidaySyncError(syncErrorCalendarMissing, "calendar data unavailable")
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorCalendarMissing, "calendar data unavailable")
 	}
+	return normalizeNationalHolidayItems(year, rawItems, endpoint)
+}
 
+func normalizeNationalHolidayItems(year int, rawItems []nationalHolidayItem, endpoint string) (nationalHolidayFetchResult, error) {
 	items := make([]syncedNationalHoliday, 0, len(rawItems))
+	warnings := make([]string, 0)
+	skipped := 0
 	for _, rawItem := range rawItems {
 		dateText := strings.TrimSpace(rawItem.Date)
 		if dateText == "" {
@@ -346,7 +409,7 @@ func fetchNationalHolidayCalendarFromURL(year int, sourceURL string, client *htt
 		}
 		date, err := time.ParseInLocation("2006-01-02", dateText, jakartaLocation)
 		if err != nil || date.Year() != year {
-			return nil, endpoint, newNationalHolidaySyncError(syncErrorInvalidResponse, "tanggal kalender tidak valid atau tidak sesuai tahun yang diminta")
+			return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorInvalidResponse, "tanggal kalender tidak valid atau tidak sesuai tahun yang diminta")
 		}
 		name := strings.TrimSpace(rawItem.Name)
 		if name == "" {
@@ -355,21 +418,28 @@ func fetchNationalHolidayCalendarFromURL(year int, sourceURL string, client *htt
 		if name == "" {
 			name = strings.TrimSpace(rawItem.Description)
 		}
-		if name == "" {
-			return nil, endpoint, newNationalHolidaySyncError(syncErrorInvalidResponse, "nama hari libur tidak tersedia")
-		}
 		jointRaw := rawItem.Joint
 		if len(jointRaw) == 0 {
 			jointRaw = rawItem.JointHoliday
 		}
 		joint, err := parseJointLeave(jointRaw)
 		if err != nil {
-			return nil, endpoint, newNationalHolidaySyncError(syncErrorInvalidResponse, "field is_joint_leave tidak sesuai format")
+			return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorInvalidResponse, "field is_joint_leave tidak sesuai format")
 		}
 		typ := "national"
 		lowerType := strings.ToLower(rawItem.Type)
 		if joint || strings.Contains(lowerType, "joint") || strings.Contains(lowerType, "cuti") {
 			typ = "joint_leave"
+		}
+		if name == "" {
+			if typ == "joint_leave" {
+				name = "Cuti Bersama"
+				warnings = append(warnings, fmt.Sprintf("Nama kosong pada item cuti bersama tanggal %s; digunakan nama default Cuti Bersama.", dateText))
+			} else {
+				skipped++
+				warnings = append(warnings, fmt.Sprintf("Item kalender tanggal %s dilewati karena nama hari libur kosong.", dateText))
+				continue
+			}
 		}
 		source := strings.TrimSpace(rawItem.Source)
 		if source == "" {
@@ -381,7 +451,38 @@ func fetchNationalHolidayCalendarFromURL(year int, sourceURL string, client *htt
 		}
 		items = append(items, syncedNationalHoliday{ID: rawItem.ID, Date: date, DateText: date.Format("2006-01-02"), Name: name, Type: typ, Source: source, ExternalID: externalID})
 	}
-	return items, endpoint, nil
+	if len(items) == 0 {
+		return nationalHolidayFetchResult{Endpoint: endpoint, Skipped: skipped, Warnings: warnings}, newNationalHolidaySyncError(syncErrorCalendarMissing, "calendar data tidak memiliki item valid")
+	}
+	return nationalHolidayFetchResult{Items: items, Endpoint: endpoint, Skipped: skipped, Warnings: warnings}, nil
+}
+
+func fetchNationalHolidayCalendarFromHistoricalDataset(year int) (nationalHolidayFetchResult, error) {
+	historicalNationalHolidayOnce.Do(func() {
+		var entries []historicalNationalHolidayYear
+		if err := json.Unmarshal(historicalNationalHolidayData, &entries); err != nil {
+			historicalNationalHolidayErr = err
+			return
+		}
+		historicalNationalHolidayMap = make(map[int]historicalNationalHolidayYear, len(entries))
+		for _, entry := range entries {
+			historicalNationalHolidayMap[entry.Year] = entry
+		}
+	})
+	endpoint := fmt.Sprintf("local://national-holidays/%d", year)
+	if historicalNationalHolidayErr != nil {
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorInvalidResponse, historicalNationalHolidayErr.Error())
+	}
+	entry, ok := historicalNationalHolidayMap[year]
+	if !ok || len(entry.Data) == 0 {
+		return nationalHolidayFetchResult{Endpoint: endpoint}, newNationalHolidaySyncError(syncErrorCalendarMissing, "dataset historis lokal tidak menyediakan kalender untuk tahun tersebut")
+	}
+	for i := range entry.Data {
+		if strings.TrimSpace(entry.Data[i].Source) == "" {
+			entry.Data[i].Source = entry.Source
+		}
+	}
+	return normalizeNationalHolidayItems(year, entry.Data, endpoint)
 }
 
 func decodeNationalHolidayItems(body []byte) ([]nationalHolidayItem, error) {

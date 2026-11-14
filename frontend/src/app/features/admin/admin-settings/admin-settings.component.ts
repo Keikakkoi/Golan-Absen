@@ -471,7 +471,14 @@ export class AdminSettingsComponent implements OnInit {
     this.http.post<any>(`${this.baseUrl}/holidays/sync?year=${encodeURIComponent(year)}`, {}, { headers: this.getHeaders() }).subscribe({
       next: (result) => {
         this.isSyncingHolidays = false;
-        this.holidaySyncMessage = `Sinkronisasi ${result.year} selesai (${result.created} baru, ${result.updated} diperbarui).`;
+          const skipped = Number(result.skipped || 0);
+          const warningText = Array.isArray(result.warnings) && result.warnings.length
+            ? ` Peringatan: ${result.warnings.join(' ')}`
+            : '';
+          const sourceText = result.source?.startsWith('local://')
+            ? 'dataset historis lokal'
+            : 'sumber kalender nasional';
+          this.holidaySyncMessage = `Sinkronisasi ${result.year} selesai (${result.created} baru, ${result.updated} diperbarui, ${skipped} dilewati) dari ${sourceText}.${warningText}`;
         // Reload with the selected year, including years that have already passed.
         this.loadHolidays();
       },
