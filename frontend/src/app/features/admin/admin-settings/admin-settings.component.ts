@@ -460,12 +460,41 @@ export class AdminSettingsComponent implements OnInit {
   }
 
   syncNationalHolidays(): void {
+    const year = Math.trunc(Number(this.holidayYear));
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      this.holidaySyncMessage = 'Tahun kalender tidak valid. Gunakan tahun antara 2000 dan 2100.';
+      return;
+    }
+
     this.isSyncingHolidays = true;
     this.holidaySyncMessage = '';
-    this.http.post<any>(`${this.baseUrl}/holidays/sync?year=${this.holidayYear}`, {}, { headers: this.getHeaders() }).subscribe({
-      next: (result) => { this.isSyncingHolidays = false; this.holidaySyncMessage = `Sinkronisasi ${result.year} selesai (${result.created} baru, ${result.updated} diperbarui).`; this.loadHolidays(); },
-      error: (err) => { this.isSyncingHolidays = false; this.holidaySyncMessage = err.error?.error || 'Sumber kalender tidak dapat diakses. Data lama tetap dipertahankan.'; }
+    this.http.post<any>(`${this.baseUrl}/holidays/sync?year=${encodeURIComponent(year)}`, {}, { headers: this.getHeaders() }).subscribe({
+      next: (result) => {
+        this.isSyncingHolidays = false;
+        this.holidaySyncMessage = `Sinkronisasi ${result.year} selesai (${result.created} baru, ${result.updated} diperbarui).`;
+        // Reload with the selected year, including years that have already passed.
+        this.loadHolidays();
+      },
+      error: (err) => {
+        this.isSyncingHolidays = false;
+        this.holidaySyncMessage = err.error?.error || this.getHolidaySyncErrorMessage(err, year);
+      },
     });
+  }
+
+  private getHolidaySyncErrorMessage(err: any, year: number): string {
+    switch (err.error?.code) {
+      case 'timeout':
+        return `Sumber kalender nasional timeout untuk tahun ${year}. Data lama tetap dipertahankan.`;
+      case 'api_error':
+        return `API kalender nasional mengembalikan error untuk tahun ${year}. Data lama tetap dipertahankan.`;
+      case 'calendar_unavailable':
+        return `Data kalender nasional untuk tahun ${year} belum tersedia. Data lama tetap dipertahankan.`;
+      case 'invalid_response':
+        return `Respons API kalender nasional untuk tahun ${year} tidak sesuai format. Data lama tetap dipertahankan.`;
+      default:
+        return `Sumber kalender nasional tahun ${year} tidak dapat diakses. Data lama tetap dipertahankan.`;
+    }
   }
 
   async deleteHoliday(id: number): Promise<void> {

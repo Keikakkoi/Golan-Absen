@@ -231,6 +231,47 @@
       flex-wrap: wrap;
     }
 
+    /* Keep holiday actions aligned with the work type action buttons. The
+       explicit colors also prevent the global dark-mode button rules from
+       flattening edit/delete into neutral controls. */
+    .holiday-actions-cell {
+      gap: 6px;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+
+      .icon-button {
+        margin: 2px;
+      }
+
+      > .icon-button.edit {
+        background: #fff4db;
+        border-color: #f6d28a;
+        color: #9a5a00;
+      }
+
+      > .icon-button.edit:hover {
+        background: #ffe9b5;
+        border-color: #efbb4e;
+        color: #9a5a00;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+      }
+
+      > .icon-button.delete {
+        background: #fff0f0;
+        border-color: #f7b5b5;
+        color: #b4232d;
+      }
+
+      > .icon-button.delete:hover {
+        background: #ffe0e0;
+        border-color: #ef8e8e;
+        color: #b4232d;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 8px rgba(15, 23, 42, 0.12);
+      }
+    }
+
     .btn-sm {
       padding: 8px 14px;
       font-size: 0.9rem;
@@ -307,6 +348,34 @@
     }
   }
 }
+
+/* Match the work type action palette in dark mode as well. The shared
+   stylesheet has broad .edit/.delete selectors, so these local rules need
+   !important just like the work type reference. */
+:host-context(body.dark-theme) .admin-theme .settings-page .holiday-actions-cell > .icon-button.edit {
+  background: #3f2a0a !important;
+  border-color: #a16207 !important;
+  color: #fcd34d !important;
+}
+
+:host-context(body.dark-theme) .admin-theme .settings-page .holiday-actions-cell > .icon-button.edit:hover {
+  background: #5b4219 !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+}
+
+:host-context(body.dark-theme) .admin-theme .settings-page .holiday-actions-cell > .icon-button.delete {
+  background: #451a1a !important;
+  border-color: #b91c1c !important;
+  color: #fca5a5 !important;
+}
+
+:host-context(body.dark-theme) .admin-theme .settings-page .holiday-actions-cell > .icon-button.delete:hover {
+  background: #5f2020 !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
 .regular-schedule-scroll { width: 100%; overflow-x: auto; overflow-y: visible; padding-bottom: 4px; }
 .regular-schedule-table { display: grid; gap: 8px; min-width: 1020px; }
 .regular-schedule-row { display: grid; grid-template-columns: 100px 90px 170px 170px 220px 220px; gap: 10px; align-items: center; min-width: 1020px; }

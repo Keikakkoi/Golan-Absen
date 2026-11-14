@@ -279,7 +279,7 @@
               <td>{{ h.Tanggal | date: "dd MMM yyyy" }}</td>
               <td>{{ h.Keterangan }}</td>
               <td>{{ h.type === 'national' ? 'Nasional' : (h.type === 'joint_leave' ? 'Cuti bersama' : 'Khusus perusahaan') }}</td>
-              <td class="actions">
+              <td class="actions holiday-actions-cell">
                 <button type="button" class="icon-button edit" (click)="openHolidayModal(h)" aria-label="Edit hari libur" title="Edit hari libur">
                   <svg aria-hidden="true"><use href="assets/sidebar-icons.svg#edit"></use></svg>
                 </button>
